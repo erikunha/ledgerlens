@@ -1,0 +1,10 @@
+# Look of the demo portal (app/streamlit_app.py): light theme, one calm product colour, no developer toolbar.
+[theme]
+base = "light"
+primaryColor = "#2f5bd3"
+
+[client]
+toolbarMode = "minimal"
+
+[browser]
+gatherUsageStats = false

@@ -1,0 +1,53 @@
+{
+  "files": {
+    "2026-10-05_EUR_BRL.json": {
+      "recorded_at": "2026-11-08T01:41:34Z",
+      "sha256": "102283b2bdd22269db3f3cae82a1a05b394041b9f1118c00ecfe63bcb110fa3f",
+      "status": 200,
+      "url": "https://api.frankfurter.dev/v1/2026-10-05?from=EUR&to=BRL"
+    },
+    "2026-10-15_EUR_ARS.json": {
+      "recorded_at": "2026-11-08T01:41:34Z",
+      "sha256": "aef2ed8a2ebaf652f0f07cf0c47ece26e78c0f712ecb47ce91f2b53530173a79",
+      "status": 404,
+      "url": "https://api.frankfurter.dev/v1/2026-10-15?from=EUR&to=ARS"
+    },
+    "2026-10-15_EUR_BRL.json": {
+      "recorded_at": "2026-11-08T01:41:34Z",
+      "sha256": "b8da60e68ee0530476ba59bed9709baba86ee56decd2cba91ab2e43f75821c05",
+      "status": 200,
+      "url": "https://api.frankfurter.dev/v1/2026-10-15?from=EUR&to=BRL"
+    },
+    "2026-10-15_EUR_USD.json": {
+      "recorded_at": "2026-11-08T01:41:34Z",
+      "sha256": "59306878e53d497374d7dcff54db20f482785dbbbc3a1a682c3d02201caa91f6",
+      "status": 200,
+      "url": "https://api.frankfurter.dev/v1/2026-10-15?from=EUR&to=USD"
+    },
+    "2026-10-17_EUR_BRL.json": {
+      "recorded_at": "2026-11-08T01:41:34Z",
+      "sha256": "8608a311a605975e85631b895e703809be4a527abd46f42d6a66eb2c5d8c6854",
+      "status": 200,
+      "url": "https://api.frankfurter.dev/v1/2026-10-17?from=EUR&to=BRL"
+    },
+    "2026-10-20_EUR_BRL.json": {
+      "recorded_at": "2026-11-08T01:41:34Z",
+      "sha256": "24075d9a5654378b9e84f169e385cfdec64656e8d7fee5c568499c470e234343",
+      "status": 200,
+      "url": "https://api.frankfurter.dev/v1/2026-10-20?from=EUR&to=BRL"
+    },
+    "2026-10-20_EUR_USD.json": {
+      "recorded_at": "2026-11-08T01:41:34Z",
+      "sha256": "fb4ed937be6f8d3c2773bf470f3d5791de37b0879ce745a652202e2ca5a78ba8",
+      "status": 200,
+      "url": "https://api.frankfurter.dev/v1/2026-10-20?from=EUR&to=USD"
+    },
+    "2026-10-20_USD_BRL.json": {
+      "recorded_at": "2026-11-08T01:41:34Z",
+      "sha256": "01bafbe701e831d40bb8754ab83af191f5392d1269adb5c4d59f92d0a3354eef",
+      "status": 200,
+      "url": "https://api.frankfurter.dev/v1/2026-10-20?from=USD&to=BRL"
+    }
+  },
+  "schema_version": "1"
+}

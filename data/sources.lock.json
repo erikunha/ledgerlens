@@ -1,0 +1,35 @@
+{
+  "schema_version": "1",
+  "sources": {
+    "bin_list": {
+      "attribution": "venelinkochev/bin-list-data, https://github.com/venelinkochev/bin-list-data",
+      "bytes": 27607253,
+      "fetched_at": "2026-11-08T01:40:31Z",
+      "filename": "bin-list-data.csv",
+      "license": "CC BY 4.0",
+      "redistributable": true,
+      "sha256": "0583860988c7b15d2921025ee8afe89eaf4947fe31acde8ffccfc82691d13e35",
+      "url": "https://raw.githubusercontent.com/venelinkochev/bin-list-data/master/bin-list-data.csv"
+    },
+    "ecb_eurofxref_hist": {
+      "attribution": "European Central Bank, euro foreign exchange reference rates, https://www.ecb.europa.eu",
+      "bytes": 642720,
+      "fetched_at": "2026-11-08T01:40:34Z",
+      "filename": "eurofxref-hist.zip",
+      "license": "ECB reuse with source acknowledged",
+      "redistributable": true,
+      "sha256": "d34817759624a46b58a42ac585f6d9d2fb12ece793d158656dcc7ddd128779a3",
+      "url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.zip"
+    },
+    "uci_online_retail_ii": {
+      "attribution": "Chen, D. (2012). Online Retail II [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C5CG6D",
+      "bytes": 45622418,
+      "fetched_at": "2026-11-08T01:40:28Z",
+      "filename": "online_retail_ii.zip",
+      "license": "CC BY 4.0",
+      "redistributable": true,
+      "sha256": "572e36277c2390fbfde10664750731e0a86f55e33470d91919085f0408e67bfb",
+      "url": "https://archive.ics.uci.edu/static/public/502/online+retail+ii.zip"
+    }
+  }
+}

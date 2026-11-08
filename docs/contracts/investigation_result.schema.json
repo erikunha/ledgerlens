@@ -1,0 +1,567 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ledgerlens.local/schemas/investigation_result.schema.json",
+  "title": "InvestigationResult",
+  "description": "Final output of one LedgerLens investigation. Every claim points to evidence; every claim has a verdict. Decimals are strings so no precision is lost.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "session_id",
+    "question",
+    "answer",
+    "claims",
+    "evidence",
+    "verdicts",
+    "coherence",
+    "recommended_action",
+    "requires_human_review"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1"
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "question": {
+      "type": "string",
+      "minLength": 1
+    },
+    "triage": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Triage"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "answer": {
+      "type": "string",
+      "minLength": 1
+    },
+    "claims": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Claim"
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Evidence"
+      }
+    },
+    "verdicts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Verdict"
+      }
+    },
+    "coherence": {
+      "$ref": "#/$defs/Coherence"
+    },
+    "missing_information": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "recommended_action": {
+      "enum": [
+        "none",
+        "explain_to_customer",
+        "issue_refund",
+        "reject_refund",
+        "submit_chargeback_evidence",
+        "escalate_to_human",
+        "ask_for_clarification"
+      ]
+    },
+    "requires_human_review": {
+      "type": "boolean"
+    },
+    "tool_trace": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ToolCallRecord"
+      },
+      "default": []
+    },
+    "plan_deviations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    }
+  },
+  "$defs": {
+    "DecimalString": {
+      "type": "string",
+      "pattern": "^-?[0-9]+(\\.[0-9]+)?$"
+    },
+    "CurrencyCode": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$"
+    },
+    "ToolName": {
+      "enum": [
+        "query_ledger",
+        "get_ledger_record",
+        "search_policies",
+        "get_reference_fx",
+        "calculate",
+        "recall_cases"
+      ]
+    },
+    "EvidenceId": {
+      "type": "string",
+      "pattern": "^(sql|api|policy|fx|calc|case):.+$"
+    },
+    "Money": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "amount",
+        "currency"
+      ],
+      "properties": {
+        "amount": {
+          "$ref": "#/$defs/DecimalString"
+        },
+        "currency": {
+          "$ref": "#/$defs/CurrencyCode"
+        }
+      }
+    },
+    "Entities": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "transaction_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^TX-[0-9]{4}$"
+          }
+        },
+        "refund_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^R-[0-9]{4}$"
+          }
+        },
+        "chargeback_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^CB-[0-9]{4}$"
+          }
+        },
+        "settlement_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^ST-[0-9]{4}$"
+          }
+        },
+        "merchant_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^M-[0-9]{2}$"
+          }
+        },
+        "customer_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^C-[0-9]{4}$"
+          }
+        },
+        "amounts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Money"
+          }
+        },
+        "currencies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CurrencyCode"
+          }
+        },
+        "dates": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      }
+    },
+    "PlanStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "goal"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^S[0-9]+$"
+        },
+        "goal": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tool": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/ToolName"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "depends_on": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^S[0-9]+$"
+          }
+        }
+      }
+    },
+    "Triage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "intent",
+        "entities",
+        "urgency",
+        "plan"
+      ],
+      "properties": {
+        "intent": {
+          "enum": [
+            "status_lookup",
+            "refund_discrepancy",
+            "duplicate_charge",
+            "chargeback_status",
+            "settlement_question",
+            "policy_question",
+            "fx_question",
+            "other"
+          ]
+        },
+        "entities": {
+          "$ref": "#/$defs/Entities"
+        },
+        "urgency": {
+          "enum": [
+            "low",
+            "normal",
+            "high",
+            "critical"
+          ]
+        },
+        "plan": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/PlanStep"
+          }
+        },
+        "needs_clarification": {
+          "type": "boolean",
+          "default": false
+        },
+        "clarification_question": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "Evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "source_type",
+        "tool",
+        "content",
+        "ref",
+        "retrieved_at"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/EvidenceId"
+        },
+        "source_type": {
+          "enum": [
+            "sql",
+            "ledger_api",
+            "policy",
+            "fx",
+            "calc",
+            "case"
+          ]
+        },
+        "tool": {
+          "$ref": "#/$defs/ToolName"
+        },
+        "content": {
+          "type": "string"
+        },
+        "ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "retrieved_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "NumericClaim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expected",
+        "unit",
+        "calc_evidence_id"
+      ],
+      "properties": {
+        "expected": {
+          "$ref": "#/$defs/DecimalString"
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tolerance": {
+          "$ref": "#/$defs/DecimalString",
+          "default": "0.01"
+        },
+        "calc_evidence_id": {
+          "$ref": "#/$defs/EvidenceId"
+        }
+      }
+    },
+    "Claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "text",
+        "kind"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^CL[0-9]+$"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "fact",
+            "numeric",
+            "policy",
+            "inference"
+          ]
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceId"
+          }
+        },
+        "numeric": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/NumericClaim"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "NliScores": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entailment",
+        "contradiction",
+        "neutral"
+      ],
+      "properties": {
+        "entailment": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "contradiction": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "neutral": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "Verdict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claim_id",
+        "label",
+        "method"
+      ],
+      "properties": {
+        "claim_id": {
+          "type": "string",
+          "pattern": "^CL[0-9]+$"
+        },
+        "label": {
+          "enum": [
+            "supported",
+            "contradicted",
+            "not_enough_evidence"
+          ]
+        },
+        "method": {
+          "enum": [
+            "nli",
+            "numeric",
+            "rule",
+            "none"
+          ]
+        },
+        "scores": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/NliScores"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceId"
+          }
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "CoherenceIssue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rule",
+        "message"
+      ],
+      "properties": {
+        "rule": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "claim_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^CL[0-9]+$"
+          }
+        }
+      }
+    },
+    "Coherence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "passed"
+      ],
+      "properties": {
+        "passed": {
+          "type": "boolean"
+        },
+        "issues": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CoherenceIssue"
+          }
+        }
+      }
+    },
+    "ToolCallRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "step",
+        "tool",
+        "input",
+        "ok",
+        "duration_ms"
+      ],
+      "properties": {
+        "step": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "tool": {
+          "$ref": "#/$defs/ToolName"
+        },
+        "input": {
+          "type": "object"
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "error_code": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceId"
+          }
+        }
+      }
+    }
+  }
+}

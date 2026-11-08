@@ -1,0 +1,45 @@
+LedgerLens
+Copyright (c) 2026 Erik Cunha. Code under the MIT License (see LICENSE).
+
+The code is original. The data it can read comes from public sources that keep their own
+licenses. Raw files are downloaded by scripts/fetch_public_data.py into data/raw/ (not committed);
+their checksums are recorded in data/sources.lock.json. Derived samples and recorded responses
+committed under data/ carry the attributions below.
+
+1. UCI Online Retail II
+   Chen, D. (2012). Online Retail II [Dataset]. UCI Machine Learning Repository.
+   https://doi.org/10.24432/C5CG6D
+   License: Creative Commons Attribution 4.0 International (CC BY 4.0).
+   Used for: invoices and cancellations. Dates, currencies and merchants are changed by the
+   simulator; the derived sample says so in its metadata.
+   Committed derivative: data/sample/invoices_sample.jsonl (invoices selected from the last 90 days
+   of the file and shifted in time; CC BY 4.0 allows redistribution with this attribution).
+
+2. BIN list
+   venelinkochev/bin-list-data, https://github.com/venelinkochev/bin-list-data
+   License: Creative Commons Attribution 4.0 International (CC BY 4.0).
+   Used for: card brand, card type and issuer country from the first digits of a card number.
+   Committed derivative: data/fixtures/bins.json (brand weights per country and a few prefixes).
+
+3. European Central Bank euro foreign exchange reference rates
+   Source: European Central Bank (https://www.ecb.europa.eu), obtained through the Frankfurter
+   API (https://frankfurter.dev) and the ECB Data Portal (https://data.ecb.europa.eu).
+   Used for: daily reference rates. They are reference rates, not the rate an acquirer applies.
+   Committed recordings: data/fixtures/fx/frankfurter_eur.json, the single-date responses
+   data/fixtures/fx/<date>_<FROM>_<TO>.json and data/fixtures/fx/ecb_reference.json.
+
+4. Banco Central do Brasil (central bank of Brazil) open data
+   Source: Banco Central do Brasil open data portal (https://dadosabertos.bcb.gov.br), PTAX
+   closing rates through Olinda (https://olinda.bcb.gov.br) and Pix open statistics.
+   Used for: a second exchange-rate source for BRL pairs and for calibrating dispute rates.
+   Committed recordings: data/fixtures/fx/bcb_ptax_<CUR>_BRL.json (closing sell rates).
+
+5. Nager.Date public holidays
+   Source: Nager.Date API (https://date.nager.at), code under the MIT License. The terms of the
+   hosted service were not read. Three responses for 2026 (BR, DE, US) are recorded in
+   data/fixtures/holidays/ and used only to cross-check the `holidays` library in a test.
+
+6. Python `holidays` library (MIT), the calendars used for business days (TARGET, B3, United States).
+
+Everything else (merchants, chargebacks, settlements, fees, markups, planted anomalies) is
+simulated from a fixed seed. No real customer data is used.

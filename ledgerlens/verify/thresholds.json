@@ -1,0 +1,30 @@
+{
+  "entailment_min": 0.81,
+  "contradiction_min": 0.91,
+  "unsupported_share_review": 0.34,
+  "max_premise_chars": 4000,
+  "calibrated_with": "MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli",
+  "calibration": {
+    "rule": "no false supported and no false contradicted on both sets, then the highest accuracy; on a tie, the middle of the plateau",
+    "sets": {"verification_set": 30, "verification_live": 40},
+    "accuracy": {"combined": 0.786, "verification_set": 1.0, "verification_live": 0.625},
+    "plateau": {"entailment_min": [0.77, 0.84], "contradiction_min": [0.90, 0.92]},
+    "sweep": "docs/decisions/ADR-007-nli-verification.md"
+  },
+  "escalation": {
+    "deadline_within_days": {"value": 2, "policy": "escalation-and-review#deadline-within-2-days"},
+    "internal_cutoff_passed": {"policy": "escalation-and-review#deadline-within-2-days"},
+    "high_amount": {"value": "5000", "policy": "escalation-and-review#high-amount"},
+    "suspicious_text": {
+      "policy": "escalation-and-review#suspicious-text",
+      "patterns": [
+        "\\b(?:ignore|disregard|forget)\\b.{0,40}\\b(?:instructions|rules|prompts?)\\b",
+        "\\b(?:approve)\\b.{0,20}\\b(?:all|every)\\b",
+        "\\b(?:you are now|act as|system prompt)\\b"
+      ]
+    }
+  },
+  "actions": {
+    "duplicate_window_seconds": {"value": 300, "policy": "duplicate-charges#detection-rule"}
+  }
+}

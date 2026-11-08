@@ -1,0 +1,1 @@
+{"case_id": "CASE-0001", "kind": "semantic", "session_id": "seed", "created_at": "2026-11-07T09:00:00+00:00", "entities": {"merchant_ids": ["M-17"], "transaction_ids": ["TX-2048"]}, "finding": "Merchant M-17 applies an FX markup of about 2.5% on cross-currency refunds (seen on TX-2048)", "evidence_refs": [], "confidence": "high", "valid_until": null, "source_result_id": null}

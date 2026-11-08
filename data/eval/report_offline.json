@@ -1,0 +1,2818 @@
+{
+  "cases": 30,
+  "expectation_changes": [
+    {
+      "after": [
+        "query_ledger"
+      ],
+      "before": [
+        "query_ledger",
+        "calculate"
+      ],
+      "cases": [
+        "EC-19",
+        "EC-20",
+        "EC-21",
+        "EC-22",
+        "EC-23",
+        "EC-24"
+      ],
+      "reason": "The question is the payout's net amount, and the settlements table already keeps it in net_minor; in the six payouts net_minor equals gross_minor - refunds_minor - fees_minor, which is what calculate would redo with the same three columns, and the settlement_net coherence rule checks that equality by itself. Calculate is still expected where the question is how the payout was calculated (EC-08, scenario S08)."
+    }
+  ],
+  "goal": {
+    "c_beats_a_in_correctness": true,
+    "c_trajectory_at_least_80_percent": true,
+    "c_trajectory_equivalent_at_least_80_percent": true,
+    "c_trajectory_equivalent_unordered": 1.0,
+    "c_trajectory_unordered": 1.0
+  },
+  "mode": "offline",
+  "note": "The offline numbers measure the plumbing (the trace conversion, the evaluators and the report) with scripted answers, not the quality of a model. Each variant replays each case's script: the differences between them come from the tools the variant has, not from the model reasoning better or worse. To measure quality, run with `--online` and a LangSmith key.",
+  "per_case": [
+    {
+      "answer": "I have no access to the ledger or the policies, so I cannot confirm this case. Check the payments system.",
+      "case": "EC-01",
+      "expected_tools": [
+        "query_ledger",
+        "search_policies",
+        "get_reference_fx",
+        "calculate"
+      ],
+      "kind": "scenario",
+      "missing_facts": "missing: 566.79, 549.31, 17.48, 14.08",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": "S01",
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "A"
+    },
+    {
+      "answer": "I have no access to the ledger or the policies, so I cannot confirm this case. Check the payments system.",
+      "case": "EC-02",
+      "expected_tools": [
+        "query_ledger",
+        "search_policies"
+      ],
+      "kind": "scenario",
+      "missing_facts": "missing: TX-2052, TX-2051, 4990",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": "S02",
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "A"
+    },
+    {
+      "answer": "I have no access to the ledger or the policies, so I cannot confirm this case. Check the payments system.",
+      "case": "EC-03",
+      "expected_tools": [
+        "query_ledger",
+        "search_policies"
+      ],
+      "kind": "scenario",
+      "missing_facts": "missing: 2026-11-09, evidence_requested, NRC",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": "S03",
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "A"
+    },
+    {
+      "answer": "I have no access to the ledger or the policies, so I cannot confirm this case. Check the payments system.",
+      "case": "EC-04",
+      "expected_tools": [
+        "query_ledger"
+      ],
+      "kind": "scenario",
+      "missing_facts": "missing: TX-9999, row_count 0",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": "S04",
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "A"
+    },
+    {
+      "answer": "I have no access to the ledger or the policies, so I cannot confirm this case. Check the payments system.",
+      "case": "EC-05",
+      "expected_tools": [
+        "query_ledger"
+      ],
+      "kind": "scenario",
+      "missing_facts": "missing: TX-2060, M-03, TX-2061, M-17",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": "S05",
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "A"
+    },
+    {
+      "answer": "I have no access to the ledger or the policies, so I cannot confirm this case. Check the payments system.",
+      "case": "EC-06",
+      "expected_tools": [
+        "query_ledger",
+        "search_policies"
+      ],
+      "kind": "scenario",
+      "missing_facts": "missing: rejected, refund-policy#refund-window",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": "S06",
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "A"
+    },
+    {
+      "answer": "I have no access to the ledger or the policies, so I cannot confirm this case. Check the payments system.",
+      "case": "EC-07",
+      "expected_tools": [
+        "query_ledger",
+        "calculate"
+      ],
+      "kind": "scenario",
+      "missing_facts": "missing: 0.00, 8000",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": "S07",
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "A"
+    },
+    {
+      "answer": "I have no access to the ledger or the policies, so I cannot confirm this case. Check the payments system.",
+      "case": "EC-08",
+      "expected_tools": [
+        "query_ledger",
+        "search_policies",
+        "calculate"
+      ],
+      "kind": "scenario",
+      "missing_facts": "missing: 2999287, 2026-10-14, 29992.87",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": "S08",
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "A"
+    },
+    {
+      "answer": "I have no access to the ledger or the policies, so I cannot confirm this case. Check the payments system.",
+      "case": "EC-09",
+      "expected_tools": [
+        "query_ledger"
+      ],
+      "kind": "scenario",
+      "missing_facts": "missing: R-0750, requested",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": "S09",
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "A"
+    },
+    {
+      "answer": "I have no access to the ledger or the policies, so I cannot confirm this case. Check the payments system.",
+      "case": "EC-10",
+      "expected_tools": [
+        "query_ledger",
+        "get_reference_fx"
+      ],
+      "kind": "scenario",
+      "missing_facts": "missing: ARS, 2500000",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": "S10",
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "A"
+    },
+    {
+      "answer": "I have no access to the ledger or the policies, so I cannot confirm this case. Check the payments system.",
+      "case": "EC-11",
+      "expected_tools": [
+        "query_ledger",
+        "get_reference_fx"
+      ],
+      "kind": "scenario",
+      "missing_facts": "missing: EUR-BRL 2026-10-20, 5.4931",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": "S11",
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "A"
+    },
+    {
+      "answer": "I have no access to the ledger or the policies, so I cannot confirm this case. Check the payments system.",
+      "case": "EC-12",
+      "expected_tools": [
+        "recall_cases"
+      ],
+      "kind": "scenario",
+      "missing_facts": "missing: CASE-0001",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": "S12",
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "A"
+    },
+    {
+      "answer": "I have no access to the ledger or the policies, so I cannot confirm this case. Check the payments system.",
+      "case": "EC-13",
+      "expected_tools": [
+        "get_ledger_record"
+      ],
+      "kind": "natural",
+      "missing_facts": "missing: TX-0001, captured",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": null,
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "A"
+    },
+    {
+      "answer": "I have no access to the ledger or the policies, so I cannot confirm this case. Check the payments system.",
+      "case": "EC-14",
+      "expected_tools": [
+        "get_ledger_record"
+      ],
+      "kind": "natural",
+      "missing_facts": "missing: TX-0007, failed",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": null,
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "A"
+    },
+    {
+      "answer": "I have no access to the ledger or the policies, so I cannot confirm this case. Check the payments system.",
+      "case": "EC-15",
+      "expected_tools": [
+        "get_ledger_record"
+      ],
+      "kind": "natural",
+      "missing_facts": "missing: TX-0008, partially_refunded",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": null,
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "A"
+    },
+    {
+      "answer": "I have no access to the ledger or the policies, so I cannot confirm this case. Check the payments system.",
+      "case": "EC-16",
+      "expected_tools": [
+        "get_ledger_record"
+      ],
+      "kind": "natural",
+      "missing_facts": "missing: TX-0138, refunded",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": null,
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "A"
+    },
+    {
+      "answer": "I have no access to the ledger or the policies, so I cannot confirm this case. Check the payments system.",
+      "case": "EC-17",
+      "expected_tools": [
+        "get_ledger_record"
+      ],
+      "kind": "natural",
+      "missing_facts": "missing: TX-1177, disputed",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": null,
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "A"
+    },
+    {
+      "answer": "I have no access to the ledger or the policies, so I cannot confirm this case. Check the payments system.",
+      "case": "EC-18",
+      "expected_tools": [
+        "get_ledger_record"
+      ],
+      "kind": "natural",
+      "missing_facts": "missing: TX-0265, charged_back",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": null,
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "A"
+    },
+    {
+      "answer": "I have no access to the ledger or the policies, so I cannot confirm this case. Check the payments system.",
+      "case": "EC-19",
+      "expected_tools": [
+        "query_ledger"
+      ],
+      "kind": "natural",
+      "missing_facts": "missing: 74107",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": null,
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "A"
+    },
+    {
+      "answer": "I have no access to the ledger or the policies, so I cannot confirm this case. Check the payments system.",
+      "case": "EC-20",
+      "expected_tools": [
+        "query_ledger"
+      ],
+      "kind": "natural",
+      "missing_facts": "missing: 3522994",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": null,
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "A"
+    },
+    {
+      "answer": "I have no access to the ledger or the policies, so I cannot confirm this case. Check the payments system.",
+      "case": "EC-21",
+      "expected_tools": [
+        "query_ledger"
+      ],
+      "kind": "natural",
+      "missing_facts": "missing: 824836",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": null,
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "A"
+    },
+    {
+      "answer": "I have no access to the ledger or the policies, so I cannot confirm this case. Check the payments system.",
+      "case": "EC-22",
+      "expected_tools": [
+        "query_ledger"
+      ],
+      "kind": "natural",
+      "missing_facts": "missing: 504121",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": null,
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "A"
+    },
+    {
+      "answer": "I have no access to the ledger or the policies, so I cannot confirm this case. Check the payments system.",
+      "case": "EC-23",
+      "expected_tools": [
+        "query_ledger"
+      ],
+      "kind": "natural",
+      "missing_facts": "missing: 4496483",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": null,
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "A"
+    },
+    {
+      "answer": "I have no access to the ledger or the policies, so I cannot confirm this case. Check the payments system.",
+      "case": "EC-24",
+      "expected_tools": [
+        "query_ledger"
+      ],
+      "kind": "natural",
+      "missing_facts": "missing: 492101",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": null,
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "A"
+    },
+    {
+      "answer": "I have no access to the ledger or the policies, so I cannot confirm this case. Check the payments system.",
+      "case": "EC-25",
+      "expected_tools": [
+        "search_policies"
+      ],
+      "kind": "natural",
+      "missing_facts": "missing: fees-and-pricing#chargeback-fee",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": null,
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "A"
+    },
+    {
+      "answer": "I have no access to the ledger or the policies, so I cannot confirm this case. Check the payments system.",
+      "case": "EC-26",
+      "expected_tools": [
+        "search_policies"
+      ],
+      "kind": "natural",
+      "missing_facts": "missing: duplicate-charges#detection-rule",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": null,
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "A"
+    },
+    {
+      "answer": "I have no access to the ledger or the policies, so I cannot confirm this case. Check the payments system.",
+      "case": "EC-27",
+      "expected_tools": [
+        "search_policies"
+      ],
+      "kind": "natural",
+      "missing_facts": "missing: fx-reference-rates#source",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": null,
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "A"
+    },
+    {
+      "answer": "I have no access to the ledger or the policies, so I cannot confirm this case. Check the payments system.",
+      "case": "EC-28",
+      "expected_tools": [
+        "search_policies"
+      ],
+      "kind": "natural",
+      "missing_facts": "missing: escalation-and-review#when-to-escalate",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": null,
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "A"
+    },
+    {
+      "answer": "I have no access to the ledger or the policies, so I cannot confirm this case. Check the payments system.",
+      "case": "EC-29",
+      "expected_tools": [
+        "search_policies"
+      ],
+      "kind": "natural",
+      "missing_facts": "missing: cross-currency-refunds#merchant-fx-markup",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": null,
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "A"
+    },
+    {
+      "answer": "I have no access to the ledger or the policies, so I cannot confirm this case. Check the payments system.",
+      "case": "EC-30",
+      "expected_tools": [
+        "search_policies"
+      ],
+      "kind": "natural",
+      "missing_facts": "missing: chargeback-handling#evidence-checklist",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": null,
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "A"
+    },
+    {
+      "answer": "charge_brl 566.79 [calc:1]. refund_brl 549.31 [calc:1]. gap_brl 17.48 [calc:1]. markup_brl 14.08 [calc:1]. refund applied_rate 5.4931 [sql:1]. The implied markup is one minus the applied rate divided by the reference rate on the refund date, expressed as a percentage [policy:fx-reference-rates#comparing-with-applied].",
+      "case": "EC-01",
+      "expected_tools": [
+        "query_ledger",
+        "search_policies",
+        "get_reference_fx",
+        "calculate"
+      ],
+      "kind": "scenario",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": "S01",
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 0.5,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger",
+        "search_policies",
+        "get_reference_fx",
+        "calculate"
+      ],
+      "variant": "B"
+    },
+    {
+      "answer": "TX-2051 amount_minor 4990 [sql:1]. TX-2052 amount_minor 4990 [sql:1]. Two captures count as duplicates when they have the same merchant, the same card (identified by the card fingerprint), the same amount and the same currency, and the second one happens within 5 minutes after the first [policy:duplicate-charges#detection-rule].",
+      "case": "EC-02",
+      "expected_tools": [
+        "query_ledger",
+        "search_policies"
+      ],
+      "kind": "scenario",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "scenario": "S02",
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 0.6667,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger",
+        "search_policies"
+      ],
+      "variant": "B"
+    },
+    {
+      "answer": "CB-0310 deadline 2026-11-09 [sql:1]. CB-0310 stage evidence_requested [sql:1]. CB-0310 reason_code NRC [sql:1]. Evidence must be sent at least one business day before the card network deadline [policy:chargeback-handling#response-deadline].",
+      "case": "EC-03",
+      "expected_tools": [
+        "query_ledger",
+        "search_policies"
+      ],
+      "kind": "scenario",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": "S03",
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger",
+        "search_policies"
+      ],
+      "variant": "B"
+    },
+    {
+      "answer": "TX-9999 row_count 0 [sql:1].",
+      "case": "EC-04",
+      "expected_tools": [
+        "query_ledger"
+      ],
+      "kind": "scenario",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "ask_for_clarification",
+      "requires_human_review": false,
+      "scenario": "S04",
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger"
+      ],
+      "variant": "B"
+    },
+    {
+      "answer": "TX-2060 merchant_id M-03 [sql:1]. TX-2061 merchant_id M-17 [sql:1].",
+      "case": "EC-05",
+      "expected_tools": [
+        "query_ledger"
+      ],
+      "kind": "scenario",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "ask_for_clarification",
+      "requires_human_review": false,
+      "scenario": "S05",
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger"
+      ],
+      "variant": "B"
+    },
+    {
+      "answer": "TX-2090 refund status rejected [sql:1]. Refunds are accepted for 30 calendar days after the payment is captured, unless the merchant sets a different window in the `refund_window_days` field [policy:refund-policy#refund-window].",
+      "case": "EC-06",
+      "expected_tools": [
+        "query_ledger",
+        "search_policies"
+      ],
+      "kind": "scenario",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": "S06",
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 0.5,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger",
+        "search_policies"
+      ],
+      "variant": "B"
+    },
+    {
+      "answer": "R-0720 payout_amount_minor 8000 [sql:1]. difference 0.00 [calc:1].",
+      "case": "EC-07",
+      "expected_tools": [
+        "query_ledger",
+        "calculate"
+      ],
+      "kind": "scenario",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "scenario": "S07",
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger",
+        "calculate"
+      ],
+      "variant": "B"
+    },
+    {
+      "answer": "ST-0044 net_minor 2999287 [sql:1]. ST-0044 expected_payout_date 2026-10-14 [sql:1]. net_settlement 29992.87 [calc:1]. Settlements cover periods from Monday to Sunday, and the payout is paid 2 business days after the end of the period [policy:settlement-schedule#payout-timing].",
+      "case": "EC-08",
+      "expected_tools": [
+        "query_ledger",
+        "search_policies",
+        "calculate"
+      ],
+      "kind": "scenario",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "explain_to_customer",
+      "requires_human_review": false,
+      "scenario": "S08",
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger",
+        "search_policies",
+        "calculate"
+      ],
+      "variant": "B"
+    },
+    {
+      "answer": "R-0750 status requested [sql:1].",
+      "case": "EC-09",
+      "expected_tools": [
+        "query_ledger"
+      ],
+      "kind": "scenario",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": "S09",
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger"
+      ],
+      "variant": "B"
+    },
+    {
+      "answer": "TX-2099 currency ARS [sql:1]. TX-2099 amount_minor 2500000 [sql:1].",
+      "case": "EC-10",
+      "expected_tools": [
+        "query_ledger",
+        "get_reference_fx"
+      ],
+      "kind": "scenario",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": "S10",
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger",
+        "get_reference_fx"
+      ],
+      "variant": "B"
+    },
+    {
+      "answer": "refund applied_rate 5.4931 [sql:1]. The rate EUR-BRL 2026-10-20 was missing because get_reference_fx was unavailable.",
+      "case": "EC-11",
+      "expected_tools": [
+        "query_ledger",
+        "get_reference_fx"
+      ],
+      "kind": "scenario",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": "S11",
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 0.5,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger",
+        "get_reference_fx"
+      ],
+      "variant": "B"
+    },
+    {
+      "answer": "I could not look up this information with the tools I have.",
+      "case": "EC-12",
+      "expected_tools": [
+        "recall_cases"
+      ],
+      "kind": "scenario",
+      "missing_facts": "missing: CASE-0001",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": "S12",
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "B"
+    },
+    {
+      "answer": "I could not look up this information with the tools I have.",
+      "case": "EC-13",
+      "expected_tools": [
+        "get_ledger_record"
+      ],
+      "kind": "natural",
+      "missing_facts": "missing: TX-0001, captured",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": null,
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "B"
+    },
+    {
+      "answer": "I could not look up this information with the tools I have.",
+      "case": "EC-14",
+      "expected_tools": [
+        "get_ledger_record"
+      ],
+      "kind": "natural",
+      "missing_facts": "missing: TX-0007, failed",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": null,
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "B"
+    },
+    {
+      "answer": "I could not look up this information with the tools I have.",
+      "case": "EC-15",
+      "expected_tools": [
+        "get_ledger_record"
+      ],
+      "kind": "natural",
+      "missing_facts": "missing: TX-0008, partially_refunded",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": null,
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "B"
+    },
+    {
+      "answer": "I could not look up this information with the tools I have.",
+      "case": "EC-16",
+      "expected_tools": [
+        "get_ledger_record"
+      ],
+      "kind": "natural",
+      "missing_facts": "missing: TX-0138, refunded",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": null,
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "B"
+    },
+    {
+      "answer": "I could not look up this information with the tools I have.",
+      "case": "EC-17",
+      "expected_tools": [
+        "get_ledger_record"
+      ],
+      "kind": "natural",
+      "missing_facts": "missing: TX-1177, disputed",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": null,
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "B"
+    },
+    {
+      "answer": "I could not look up this information with the tools I have.",
+      "case": "EC-18",
+      "expected_tools": [
+        "get_ledger_record"
+      ],
+      "kind": "natural",
+      "missing_facts": "missing: TX-0265, charged_back",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": null,
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "B"
+    },
+    {
+      "answer": "ST-0002 net_minor 74107 [sql:1].",
+      "case": "EC-19",
+      "expected_tools": [
+        "query_ledger"
+      ],
+      "kind": "natural",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "explain_to_customer",
+      "requires_human_review": false,
+      "scenario": null,
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger"
+      ],
+      "variant": "B"
+    },
+    {
+      "answer": "ST-0003 net_minor 3522994 [sql:1].",
+      "case": "EC-20",
+      "expected_tools": [
+        "query_ledger"
+      ],
+      "kind": "natural",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "explain_to_customer",
+      "requires_human_review": false,
+      "scenario": null,
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger"
+      ],
+      "variant": "B"
+    },
+    {
+      "answer": "ST-0009 net_minor 824836 [sql:1].",
+      "case": "EC-21",
+      "expected_tools": [
+        "query_ledger"
+      ],
+      "kind": "natural",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "explain_to_customer",
+      "requires_human_review": false,
+      "scenario": null,
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger"
+      ],
+      "variant": "B"
+    },
+    {
+      "answer": "ST-0019 net_minor 504121 [sql:1].",
+      "case": "EC-22",
+      "expected_tools": [
+        "query_ledger"
+      ],
+      "kind": "natural",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "explain_to_customer",
+      "requires_human_review": false,
+      "scenario": null,
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger"
+      ],
+      "variant": "B"
+    },
+    {
+      "answer": "ST-0025 net_minor 4496483 [sql:1].",
+      "case": "EC-23",
+      "expected_tools": [
+        "query_ledger"
+      ],
+      "kind": "natural",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "explain_to_customer",
+      "requires_human_review": false,
+      "scenario": null,
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger"
+      ],
+      "variant": "B"
+    },
+    {
+      "answer": "ST-0034 net_minor 492101 [sql:1].",
+      "case": "EC-24",
+      "expected_tools": [
+        "query_ledger"
+      ],
+      "kind": "natural",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "explain_to_customer",
+      "requires_human_review": false,
+      "scenario": null,
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger"
+      ],
+      "variant": "B"
+    },
+    {
+      "answer": "For each chargeback opened in the period, Acme charges a fixed fee of 15.00 in the merchant's settlement currency [policy:fees-and-pricing#chargeback-fee].",
+      "case": "EC-25",
+      "expected_tools": [
+        "search_policies"
+      ],
+      "kind": "natural",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "scenario": null,
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "search_policies"
+      ],
+      "variant": "B"
+    },
+    {
+      "answer": "Two captures count as duplicates when they have the same merchant, the same card (identified by the card fingerprint), the same amount and the same currency, and the second one happens within 5 minutes after the first [policy:duplicate-charges#detection-rule].",
+      "case": "EC-26",
+      "expected_tools": [
+        "search_policies"
+      ],
+      "kind": "natural",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": null,
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "search_policies"
+      ],
+      "variant": "B"
+    },
+    {
+      "answer": "The reference rate is the European Central Bank's daily rate, obtained through the Frankfurter service in the version that uses only that source [policy:fx-reference-rates#source].",
+      "case": "EC-27",
+      "expected_tools": [
+        "search_policies"
+      ],
+      "kind": "natural",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "scenario": null,
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "search_policies"
+      ],
+      "variant": "B"
+    },
+    {
+      "answer": "Escalate the case to a human analyst when there are claims contradicted by the evidence, when missing data prevents a conclusion, when a dispute deadline is 2 days away or less, or when any amount involved is above 5,000 [policy:escalation-and-review#when-to-escalate].",
+      "case": "EC-28",
+      "expected_tools": [
+        "search_policies"
+      ],
+      "kind": "natural",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "scenario": null,
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "search_policies"
+      ],
+      "variant": "B"
+    },
+    {
+      "answer": "Merchants on the `markup` plan can apply up to 3.0% over the reference rate when converting a refund [policy:cross-currency-refunds#merchant-fx-markup].",
+      "case": "EC-29",
+      "expected_tools": [
+        "search_policies"
+      ],
+      "kind": "natural",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "scenario": null,
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "search_policies"
+      ],
+      "variant": "B"
+    },
+    {
+      "answer": "The evidence depends on the reason code [policy:chargeback-handling#evidence-checklist].",
+      "case": "EC-30",
+      "expected_tools": [
+        "search_policies"
+      ],
+      "kind": "natural",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": null,
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "search_policies"
+      ],
+      "variant": "B"
+    },
+    {
+      "answer": "charge_brl 566.79 [calc:1]. refund_brl 549.31 [calc:1]. gap_brl 17.48 [calc:1]. markup_brl 14.08 [calc:1]. refund applied_rate 5.4931 [sql:1]. The implied markup is one minus the applied rate divided by the reference rate on the refund date, expressed as a percentage [policy:fx-reference-rates#comparing-with-applied].",
+      "case": "EC-01",
+      "expected_tools": [
+        "query_ledger",
+        "search_policies",
+        "get_reference_fx",
+        "calculate"
+      ],
+      "kind": "scenario",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": "S01",
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 0.5,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger",
+        "search_policies",
+        "get_reference_fx",
+        "calculate"
+      ],
+      "variant": "C"
+    },
+    {
+      "answer": "TX-2051 amount_minor 4990 [sql:1]. TX-2052 amount_minor 4990 [sql:1]. Two captures count as duplicates when they have the same merchant, the same card (identified by the card fingerprint), the same amount and the same currency, and the second one happens within 5 minutes after the first [policy:duplicate-charges#detection-rule].",
+      "case": "EC-02",
+      "expected_tools": [
+        "query_ledger",
+        "search_policies"
+      ],
+      "kind": "scenario",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "scenario": "S02",
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 0.6667,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger",
+        "search_policies"
+      ],
+      "variant": "C"
+    },
+    {
+      "answer": "CB-0310 deadline 2026-11-09 [sql:1]. CB-0310 stage evidence_requested [sql:1]. CB-0310 reason_code NRC [sql:1]. Evidence must be sent at least one business day before the card network deadline [policy:chargeback-handling#response-deadline].",
+      "case": "EC-03",
+      "expected_tools": [
+        "query_ledger",
+        "search_policies"
+      ],
+      "kind": "scenario",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": "S03",
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger",
+        "search_policies"
+      ],
+      "variant": "C"
+    },
+    {
+      "answer": "TX-9999 row_count 0 [sql:1].",
+      "case": "EC-04",
+      "expected_tools": [
+        "query_ledger"
+      ],
+      "kind": "scenario",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "ask_for_clarification",
+      "requires_human_review": false,
+      "scenario": "S04",
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger"
+      ],
+      "variant": "C"
+    },
+    {
+      "answer": "TX-2060 merchant_id M-03 [sql:1]. TX-2061 merchant_id M-17 [sql:1].",
+      "case": "EC-05",
+      "expected_tools": [
+        "query_ledger"
+      ],
+      "kind": "scenario",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "ask_for_clarification",
+      "requires_human_review": false,
+      "scenario": "S05",
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger"
+      ],
+      "variant": "C"
+    },
+    {
+      "answer": "TX-2090 refund status rejected [sql:1]. Refunds are accepted for 30 calendar days after the payment is captured, unless the merchant sets a different window in the `refund_window_days` field [policy:refund-policy#refund-window].",
+      "case": "EC-06",
+      "expected_tools": [
+        "query_ledger",
+        "search_policies"
+      ],
+      "kind": "scenario",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": "S06",
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 0.5,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger",
+        "search_policies"
+      ],
+      "variant": "C"
+    },
+    {
+      "answer": "R-0720 payout_amount_minor 8000 [sql:1]. difference 0.00 [calc:1].",
+      "case": "EC-07",
+      "expected_tools": [
+        "query_ledger",
+        "calculate"
+      ],
+      "kind": "scenario",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "scenario": "S07",
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger",
+        "calculate"
+      ],
+      "variant": "C"
+    },
+    {
+      "answer": "ST-0044 net_minor 2999287 [sql:1]. ST-0044 expected_payout_date 2026-10-14 [sql:1]. net_settlement 29992.87 [calc:1]. Settlements cover periods from Monday to Sunday, and the payout is paid 2 business days after the end of the period [policy:settlement-schedule#payout-timing].",
+      "case": "EC-08",
+      "expected_tools": [
+        "query_ledger",
+        "search_policies",
+        "calculate"
+      ],
+      "kind": "scenario",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "explain_to_customer",
+      "requires_human_review": false,
+      "scenario": "S08",
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger",
+        "search_policies",
+        "calculate"
+      ],
+      "variant": "C"
+    },
+    {
+      "answer": "R-0750 status requested [sql:1].",
+      "case": "EC-09",
+      "expected_tools": [
+        "query_ledger"
+      ],
+      "kind": "scenario",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": "S09",
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger"
+      ],
+      "variant": "C"
+    },
+    {
+      "answer": "TX-2099 currency ARS [sql:1]. TX-2099 amount_minor 2500000 [sql:1].",
+      "case": "EC-10",
+      "expected_tools": [
+        "query_ledger",
+        "get_reference_fx"
+      ],
+      "kind": "scenario",
+      "missing_facts": null,
+      "plan_deviations": [
+        "get_reference_fx: FX for 2026-10-15 with no ledger origin: the follow-up failed, the earlier answer stands"
+      ],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": "S10",
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger",
+        "get_reference_fx"
+      ],
+      "variant": "C"
+    },
+    {
+      "answer": "refund applied_rate 5.4931 [sql:1]. The rate EUR-BRL 2026-10-20 was missing because get_reference_fx was unavailable.",
+      "case": "EC-11",
+      "expected_tools": [
+        "query_ledger",
+        "get_reference_fx"
+      ],
+      "kind": "scenario",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": "S11",
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 0.5,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger",
+        "get_reference_fx"
+      ],
+      "variant": "C"
+    },
+    {
+      "answer": "Merchant M-17 applies an FX markup of about 2.5% on cross-currency refunds (seen on TX-2048) [case:CASE-0001].",
+      "case": "EC-12",
+      "expected_tools": [
+        "recall_cases"
+      ],
+      "kind": "scenario",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "explain_to_customer",
+      "requires_human_review": false,
+      "scenario": "S12",
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "recall_cases"
+      ],
+      "variant": "C"
+    },
+    {
+      "answer": "TX-0001 status captured [api:1].",
+      "case": "EC-13",
+      "expected_tools": [
+        "get_ledger_record"
+      ],
+      "kind": "natural",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "scenario": null,
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "get_ledger_record"
+      ],
+      "variant": "C"
+    },
+    {
+      "answer": "TX-0007 status failed [api:1].",
+      "case": "EC-14",
+      "expected_tools": [
+        "get_ledger_record"
+      ],
+      "kind": "natural",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "scenario": null,
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "get_ledger_record"
+      ],
+      "variant": "C"
+    },
+    {
+      "answer": "TX-0008 status partially_refunded [api:1].",
+      "case": "EC-15",
+      "expected_tools": [
+        "get_ledger_record"
+      ],
+      "kind": "natural",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "scenario": null,
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "get_ledger_record"
+      ],
+      "variant": "C"
+    },
+    {
+      "answer": "TX-0138 status refunded [api:1].",
+      "case": "EC-16",
+      "expected_tools": [
+        "get_ledger_record"
+      ],
+      "kind": "natural",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "scenario": null,
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "get_ledger_record"
+      ],
+      "variant": "C"
+    },
+    {
+      "answer": "TX-1177 status disputed [api:1].",
+      "case": "EC-17",
+      "expected_tools": [
+        "get_ledger_record"
+      ],
+      "kind": "natural",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": null,
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "get_ledger_record"
+      ],
+      "variant": "C"
+    },
+    {
+      "answer": "TX-0265 status charged_back [api:1].",
+      "case": "EC-18",
+      "expected_tools": [
+        "get_ledger_record"
+      ],
+      "kind": "natural",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "scenario": null,
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "get_ledger_record"
+      ],
+      "variant": "C"
+    },
+    {
+      "answer": "ST-0002 net_minor 74107 [sql:1].",
+      "case": "EC-19",
+      "expected_tools": [
+        "query_ledger"
+      ],
+      "kind": "natural",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "explain_to_customer",
+      "requires_human_review": false,
+      "scenario": null,
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger"
+      ],
+      "variant": "C"
+    },
+    {
+      "answer": "ST-0003 net_minor 3522994 [sql:1].",
+      "case": "EC-20",
+      "expected_tools": [
+        "query_ledger"
+      ],
+      "kind": "natural",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "explain_to_customer",
+      "requires_human_review": false,
+      "scenario": null,
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger"
+      ],
+      "variant": "C"
+    },
+    {
+      "answer": "ST-0009 net_minor 824836 [sql:1].",
+      "case": "EC-21",
+      "expected_tools": [
+        "query_ledger"
+      ],
+      "kind": "natural",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "explain_to_customer",
+      "requires_human_review": false,
+      "scenario": null,
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger"
+      ],
+      "variant": "C"
+    },
+    {
+      "answer": "ST-0019 net_minor 504121 [sql:1].",
+      "case": "EC-22",
+      "expected_tools": [
+        "query_ledger"
+      ],
+      "kind": "natural",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "explain_to_customer",
+      "requires_human_review": false,
+      "scenario": null,
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger"
+      ],
+      "variant": "C"
+    },
+    {
+      "answer": "ST-0025 net_minor 4496483 [sql:1].",
+      "case": "EC-23",
+      "expected_tools": [
+        "query_ledger"
+      ],
+      "kind": "natural",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "explain_to_customer",
+      "requires_human_review": false,
+      "scenario": null,
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger"
+      ],
+      "variant": "C"
+    },
+    {
+      "answer": "ST-0034 net_minor 492101 [sql:1].",
+      "case": "EC-24",
+      "expected_tools": [
+        "query_ledger"
+      ],
+      "kind": "natural",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "explain_to_customer",
+      "requires_human_review": false,
+      "scenario": null,
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger"
+      ],
+      "variant": "C"
+    },
+    {
+      "answer": "For each chargeback opened in the period, Acme charges a fixed fee of 15.00 in the merchant's settlement currency [policy:fees-and-pricing#chargeback-fee].",
+      "case": "EC-25",
+      "expected_tools": [
+        "search_policies"
+      ],
+      "kind": "natural",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "scenario": null,
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "search_policies"
+      ],
+      "variant": "C"
+    },
+    {
+      "answer": "Two captures count as duplicates when they have the same merchant, the same card (identified by the card fingerprint), the same amount and the same currency, and the second one happens within 5 minutes after the first [policy:duplicate-charges#detection-rule].",
+      "case": "EC-26",
+      "expected_tools": [
+        "search_policies"
+      ],
+      "kind": "natural",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": null,
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "search_policies"
+      ],
+      "variant": "C"
+    },
+    {
+      "answer": "The reference rate is the European Central Bank's daily rate, obtained through the Frankfurter service in the version that uses only that source [policy:fx-reference-rates#source].",
+      "case": "EC-27",
+      "expected_tools": [
+        "search_policies"
+      ],
+      "kind": "natural",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "scenario": null,
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "search_policies"
+      ],
+      "variant": "C"
+    },
+    {
+      "answer": "Escalate the case to a human analyst when there are claims contradicted by the evidence, when missing data prevents a conclusion, when a dispute deadline is 2 days away or less, or when any amount involved is above 5,000 [policy:escalation-and-review#when-to-escalate].",
+      "case": "EC-28",
+      "expected_tools": [
+        "search_policies"
+      ],
+      "kind": "natural",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "scenario": null,
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "search_policies"
+      ],
+      "variant": "C"
+    },
+    {
+      "answer": "Merchants on the `markup` plan can apply up to 3.0% over the reference rate when converting a refund [policy:cross-currency-refunds#merchant-fx-markup].",
+      "case": "EC-29",
+      "expected_tools": [
+        "search_policies"
+      ],
+      "kind": "natural",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "scenario": null,
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "search_policies"
+      ],
+      "variant": "C"
+    },
+    {
+      "answer": "The evidence depends on the reason code [policy:chargeback-handling#evidence-checklist].",
+      "case": "EC-30",
+      "expected_tools": [
+        "search_policies"
+      ],
+      "kind": "natural",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": null,
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "search_policies"
+      ],
+      "variant": "C"
+    }
+  ],
+  "variants": {
+    "A": {
+      "failed_cases": {
+        "correctness": [
+          "EC-01",
+          "EC-02",
+          "EC-03",
+          "EC-04",
+          "EC-05",
+          "EC-06",
+          "EC-07",
+          "EC-08",
+          "EC-09",
+          "EC-10",
+          "EC-11",
+          "EC-12",
+          "EC-13",
+          "EC-14",
+          "EC-15",
+          "EC-16",
+          "EC-17",
+          "EC-18",
+          "EC-19",
+          "EC-20",
+          "EC-21",
+          "EC-22",
+          "EC-23",
+          "EC-24",
+          "EC-25",
+          "EC-26",
+          "EC-27",
+          "EC-28",
+          "EC-29",
+          "EC-30"
+        ],
+        "groundedness": [
+          "EC-01",
+          "EC-02",
+          "EC-03",
+          "EC-04",
+          "EC-05",
+          "EC-06",
+          "EC-07",
+          "EC-08",
+          "EC-09",
+          "EC-10",
+          "EC-11",
+          "EC-12",
+          "EC-13",
+          "EC-14",
+          "EC-15",
+          "EC-16",
+          "EC-17",
+          "EC-18",
+          "EC-19",
+          "EC-20",
+          "EC-21",
+          "EC-22",
+          "EC-23",
+          "EC-24",
+          "EC-25",
+          "EC-26",
+          "EC-27",
+          "EC-28",
+          "EC-29",
+          "EC-30"
+        ],
+        "trajectory_equivalent_strict_match": [
+          "EC-01",
+          "EC-02",
+          "EC-03",
+          "EC-04",
+          "EC-05",
+          "EC-06",
+          "EC-07",
+          "EC-08",
+          "EC-09",
+          "EC-10",
+          "EC-11",
+          "EC-12",
+          "EC-13",
+          "EC-14",
+          "EC-15",
+          "EC-16",
+          "EC-17",
+          "EC-18",
+          "EC-19",
+          "EC-20",
+          "EC-21",
+          "EC-22",
+          "EC-23",
+          "EC-24",
+          "EC-25",
+          "EC-26",
+          "EC-27",
+          "EC-28",
+          "EC-29",
+          "EC-30"
+        ],
+        "trajectory_equivalent_unordered_match": [
+          "EC-01",
+          "EC-02",
+          "EC-03",
+          "EC-04",
+          "EC-05",
+          "EC-06",
+          "EC-07",
+          "EC-08",
+          "EC-09",
+          "EC-10",
+          "EC-11",
+          "EC-12",
+          "EC-13",
+          "EC-14",
+          "EC-15",
+          "EC-16",
+          "EC-17",
+          "EC-18",
+          "EC-19",
+          "EC-20",
+          "EC-21",
+          "EC-22",
+          "EC-23",
+          "EC-24",
+          "EC-25",
+          "EC-26",
+          "EC-27",
+          "EC-28",
+          "EC-29",
+          "EC-30"
+        ],
+        "trajectory_strict_match": [
+          "EC-01",
+          "EC-02",
+          "EC-03",
+          "EC-04",
+          "EC-05",
+          "EC-06",
+          "EC-07",
+          "EC-08",
+          "EC-09",
+          "EC-10",
+          "EC-11",
+          "EC-12",
+          "EC-13",
+          "EC-14",
+          "EC-15",
+          "EC-16",
+          "EC-17",
+          "EC-18",
+          "EC-19",
+          "EC-20",
+          "EC-21",
+          "EC-22",
+          "EC-23",
+          "EC-24",
+          "EC-25",
+          "EC-26",
+          "EC-27",
+          "EC-28",
+          "EC-29",
+          "EC-30"
+        ],
+        "trajectory_subset_match": [],
+        "trajectory_superset_match": [
+          "EC-01",
+          "EC-02",
+          "EC-03",
+          "EC-04",
+          "EC-05",
+          "EC-06",
+          "EC-07",
+          "EC-08",
+          "EC-09",
+          "EC-10",
+          "EC-11",
+          "EC-12",
+          "EC-13",
+          "EC-14",
+          "EC-15",
+          "EC-16",
+          "EC-17",
+          "EC-18",
+          "EC-19",
+          "EC-20",
+          "EC-21",
+          "EC-22",
+          "EC-23",
+          "EC-24",
+          "EC-25",
+          "EC-26",
+          "EC-27",
+          "EC-28",
+          "EC-29",
+          "EC-30"
+        ],
+        "trajectory_unordered_match": [
+          "EC-01",
+          "EC-02",
+          "EC-03",
+          "EC-04",
+          "EC-05",
+          "EC-06",
+          "EC-07",
+          "EC-08",
+          "EC-09",
+          "EC-10",
+          "EC-11",
+          "EC-12",
+          "EC-13",
+          "EC-14",
+          "EC-15",
+          "EC-16",
+          "EC-17",
+          "EC-18",
+          "EC-19",
+          "EC-20",
+          "EC-21",
+          "EC-22",
+          "EC-23",
+          "EC-24",
+          "EC-25",
+          "EC-26",
+          "EC-27",
+          "EC-28",
+          "EC-29",
+          "EC-30"
+        ]
+      },
+      "human_review": 30,
+      "label": "chain with no tools",
+      "metrics": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      }
+    },
+    "B": {
+      "failed_cases": {
+        "correctness": [
+          "EC-12",
+          "EC-13",
+          "EC-14",
+          "EC-15",
+          "EC-16",
+          "EC-17",
+          "EC-18"
+        ],
+        "groundedness": [
+          "EC-01",
+          "EC-02",
+          "EC-06",
+          "EC-11",
+          "EC-12",
+          "EC-13",
+          "EC-14",
+          "EC-15",
+          "EC-16",
+          "EC-17",
+          "EC-18",
+          "EC-26",
+          "EC-30"
+        ],
+        "trajectory_equivalent_strict_match": [
+          "EC-12",
+          "EC-13",
+          "EC-14",
+          "EC-15",
+          "EC-16",
+          "EC-17",
+          "EC-18"
+        ],
+        "trajectory_equivalent_unordered_match": [
+          "EC-12",
+          "EC-13",
+          "EC-14",
+          "EC-15",
+          "EC-16",
+          "EC-17",
+          "EC-18"
+        ],
+        "trajectory_strict_match": [
+          "EC-12",
+          "EC-13",
+          "EC-14",
+          "EC-15",
+          "EC-16",
+          "EC-17",
+          "EC-18"
+        ],
+        "trajectory_subset_match": [],
+        "trajectory_superset_match": [
+          "EC-12",
+          "EC-13",
+          "EC-14",
+          "EC-15",
+          "EC-16",
+          "EC-17",
+          "EC-18"
+        ],
+        "trajectory_unordered_match": [
+          "EC-12",
+          "EC-13",
+          "EC-14",
+          "EC-15",
+          "EC-16",
+          "EC-17",
+          "EC-18"
+        ]
+      },
+      "human_review": 15,
+      "label": "ReAct agent (legacy_react)",
+      "metrics": {
+        "correctness": 0.7667,
+        "groundedness": 0.6389,
+        "trajectory_equivalent_strict_match": 0.7667,
+        "trajectory_equivalent_unordered_match": 0.7667,
+        "trajectory_strict_match": 0.7667,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.7667,
+        "trajectory_unordered_match": 0.7667
+      }
+    },
+    "C": {
+      "failed_cases": {
+        "correctness": [],
+        "groundedness": [
+          "EC-01",
+          "EC-02",
+          "EC-06",
+          "EC-11",
+          "EC-26",
+          "EC-30"
+        ],
+        "trajectory_equivalent_strict_match": [],
+        "trajectory_equivalent_unordered_match": [],
+        "trajectory_strict_match": [],
+        "trajectory_subset_match": [],
+        "trajectory_superset_match": [],
+        "trajectory_unordered_match": []
+      },
+      "human_review": 9,
+      "label": "full agent (integrator with verifier)",
+      "metrics": {
+        "correctness": 1.0,
+        "groundedness": 0.8722,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      }
+    }
+  },
+  "verification": {
+    "accuracy": 1.0,
+    "cases": 43,
+    "contradiction_recall": 1.0,
+    "experiment": null,
+    "false_positive_rate": 0.0,
+    "misses": [],
+    "nli": "stub",
+    "planted": 16,
+    "supported": 18
+  }
+}

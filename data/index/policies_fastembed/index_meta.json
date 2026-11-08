@@ -1,0 +1,9 @@
+{
+  "embedding": "fastembed:BAAI/bge-small-en-v1.5",
+  "dimension": 384,
+  "chunks": 105,
+  "metric": "l2 on unit vectors",
+  "chunk_size": 800,
+  "chunk_overlap": 100,
+  "built_on": "2026-11-08"
+}
