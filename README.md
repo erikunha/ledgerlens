@@ -121,6 +121,12 @@ uv run streamlit run app/streamlit_app.py
 
 ![LedgerLens Pay: an opened payment with its details, and the Help box filled by Ask about this](docs/img/streamlit_suggestions.png)
 
+The agent trace, opened. The Help panel scrolls on its own, so each image puts consecutive frames side by side: triage (prompt, model call, parser), the agent, and the `query_ledger` node with its generated SQL and input and output JSON; then the remaining model calls and tools, the per-claim verification and the escalation decision.
+
+![Agent trace: triage, agent and the query_ledger node with SQL and JSON](docs/img/agent_trace_top.png)
+
+![Agent trace, continued: tools, per-claim verification and escalation](docs/img/agent_trace_tools.png)
+
 ### Online, with a real model
 
 Copy `.env.example` to `.env`, fill in the keys (`OPENAI_API_KEY` and, for traces and experiments, `LANGSMITH_API_KEY`), and run without `LEDGERLENS_OFFLINE`. The default model is `gpt-4.1-mini`, with live exchange rates.
