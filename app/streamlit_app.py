@@ -100,7 +100,14 @@ header[data-testid="stHeader"], [data-testid="stMainMenu"], [data-testid="stStat
 .st-key-help h3 { font-size: 1.2rem; font-weight: 600; padding-top: 0; }
 .st-key-help [data-testid="stChatMessage"] p { font-size: 0.95rem; }
 [class*="st-key-line-"] details summary p { font-size: 0.95rem; }
-@media (min-width: 641px) { .st-key-help { position: sticky; top: 1rem; } }
+.st-key-chat [data-testid="stExpander"] [data-testid="stVerticalBlock"] { gap: 0.15rem; }
+@media (min-width: 641px) {
+  .st-key-help { position: sticky; top: 1rem; }
+  [data-testid="stLayoutWrapper"]:has(> .st-key-chat) {
+    height: max(420px, calc(100vh - 430px)) !important; flex: 0 0 auto !important;
+  }
+  .st-key-chat { height: 100% !important; }
+}
 @media (max-width: 640px) {
   .st-key-account-card [data-testid="stHorizontalBlock"] { flex-direction: row !important; flex-wrap: wrap; }
   .st-key-account-card [data-testid="stColumn"] { min-width: 30% !important; flex: 1 1 30% !important; }
@@ -275,7 +282,7 @@ def draw_span(span: Span, depth: int) -> None:
         st.error(span.error, icon=":material/error:")
     sql = ((span.outputs or {}).get("data") or {}).get("sql") if isinstance(span.outputs, dict) else None
     if span.run_type == "tool" and isinstance(sql, str):
-        st.code(sql, language="sql")
+        st.code(sql, language="sql", wrap_lines=True)
     body = {
         "run_id": span.run_id,
         "parent_run_id": span.parent_run_id,

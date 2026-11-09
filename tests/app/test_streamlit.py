@@ -339,6 +339,8 @@ def test_after_an_answer_the_trace_the_sql_and_the_lines_read_appear(at: AppTest
         assert f"`tool` · **{tool}**" in headers
     sql = [c.value for c in at.chat_message[1].status[0].code if c.language == "sql"]
     assert sql and sql[0].startswith("SELECT")  # the SQL the model wrote, in view
+    sql_blocks = [c for c in at.chat_message[1].status[0].code if c.language == "sql"]
+    assert all(c.proto.wrap_lines for c in sql_blocks)  # long queries wrap inside the narrow Help panel
     assert '"evidence_ids"' in trace_json(at) and '"sql:1"' in trace_json(at)  # each tool's envelope
     assert any(c.value.startswith("Ledger records read: TX-2048") for c in at.chat_message[1].caption)
     assert "read by assistant" in row_text(at, "TX-2048")  # the statement line the agent read is marked

@@ -8,7 +8,7 @@
 
 A LangChain agent that investigates payment complaints. It queries a transaction ledger, searches operations policies, compares against a reference exchange rate, does the arithmetic in code, and checks every claim in its own answer against the evidence it used. When the evidence is not enough, the answer says what is missing and the case goes to human review.
 
-![LedgerLens Pay demo: a customer statement on the left, the Help assistant on the right with the agent trace above its answer](docs/img/streamlit_conversation.png)
+![LedgerLens Pay in one screen: the statement with TX-2048 open, the question in Help, the full agent trace (triage, model calls, tools with generated SQL, per-claim verification, escalation) and the cited answer](docs/img/streamlit_hero.png)
 
 ## Why an agent
 
@@ -118,14 +118,6 @@ Each answer carries the agent trace, a run tree like LangSmith's, drawn live whi
 ```bash
 uv run streamlit run app/streamlit_app.py
 ```
-
-![LedgerLens Pay: an opened payment with its details, and the Help box filled by Ask about this](docs/img/streamlit_suggestions.png)
-
-The agent trace, opened. The Help panel scrolls on its own, so each image puts consecutive frames side by side: triage (prompt, model call, parser), the agent, and the `query_ledger` node with its generated SQL and input and output JSON; then the remaining model calls and tools, the per-claim verification and the escalation decision.
-
-![Agent trace: triage, agent and the query_ledger node with SQL and JSON](docs/img/agent_trace_top.png)
-
-![Agent trace, continued: tools, per-claim verification and escalation](docs/img/agent_trace_tools.png)
 
 ### Online, with a real model
 
