@@ -8,7 +8,7 @@
 
 A LangChain agent that investigates payment complaints. It queries a transaction ledger, searches operations policies, compares against a reference exchange rate, does the arithmetic in code, and checks every claim in its own answer against the evidence it used. When the evidence is not enough, the answer says what is missing and the case goes to human review.
 
-![LedgerLens Pay in one screen: the statement with TX-2048 open, the question in Help, the full agent trace (triage, model calls, tools with generated SQL, per-claim verification, escalation) and the cited answer](docs/img/streamlit_hero.png)
+![LedgerLens Pay full screen on a MacBook Pro 16-inch: the statement with TX-2048 open and marked "asked about" and "read by assistant", and in Help the question, the trace summary and the agent trace opened (investigate, triage, prompt, model call, parser, agent)](docs/img/streamlit_hero.png)
 
 ## Why an agent
 
