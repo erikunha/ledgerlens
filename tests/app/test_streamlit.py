@@ -1,13 +1,14 @@
-"""Streamlit page: shows the answer, the tool calls and the verdict on each claim, and keeps the conversation.
+"""Streamlit page: shows the answer with the agent's trace, and keeps the conversation.
 
-What they guarantee, and why: (a) a question typed in the chat becomes an answer, the list of tool calls and a
-verdict per claim; (b) the second question of the same session continues the first (the history stays on screen
-and the conversation uses the same `thread_id`); (c) the Help panel says whether the mode is offline or online;
-(d) a suggestion only fills the field, and the edited or freely typed text is what goes to the agent; (e) the page
-reads like a portal: the signed-in account's statement, an "Ask" per line that only fills the box, the account and
-the line picked reaching the agent as context, and, after an answer, the tool calls, the verification badge and a
-mark on the lines the agent read. The agent comes in through `session_state`, with the scripted model, so the test
-depends on no model and no network.
+What they guarantee, and why: (a) a question typed in the chat becomes an answer under a live trace of the
+investigation (the run tree: triage, each model and tool call, the verdict per claim and escalation), which
+collapses into a one-line summary and stays stored with the message; (b) the second question of the same session
+continues the first (the history stays on screen and the conversation uses the same `thread_id`); (c) the Help panel
+says whether the mode is offline or online; (d) a suggestion only fills the field, and the edited or freely typed
+text is what goes to the agent; (e) the page reads like a portal: the signed-in account's statement, an "Ask" per
+line that only fills the box, the account and the line picked reaching the agent as context, and, after an answer,
+the trace with the generated SQL and a mark on the lines the agent read. The agent comes in through
+`session_state`, with the scripted model, so the test depends on no model and no network.
 """
 
 from __future__ import annotations
@@ -52,7 +53,24 @@ def suggestion(app: AppTest, text: str):
 
 def page_text(at: AppTest) -> str:
     parts = [m.value for m in at.markdown] + [c.value for c in at.caption] + [w.value for w in at.warning]
-    return "\n".join(parts)
+    return "\n".join(parts).replace("\\_", "_")  # trace names come with `_` escaped for Markdown
+
+
+def answer_of(app: AppTest, index: int = 1) -> str:
+    """The answer text in an assistant message: the first Markdown outside the trace."""
+    message = app.chat_message[index]
+    inside = {id(m) for status in message.status for m in status.markdown}
+    return next(m.value for m in message.markdown if id(m) not in inside)
+
+
+def trace_headers(app: AppTest, index: int = 1) -> str:
+    """The headers of the trace nodes in an assistant message (`run_type · name · latency`)."""
+    return "\n".join(m.value for m in app.chat_message[index].status[0].markdown).replace("\\_", "_")
+
+
+def trace_json(app: AppTest, index: int = 1) -> str:
+    """The JSON of every span of the trace, together."""
+    return "\n".join(j.value for j in app.chat_message[index].status[0].json)
 
 
 def verifier(result: InvestigationResult, *, nli=None) -> InvestigationResult:
@@ -66,7 +84,7 @@ def at(ledger_db: Path, index_root: Path, cases) -> AppTest:  # noqa: F811
     agent = integrator_for(ledger_db, index_root, cases, script, verifier=verifier)
     app = AppTest.from_file(str(APP), default_timeout=30)
     app.session_state["agent"] = agent
-    app.session_state["observer"] = True  # "Show what the assistant checked": the demo viewer's details
+    app.session_state["observer"] = True  # "Show the agent trace", the default
     return app.run()
 
 
@@ -85,11 +103,10 @@ def test_a_question_shows_answer_tool_calls_and_verdicts(at: AppTest) -> None:
     truth = S01["truth"]
     assert QUESTION in text
     assert truth["refund_brl"] in text  # the answer
-    for tool in S01["expected_tools"]:  # the calls panel, in order
+    for tool in S01["expected_tools"]:  # the tool calls, in order
         assert tool in text
     assert text.index("query_ledger") < text.index("calculate")
-    assert "Supported" in text  # the verdict, in words
-    assert "CL1" in text
+    assert "**CL1** · :green[supported]" in text  # the verdict, in the trace
 
 
 def test_the_second_turn_keeps_the_first_on_screen(at: AppTest) -> None:
@@ -181,7 +198,7 @@ def test_without_an_injected_agent_the_offline_page_answers_the_example_and_refu
     send(app, QUESTION)
     assert not app.exception
     text = page_text(app)
-    assert S01["truth"]["refund_brl"] in text and "Supported" in text and "`calculate`" in text
+    assert S01["truth"]["refund_brl"] in text and ":green[supported]" in text and "`tool` · **calculate**" in text
     send(app, "What is the weather today?")
     assert not app.exception
     assert "only answer the suggested questions" in page_text(app)
@@ -239,7 +256,7 @@ def test_every_turn_is_drawn_once_in_order_after_the_second_question(at: AppTest
     assert [m.name for m in at.chat_message] == ["user", "assistant", "user", "assistant"]
     users = [m.markdown[0].value for m in at.chat_message if m.name == "user"]
     assert users == [QUESTION, "And which transaction did I just ask about?"]
-    assert S01["truth"]["refund_brl"] in at.chat_message[1].markdown[0].value  # the answer sits under its question
+    assert S01["truth"]["refund_brl"] in answer_of(at, 1)  # the answer sits under its question
 
 
 # ---- the portal: account, statement, "Ask" per line, what the agent read -----------------------------------
@@ -313,21 +330,65 @@ def test_the_account_and_the_line_picked_reach_the_agent_as_context(
     assert "only this account's records" in contexts[0]
 
 
-def test_after_an_answer_the_tool_calls_badge_and_the_lines_read_appear(at: AppTest) -> None:
+def test_after_an_answer_the_trace_the_sql_and_the_lines_read_appear(at: AppTest) -> None:
     ask_button(at, "TX-2048").click().run()
     send(at, draft(at))
     assert not at.exception
-    expander = next(e for e in at.expander if e.label == "What the assistant checked")
-    inside = "\n".join(m.value for m in expander.markdown) + "\n".join(c.value for c in expander.caption)
+    headers = trace_headers(at)
     for tool in S01["expected_tools"]:
-        assert f"`{tool}`" in inside
-    assert "Arguments: " in inside and "Result:" in inside
-    assert "Ledger records read: TX-2048" in inside
+        assert f"`tool` · **{tool}**" in headers
+    sql = [c.value for c in at.chat_message[1].status[0].code if c.language == "sql"]
+    assert sql and sql[0].startswith("SELECT")  # the SQL the model wrote, in view
+    assert '"evidence_ids"' in trace_json(at) and '"sql:1"' in trace_json(at)  # each tool's envelope
+    assert any(c.value.startswith("Ledger records read: TX-2048") for c in at.chat_message[1].caption)
     assert "read by assistant" in row_text(at, "TX-2048")  # the statement line the agent read is marked
     assert "read by assistant" not in row_text(at, "R-0731")
-    badge = next(m.value for m in at.markdown if m.value.startswith("Verification:"))
-    assert "supported]" in badge and "review" in badge
-    assert "0 contradicted" not in badge  # a zero count is left out
+    assert not any(e.label in ("What the assistant checked", "Evidence") for e in at.expander)  # they are in the trace
+
+
+def test_the_answer_carries_a_trace_that_collapses_to_a_summary_and_survives_a_rerun(at: AppTest) -> None:
+    """The processing was hidden; now each answer carries the run tree, like LangSmith's."""
+    send(at, QUESTION)
+    assert not at.exception
+    status = at.chat_message[1].status[0]
+    assert status.label.startswith("Checked 4 sources in ") and "1 claim supported" in status.label
+    assert status.state == "complete" and not status.proto.expanded
+    headers = trace_headers(at)
+    for header in (
+        "`chain` · **investigate**",
+        "`chain` · **triage**",
+        "`chain` · **agent**",
+        "`llm` · **",
+        "`verifier` · **verify**",
+        "`verifier` · **CL1** · :green[supported]",
+        "`verifier` · **escalation**",
+    ):
+        assert header in headers, header
+    assert headers.index("**query_ledger**") < headers.index("**calculate**") < headers.index("**verify**")
+    assert ":gray[│ │ ]" in headers  # nested nodes are indented, one bar per level
+    assert all(j.expanded is False for j in status.json)  # each node's body starts collapsed
+    assert S01["truth"]["refund_brl"] in answer_of(at)  # the answer comes below the trace
+    spans = at.session_state["turns"][0]["trace"]
+    assert spans[0].name == "investigate" and spans[0].outputs["summary"] == status.label
+
+    at.run()  # another run of the page: the message is drawn from the history
+    assert at.chat_message[1].status[0].label == status.label
+    assert "**query_ledger**" in trace_headers(at)
+
+
+def test_a_failed_investigation_shows_the_error_and_keeps_the_page(
+    at: AppTest, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An exception in the agent closes the trace in red and leaves the conversation usable."""
+
+    def boom(agent, question, **kw):
+        raise RuntimeError("model unavailable")
+
+    monkeypatch.setattr(integrator_module, "investigate", boom)
+    send(at, QUESTION)
+    assert not at.exception
+    assert any("The investigation failed: RuntimeError: model unavailable" in e.value for e in at.error)
+    assert at.session_state["turns"] == []
 
 
 @pytest.mark.parametrize(
@@ -374,7 +435,7 @@ def test_statement_filters_and_tabs_narrow_the_lines(at: AppTest) -> None:
     assert "CB-0310" in shown and all(i.startswith("CB-") for i in shown)
 
 
-def test_by_default_the_reply_reads_like_support_and_hides_the_checks(
+def test_the_trace_is_on_by_default_and_the_toggle_turns_it_into_a_support_reply(
     ledger_db: Path,  # noqa: F811  (fixtures imported from the integrator tests)
     index_root: Path,  # noqa: F811
     cases,  # noqa: F811
@@ -383,16 +444,19 @@ def test_by_default_the_reply_reads_like_support_and_hides_the_checks(
     app = AppTest.from_file(str(APP), default_timeout=30)
     app.session_state["agent"] = integrator_for(ledger_db, index_root, cases, script, verifier=verifier)
     app.run()
-    assert app.toggle(key="observer").value is False
+    assert app.toggle(key="observer").value is True
     ask_button(app, "TX-2048").click().run()
     send(app, draft(app))
     assert not app.exception
-    answer = app.chat_message[1].markdown[0].value
+    assert app.chat_message[1].status[0].label.startswith("Checked ")
+    app.toggle(key="observer").set_value(False).run()  # without the trace: a support reply
+    answer = answer_of(app)
     assert S01["truth"]["refund_brl"] in answer and "[sql:" not in answer and "[calc:" not in answer
-    assert not any(e.label == "What the assistant checked" for e in app.expander)
+    assert len(app.chat_message[1].status) == 0
     assert "read by assistant" not in row_text(app, "TX-2048") and "asked about" not in row_text(app, "TX-2048")
-    app.toggle(key="observer").set_value(True).run()  # the demo viewer turns the checks on
-    assert any(e.label == "What the assistant checked" for e in app.expander)
+    assert app.session_state["turns"][0]["trace"]  # the trace stays stored with the message
+    app.toggle(key="observer").set_value(True).run()
+    assert app.chat_message[1].status[0].label.startswith("Checked ")
     assert "read by assistant" in row_text(app, "TX-2048")
 
 
@@ -422,3 +486,33 @@ def test_after_sending_the_line_picked_is_cleared(at: AppTest) -> None:
     send(at, draft(at))
     assert at.session_state["selected"] == []
     assert at.session_state["turns"][0]["selected"] == ["TX-2048"]
+
+
+def test_offline_an_id_on_no_statement_is_answered_as_absent_with_a_scripted_triage() -> None:
+    app = AppTest.from_file(str(APP), default_timeout=300).run()
+    suggestion(app, "What is the status of TX-9999?").click().run()
+    send(app, draft(app))
+    assert not app.exception
+    assert "There is no transaction TX-9999" in answer_of(app)
+    assert '"intent": "status_lookup"' in trace_json(app)  # offline, triage is scripted too
+
+
+def test_a_review_reason_is_shown_once(
+    ledger_db: Path,  # noqa: F811  (fixtures imported from the integrator tests)
+    index_root: Path,  # noqa: F811
+    cases,  # noqa: F811
+) -> None:
+    """With no escalation reason, the review reason is the missing information: it used to show twice, as "Review"
+    and as "Missing information". Now it lives only in the trace, in the reasons of the `escalation` span."""
+    missing = "Missing evidence for: the reference rate on the payment date."
+
+    def unsupported(result: InvestigationResult, *, nli=None) -> InvestigationResult:
+        return verifier(result).model_copy(update={"missing_information": [missing], "requires_human_review": True})
+
+    app = AppTest.from_file(str(APP), default_timeout=30)
+    app.session_state["agent"] = integrator_for(ledger_db, index_root, cases, s01_script(), verifier=unsupported)
+    send(app.run(), QUESTION)
+    assert not app.exception
+    assert not [c.value for c in app.caption if missing in c.value]
+    escalation = next(s for s in app.session_state["turns"][0]["trace"] if s.name == "escalation")
+    assert escalation.outputs["reasons"] == [missing] and '"requires_human_review": true' in trace_json(app)

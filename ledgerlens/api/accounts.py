@@ -118,7 +118,7 @@ def account_statement(db_path: Path | str, account_id: str) -> list[dict[str, An
                     "currency": p["currency"],
                     "status": p["status"],
                     "counterparty": counterparty,
-                    "ids": [p["id"], p["merchant_id"], p["customer_id"]],
+                    "ids": [p["id"], p["merchant_id"], p["customer_id"], *(f["id"] for f in fx)],
                     "record": {**p, "fx": fx},
                 }
             )

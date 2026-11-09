@@ -45,7 +45,7 @@ from pathlib import Path
 from typing import Any
 
 from ledgerlens.config import get_settings
-from ledgerlens.schemas import Evidence, InvestigationResult
+from ledgerlens.schemas import ESCALATION_PREFIX, Evidence, InvestigationResult
 from ledgerlens.sim.calendars import is_business_day
 from ledgerlens.verify.checks import _OPEN_CHARGEBACK, _rows, load_thresholds
 
@@ -357,7 +357,7 @@ def apply_escalation(
     `as_of` is the reference day for deadlines; without it, the day the evidence was read counts. `ledger_db` is the
     ledger from which the deadline of a cited dispute the rows did not bring is read.
     """
-    reasons = [f"escalation: {r}" for r in escalation_reasons(result, as_of, ledger_db=ledger_db)]
+    reasons = [f"{ESCALATION_PREFIX}{r}" for r in escalation_reasons(result, as_of, ledger_db=ledger_db)]
     missing = list(result.missing_information) + [r for r in reasons if r not in result.missing_information]
     review = result.requires_human_review or bool(reasons)
     return result.model_copy(

@@ -11,14 +11,24 @@ What the agent gets: the question, and a context message with the signed-in acco
 and the verifier read a copy of the ledger that holds only that account's records (`scoped_ledger`), so a query
 cannot reach another customer's rows.
 
-For the person watching the demo, the switch "Show what the assistant checked" (off by default) adds, under each
-answer, the verification badge (claims supported, contradicted, with not enough evidence, and why a person must
-review), the tool calls (tool, arguments, short result) and the verdict per claim, and marks the lines the agent
-read. With it off, the answer shows without its evidence citations, as a support reply would.
-
 The conversation lives in `session_state` with one `thread_id` per account; switching account starts a new one.
-The question shows up right away, before the investigation; the answer goes under it when the agent finishes.
-`st.chat_input` takes no initial value, so the question box is a form with `st.text_input` and a submit button.
+The question shows up right away, before the investigation. While the agent works, the assistant's message shows the
+investigation's trace in an `st.status`, like LangSmith's run tree: the root `investigate`, triage (prompt, model,
+parser), the agent with each model call (name, tokens) and each tool (arguments, the response envelope and the
+generated SQL), the plan's single follow-up, verification with one node per claim (check, label, NLI scores) and
+escalation. Each node shows `run_type · name · latency · tokens` and opens the span's JSON; an error shows in red. At
+the end the block collapses into a one-line summary ("Checked 4 sources in 6.2 s: 3 claims supported, 1 without
+evidence"), the answer appears below it, and the spans are kept with the message, so the trace can still be opened
+in the history. With LangSmith on in the process, the links to the runs sent to it appear under the summary. The
+spans come from `investigate(..., on_event=...)` (`ledgerlens.observability.trace`); the tools run in the graph's
+threads, so the investigation runs in a thread of its own and the page draws the spans that arrive on a queue. The
+answer does not stream token by token: the verifier reads the whole answer and may rewrite it (an unavailable rate
+gets named), so it appears finished, after verification. `st.chat_input` takes no initial value, so the question box
+is a form with `st.text_input` and a submit button.
+
+The switch "Show the agent trace" (on by default) shows the trace on each answer, the evidence citations in the text
+and the ledger records the agent read, and marks the lines read on the statement. With it off, the answer shows with
+no trace and no citations, as a support reply would, and the trace stays stored with the message.
 
 Offline (`LEDGERLENS_OFFLINE=1`) the model is scripted and only the planted questions have a script, as written:
 "Ask about this" is offered only on the lines that have one. Online the page uses the configured model.
@@ -27,9 +37,11 @@ Run: `uv run streamlit run app/streamlit_app.py`.
 
 from __future__ import annotations
 
-import json
+import logging
+import queue
 import re
 import tempfile
+import threading
 import uuid
 from pathlib import Path
 from typing import Any
@@ -40,11 +52,14 @@ from ledgerlens import demo
 from ledgerlens.agents.integrator import Integrator, build_integrator, investigate
 from ledgerlens.api.accounts import Account, account_statement, load_account_profile, load_accounts, scoped_ledger
 from ledgerlens.config import ConfigError, get_settings, offline
+from ledgerlens.observability.trace import Span
 from ledgerlens.offline import ScriptedChatModel, text_message
 from ledgerlens.schemas import InvestigationResult
 from ledgerlens.sim.config import SimConfig
 from ledgerlens.sim.pipeline import build_ledger
 from ledgerlens.tools.fx import FxClient
+
+log = logging.getLogger(__name__)
 
 BRAND = "LedgerLens Pay"
 DEFAULT_ACCOUNT = "C-0412"
@@ -52,11 +67,16 @@ PAGE_SIZE = 10
 CHAT_HEIGHT = 420
 USER_AVATAR = ":material/person:"
 ASSISTANT_AVATAR = ":material/support_agent:"
-VERDICT_LABELS = {
-    "supported": "Supported",
-    "contradicted": "Contradicted",
-    "not_enough_evidence": "Not enough evidence",
+WORKING = "Checking your account"
+# the icon of each state of a trace span
+SPAN_ICONS = {
+    "running": ":gray[:material/hourglass_top:]",
+    "ok": ":green[:material/check_circle:]",
+    "error": ":red[:material/error:]",
 }
+VERDICT_COLORS = {"supported": "green", "contradicted": "red", "not_enough_evidence": "orange"}
+# what Streamlit's Markdown would read as formatting: emphasis, code, link and quote, math, HTML, table
+MARKDOWN_SPECIAL = re.compile(r"([\\`*_\[\]$<>~|])")
 OFFLINE_REFUSAL = (
     "I can only answer the suggested questions in this offline demo. "
     "With a configured model I can answer any question about your account."
@@ -140,20 +160,25 @@ def portal_accounts(is_offline: bool) -> list[Account]:
 
 
 def offline_session(account_id: str) -> dict[str, Any]:
-    """The account's offline agent with its scripted models, which start with no script."""
-    model, query_model = ScriptedChatModel(script=[]), ScriptedChatModel(script=[])
+    """The account's offline agent with its scripted models (agent, SQL and triage), which start with no script."""
+    model, query_model, triage_model = (ScriptedChatModel(script=[]) for _ in range(3))
     agent = build_integrator(
         model,
         db_path=account_ledger(account_id, True),
         query_model=query_model,
+        triage_model=triage_model,
         fx_client=FxClient(mode="fixtures", sleep=lambda _: None),
     )
-    return {"agent": agent, "model": model, "query_model": query_model}
+    return {"agent": agent, "model": model, "query_model": query_model, "triage_model": triage_model}
 
 
 def prepare_offline_turn(session: dict[str, Any], question: str) -> None:
-    """Adds the turn's script: the planted question's, or the refusal for a question with no script."""
-    script = demo.offline_script(question, demo.load_manifest())
+    """Adds the turn's script: the planted question's, or the refusal for a question with no script.
+
+    Triage gets its scripted answer too, so the offline trace shows the intent and the plan."""
+    manifest = demo.load_manifest()
+    session["triage_model"].script.append(demo.offline_triage(question, manifest))
+    script = demo.offline_script(question, manifest)
     if script is None:
         session["model"].script.append(text_message(OFFLINE_REFUSAL))
         return
@@ -215,26 +240,167 @@ def switch_account() -> None:
 # ---- the Help panel ------------------------------------------------------------------------------------
 
 
-def verification_badges(result: InvestigationResult) -> None:
-    """The compact verification outcome: the verdict counts that are not zero and whether a person must review."""
-    summary = demo.verification_summary(result)
-    parts = [
-        f":{color}-badge[{summary[key]} {text}]"
-        for key, color, text in (
-            ("supported", "green", "supported"),
-            ("contradicted", "red", "contradicted"),
-            ("not_enough_evidence", "gray", "not enough evidence"),
-        )
-        if summary[key]
-    ]
-    parts.append(":orange-badge[needs human review]" if summary["review"] else ":blue-badge[no review needed]")
-    st.markdown("Verification: " + " ".join(parts))
-    for reason in summary["reasons"]:
-        st.caption(f"Review: {reason}")
+def plain(text: str) -> str:
+    """Agent or tool text as a literal in Markdown: `*`, `[sql:1]` and `$` do not become formatting."""
+    return MARKDOWN_SPECIAL.sub(r"\\\1", text)
+
+
+def depth_of(span: Span, spans: dict[str, Span]) -> int:
+    depth, parent = 0, span.parent_run_id
+    while parent is not None and parent in spans and depth < 12:
+        depth, parent = depth + 1, spans[parent].parent_run_id
+    return depth
+
+
+def span_header(span: Span, depth: int) -> str:
+    """A span's line: `run_type · name · latency · tokens`, indented by its depth in the tree."""
+    parts = [f"`{span.run_type}`", f"**{plain(span.name)}**"]
+    if span.metadata.get("label"):  # a claim's verdict
+        label = span.metadata["label"]
+        parts.append(f":{VERDICT_COLORS.get(label, 'gray')}[{label}] ({plain(str(span.metadata.get('check')))})")
+    if span.latency_ms is not None:
+        parts.append(f"{span.latency_ms} ms")
+    tokens = (span.metadata.get("tokens") or {}).get("total")
+    if tokens:
+        parts.append(f"{tokens} tokens")
+    # Streamlit trims leading spaces in Markdown, so the indent is one bar per level
+    indent = f":gray[{'│ ' * depth}]" if depth else ""
+    return indent + f"{SPAN_ICONS[span.status]} " + " · ".join(parts)
+
+
+def draw_span(span: Span, depth: int) -> None:
+    """A trace node: the header always in view; the generated SQL, the error in red and the span's JSON, collapsed."""
+    st.markdown(span_header(span, depth))
+    if span.error:
+        st.error(span.error, icon=":material/error:")
+    sql = ((span.outputs or {}).get("data") or {}).get("sql") if isinstance(span.outputs, dict) else None
+    if span.run_type == "tool" and isinstance(sql, str):
+        st.code(sql, language="sql")
+    body = {
+        "run_id": span.run_id,
+        "parent_run_id": span.parent_run_id,
+        "start_time": span.start_time,
+        "end_time": span.end_time,
+        "inputs": span.inputs,
+        "outputs": span.outputs,
+        "metadata": span.metadata,
+    }
+    st.json(body, expanded=False)
+
+
+class TraceView:
+    """The trace inside an `st.status`, drawn live: one node per span, in the order they started, replaced in place
+    when the span ends. The block's title says what is running now."""
+
+    def __init__(self, status: Any) -> None:
+        self.status = status
+        self.spans: dict[str, Span] = {}
+        self.slots: dict[str, Any] = {}
+
+    def add(self, span: Span) -> None:
+        self.spans[span.run_id] = span
+        if span.status == "running":
+            # without `expanded`, updating the title collapses the block in the browser and the spans are hidden
+            self.status.update(label=f"{span.run_type} · {span.name}", expanded=True)
+        slot = self.slots.get(span.run_id)
+        if slot is None:
+            # `status.empty()` and not `with status:`: leaving a `with` block makes Streamlit mark it complete
+            slot = self.slots[span.run_id] = self.status.empty()
+        with slot.container():
+            draw_span(span, depth_of(span, self.spans))
+
+
+def final_spans(events: list[Span]) -> list[Span]:
+    """The last version of each span, in the order they started: what is stored with the message."""
+    latest: dict[str, Span] = {}
+    for span in events:
+        latest[span.run_id] = span  # a dict keeps the position of the first insertion
+    return list(latest.values())
+
+
+def trace_summary(spans: list[Span]) -> tuple[str, str]:
+    """The title of the closed trace and the block's state, taken from the root `investigate`."""
+    root = next((s for s in spans if s.parent_run_id is None), None)
+    if root is None:
+        return WORKING, "complete"
+    if root.error:
+        return f"Failed: {root.error}", "error"
+    return str((root.outputs or {}).get("summary") or WORKING), "complete"
+
+
+def langsmith_links(spans: list[Span]) -> None:
+    root = next((s for s in spans if s.parent_run_id is None), None)
+    links = (root.metadata.get("langsmith") if root else None) or []
+    if links:
+        st.caption("LangSmith: " + ", ".join(f"[{plain(link['name'])}]({link['url']})" for link in links))
+
+
+def show_trace(spans: list[Span]) -> None:
+    """The trace of an answer already given: the closed summary, which opens to the whole tree."""
+    label, state = trace_summary(spans)
+    by_id = {s.run_id: s for s in spans}
+    with st.status(label, state=state, expanded=False):
+        for span in spans:
+            draw_span(span, depth_of(span, by_id))
+    langsmith_links(spans)
+
+
+def investigate_live(
+    agent: Integrator, question: str, *, thread_id: str, context: str, show: bool
+) -> tuple[InvestigationResult | None, list[Span]]:
+    """Runs the investigation in a thread and, with `show`, draws each span as soon as it arrives.
+
+    The tools call `on_event` from the graph's threads, and Streamlit only draws on the page's thread: the spans go
+    through a queue and this function, on the page's thread, takes them off and draws them. Returns the result (or
+    `None` if the investigation failed, after showing the error) and the spans, to store them with the message."""
+    inbox: queue.Queue[Span] = queue.Queue()
+    outcome: dict[str, Any] = {}
+
+    def work() -> None:
+        try:
+            outcome["result"] = investigate(agent, question, thread_id=thread_id, context=context, on_event=inbox.put)
+        except Exception as exc:  # shown on the page; the conversation goes on
+            log.exception("the investigation failed")
+            outcome["error"] = exc
+
+    worker = threading.Thread(target=work, name="ledgerlens-investigation", daemon=True)
+    worker.start()
+    events: list[Span] = []
+    status = st.status(WORKING, expanded=True) if show else None
+    view = TraceView(status) if status is not None else None
+    spinner = st.spinner(WORKING) if status is None else None
+    if spinner is not None:
+        spinner.__enter__()
+    try:
+        while worker.is_alive() or not inbox.empty():
+            try:
+                span = inbox.get(timeout=0.1)
+            except queue.Empty:
+                continue
+            events.append(span)
+            if view is not None:
+                view.add(span)
+    finally:
+        if spinner is not None:
+            spinner.__exit__(None, None, None)
+    worker.join()
+    spans = final_spans(events)
+    if status is not None:
+        label, state = trace_summary(spans)
+        status.update(label=label, state=state, expanded=False)
+        langsmith_links(spans)
+    if "error" in outcome:
+        error = outcome["error"]
+        st.error(f"The investigation failed: {type(error).__name__}: {error}")
+        return None, spans
+    return outcome["result"], spans
 
 
 def render_result(result: InvestigationResult, observer: bool, statement_ids: set[str] | None = None) -> None:
-    """The support reply; with `observer`, also the badge, the tool calls, the verdicts and the evidence."""
+    """The support reply; with `observer`, also the citations and the ledger records the agent read.
+
+    The trace, above the answer, already shows each tool with its arguments and envelope, each verdict and the review
+    reason; here goes only what it does not show."""
     if result.answer == OFFLINE_REFUSAL:  # nothing was looked up: there is nothing to verify or review
         st.markdown(result.answer)
         return
@@ -244,37 +410,11 @@ def render_result(result: InvestigationResult, observer: bool, statement_ids: se
             st.caption("A support specialist will also look at this case.")
         return
     st.markdown(CITATION.sub(lambda m: f" :gray[\\[{m.group(1)}\\]]", result.answer))
-    verification_badges(result)
-    for item in result.missing_information:
-        if not item.startswith("escalation: "):
-            st.caption(f"Missing information: {item}")
-    evidence = {e.id: e for e in result.evidence}
-    with st.expander("What the assistant checked"):
-        if not result.tool_trace:
-            st.markdown("No tool was called in this turn.")
-        for record in result.tool_trace:
-            status = "ok" if record.ok else f"failed ({record.error_code})"
-            args = json.dumps(record.input, ensure_ascii=False)
-            st.markdown(f"{record.step}. `{record.tool}` {status}, {record.duration_ms} ms")
-            st.caption(f"Arguments: {args}  \nResult: {demo.short_result(record, evidence)}")
-        read = sorted(demo.ids_read(result))
-        if read:
-            st.markdown(f"Ledger records read: {', '.join(read)}")
-            outside = [i for i in read if statement_ids is not None and i not in statement_ids and i[:2] != "M-"]
-            if outside:
-                st.caption(f"Not on this account: {', '.join(outside)}")
-    with st.expander("Verdict per claim"):
-        verdicts = {v.claim_id: v for v in result.verdicts}
-        if not result.claims:
-            st.markdown("No claim was extracted from the answer.")
-        for claim in result.claims:
-            verdict = verdicts.get(claim.id)
-            label = VERDICT_LABELS[verdict.label] if verdict else "No verdict"
-            how = f" (method: {verdict.method})" if verdict else ""
-            st.markdown(f"**{claim.id}** {label}{how}: {claim.text}")
-    with st.expander("Evidence"):
-        for item in result.evidence:
-            st.markdown(f"`{item.id}` {item.content[:300]}")
+    read = sorted(demo.ids_read(result))
+    if read:
+        caption = f"Ledger records read: {', '.join(read)}"
+        outside = [i for i in read if statement_ids is not None and i not in statement_ids and i[:2] != "M-"]
+        st.caption(caption + (f". Not on this account: {', '.join(outside)}" if outside else ""))
 
 
 def show_turn(turn: dict[str, Any], observer: bool, statement_ids: set[str]) -> None:
@@ -284,6 +424,8 @@ def show_turn(turn: dict[str, Any], observer: bool, statement_ids: set[str]) -> 
         if turn.get("selected"):
             st.caption(f"About {', '.join(turn['selected'])}")
     with st.chat_message("assistant", avatar=ASSISTANT_AVATAR):
+        if observer and turn.get("trace"):
+            show_trace(turn["trace"])
         render_result(turn["result"], observer, statement_ids)
 
 
@@ -393,7 +535,7 @@ def render_portal(account: Account, lines: list[dict[str, Any]], marks: dict[str
 def mode_line(is_offline: bool) -> str:
     if is_offline:
         return "Offline demo: scripted answers, recorded FX rates and sample data."
-    return f"Online: model `{get_settings().model or 'not configured'}`."
+    return f"Online: model {get_settings().model or 'not configured'}."
 
 
 def main() -> None:
@@ -425,7 +567,8 @@ def main() -> None:
     lines = account_statement(account_ledger(account.id, is_offline), account.id)
     statement_ids = {i for line in lines for i in [line["id"], *line["ids"]]}
     turns = st.session_state["turns"]
-    observer = bool(st.session_state.get("observer", False))
+    st.session_state.setdefault("observer", True)  # the trace shows by default; the switch hides it
+    observer = bool(st.session_state["observer"])
     last = turns[-1] if turns else None
     marks: dict[str, set[str]] = {"asked": set(), "read": set()}
     if observer:
@@ -442,9 +585,11 @@ def main() -> None:
             "Ask the support assistant about your payments, refunds, disputes or payouts. " + mode_line(is_offline)
         )
         st.toggle(
-            "Show what the assistant checked",
+            "Show the agent trace",
             key="observer",
-            help="For the demo: tool calls, records read and how each claim in the reply was verified.",
+            help="The run tree of each answer, as in LangSmith: triage, each model and tool call with inputs and "
+            "outputs, the verification of each claim and escalation. Off, the answer reads as a support reply, with "
+            "no citations.",
         )
         talking = bool(turns) or bool(st.session_state.get("question"))
         chat = st.container(height=CHAT_HEIGHT, key="chat", autoscroll=True) if talking else st.container()
@@ -491,10 +636,15 @@ def main() -> None:
                     return
                 context = demo.account_context(account.id, account.kind, account.name, selected)
                 with st.chat_message("assistant", avatar=ASSISTANT_AVATAR):
-                    with st.spinner("Checking your account"):
-                        result = investigate(agent, question, thread_id=st.session_state["thread_id"], context=context)
+                    result, spans = investigate_live(
+                        agent, question, thread_id=st.session_state["thread_id"], context=context, show=observer
+                    )
+                    if result is None:
+                        return
                     render_result(result, observer, statement_ids)
-            turns.append({"question": question, "result": result, "selected": selected, "context": context})
+            turns.append(
+                {"question": question, "result": result, "selected": selected, "context": context, "trace": spans}
+            )
             st.session_state["selected"] = []  # the line picked belongs to the question just sent
             st.rerun()  # draws the activity again with the lines the assistant read
 

@@ -8,7 +8,7 @@
 
 A LangChain agent that investigates payment complaints. It queries a transaction ledger, searches operations policies, compares against a reference exchange rate, does the arithmetic in code, and checks every claim in its own answer against the evidence it used. When the evidence is not enough, the answer says what is missing and the case goes to human review.
 
-![LedgerLens Pay demo: a customer statement on the left, the Help assistant with its answer, verification badge and tool calls on the right](docs/img/streamlit_conversation.png)
+![LedgerLens Pay demo: a customer statement on the left, the Help assistant on the right with the agent trace above its answer](docs/img/streamlit_conversation.png)
 
 ## Why an agent
 
@@ -113,7 +113,7 @@ In offline mode the chat model is a scripted model, embeddings are local (fastem
 
 The demo is a small payments portal, LedgerLens Pay, with fictional accounts from the generated data. It opens signed in as customer C-0412; **Switch demo account** at the top picks another customer or merchant of a planted case (for example merchant M-03 or merchant M-09). The left side shows that account's activity in tabs (Activity, Refunds, Disputes and, for a merchant, Payouts): amount first, then what the line is, its date and a status pill, with filters. Open a line to see its details (transaction id, card, exchange rate applied, fees, deadlines) and press **Ask about this**: the question about that line lands in the Help box on the right, ready to edit before sending. The agent answers as the support assistant. It gets the signed-in account and the line you picked as context, and its tools read a copy of the ledger that holds only that account's records.
 
-For the demo viewer, the switch **Show what the assistant checked** adds the verification badge (claims supported, contradicted or with not enough evidence, and why a person must review), the tool calls with their arguments and results, the verdict on each claim, and a mark on the statement lines the assistant read. Offline, the planted questions have scripted answers: the FX refund gap (TX-2048), the duplicate charge (TX-2051 and TX-2052), the dispute near its deadline (CB-0310), the payout calculation (ST-0044) and an id that does not exist (TX-9999). **Ask about this** is offered only on those lines; other questions need a configured model.
+Each answer carries the agent trace, a run tree like LangSmith's, drawn live while the agent works: triage, each model call (with tokens) and tool call (arguments, the response envelope and the generated SQL), the verdict on each claim and escalation. When the investigation ends, the trace collapses into a one-line summary and the answer appears below it, with its citations and the ledger records the assistant read marked on the statement. The switch **Show the agent trace** (on by default) hides the trace and the citations, so the answer reads as a support reply. Offline, the planted questions have scripted answers: the FX refund gap (TX-2048), the duplicate charge (TX-2051 and TX-2052), the dispute near its deadline (CB-0310), the payout calculation (ST-0044) and an id that does not exist (TX-9999). **Ask about this** is offered only on those lines; other questions need a configured model.
 
 ```bash
 uv run streamlit run app/streamlit_app.py
@@ -151,7 +151,7 @@ The full report is in [`data/eval/report_online.md`](data/eval/report_online.md)
 ## Layout
 
 ```text
-ledgerlens/   package: config, schemas, prompts, chains, tools, memory, agents, verify, eval, sim
+ledgerlens/   package: config, schemas, prompts, chains, tools, memory, agents, verify, observability, eval, sim
 app/          Streamlit demo portal (LedgerLens Pay) with the Help assistant
 scripts/      gate, build_index, fetch_public_data, record_fixtures
 data/         policies, fixtures, prebuilt FAISS index, sample, evaluation sets and reports

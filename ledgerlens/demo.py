@@ -8,6 +8,7 @@ line. Offline, a scripted model answers; this module holds those scripts, so the
   statement lines whose "Ask" button uses its question.
 - `ask_question`: the question a statement line puts in the box.
 - `offline_script`: the scripted tool calls, the scripted SQL and the answer for a planted question, or `None`.
+- `offline_triage`: the scripted triage of a question, so the offline trace shows an intent and a plan.
 - `account_context`: the context message that tells the agent who is signed in and which line was picked.
 - `ids_read`, `verification_summary`, `short_result`: what the page shows about how the agent reached the answer.
 
@@ -26,8 +27,9 @@ from typing import Any
 
 from langchain_core.messages import AIMessage
 
+from ledgerlens.observability.trace import review_reasons
 from ledgerlens.offline import text_message, tool_call_message
-from ledgerlens.schemas import Evidence, InvestigationResult, ToolCallRecord
+from ledgerlens.schemas import Entities, Evidence, InvestigationResult, PlanStep, ToolCallRecord, Triage
 from ledgerlens.tools.sql import major_amount
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -235,6 +237,57 @@ def offline_script(question: str, manifest: dict[str, Any]) -> tuple[list[AIMess
     return None
 
 
+# the goal of a scripted plan step, by tool
+_STEP_GOALS = {
+    "query_ledger": "query the ledger",
+    "get_ledger_record": "read the ledger record",
+    "search_policies": "search the policy",
+    "get_reference_fx": "read the reference FX rate",
+    "calculate": "do the calculation",
+    "recall_cases": "look for similar cases",
+}
+# the `Entities` field of each id prefix
+_ENTITY_FIELDS = {
+    "TX": "transaction_ids",
+    "R": "refund_ids",
+    "CB": "chargeback_ids",
+    "ST": "settlement_ids",
+    "M": "merchant_ids",
+    "C": "customer_ids",
+}
+
+
+def offline_triage(question: str, manifest: dict[str, Any]) -> str:
+    """The scripted triage answer, as JSON, so the offline page shows the intent and the plan.
+
+    For a planted question: the scenario's expected intent, the ids it cites and one step per tool of the script, in
+    the same order. For a question with no script: "other" and one step with no tool, because the answer is the
+    refusal.
+    """
+    script = offline_script(question, manifest)
+    entities = Entities(
+        **{
+            field: [i for i in ledger_ids(question) if i.split("-")[0] == prefix]
+            for prefix, field in _ENTITY_FIELDS.items()
+        }
+    )
+    if script is None:
+        plan = [PlanStep(id="S1", goal="answer without looking up the account")]
+        return Triage(intent="other", entities=entities, urgency="normal", plan=plan).model_dump_json()
+    scenario = next(
+        _scenario(manifest, item.scenario)
+        for item in planted(manifest)
+        if question in {item.question, item.customer_question, *_scenario(manifest, item.scenario)["questions"]}
+    )
+    tools = [call["name"] for message in script[0] for call in message.tool_calls]
+    plan = [
+        PlanStep(id=f"S{n}", goal=_STEP_GOALS[tool], tool=tool, depends_on=[f"S{n - 1}"] if n > 1 else [])
+        for n, tool in enumerate(tools, start=1)
+    ]
+    urgency = "high" if scenario["requires_human_review"] else "normal"
+    return Triage(intent=scenario["expected_intent"], entities=entities, urgency=urgency, plan=plan).model_dump_json()
+
+
 def scripted_questions(manifest: dict[str, Any]) -> list[str]:
     return [q for item in planted(manifest) for q in (item.question, item.customer_question) if q]
 
@@ -293,10 +346,7 @@ def verification_summary(result: InvestigationResult) -> dict[str, Any]:
     counts = {"supported": 0, "contradicted": 0, "not_enough_evidence": 0}
     for verdict in result.verdicts:
         counts[verdict.label] += 1
-    reasons = [m.removeprefix("escalation: ") for m in result.missing_information if m.startswith("escalation: ")]
-    if result.requires_human_review and not reasons:
-        reasons = list(result.missing_information)
-    return {**counts, "review": result.requires_human_review, "reasons": reasons}
+    return {**counts, "review": result.requires_human_review, "reasons": review_reasons(result)}
 
 
 def short_result(record: ToolCallRecord, evidence: dict[str, Evidence], limit: int = 160) -> str:
@@ -460,7 +510,7 @@ def account_summary(lines: list[dict[str, Any]], kind: str) -> list[tuple[str, s
         payments = [x for x in lines if x["type"] == "Payment"]
         return [
             ("Payments", str(len(payments))),
-            ("Refunds in progress", str(pending_refunds)),
+            ("Open refunds", str(pending_refunds)),
             ("Open disputes", str(open_disputes)),
         ]
     payouts = [x for x in lines if x["type"] == "Payout"]

@@ -1,9 +1,10 @@
 """What the demo page shows beyond the agent: questions per statement line, offline scripts and turn summaries.
 
 What they guarantee, and why: (a) the planted complaints are reachable from the line they are about, worded for
-the account that asks; (b) every offered planted question has an offline script, so the demo runs with no keys;
-(c) the page marks as "read" only ledger records that came back in ledger evidence; (d) the badge counts verdicts
-and names the escalation reasons; (e) filters narrow the statement the way a portal does.
+the account that asks; (b) every offered planted question has an offline script and an offline triage whose plan
+matches it, so the demo runs with no keys; (c) the page marks as "read" only ledger records that came back in ledger
+evidence; (d) the summary counts verdicts and names the escalation reasons; (e) filters narrow the statement the
+way a portal does.
 """
 
 from __future__ import annotations
@@ -11,7 +12,15 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from ledgerlens import demo
-from ledgerlens.schemas import Coherence, Evidence, InvestigationResult, ToolCallRecord, Verdict
+from ledgerlens.schemas import (
+    ESCALATION_PREFIX,
+    Coherence,
+    Evidence,
+    InvestigationResult,
+    ToolCallRecord,
+    Triage,
+    Verdict,
+)
 
 MANIFEST = demo.load_manifest()
 
@@ -85,6 +94,19 @@ def test_every_offered_planted_question_has_an_offline_script() -> None:
     assert demo.offline_script("What is the weather today?", MANIFEST) is None
 
 
+def test_every_offline_script_has_a_triage_whose_plan_matches_its_tool_calls() -> None:
+    """Offline, triage is scripted too: the trace shows the intent and the plan, as online."""
+    for question in demo.scripted_questions(MANIFEST):
+        messages, _ = demo.offline_script(question, MANIFEST)
+        triage = Triage.model_validate_json(demo.offline_triage(question, MANIFEST))
+        called = [call["name"] for m in messages for call in m.tool_calls]
+        assert [step.tool for step in triage.plan] == called, question
+        assert set(demo.ledger_ids(question)) <= {i for ids in triage.entities.model_dump().values() for i in ids}
+        assert not triage.needs_clarification
+    other = Triage.model_validate_json(demo.offline_triage("What is the capital of France?", MANIFEST))
+    assert other.intent == "other" and [step.tool for step in other.plan] == [None]
+
+
 def test_each_account_is_offered_its_questions_and_an_unknown_id() -> None:
     assert demo.account_questions("M-03", MANIFEST) == [
         "How was payout ST-0044 for merchant M-03 calculated and when is it paid?",
@@ -119,7 +141,7 @@ def test_the_summary_counts_verdicts_and_names_escalations() -> None:
             Verdict(claim_id="CL1", label="supported", method="numeric"),
             Verdict(claim_id="CL2", label="not_enough_evidence", method="nli"),
         ],
-        missing_information=["escalation: CB-0310: card network deadline in 1 day(s)", "fx down"],
+        missing_information=[f"{ESCALATION_PREFIX}CB-0310: card network deadline in 1 day(s)", "fx down"],
         requires_human_review=True,
     )
     summary = demo.verification_summary(result)
@@ -247,7 +269,7 @@ def test_the_account_card_figures() -> None:
     ]
     assert demo.account_summary(lines, "customer") == [
         ("Payments", "1"),
-        ("Refunds in progress", "1"),
+        ("Open refunds", "1"),
         ("Open disputes", "1"),
     ]
     payouts = [

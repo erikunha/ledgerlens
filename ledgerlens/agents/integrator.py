@@ -41,6 +41,10 @@ What each part does and what it leaves to another:
   are read again from the same ledger.
 - **Saving the case**: `CaseMemory.write_case` refuses anything that does not have every verdict supported. A disk
   or index failure while saving is logged and does not bring down the answer already verified.
+- **Trace**: with `on_event`, `investigate` emits the investigation's run tree span by span
+  (`ledgerlens/observability/trace.py`): the root `investigate`, triage and the agent through LangChain callbacks,
+  and spans of its own for the single follow-up (`plan_followup`), verification (one child per claim), escalation
+  and saving the case. Without `on_event` no callback is added and the result is the same.
 
 Numbers: nothing here computes money. What the result claims comes from the tools.
 """
@@ -50,6 +54,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+import typing
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -72,7 +77,8 @@ from ledgerlens.chains.parsers import TriageError
 from ledgerlens.chains.triage import build_triage_declarative
 from ledgerlens.config import get_chat_model, get_settings
 from ledgerlens.memory.long_term import CaseMemory
-from ledgerlens.schemas import Coherence, Evidence, InvestigationResult, PlanStep, ToolCallRecord, Triage
+from ledgerlens.observability.trace import OnEvent, Tracer, langsmith_url, review_reasons, summary_line
+from ledgerlens.schemas import Coherence, Evidence, InvestigationResult, PlanStep, ToolCallRecord, Triage, VerdictLabel
 from ledgerlens.tools.fx import FxClient
 from ledgerlens.tools.policies import build_search_policies_tool
 
@@ -201,24 +207,48 @@ def build_integrator(
     )
 
 
-def investigate(agent: Integrator, question: str, *, thread_id: str, context: str | None = None) -> InvestigationResult:
+def investigate(
+    agent: Integrator,
+    question: str,
+    *,
+    thread_id: str,
+    context: str | None = None,
+    on_event: OnEvent | None = None,
+) -> InvestigationResult:
     """Asks the integrator a question and returns the verified result.
 
     The `thread_id` is the session: the same id continues the conversation, another id starts from scratch. The
     trace and evidence of the result are only those of this turn. `context` is a system message that goes to the
     agent right before the question (the demo page says there who is signed in and which statement line was
-    picked); triage still reads only the question.
+    picked); triage still reads only the question. `on_event`, when given, receives the investigation's trace span
+    by span while it happens (`ledgerlens.observability.trace`): the root `investigate`, triage, the agent with each
+    model and tool call, the single follow-up, verification and escalation. It may be called from a thread of the
+    tools' executor. Without it, nothing changes.
     """
+    trace = Tracer(on_event)
+    root = trace.begin("investigate", "chain", {"question": question, "thread_id": thread_id, "context": context})
+    try:
+        result = _investigate(agent, question, thread_id, context, trace)
+    except Exception as exc:
+        trace.finish(root, error=f"{type(exc).__name__}: {exc}")
+        raise
+    close_trace(trace, root, result)
+    return result
+
+
+def _investigate(
+    agent: Integrator, question: str, thread_id: str, context: str | None, trace: Tracer
+) -> InvestigationResult:
     config = {"configurable": {"thread_id": thread_id}}
     first_turn = not agent.graph.get_state(config).values.get("messages")
-    triage = run_triage(agent.triage, question)
+    triage = run_triage(agent.triage, question, config=traced("triage", trace))
     if (asked := clarification_to_ask(triage, first_turn)) is not None:
         agent.graph.update_state(config, {"messages": [HumanMessage(question), AIMessage(asked)]})
         return clarification_result(question, thread_id, triage, asked)
     plan = plan_to_follow(triage)
 
     timer = _ToolTimer()
-    run_config = {**config, "callbacks": [timer]}
+    run_config = {**config, **traced("agent", trace, timer)}
     messages: list[BaseMessage] = [SystemMessage(plan_message(plan))] if plan else []
     if context:
         messages.append(SystemMessage(context))
@@ -229,7 +259,9 @@ def investigate(agent: Integrator, question: str, *, thread_id: str, context: st
     asked = uncalled_steps(plan, result.tool_trace)
     days = fx_days_to_redo(question, result.evidence, result.tool_trace)
     if asked or days:
-        extra = _ask_for_missing_tools(agent, followup_message(asked, days=days), len(state["messages"]), run_config)
+        text = followup_message(asked, days=days)
+        span = trace.begin("plan_followup", "chain", {"asked": asked, "fx_days": days, "message": text})
+        extra = _ask_for_missing_tools(agent, text, len(state["messages"]), run_config)
         result = _assemble(
             question,
             thread_id,
@@ -240,7 +272,31 @@ def investigate(agent: Integrator, question: str, *, thread_id: str, context: st
             fx_asked=days,
             ask_failed=extra is None,
         )
-    return finish(agent, result)
+        trace.finish(span, outputs={"failed": extra is None, "plan_deviations": result.plan_deviations})
+    return finish(agent, result, trace=trace)
+
+
+def traced(run_name: str, trace: Tracer, *handlers: BaseCallbackHandler) -> dict[str, Any]:
+    """The config of a LangChain call with the run name and the trace callbacks."""
+    return {"run_name": run_name, "callbacks": [*handlers, *trace.handlers()]}
+
+
+def close_trace(trace: Tracer, root: str, result: InvestigationResult) -> None:
+    """Closes the trace root with the summary and, with LangSmith on, the URLs of the runs sent to it."""
+    if not trace.enabled:
+        return
+    tokens = trace.tokens()
+    urls = [{"name": trace.spans[r].name, "url": u} for r in trace.roots if (u := langsmith_url(r))]
+    outputs = {
+        "answer": result.answer,
+        "recommended_action": result.recommended_action,
+        "requires_human_review": result.requires_human_review,
+        "plan_deviations": result.plan_deviations,
+        "tool_calls": len(result.tool_trace),
+        "tokens": tokens,
+        "summary": summary_line(result, trace.elapsed_ms(root), tokens),
+    }
+    trace.finish(root, outputs=outputs, **({"langsmith": urls} if urls else {}))
 
 
 def _ask_for_missing_tools(
@@ -258,25 +314,59 @@ def _ask_for_missing_tools(
     return list(state["messages"][seen:])
 
 
-def finish(agent: Any, result: InvestigationResult) -> InvestigationResult:
+def finish(agent: Any, result: InvestigationResult, *, trace: Tracer | None = None) -> InvestigationResult:
     """Verifies the assembled result and saves the case if every verdict was supported.
 
-    `agent` is the integrator of either version: only `verifier` and `case_memory` are used.
+    `agent` is the integrator of either version: only `verifier` and `case_memory` are used. `trace` receives the
+    `verify` span (with one child per claim), the `escalation` span and the case write.
     """
-    verified = agent.verifier(result)
-    _remember(agent.case_memory, verified)
+    trace = trace or Tracer()
+    span = trace.begin("verify", "verifier", {"answer": result.answer, "evidence_ids": [e.id for e in result.evidence]})
+    try:
+        verified = agent.verifier(result)
+    except Exception as exc:
+        trace.finish(span, error=f"{type(exc).__name__}: {exc}")
+        raise
+    verdicts = {v.claim_id: v for v in verified.verdicts}
+    for claim in verified.claims:
+        verdict = verdicts.get(claim.id)
+        trace.point(
+            claim.id,
+            "verifier",
+            {"text": claim.text, "kind": claim.kind, "evidence_ids": claim.evidence_ids, "numeric": claim.numeric},
+            verdict,
+            check=verdict.method if verdict else None,
+            label=verdict.label if verdict else None,
+        )
+    counts = {label: sum(v.label == label for v in verified.verdicts) for label in typing.get_args(VerdictLabel)}
+    trace.finish(span, outputs={"verdicts": counts, "coherence": verified.coherence})
+    trace.point(
+        "escalation",
+        "verifier",
+        {"missing_information": result.missing_information, "evidence_ids": [e.id for e in result.evidence]},
+        {
+            "requires_human_review": verified.requires_human_review,
+            "reasons": review_reasons(verified),
+            "recommended_action": verified.recommended_action,
+        },
+    )
+    outcome = _remember(agent.case_memory, verified)
+    if outcome is not None:
+        trace.point("CaseMemory.write_case", "chain", {"session_id": verified.session_id}, outcome)
     return verified
 
 
 # --- triage -------------------------------------------------------------------------------------
 
 
-def run_triage(triage: Runnable | None, question: str) -> Triage | None:
-    """The question's `Triage`, or `None` if there is no triage or it failed. A failure does not stop the question."""
+def run_triage(triage: Runnable | None, question: str, *, config: dict[str, Any] | None = None) -> Triage | None:
+    """The question's `Triage`, or `None` if there is no triage or it failed. A failure does not stop the question.
+
+    `config` goes to the triage call (the run name and the trace callbacks)."""
     if triage is None:
         return None
     try:
-        out = triage.invoke({"complaint": question})
+        out = triage.invoke({"complaint": question}, config)
     except Exception as exc:  # network, quota or exhausted script: the agent answers with no plan, as before triage
         log.warning("triage failed, the agent runs without a plan: %s: %s", type(exc).__name__, exc)
         return None
@@ -582,13 +672,17 @@ def _assemble(
     )
 
 
-def _remember(memory: CaseMemory | None, result: InvestigationResult) -> None:
-    """Saves the case when the investigation was fully supported. A failure while saving does not stop the answer."""
+def _remember(memory: CaseMemory | None, result: InvestigationResult) -> dict[str, Any] | None:
+    """Saves the case when the investigation was fully supported and returns what `write_case` said (`None` with no
+    memory).
+
+    A failure while saving does not stop the answer: it goes to the log and comes back as a case not written."""
     if memory is None:
-        return
+        return None
     try:
         outcome = memory.write_case(result)
-    except Exception:
+    except Exception as exc:
         log.exception("could not write the case for session %s", result.session_id)
-        return
+        return {"written": False, "reason": f"write failed ({type(exc).__name__})"}
     log.info("case memory for session %s: %s", result.session_id, outcome)
+    return outcome

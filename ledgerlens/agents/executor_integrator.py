@@ -67,6 +67,7 @@ from ledgerlens.agents.integrator import (
     _ToolTimer,
     clarification_result,
     clarification_to_ask,
+    close_trace,
     default_verifier_for,
     finish,
     followup_message,
@@ -74,6 +75,7 @@ from ledgerlens.agents.integrator import (
     plan_message,
     plan_to_follow,
     run_triage,
+    traced,
     uncalled_steps,
 )
 from ledgerlens.agents.modern import build_investigation_tools
@@ -81,6 +83,7 @@ from ledgerlens.chains.triage import build_triage_declarative
 from ledgerlens.config import get_chat_model, get_settings
 from ledgerlens.memory.history import DEFAULT_MAX_TOKENS, get_session_history
 from ledgerlens.memory.long_term import CaseMemory
+from ledgerlens.observability.trace import OnEvent, Tracer
 from ledgerlens.schemas import InvestigationResult
 from ledgerlens.tools.fx import FxClient
 
@@ -174,15 +177,29 @@ def build_executor_integrator(
     )
 
 
-def investigate_with_executor(agent: ExecutorIntegrator, question: str, *, session_id: str) -> InvestigationResult:
+def investigate_with_executor(
+    agent: ExecutorIntegrator, question: str, *, session_id: str, on_event: OnEvent | None = None
+) -> InvestigationResult:
     """Asks the legacy integrator a question and returns the verified result.
 
     The `session_id` is the session: the same id continues the conversation, another starts from scratch. The trace
-    and evidence of the result are only those of this turn.
+    and evidence of the result are only those of this turn. `on_event` receives the same trace `investigate` emits.
     """
+    trace = Tracer(on_event)
+    root = trace.begin("investigate", "chain", {"question": question, "session_id": session_id})
+    try:
+        result = _investigate(agent, question, session_id, trace)
+    except Exception as exc:
+        trace.finish(root, error=f"{type(exc).__name__}: {exc}")
+        raise
+    close_trace(trace, root, result)
+    return result
+
+
+def _investigate(agent: ExecutorIntegrator, question: str, session_id: str, trace: Tracer) -> InvestigationResult:
     history = agent.runnable.get_session_history(session_id)
     first_turn = not history.messages
-    triage = run_triage(agent.triage, question)
+    triage = run_triage(agent.triage, question, config=traced("triage", trace))
     if (asked := clarification_to_ask(triage, first_turn)) is not None:
         history.add_messages([HumanMessage(question), AIMessage(asked)])
         return clarification_result(question, session_id, triage, asked)
@@ -192,7 +209,7 @@ def investigate_with_executor(agent: ExecutorIntegrator, question: str, *, sessi
     payload: dict[str, Any] = {"input": question}
     if plan is not None:
         payload["triage_context"] = [SystemMessage(plan_message(plan))]
-    run_config = {"configurable": {"session_id": session_id}, "callbacks": [timer]}
+    run_config = {"configurable": {"session_id": session_id}, **traced("agent", trace, timer)}
     output = agent.invoke(payload, run_config)
     turn = _turn_messages(question, output)
     result = _assemble(question, session_id, turn, timer.durations_ms, triage=plan)
@@ -200,7 +217,9 @@ def investigate_with_executor(agent: ExecutorIntegrator, question: str, *, sessi
     asked = uncalled_steps(plan, result.tool_trace)
     days = fx_days_to_redo(question, result.evidence, result.tool_trace)
     if asked or days:
-        extra = _ask_for_missing_tools(agent, followup_message(asked, days=days), plan, run_config)
+        text = followup_message(asked, days=days)
+        span = trace.begin("plan_followup", "chain", {"asked": asked, "fx_days": days, "message": text})
+        extra = _ask_for_missing_tools(agent, text, plan, run_config)
         result = _assemble(
             question,
             session_id,
@@ -211,7 +230,8 @@ def investigate_with_executor(agent: ExecutorIntegrator, question: str, *, sessi
             fx_asked=days,
             ask_failed=extra is None,
         )
-    return finish(agent, result)
+        trace.finish(span, outputs={"failed": extra is None, "plan_deviations": result.plan_deviations})
+    return finish(agent, result, trace=trace)
 
 
 def _ask_for_missing_tools(

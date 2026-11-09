@@ -74,6 +74,7 @@ def test_a_customer_statement_has_the_payment_and_its_refund_newest_first(ledger
     assert (refund["record"]["payout_amount_minor"], refund["record"]["payout_currency"]) == (54931, "BRL")
     assert [f["applied_rate"] for f in refund["record"]["fx"]] == ["5.4931"]
     assert {"R-0731", "TX-2048", "FX-9002"} <= set(refund["ids"])
+    assert "FX-9001" in payment["ids"]  # the charge's FX rate belongs to this account too
 
 
 def test_a_chargeback_line_carries_its_deadline(ledger_db: Path) -> None:

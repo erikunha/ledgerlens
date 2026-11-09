@@ -62,7 +62,42 @@ flowchart TB
 - a context message (`investigate(..., context=...)`), a system message right before the question that names the signed-in account and the line picked; triage still reads only the question;
 - a ledger scoped to the account (`ledgerlens/api/accounts.py`, `scoped_ledger`): a copy that keeps only the account's transactions, refunds, chargebacks, applied FX and, for a merchant, its settlements. The tools and the verifier read that copy, so a query cannot return another customer's rows, whatever SQL the model writes.
 
-The statement itself comes from read-only, parameterized queries in the same module (`account_statement`). What the page shows about each turn (lines read, verdict counts, short tool results) and the offline scripts of the planted questions are in `ledgerlens/demo.py`.
+The statement itself comes from read-only, parameterized queries in the same module (`account_statement`). What the page shows about each turn (lines read, verdict counts) and the offline scripts of the planted questions, including a scripted triage (`offline_triage`), are in `ledgerlens/demo.py`.
+
+**The agent trace in each answer.** While the agent works, the assistant's message shows the investigation's run tree, like LangSmith's, drawn live in an `st.status`. It comes from `investigate(..., on_event=...)`: `ledgerlens/observability/trace.py` knows nothing about the screen and emits a `Span` when each run starts and again when it ends (`run_id`, `parent_run_id`, `name`, `run_type`, `start_time`, `end_time`, `latency_ms`, `inputs`, `outputs`, `error`, `metadata` with the model and the tokens). A `BaseCallbackHandler` passed in the config of the triage and agent calls turns LangChain runs into spans; LangGraph's internal runs, tagged `langsmith:hidden`, are left out. The integrator opens spans of its own for what is not a LangChain run: the root `investigate`, the plan's single follow-up (`plan_followup`), verification with one child per claim, escalation and saving the case. Without `on_event` no callback is added and the result is the same; `investigate_with_executor` emits the same tree. Inputs and outputs go through `compact`, which cuts long lists and texts and erases API keys.
+
+Each node shows `run_type · name · latency · tokens`, the generated SQL in view and the span's JSON collapsed; an error shows in red. At the end the block collapses into a one-line summary ("Checked 4 sources in 6.2 s: 3 claims supported, 1 without evidence"), and the spans are stored with the message, so the trace still opens from the history. The tools run in the graph executor's threads and Streamlit only draws on the page's thread, so the investigation runs in a thread of its own and the page draws the spans that arrive on a queue. The answer does not stream token by token, because the verifier reads the whole answer and may rewrite it; it appears finished, below the trace. With LangChain tracing on in the process, links to the runs in LangSmith appear under the summary. The switch **Show the agent trace** (on by default) hides the trace and the citations, so the answer reads as a support reply.
+
+```mermaid
+flowchart TD
+  R["chain · investigate"] --> T["chain · triage"]
+  T --> TP["prompt · ChatPromptTemplate"]
+  T --> TL["llm · model"]
+  T --> TR["parser · parse_with_repair"]
+  R --> A["chain · agent"]
+  A --> M["chain · model"] --> ML["llm · model (tool_calls, tokens)"]
+  A --> TS["chain · tools"] --> Q["tool · query_ledger (args, envelope, SQL)"]
+  Q --> QL["llm · the model that writes the SQL"]
+  R --> V["verifier · verify"] --> CL["verifier · CL1 (label, check, scores)"]
+  R --> E["verifier · escalation"]
+  R --> W["chain · CaseMemory.write_case"]
+```
+
+```mermaid
+sequenceDiagram
+  participant P as Person
+  participant UI as Streamlit page
+  participant W as Worker thread
+  participant A as Integrator
+  P->>UI: presses Send
+  UI->>W: starts investigate(..., on_event=queue.put)
+  W->>A: question, thread_id and account context
+  A-->>W: spans, one by one, as each run starts and ends
+  W-->>UI: spans on the queue
+  UI-->>P: live trace in st.status
+  A-->>W: verified InvestigationResult
+  UI-->>P: one-line summary, then the answer with citations and the ledger records read
+```
 
 ## 2. Agent type and maturity level
 
@@ -276,3 +311,5 @@ Time and cost were not measured: the model is scripted. The debugging argument (
 - **Runnable**: any LangChain component with `invoke`, `batch` and `stream`.
 - **Output parser**: a component that reads the model's text and turns it into a validated object.
 - **Prompt injection**: input text that tries to give orders to the model; the defense is to treat it as data.
+- **Span**: one run in a trace (a chain, a model call, a tool call or a check), with its inputs, outputs and latency.
+- **Run tree**: the spans of one request, nested by which run started which.

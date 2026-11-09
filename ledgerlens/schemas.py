@@ -139,6 +139,11 @@ class ToolCallRecord(Strict):
     duration_ms: int = Field(ge=0)
 
 
+# An escalation reason enters `missing_information` with this prefix (`verify/escalation.py`); whoever shows the
+# result strips it to state only the reason. Both sides read this constant, so the text cannot drift apart.
+ESCALATION_PREFIX = "escalation: "
+
+
 class InvestigationResult(Strict):
     schema_version: Literal["1"] = "1"
     session_id: str

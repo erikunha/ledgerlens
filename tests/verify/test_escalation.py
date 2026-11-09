@@ -648,3 +648,19 @@ def test_only_the_failed_rate_is_named_when_another_date_succeeded() -> None:
 def test_other_fx_errors_are_left_to_the_tool_failure_rule() -> None:
     out = apply_escalation(with_trace(fx_call(1, ok=False, code="INVALID_CURRENCY")), as_of=date(2026, 11, 2))
     assert out.answer == "I could not look up the FX rate." and out.requires_human_review is False
+
+
+def test_the_review_reasons_the_page_shows_come_without_the_escalation_prefix() -> None:
+    """The verifier and the page must agree on the escalation prefix, or the reason shows with the raw prefix and a
+    tool failure becomes a review reason. Both ends read the same `ESCALATION_PREFIX`."""
+    from ledgerlens import demo
+    from ledgerlens.observability.trace import review_reasons
+    from ledgerlens.schemas import ESCALATION_PREFIX
+
+    out = escalate(ev("sql:1", table(chargeback("2026-11-02"))), missing=["get_reference_fx (UPSTREAM): down"])
+    escalations = [m for m in out.missing_information if m.startswith(ESCALATION_PREFIX)]
+    assert escalations and out.requires_human_review
+    shown = review_reasons(out)
+    assert shown == [m.removeprefix(ESCALATION_PREFIX) for m in escalations]
+    assert all(DEADLINE_POLICY in reason or "CB-1" in reason for reason in shown)
+    assert demo.verification_summary(out)["reasons"] == shown
