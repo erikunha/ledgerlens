@@ -2,7 +2,7 @@
 
 This document is the work plan from 2026-11-11 onwards. The decision that anchors it is the
 [ADR-011](decisions/ADR-011-v3-roadmap-in-verifiable-slices.md). The detailed specification of each release lives in
-[`specs/`](specs/), written with the specification toolkit, and the design package that drives the whole cycle is
+[`specs/`](../specs/), written with the specification toolkit, and the design package that drives the whole cycle is
 versioned in [`docs/v3/`](v3/ORIGEM.md).
 
 ## The decision
@@ -58,7 +58,7 @@ The public `TraceEvent` is the contract of `contracts/schemas/trace-event.schema
 
 ## R1: the visitor without a key
 
-The specification is in [`specs/001-r1-public-replay/`](specs/001-r1-public-replay/).
+The specification is in [`specs/001-r1-public-replay/`](../specs/001-r1-public-replay/).
 
 | ID | Task | State |
 |---|---|---|
@@ -74,7 +74,7 @@ The frontend consumes versioned API schemas and never reimplements a domain rule
 
 ## R2: the sandbox
 
-The specification is in [`specs/002-r2-visitor-sandbox/`](specs/002-r2-visitor-sandbox/).
+The specification is in [`specs/002-r2-visitor-sandbox/`](../specs/002-r2-visitor-sandbox/).
 
 | ID | Task | State |
 |---|---|---|
@@ -91,7 +91,7 @@ directly to the domain table; an event is written and the projector recomputes.
 
 ## R3: bring your own key, last
 
-The specification is in [`specs/003-r3-bring-your-own-key/`](specs/003-r3-bring-your-own-key/).
+The specification is in [`specs/003-r3-bring-your-own-key/`](../specs/003-r3-bring-your-own-key/).
 
 | ID | Task | State |
 |---|---|---|
@@ -128,7 +128,7 @@ English; the plan that drives the work is this document, in the voice of the pro
 
 ## How the plan is specified
 
-Each release has a specification folder under [`specs/`](specs/), written with the specification toolkit and following
+Each release has a specification folder under [`specs/`](../specs/), written with the specification toolkit and following
 the same structure:
 
 - `spec.md`: the user stories with priorities, the functional requirements, the entities and the success criteria

@@ -127,6 +127,8 @@ def is_portuguese(line: str) -> bool:
 
 
 def _portuguese_scope() -> list[str]:
+    # ADR-016 keeps English as the source of truth and gives the Brazilian Portuguese translation layer the
+    # only surfaces that may carry the language, so exactly docs/pt-BR/** and README.pt-BR.md leave the scan.
     return [
         name
         for name in _files()
@@ -134,6 +136,8 @@ def _portuguese_scope() -> list[str]:
         and Path(name).suffix in PORTUGUESE_SUFFIXES
         and not name.startswith("data/index/")
         and name not in PORTUGUESE_ALLOWED_FILES
+        and not name.startswith("docs/pt-BR/")
+        and name != "README.pt-BR.md"
     ]
 
 
@@ -238,6 +242,41 @@ def test_portuguese_scan_covers_shell_yaml_text_and_config_specs(tmp_path, monke
     assert set(_portuguese_scope()) == set(names)
     with pytest.raises(AssertionError):
         test_no_portuguese_in_code_data_docs_or_tests()
+
+
+def test_portuguese_allowance_is_only_the_pt_br_translation_layer(tmp_path, monkeypatch):
+    """The ADR-016 allowance is narrow: the same Portuguese line passes only in the translation layer
+    (docs/pt-BR/** and README.pt-BR.md) and stays refused in every other scanned path, lookalikes included."""
+    marker = "prazo d" + "e 30 dias"
+    allowed = ["README.pt-BR.md", "docs/pt-BR/roadmap-v3.md"]
+    refused = [
+        "README.md",
+        "docs/roadmap-v3.md",
+        "ledgerlens/verify/claims.py",
+        "tests/conftest.py",
+        # a path that merely carries the locale in its name is not the translation layer
+        "ledgerlens/pt-BR/x.py",
+        "docs/pt-BR-notes.md",
+    ]
+    names = allowed + refused
+    for name in names:
+        path = tmp_path / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(marker + "\n", encoding="utf-8")
+    monkeypatch.setattr(sys.modules[__name__], "ROOT", tmp_path)
+    monkeypatch.setattr(sys.modules[__name__], "_files", lambda: list(names))
+    scope = set(_portuguese_scope())
+    for name in allowed:
+        assert name not in scope, name
+    for name in refused:
+        assert name in scope, name
+    for name in allowed:
+        monkeypatch.setattr(sys.modules[__name__], "_files", lambda n=name: [n])
+        test_no_portuguese_in_code_data_docs_or_tests()
+    for name in refused:
+        monkeypatch.setattr(sys.modules[__name__], "_files", lambda n=name: [n])
+        with pytest.raises(AssertionError):
+            test_no_portuguese_in_code_data_docs_or_tests()
 
 
 def test_local_tool_folders_are_never_tracked():
