@@ -27,6 +27,8 @@ The raw recording is not in this repository. The file here is the master cut to 
 ffmpeg -ss 0 -t 28 -i master.mp4 -vf scale=3024:1890 -r 30 -c:v libx264 -crf 21 -preset slow -pix_fmt yuv420p -an ledgerlens_demo.mp4
 ```
 
+**The audio track.** The OpenScreen export always attaches an AAC track, even when the capture has no audio at all, and that track is digital silence (every sample zero, -91 dB). The `-an` above removes it, so the file in this repository has no audio track. The raw capture has none either: `record` was called without `--mic` and without `--system-audio`.
+
 ## The output is probabilistic
 
 The same question on another run can take a different path, call a different set of tools and land on a different set of verdicts. What does not change is the discipline: every claim in the answer gets a verdict, the numbers are checked against the cited evidence by code instead of by the model, and a case that cannot be settled goes to human review.
