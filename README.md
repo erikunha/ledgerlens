@@ -119,6 +119,14 @@ Each answer carries the agent trace, a run tree like LangSmith's, drawn live whi
 uv run streamlit run app/streamlit_app.py
 ```
 
+### Watch it run
+
+The video below is this app running online with a real model, recorded on 2026-11-11: the question, the agent trace drawn live while the agent works, and the answer with the citations of the sources it used.
+
+![LedgerLens Pay running online: the question in the Help panel, the agent trace growing with the model calls and the tool calls, and the answer with the source citations](docs/img/ledgerlens_demo.mp4)
+
+[docs/demo.md](docs/demo.md) has the recording notes: the mode, what the video shows, the numbers on screen and how it was recorded.
+
 ### Online, with a real model
 
 Copy `.env.example` to `.env`, fill in the keys (`OPENAI_API_KEY` and, for traces and experiments, `LANGSMITH_API_KEY`), and run without `LEDGERLENS_OFFLINE`. The default model is `gpt-4.1-mini`, with live exchange rates.
