@@ -6,10 +6,17 @@ match its own rules.
 
 import re
 import subprocess
+import sys
 from pathlib import Path
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# The specification toolkit is part of the work, so its folder name is allowed. What is not allowed is the local
+# planning state it holds, and the feature branches it used to create outside the release branch. The toolkit
+# scripts name the state file they manage, and those lines alone are tool code (_tooling_files exempts them).
+_STATE_FILE = r"\.specify/feature\.json"
 _WORDS = [
     "in" + "fnet",
     "disci" + "plina",
@@ -22,9 +29,7 @@ _WORDS = [
     "nb0" + "[0-9]",
     "video" + "_script",
     "vi" + "deo_link",
-    # The specification toolkit is part of the work, so its folder name is allowed. What is not allowed is the local
-    # planning state it holds, and the feature branches it used to create outside the release branch.
-    r"\.specify/feature\.json",
+    _STATE_FILE,
 ]
 FORBIDDEN = re.compile("|".join(_WORDS), re.IGNORECASE)
 # a course acronym: upper case only and as a whole word
@@ -54,7 +59,7 @@ _PT_WORDS = re.compile(
 _PT_FUNCTION_WORDS = re.compile(" (?:" + "d" + "e" + "|" + "pa" + "ra" + ") ")
 PORTUGUESE = (_PT_LETTERS, _PT_WORDS, _PT_FUNCTION_WORDS)
 PORTUGUESE_SCOPE = ("ledgerlens/", "app/", "data/", "docs/", "tests/", "specs/", ".specify/")
-PORTUGUESE_SUFFIXES = {".py", ".md", ".jsonl", ".json"}
+PORTUGUESE_SUFFIXES = {".py", ".md", ".jsonl", ".json", ".txt", ".sh", ".yaml", ".yml"}
 # Recorded responses of Brazilian public APIs (holiday names, Banco Central bulletins): external data, kept as
 # the source returned it.
 PORTUGUESE_ALLOWED_FILES = {
@@ -96,13 +101,23 @@ def _offenders(*patterns: re.Pattern[str]) -> list[str]:
     return found
 
 
-def _tooling_files() -> list[str]:
-    """The files of the specification toolkit, which are tool code and not the content of this repository.
+_TOOLING_STATE_PATH = re.compile(_STATE_FILE)
 
-    The toolkit names its own state files and its own vocabulary, so the content rules of the repository do not apply
-    to it. The rules still apply to everything it produces: the constitution and the specs.
+
+def _tooling_files() -> list[str]:
+    """The paths of the specification toolkit that name its own state file, and only those.
+
+    The toolkit is tool code, so the lines naming the state file it manages are exempt from the content rules of
+    this repository. The exemption is those paths alone: every other path of a toolkit file is scanned again, and
+    the rules still apply to everything the toolkit produces, the constitution and the specs included.
     """
-    return [name for name in _files() if name.startswith(".specify/scripts/") or name.startswith(".specify/templates/")]
+    return [
+        f"{name}:{number}"
+        for name in _files()
+        if name.startswith(".specify/scripts/") or name.startswith(".specify/templates/")
+        for number, line in _lines(name)
+        if isinstance(line, str) and _TOOLING_STATE_PATH.search(line)
+    ]
 
 
 def is_portuguese(line: str) -> bool:
@@ -124,10 +139,41 @@ def _portuguese_scope() -> list[str]:
 
 def test_no_course_material_in_tracked_files():
     tooling = set(_tooling_files())
-    found = [
-        hit for hit in _offenders(FORBIDDEN, FORBIDDEN_CASE) if hit.rsplit(":", 1)[0] not in tooling
-    ]
+    found = [hit for hit in _offenders(FORBIDDEN, FORBIDDEN_CASE) if hit not in tooling]
     assert not found, found[:20]
+
+
+def test_course_scan_exempts_only_the_state_file_paths(tmp_path, monkeypatch):
+    """A toolkit file is not exempt as a whole: only the paths naming its state file are, its other paths are not."""
+    name = ".specify/scripts/resolve_feature.sh"
+    script = tmp_path / name
+    script.parent.mkdir(parents=True)
+    state_line = "reads " + ".specify/feature" + ".json"
+    course_line = "kept a " + "note" + "book"
+    monkeypatch.setattr(sys.modules[__name__], "ROOT", tmp_path)
+    monkeypatch.setattr(sys.modules[__name__], "_files", lambda: [name])
+    script.write_text(state_line + "\n", encoding="utf-8")
+    test_no_course_material_in_tracked_files()
+    script.write_text(state_line + "\n" + course_line + "\n", encoding="utf-8")
+    with pytest.raises(AssertionError):
+        test_no_course_material_in_tracked_files()
+
+
+def test_course_scan_exempts_only_the_scripts_and_templates_folders(tmp_path, monkeypatch):
+    """The exemption reaches the toolkit code folders alone: the same state-file line in any other folder of the
+    toolkit names per-machine planning state, so it stays an offender and the scan must fail on it."""
+    state_line = "reads " + ".specify/feature" + ".json"
+    names = [".specify/scripts/x.sh", ".specify/memory/plan.md"]
+    monkeypatch.setattr(sys.modules[__name__], "ROOT", tmp_path)
+    for name in names:
+        path = tmp_path / name
+        path.parent.mkdir(parents=True)
+        path.write_text(state_line + "\n", encoding="utf-8")
+    monkeypatch.setattr(sys.modules[__name__], "_files", lambda: [names[0]])
+    test_no_course_material_in_tracked_files()
+    monkeypatch.setattr(sys.modules[__name__], "_files", lambda: [names[1]])
+    with pytest.raises(AssertionError):
+        test_no_course_material_in_tracked_files()
 
 
 def test_no_machine_paths_in_tracked_files():
@@ -178,6 +224,20 @@ def test_no_portuguese_in_code_data_docs_or_tests():
             if isinstance(line, str) and is_portuguese(line):
                 found.append(f"{name}:{number}")
     assert not found, found[:20]
+
+
+def test_portuguese_scan_covers_shell_yaml_text_and_config_specs(tmp_path, monkeypatch):
+    """specs/ shell, YAML and plain text files carry the Portuguese scan, not only code and document files."""
+    names = ["specs/edge/run.sh", "specs/edge/run.yaml", "specs/edge/notes.txt", "specs/edge/config.yml"]
+    (tmp_path / "specs" / "edge").mkdir(parents=True)
+    marker = "prazo d" + "e 30 dias"
+    for name in names:
+        (tmp_path / name).write_text(marker + "\n", encoding="utf-8")
+    monkeypatch.setattr(sys.modules[__name__], "ROOT", tmp_path)
+    monkeypatch.setattr(sys.modules[__name__], "_files", lambda: list(names))
+    assert set(_portuguese_scope()) == set(names)
+    with pytest.raises(AssertionError):
+        test_no_portuguese_in_code_data_docs_or_tests()
 
 
 def test_local_tool_folders_are_never_tracked():

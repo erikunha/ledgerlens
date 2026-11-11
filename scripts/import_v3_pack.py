@@ -53,24 +53,24 @@ SOURCE_ENV = "LEDGERLENS_V3_PACK"
 PROVENANCE = TARGET / "ORIGEM.md"
 
 sys.path.insert(0, str(ROOT / "scripts"))
+sys.path.insert(0, str(ROOT / "tests"))
+# The guard of the repository itself, reused: the import is never weaker than the gate that runs after it, so
+# whatever the repository would refuse never lands in docs/v3/ in the first place.
+from test_public_clean import FORBIDDEN, FORBIDDEN_CASE, HOME_PATH, SECRET, is_portuguese  # noqa: E402
 from v3_translations import _TRANSLATIONS  # noqa: E402
 
 # Extensions that enter the repository as text and can be converted.
 TEXT_SUFFIXES = {".md", ".json", ".py", ".yaml", ".yml", ".txt", ".csv"}
 
-# The words the context guard of the repository forbids, assembled in parts so this file does not match it.
+# Only the rules specific to this import, assembled in parts so this file does not match the repository guard: the
+# wording of the local plan outside git and the mail domain it lived in. The course words, the machine paths, the
+# secrets and the Portuguese markers come from the repository guard above.
 BANNED_WORDS = "|".join(
     [
-        "Inf" + "net",
-        r"\bM" + r"BA\b",
         "Agentes " + "Cognitivos",
-        "disci" + "plina",
-        "profes" + r"sor",
         r"\bau" + r"las?\b",
-        "rub" + r"ric",
         r"\bcur" + r"sos?\b",
         "trabalho " + "final",
-        "enun" + "ciado",
         "g" + "mail",
         r"respostas " + r"do\b",
     ]
@@ -150,13 +150,32 @@ def _converted_digest(expected: dict[str, bytes]) -> str:
 
 
 def _guard_hits(relative: str, text: str) -> list[str]:
-    """The lines of the file that the context guard of the repository does not accept."""
+    """The lines of the file that the context guard of the repository does not accept.
+
+    The repository patterns come from the repository guard itself, so this check can never be weaker than the gate
+    that runs after the import. The file name counts like a line, the same way the repository guard counts it. On
+    top of the repository rules, the import refuses its own material: the ids and the proper name of the local plan
+    outside git, with the PRD exempt from the ids alone.
+    """
     hits: list[str] = []
     check_ids = relative != ID_EXEMPT_SOURCE
+
+    def _refused(line: str) -> bool:
+        return bool(
+            FORBIDDEN.search(line)
+            or FORBIDDEN_CASE.search(line)
+            or HOME_PATH.search(line)
+            or SECRET.search(line)
+            or is_portuguese(line)
+            or BANNED_PATTERN.search(line)
+            or (check_ids and BANNED_ID_PATTERN.search(line))
+            or PERSONAL_PATTERN.search(line)
+        )
+
+    if _refused(relative):
+        hits.append(f"{relative}:0: {relative}")
     for number, line in enumerate(text.splitlines(), 1):
-        if BANNED_PATTERN.search(line) or (check_ids and BANNED_ID_PATTERN.search(line)):
-            hits.append(f"{relative}:{number}: {line.strip()[:100]}")
-        elif PERSONAL_PATTERN.search(line):
+        if _refused(line):
             hits.append(f"{relative}:{number}: {line.strip()[:100]}")
     return hits
 

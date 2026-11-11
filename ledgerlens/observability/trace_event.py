@@ -27,11 +27,14 @@ knows that `append` exists.
 The three contract modes say where the event came from: `live_agent` is a real execution, with a real model and real
 exchange rates; `deterministic_sandbox` is the deterministic execution, with the scripted model and the recorded rate;
 and `recorded_replay` is a recorded trace, which is repeated and must never be called a live execution. The mode
-travels with the event so that nobody has to guess later.
+travels with the event so that nobody has to guess later, and no event is labelled live by accident: an event
+constructed without a mode is a deterministic execution (`deterministic_sandbox`), and an event read back from a dict
+without a mode is a recording (`recorded_replay`). A live execution has to declare itself.
 
 The second defence against secrets happens at the boundary, in `to_dict`: even with the `Span` already sanitized and
 even if the event was assembled outside the coordinator, the payload goes through `redact` and loses keys like
-`api_key`, `authorization` and `cookie`. Whoever writes the file never sees the key.
+`api_key`, `authorization` and `cookie`, and a key that shows up as a field name is redacted in place. Whoever writes
+the file never sees the key.
 """
 
 from __future__ import annotations
@@ -78,6 +81,24 @@ SNAPSHOT_PATTERN = re.compile(r"^[a-f0-9]{64}$")
 # the schema validation on the other side.
 TRACE_MODES = frozenset({"recorded_replay", "deterministic_sandbox", "live_agent"})
 
+# The same refusal for the event type: the schema lists exactly these eleven values, and an event outside the list is
+# not a trace event of this contract.
+EVENT_TYPES = frozenset(
+    {
+        "run.started",
+        "plan.created",
+        "span.started",
+        "span.ended",
+        "evidence.added",
+        "claim.verdict",
+        "run.status",
+        "run.completed",
+        "run.failed",
+        "run.cancelled",
+        "heartbeat",
+    }
+)
+
 
 def default_mode() -> TraceMode:
     """The mode the execution actually is: deterministic when the product is offline, live when it is not.
@@ -91,7 +112,10 @@ def default_mode() -> TraceMode:
 def _sanitize(value: Any) -> Any:
     """The payload without keys and without text that looks like a key: the second defence, at the transport."""
     if isinstance(value, dict):
-        return {str(key): _sanitize(item) for key, item in value.items() if str(key).lower() not in FORBIDDEN_KEYS}
+        # The name position goes through `redact` as well: a key materialized as a field name does not escape.
+        return {
+            redact(str(key)): _sanitize(item) for key, item in value.items() if str(key).lower() not in FORBIDDEN_KEYS
+        }
     if isinstance(value, (list, tuple)):
         return [_sanitize(item) for item in value]
     if isinstance(value, str):
@@ -101,7 +125,13 @@ def _sanitize(value: Any) -> Any:
 
 @dataclass(frozen=True)
 class TraceEvent:
-    """One trace event in the public format, exactly what the schema defines."""
+    """One trace event in the public format, exactly what the schema defines.
+
+    The two defaults are deliberately different: an event constructed in code without a mode is a deterministic
+    execution, so the field default is `deterministic_sandbox`; an event read back from a dict without a mode is a
+    recording, so the `from_dict` default is `recorded_replay`. Neither default is ever `live_agent`, because a live
+    execution is a claim that has to be made explicitly.
+    """
 
     run_id: str
     seq: int
@@ -111,7 +141,7 @@ class TraceEvent:
     span_id: str | None = None
     parent_span_id: str | None = None
     snapshot_sha256: str | None = None
-    mode: TraceMode = "live_agent"
+    mode: TraceMode = "deterministic_sandbox"
 
     def __post_init__(self) -> None:
         """Checks what the schema demands, so an invalid event never reaches the sink."""
@@ -119,6 +149,10 @@ class TraceEvent:
             raise ValueError(f"invalid snapshot_sha256: {self.snapshot_sha256!r}")
         if self.seq < 1:
             raise ValueError(f"invalid seq: {self.seq}")
+        if not self.run_id:
+            raise ValueError("run_id must not be empty")
+        if self.event_type not in EVENT_TYPES:
+            raise ValueError(f"invalid event_type: {self.event_type!r}")
         if self.mode not in TRACE_MODES:
             raise ValueError(f"invalid mode: {self.mode!r}")
 
@@ -151,7 +185,9 @@ class TraceEvent:
     def from_dict(cls, data: dict[str, Any]) -> TraceEvent:
         """The event back, from the dictionary or from the line of the file.
 
-        The schema version is checked: a file of a different version is not read as if it were this one.
+        The schema version is checked: a file of a different version is not read as if it were this one. A dict
+        without the mode key is a recording read back, so the mode comes out `recorded_replay` and never
+        `live_agent`: this default is the deserialization one, deliberately different from the construction default.
         """
         version = str(data.get("schema_version", SCHEMA_VERSION))
         if version != SCHEMA_VERSION:
@@ -165,7 +201,7 @@ class TraceEvent:
             span_id=data.get("span_id"),
             parent_span_id=data.get("parent_span_id"),
             snapshot_sha256=data.get("snapshot_sha256"),
-            mode=data.get("mode", "live_agent"),
+            mode=data.get("mode", "recorded_replay"),
         )
 
 

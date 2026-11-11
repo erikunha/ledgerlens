@@ -2,13 +2,17 @@
 
 What they guarantee, and why: (a) the context is frozen, because it is the portrait of an execution and nobody changes
 a portrait after it left; (b) the mode comes from the process configuration when the context does not declare another
-one, and the declared mode wins, because a deterministic execution cannot be labelled as live by the carelessness of
-the caller; (c) the memory folder is the session one, so two visitors do not share the same case memory; (d) with a
-context the integrator writes the memory in the folder of the context, and without a context it stays in the global
-folder, as it always was, because the change has to be migratable; (e) the trace coordinator comes from the context,
-with the identifier, the mode and the snapshot hash; (f) the identity of the execution reaches the agent, so the trace
-and the result can say whose execution it was; (g) a mode outside the contract and a session id that is not an
-identifier are refused at construction; (h) the isolation is proven in the data, not only in the path.
+one, and a declaration is trusted in one direction only: a live machine may declare the deterministic sandbox, but an
+offline machine holds a declared live mode down to the deterministic sandbox, because the scripted model and the
+recorded exchange rate are not a live execution; (c) the memory folder is the session one, named after the canonical
+form of the session id, so two identifiers that differ only in the case are two folders and two visitors do not share
+the same case memory; (d) with a context the integrator writes the memory in the folder of the context, and without a
+context it stays in the global folder, as it always was, because the change has to be migratable; (e) the trace
+coordinator comes from the context, with the identifier, the mode and the snapshot hash; (f) the identity of the
+execution reaches the agent, so the trace and the result can say whose execution it was, and it reports the session id
+as it was declared; (g) a mode outside the contract and a session id that is not an identifier are refused at
+construction; (h) the isolation is proven in the data, not only in the path, and it holds for the case of the
+identifier too.
 
 Everything offline, with no key and no model: the `ScriptedChatModel` answers what is needed.
 """
@@ -53,10 +57,53 @@ def test_the_mode_comes_from_the_configuration_when_the_context_does_not_declare
 
 
 def test_the_declared_mode_wins_over_the_configuration(monkeypatch):
-    """A declared mode wins over the configuration: a deterministic execution cannot be labelled as live."""
+    """A live machine may declare the deterministic sandbox: the safe label is always allowed."""
     monkeypatch.setenv("LEDGERLENS_OFFLINE", "0")
     context = RunContext(run_id="r1", session_id="s1", mode="deterministic_sandbox")
     assert context.resolved_mode() == "deterministic_sandbox"
+
+
+def test_the_declared_live_mode_is_held_down_while_the_machine_is_offline(monkeypatch):
+    """An offline machine runs the scripted model and the recorded rate, so it is not a live execution.
+
+    The declared mode wins in one direction only: the deterministic sandbox may be declared on a live machine,
+    because the sandbox is the safe label. The escalation to live is refused on an offline machine, because the
+    product is running the scripted model and the recorded exchange rate.
+    """
+    monkeypatch.setenv("LEDGERLENS_OFFLINE", "1")
+    context = RunContext(run_id="r1", session_id="s1", mode="live_agent")
+    assert context.resolved_mode() == "deterministic_sandbox"
+    assert context.resolved_mode() != "live_agent"
+
+
+def test_the_trace_of_an_offline_run_is_never_live(monkeypatch):
+    """The label that travels with the trace is the resolved one, so an offline run is never published as live."""
+    monkeypatch.setenv("LEDGERLENS_OFFLINE", "1")
+    context = RunContext(run_id="r1", session_id="s1", mode="live_agent")
+    sink = InMemoryTraceSink()
+    stream = context.trace_stream(sink)
+    assert stream.mode == "deterministic_sandbox"
+
+    from ledgerlens.observability.trace_event import TraceEventDraft
+
+    stream.emit(TraceEventDraft("run.started", {"scenario": "S01"}))
+    assert sink.read_from("r1", after_seq=0, limit=10)[0].mode == "deterministic_sandbox"
+
+
+def test_the_live_mode_still_resolves_on_a_live_machine(monkeypatch):
+    """On a machine that is not offline, a declared live mode is the mode of the execution."""
+    monkeypatch.setenv("LEDGERLENS_OFFLINE", "0")
+    context = RunContext(run_id="r1", session_id="s1", mode="live_agent")
+    assert context.resolved_mode() == "live_agent"
+
+
+def test_a_declared_replay_keeps_its_label_in_both_directions(monkeypatch):
+    """A replay is a replay in a live machine and in an offline one: the label is already the true one."""
+    monkeypatch.setenv("LEDGERLENS_OFFLINE", "0")
+    assert RunContext(run_id="r1", session_id="s1", mode="recorded_replay").resolved_mode() == "recorded_replay"
+
+    monkeypatch.setenv("LEDGERLENS_OFFLINE", "1")
+    assert RunContext(run_id="r1", session_id="s1", mode="recorded_replay").resolved_mode() == "recorded_replay"
 
 
 def test_a_mode_outside_the_contract_is_refused():
@@ -84,6 +131,68 @@ def test_two_sessions_do_not_share_the_memory_dir():
     first = RunContext(run_id="r1", session_id="sess-a")
     second = RunContext(run_id="r2", session_id="sess-b")
     assert first.resolve_memory_dir() != second.resolve_memory_dir()
+
+
+def test_the_session_folder_never_collides_with_another_one_on_a_case_insensitive_filesystem(tmp_path: Path):
+    """Two identifiers that differ only in the case are two folders, on every filesystem.
+
+    The check ignores the case of the folder name on purpose: a filesystem that ignores the case would give both
+    identifiers the same folder, and one visitor would read what another wrote.
+    """
+    first = RunContext(run_id="r1", session_id="Visitor-A")
+    variant = RunContext(run_id="r2", session_id="visitor-a")
+    other = RunContext(run_id="r3", session_id="sess-b")
+
+    names = {
+        context.resolve_memory_dir(tmp_path).name.lower()
+        for context in (first, variant, other)
+    }
+    assert len(names) == 3
+
+
+def test_the_same_session_id_always_gives_the_same_folder(tmp_path: Path):
+    """The canonical form is stable: the same identifier always lands in the same folder."""
+    first = RunContext(run_id="r1", session_id="Visitor-A")
+    second = RunContext(run_id="r2", session_id="Visitor-A")
+    assert first.resolve_memory_dir(tmp_path) == second.resolve_memory_dir(tmp_path)
+    assert first.canonical_session_id == second.canonical_session_id
+
+
+def test_the_identity_reports_the_declared_session_id():
+    """The identity reports the identifier as it was declared; the canonical form is the storage detail."""
+    context = RunContext(run_id="r1", session_id="Visitor-A")
+    assert context.identity()["session_id"] == "Visitor-A"
+    assert context.canonical_session_id != context.session_id
+    assert context.canonical_session_id == context.canonical_session_id.lower()
+
+
+def test_a_case_variant_of_the_session_id_does_not_see_the_case(tmp_path: Path):
+    """The isolation holds for the case of the identifier too: a variant is another session, not the same folder.
+
+    The seed of cases is shared and read-only by design, so every session sees it. What a session writes is
+    private, and a session whose identifier differs only in the case is a different session.
+    """
+    first = RunContext(run_id="r1", session_id="Visitor-A")
+    variant = RunContext(run_id="r2", session_id="visitor-a")
+    other = RunContext(run_id="r3", session_id="sess-b")
+
+    memory_a = CaseMemory(first.resolve_memory_dir(tmp_path))
+    memory_variant = CaseMemory(variant.resolve_memory_dir(tmp_path))
+    memory_other = CaseMemory(other.resolve_memory_dir(tmp_path))
+
+    written = memory_a.write_case(_supported_result("Visitor-A"))
+    assert written["written"] is True, written
+    case_id = written["case_id"]
+
+    ids_a = {record["case_id"] for record in memory_a.records()}
+    ids_variant = {record["case_id"] for record in memory_variant.records()}
+    ids_other = {record["case_id"] for record in memory_other.records()}
+
+    assert case_id in ids_a
+    assert case_id not in ids_variant
+    assert case_id not in ids_other
+    assert not memory_variant.runtime_file.exists()
+    assert not memory_other.runtime_file.exists()
 
 
 def test_with_a_context_the_memory_goes_to_the_session_folder():

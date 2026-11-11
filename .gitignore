@@ -22,3 +22,5 @@ data/ledger.db
 !/.specify/**
 !/specs/
 !/specs/**
+!/docs/v3/specs/
+!/docs/v3/specs/**

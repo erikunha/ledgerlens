@@ -34,8 +34,8 @@ not to overwrite earlier tasks.
 - 24 release stages, from R0 to R23+, without limiting the research horizon.
 - 161 new candidate tasks, with priorities based on dependencies and checks, not on an artificial ceiling.
 - 34 screens and experience surfaces with routes and UX states.
-- 19 technical specs of relevant components, including sandbox, evals, multiagents, cost control, human review, security,
-  models and research.
+- 19 technical specs of relevant components, including sandbox, evals, multiagents, cost control, human review,
+  security, models and research.
 - Seven new JSON Schemas and seven consistent examples for the v3 contracts.
 - Documents about economics, incentives, bottlenecks, portfolio, studies, evaluation, security, agent network and
   trends.

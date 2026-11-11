@@ -73,6 +73,9 @@ DURATION_PATTERN = re.compile(r"\bin \d+(?:\.\d+)?s\b")
 CLOCK_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?")
 # The pytest writes the clock in parentheses at the end of the score, for example "(0:02:51)".
 PAREN_CLOCK_PATTERN = re.compile(r"\(\d+:\d{2}:\d{2}\)")
+# The absolute path of the machine. The record is versioned in a public repository, so the path of the author cannot
+# travel with it.
+MACHINE_PATH_PATTERN = re.compile(r"/(?:Users|home)/[^\s:]+")
 
 
 def _env() -> dict[str, str]:
@@ -128,15 +131,20 @@ def _data_rows(path: Path) -> str:
 
 
 def _normalize(output: str) -> str:
-    """Takes out what changes between two equal runs: the clock and the duration."""
+    """Takes out what changes between two equal runs: the clock, the duration and the path of the machine."""
     text = DURATION_PATTERN.sub("in <time>", output)
     text = CLOCK_PATTERN.sub("<date>", text)
-    return PAREN_CLOCK_PATTERN.sub("(<clock>)", text)
+    text = PAREN_CLOCK_PATTERN.sub("(<clock>)", text)
+    return MACHINE_PATH_PATTERN.sub("<path>", text)
 
 
 def _tail(output: str, lines: int = 12) -> str:
-    """The end of the output: it is where pytest leaves the score."""
-    return "\n".join(output.splitlines()[-lines:])
+    """The end of the output: it is where pytest leaves the score.
+
+    The path of the machine is taken out here, before the text reaches the record, because the record is versioned in
+    a public repository.
+    """
+    return MACHINE_PATH_PATTERN.sub("<path>", "\n".join(output.splitlines()[-lines:]))
 
 
 def _collect(*, run_tests: bool) -> dict[str, object]:

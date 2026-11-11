@@ -95,6 +95,28 @@ def test_redact_removes_keys(key: str) -> None:
     assert out.startswith("before ") and out.endswith(" after")
 
 
+# Synthetic bodies only: each one is the fake word repeated up to the length floor of its family.
+OTHER_KEY_SHAPES = (
+    "ghp_" + "fakefakefakefakefake1234",
+    "AKIA" + "FAKEFAKEFAKE1234",
+    "AIza" + "FakeFakeFakeFakeFake12345",
+)
+
+
+@pytest.mark.parametrize("key", OTHER_KEY_SHAPES)
+def test_redact_removes_github_aws_and_google_key_shapes(key: str) -> None:
+    out = redact(f"deploy failed for tenant acme with token {key} in the header")
+    assert key not in out
+    assert "[REDACTED]" in out
+    assert out.startswith("deploy failed for tenant acme with token ") and out.endswith(" in the header")
+
+
+def test_redact_leaves_short_lookalikes_that_are_not_keys_alone() -> None:
+    # Below the length floor of each family, so an ordinary word is never mangled.
+    for lookalike in ("AKIA12345678", "ghp_fakefake", "AIzaFakeFake12"):
+        assert redact(f"id {lookalike} is not a key") == f"id {lookalike} is not a key"
+
+
 def test_keys_in_tool_input_and_errors_never_reach_the_sink() -> None:
     sink = io.StringIO()
 

@@ -4,16 +4,21 @@ Why it exists: the phase R2 will repeat an execution without calling any model. 
 the public contract format (`TraceEvent`), that anyone can read, play in a browser and check by hash. The bundle is that
 file: the events as JSON lines, plus a manifest that declares the mode, the origin, the count and the hash of each part.
 
-What the bundle carries is always a deterministic execution: scripted model, recorded exchange rate, no key and no
-network. The `mode` in the manifest is `deterministic_sandbox`, and the `mode` of each event is the same. Nothing here
-is a live execution, and the manifest says so in words, so that nobody has to infer it from the format.
+What the bundle carries is never a live execution: no key and no network, and one single mode from the first line to
+the last. The write path checks that before any file exists: a set with a `live_agent` event is refused, because a live
+execution never becomes a bundle, and a set with more than one mode is refused, because there is no honest single
+label for the manifest. The `mode` in the manifest is then the one mode every event carries, and the note says in
+words that it is not a live execution, so that nobody has to infer it from the format.
 
 The redaction happens at the event boundary, in `ledgerlens.observability.trace_event`. The bundle does not trust that
-and checks again when it reads: if the text of the file changes with the redaction, there is a key inside it and the
-bundle does not open. It is the same `redact` function the trace uses, so there is a single source of pattern.
+and checks again when it reads: if the text of the events file or of the manifest changes with the redaction, there is
+a key inside it and the bundle does not open. The `note` and the `scenario` are free text from the caller, so they go
+through the same `redact` on the way in. There is a single source of pattern.
 
 The integrity check is by hash: the manifest keeps the sha256 of each file, and `load_bundle` refuses a tampered
-bundle. It is what allows the bundle hash to be cited as proof that the replay is the same one as always.
+bundle. It is what allows the bundle hash to be cited as proof that the replay is the same one as always. What the
+manifest declares is also checked against what the events say: the run id has to be the run id of the events, and the
+directory has to hold exactly the files the manifest declares, with nothing smuggled beside them.
 """
 
 from __future__ import annotations
@@ -37,7 +42,8 @@ DEFAULT_NOTE = (
 
 
 class BundleError(Exception):
-    """The bundle does not open: the hash is wrong, there is a secret inside or an event is invalid."""
+    """The bundle does not open or does not get written: the hash is wrong, there is a secret inside, an event is
+    invalid or the events have no honest single mode."""
 
 
 @dataclass(frozen=True)
@@ -101,11 +107,27 @@ def write_bundle(
 ) -> BundleManifest:
     """Writes the bundle and returns the manifest.
 
-    The events go out in sequence order, one per line. The manifest is written afterwards, with the hash of each file,
-    and it is what closes the package.
+    The events are validated before any file is written: a set with a `live_agent` event is refused, because a live
+    execution never becomes a bundle, and a set with more than one mode is refused, because the manifest can carry
+    only one honest label. The events go out in sequence order, one per line, and the manifest declares the single
+    mode they all share. The manifest is written afterwards, with the hash of each file, and it is what closes the
+    package.
     """
     if not events:
         raise BundleError("a bundle with no event at all serves nothing")
+    modes = {event.mode for event in events}
+    if "live_agent" in modes:
+        raise BundleError("a live execution never becomes a bundle: the events carry mode live_agent")
+    if len(modes) != 1:
+        raise BundleError("the events do not have a single mode, so the manifest has no honest label")
+    mode = modes.pop()
+    run_ids = {event.run_id for event in events}
+    if len(run_ids) != 1:
+        raise BundleError("the events do not have a single run id, so the manifest has no honest run id")
+    # The note and the scenario are free text from the caller, the same as a payload value: they pass through the
+    # single redaction source before they reach the manifest.
+    scenario = redact(scenario)
+    note = redact(note)
     directory.mkdir(parents=True, exist_ok=True)
     events_path = directory / EVENTS_FILE
     ordered = sorted(events, key=lambda item: item.seq)
@@ -114,7 +136,7 @@ def write_bundle(
 
     manifest = BundleManifest(
         run_id=ordered[0].run_id,
-        mode=ordered[0].mode,
+        mode=mode,
         scenario=scenario,
         events=len(events),
         files={EVENTS_FILE: _sha256(events_path)},
@@ -139,13 +161,27 @@ def load_bundle(directory: Path) -> tuple[BundleManifest, list[TraceEvent]]:
     if redact(raw_events) != raw_events:
         raise BundleError("the bundle has something that looks like a key inside")
 
-    manifest = BundleManifest.from_dict(json.loads(manifest_path.read_text(encoding="utf-8")))
+    # The manifest is not hashed by anything inside the directory, so its own text goes through the same secret
+    # check as the events file.
+    raw_manifest = manifest_path.read_text(encoding="utf-8")
+    if redact(raw_manifest) != raw_manifest:
+        raise BundleError("the manifest has something that looks like a key inside")
+
+    manifest = BundleManifest.from_dict(json.loads(raw_manifest))
     for name, digest in manifest.files.items():
         path = directory / name
         if not path.exists():
             raise BundleError(f"the manifest cites {name}, which is not in the bundle")
         if _sha256(path) != digest:
             raise BundleError(f"the hash of {name} does not match the manifest")
+
+    # The bundle is a sealed package: what the manifest cites, the manifest itself, and nothing else. Dotfiles are
+    # exempt because the desktop writes Finder metadata into folders, and that is not bundle content.
+    expected = {MANIFEST_FILE, *manifest.files}
+    present = {path.name for path in directory.iterdir() if not path.name.startswith(".")}
+    if present != expected:
+        extra = sorted(present - expected)
+        raise BundleError(f"the bundle has extra files the manifest does not declare: {extra}")
 
     events = [TraceEvent.from_dict(json.loads(line)) for line in raw_events.splitlines() if line.strip()]
     if len(events) != manifest.events:
@@ -155,6 +191,9 @@ def load_bundle(directory: Path) -> tuple[BundleManifest, list[TraceEvent]]:
     modes = {event.mode for event in events}
     if modes != {manifest.mode}:
         raise BundleError("the events of the bundle do not have the same mode the manifest declares")
+    run_ids = {event.run_id for event in events}
+    if run_ids != {manifest.run_id}:
+        raise BundleError("the run id of the manifest is not the run id of the events")
     return manifest, events
 
 

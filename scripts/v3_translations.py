@@ -108,7 +108,8 @@ replaced by a fake demo.
 
 ## Limitations verified while reading the code
 
-- The offline mode uses `ScriptedChatModel` and accepts a defined subset of questions; it is not a free model.
+- The offline mode uses `ScriptedChatModel` and accepts a defined subset of questions; it is not a free local language
+  model.
 - `app/streamlit_app.py` holds UI, session management, Thread/Queue and rendering in about 660 lines. That makes complex
   screens hard to evolve.
 - `@st.cache_resource` keeps scoped sources and ledgers in a process-wide cache; a mutable public demo will need new

@@ -5,10 +5,10 @@ This folder is a versioned copy of the LedgerLens v3 design package. It is not t
 ## Origin
 
 - Origin: the v3 design package, which lives outside git by the rule of the repository conventions.
-- Imported at: 2026-11-11T19:30:33+00:00
+- Imported at: 2026-11-11T20:15:33+00:00
 - Files: 125
 - sha256 of the source set: `4bf1cb2402ac7b31d85244e9ec7e4970c1db5ab63f17361d43471e102a2cbad1`
-- sha256 of the converted tree: `f3de140a03031edc13dba14176bbd2e256ac731001b37272ed4942beb7f6f373`
+- sha256 of the converted tree: `17991f6f6daf3657d1a40a5dfe1316c475b1cbb6bbe8ae595d4e5b287cae04f5`
 - Reimport command: `uv run python scripts/import_v3_pack.py --source <package folder>`
 - Check command: `uv run python scripts/import_v3_pack.py --source <package folder> --check`
 
@@ -110,7 +110,7 @@ The conversion is mechanical and lives in the import script. Nothing else was ed
 | `contracts/schemas/v3-portfolio-proof.schema.json` | 2084 |
 | `contracts/schemas/v3-review-task.schema.json` | 1644 |
 | `design/SCREEN-WIREFRAMES.md` | 5489 |
-| `docs/00-EXECUTIVE-SUMMARY.md` | 4316 |
+| `docs/00-EXECUTIVE-SUMMARY.md` | 4322 |
 | `docs/01-REPOSITORY-AUDIT.md` | 7850 |
 | `docs/02-PRD-AND-DEFINITION-OF-DONE.md` | 7677 |
 | `docs/03-EXPERIENCE-AND-SCREENS.md` | 10335 |

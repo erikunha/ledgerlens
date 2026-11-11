@@ -10,7 +10,9 @@ key in a tool error reaches neither the event nor the file, because the second d
 (g) a real investigation becomes events with a growing sequence and a preserved hierarchy; (h) whoever reads the
 events later gets only what is after the number they asked for, which is what a client that reconnects needs;
 (i) memory has a ceiling per execution; (j) the file gives back exactly what was written; (k) a mode outside the
-contract never reaches the sink.
+contract never reaches the sink; (l) the labels that arrive without a declaration are the safe ones, because an event
+constructed without a mode is a deterministic sandbox, a dict read back without a mode is a recorded replay, and
+neither is ever called live by accident.
 """
 
 from __future__ import annotations
@@ -109,6 +111,59 @@ def test_a_mode_outside_the_contract_is_refused():
             at="2026-11-11T12:00:00.000+00:00",
             event_type="span.started",
             mode="banana",  # type: ignore[arg-type]
+        )
+
+
+def test_an_event_constructed_without_a_mode_is_a_deterministic_execution():
+    """An event with no declared mode is the deterministic execution: the safe label, never a claim of live."""
+    event = TraceEvent(
+        run_id="run-1",
+        seq=1,
+        at="2026-11-11T12:00:00.000+00:00",
+        event_type="span.started",
+    )
+    assert event.mode == "deterministic_sandbox"
+
+
+def test_an_event_read_back_without_a_mode_is_a_recorded_replay():
+    """A dict without the mode key is a recording read back, so it comes out a replay and never a live run.
+
+    The deserialization default is deliberately not the construction default: an event assembled in code is a
+    deterministic sandbox, a dict read back from a file is a replay, and neither is labelled live by accident.
+    """
+    data = {
+        "schema_version": "1",
+        "run_id": "run-1",
+        "seq": 2,
+        "at": "2026-11-11T12:00:00.000+00:00",
+        "event_type": "span.ended",
+        "payload": {},
+        "span_id": None,
+        "parent_span_id": None,
+    }
+    assert "mode" not in data
+    assert TraceEvent.from_dict(data).mode == "recorded_replay"
+
+
+def test_an_event_type_outside_the_schema_is_refused():
+    """An event type the schema does not list never reaches the sink: it is refused at the construction."""
+    with pytest.raises(ValueError):
+        TraceEvent(
+            run_id="run-1",
+            seq=1,
+            at="2026-11-11T12:00:00.000+00:00",
+            event_type="banana",  # type: ignore[arg-type]
+        )
+
+
+def test_an_empty_run_id_is_refused():
+    """The schema demands a non empty run id: an event without one never reaches the sink."""
+    with pytest.raises(ValueError):
+        TraceEvent(
+            run_id="",
+            seq=1,
+            at="2026-11-11T12:00:00.000+00:00",
+            event_type="span.started",
         )
 
 
@@ -247,6 +302,18 @@ def test_every_forbidden_key_is_dropped_from_the_payload():
     payload = sink.read_from("run-1", after_seq=0, limit=10)[0].payload
     assert set(payload) == {"headers"}
     assert payload["headers"] == {"x-keep": "ok"}
+
+
+def test_a_fake_key_in_a_name_position_is_redacted():
+    """A key that shows up as a field name is redacted too, at any depth: the defence does not look only at values."""
+    sink = InMemoryTraceSink()
+    stream = TraceEventStream("run-1", sink)
+    stream.emit(TraceEventDraft("plan.created", {FAKE_KEY: "value", "nested": {f"Bearer {FAKE_KEY}": "v"}}))
+
+    event = sink.read_from("run-1", after_seq=0, limit=10)[0]
+    assert FAKE_KEY not in event.to_json()
+    assert event.payload["[REDACTED]"] == "value"
+    assert event.payload["nested"] == {"[REDACTED]": "v"}
 
 
 def test_a_secret_written_straight_to_the_sink_is_still_redacted(tmp_path: Path):

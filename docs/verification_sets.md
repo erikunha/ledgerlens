@@ -35,14 +35,16 @@ are decided by code, the NLI does not see them, and they enter none of the accur
 ## The rule of citation
 
 1. The NLI accuracy is over 70 NLI cases. Never over the 43.
-2. "25 of 40" are the right verdicts on the live set, with the real verifier. It is not the NLI accuracy: it is the hit
-   rate of the whole verifier, which includes the number and the coherence checks.
+2. "25 of 40" is the NLI accuracy on the live set. The live set is text only: the numeric and the coherence checks do
+   not apply to it, so it is one term of the combined 0.786 over the 70 NLI cases, and not a separate measurement of the
+   whole verifier.
 3. The 43 are the test set of the verifier. Citing "43 cases" without saying that the accuracy has another denominator
    is a citation error.
 4. The 30 cases of the online evaluation are another set, the one that compares the three variants of the agent. Thirty
    cases show a tendency, not a significance.
 5. The NLI threshold does not fix the limitation of the model: of the supported live sentences, many stay without a
    verdict at any threshold, because the error is the model with a long premise, not the cut.
+
 ## How this is checked
 
 - `ledgerlens/verify/thresholds.json` keeps the calibration metadata with the explicit denominators: the total, the

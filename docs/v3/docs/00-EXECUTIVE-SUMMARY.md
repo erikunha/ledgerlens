@@ -2,10 +2,10 @@
 
 ## Goal
 
-Turn the LedgerLens into a public demonstration that lets a recruiter or a technical lead understand, in 90 seconds,
-four competences: (1) architecture of applied AI systems, (2) agentic execution and tool use under control, (3) empirical
-evaluation and data integrity, and (4) production full-stack engineering. **Do not build a fintech, a payments product
-or a paid SaaS.**
+Turn the LedgerLens into a public demonstration that lets a recruiter or a technical lead understand four
+competences in 90 seconds: (1) architecture of applied AI systems, (2) agentic execution and tool use under control,
+(3) empirical evaluation and data integrity, and (4) production full-stack engineering. **Do not build a fintech, a
+payments product or a paid SaaS.**
 
 ## The portfolio hypothesis
 
@@ -23,7 +23,8 @@ replaced by a fake demo.
 
 ## Limitations verified while reading the code
 
-- The offline mode uses `ScriptedChatModel` and accepts a defined subset of questions; it is not a free language model.
+- The offline mode uses `ScriptedChatModel` and accepts a defined subset of questions; it is not a free local language
+  model.
 - `app/streamlit_app.py` holds UI, session management, Thread/Queue and rendering in about 660 lines. That makes complex
   screens hard to evolve.
 - `@st.cache_resource` keeps scoped sources and ledgers in a process-wide cache; a mutable public demo will need new

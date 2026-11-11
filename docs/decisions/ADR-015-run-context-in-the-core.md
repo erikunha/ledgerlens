@@ -42,15 +42,22 @@ The identity is kept on the agent, so the trace, the result and the replay bundl
 without the caller carrying it around. `Integrator.identity()` returns the run, the session, the account, the branch
 and the snapshot hash, and returns nothing when there is no context, instead of inventing one.
 
-The `mode` does not come from the caller. When the context does not declare one, the mode comes from the process
-configuration, which is what decides whether the product is scripted or live. A declared mode wins over the
-configuration, but not the other way round: a deterministic execution cannot be labelled as live by the carelessness of
-the caller. A mode outside the contract is refused when the context is built, because a frozen dataclass does not
-validate types by itself.
+The `mode` does not come from the caller alone. When the context does not declare one, the mode comes from the process
+configuration, which is what decides whether the product is scripted or live. A declaration is trusted in one direction
+only: a live machine may declare the deterministic sandbox, because the sandbox is the safe label, but a machine that
+runs offline executes the scripted model and the recorded exchange rate, so a declared live mode cannot be true there
+and `resolved_mode()` holds it down to the deterministic sandbox, with a log line that says so. A declared
+`recorded_replay` keeps its label in both directions, because a replay is a replay. A mode outside the contract is
+refused when the context is built, because a frozen dataclass does not validate types by itself.
 
 The `session_id` lands in a path, so it has to look like an identifier: a pattern that allows letters, digits, dots,
 hyphens and underscores, and refuses a separator or a dot segment. The identifiers of the application are generated
 today, and in the R2 phase the identifier can come from a visitor, so the refusal happens at construction.
+
+The memory folder is named after the canonical form of the identifier: every uppercase letter and every dot is written
+with an escape marker that the identifier pattern refuses, so the form is unique per identifier and two identifiers that
+differ only in the case never share a folder, on a filesystem that ignores the case as well. The declared identifier is
+what the caller and the visitor know, and it is what the identity reports; the canonical form is a storage detail.
 
 The budget and the deadline enter as a structure, with everything optional. They are not applied inside the agent yet:
 the budget only becomes a ceiling when the phase that implements it arrives, and the model price is not always known.
@@ -78,6 +85,10 @@ session writes.
 - The case memory is no longer global when there is a context, and the session folder appears in
   `data/runtime/sessions/`.
 - The old tests do not change: without a context, the path is the one it always was.
+- The session folders under `data/runtime/sessions/` are named after the canonical form of the session id, so two
+  identifiers that differ only in the case are two folders on every filesystem.
+- An offline process never resolves a declared live mode: `resolved_mode()` holds it down to the deterministic sandbox
+  and the log says so.
 - The `RunContext` is the way to declare whose execution it is. The trace, the replay bundle and the result can carry
   the same identity.
 - The budget and the deadline are in the object and are not applied yet. This is a declared debt: whoever reads the
