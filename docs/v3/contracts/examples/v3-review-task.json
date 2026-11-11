@@ -1,0 +1,19 @@
+{
+  "schema_version": "3",
+  "review_id": "review-s03",
+  "run_id": "run-s03",
+  "branch_id": "branch-guest-001",
+  "snapshot_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "status": "queued",
+  "reasons": [
+    "dispute_deadline_near"
+  ],
+  "evidence_ids": [
+    "sql:1",
+    "policy:1"
+  ],
+  "recommended_action": "escalate_to_human",
+  "actor_type": "simulated_analyst",
+  "updated_at": "2026-11-11T10:00:00Z",
+  "decision_note": null
+}

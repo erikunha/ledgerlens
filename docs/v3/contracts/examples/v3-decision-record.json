@@ -1,0 +1,20 @@
+{
+  "schema_version": "3",
+  "decision_id": "D-MULTIAGENT-1",
+  "hypothesis": "Bounded specialist routing improves verified case resolution per dollar over C",
+  "lens": [
+    "Asymmetric Bets",
+    "Follow the Bottleneck",
+    "Opportunity Cost"
+  ],
+  "options": [
+    "single_agent_C",
+    "bounded_multiagent_D"
+  ],
+  "experiment": "Paired case experiment D vs C with same snapshot and limits",
+  "reversal_cost": "Feature flag; can disable D without migrating the ledger",
+  "evidence_refs": [],
+  "status": "proposed",
+  "what_changes_mind": "No improvement in paired cost/quality/risk after repeated runs",
+  "result": null
+}

@@ -16,3 +16,9 @@ data/raw/
 data/ledger.db
 
 .plans/
+# the specification toolkit and the specs it writes are part of the work and do stay in.
+# the negations come after, because a broader ignore rule higher up would otherwise win.
+!/.specify/
+!/.specify/**
+!/specs/
+!/specs/**

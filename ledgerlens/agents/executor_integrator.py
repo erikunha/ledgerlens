@@ -84,6 +84,7 @@ from ledgerlens.config import get_chat_model, get_settings
 from ledgerlens.memory.history import DEFAULT_MAX_TOKENS, get_session_history
 from ledgerlens.memory.long_term import CaseMemory
 from ledgerlens.observability.trace import OnEvent, Tracer
+from ledgerlens.run_context import RunContext
 from ledgerlens.schemas import InvestigationResult
 from ledgerlens.tools.fx import FxClient
 
@@ -104,9 +105,18 @@ class ExecutorIntegrator:
     case_memory: CaseMemory | None = None
     triage: Runnable | None = None
     system_prompt: str = INTEGRATOR_SYSTEM_PROMPT
+    run_context: RunContext | None = None
 
     def invoke(self, payload: Any, config: Any = None, **kwargs: Any) -> Any:
         return self.runnable.invoke(payload, config, **kwargs)
+
+    def identity(self) -> dict[str, str]:
+        """The identity of the execution this agent belongs to, empty when there is no context.
+
+        The legacy path carries the context too, so that the two integrators answer the same question about whose
+        execution it was.
+        """
+        return self.run_context.identity() if self.run_context is not None else {}
 
 
 def build_executor_integrator(
@@ -124,15 +134,22 @@ def build_executor_integrator(
     system_prompt: str = INTEGRATOR_SYSTEM_PROMPT,
     max_iterations: int = 8,
     max_history_tokens: int = DEFAULT_MAX_TOKENS,
+    run_context: RunContext | None = None,
 ) -> ExecutorIntegrator:
     """Builds the legacy integrator. The tool arguments are those of `build_integrator`.
 
     `db_path` is the ledger the tools read; `history_db_path` is the history SQLite file (without it, the
     `history.db` in the configured runtime folder). A new object over the same `history_db_path` recovers
     the sessions already saved. `triage_model` reads the question and writes the agent's plan (without it, the
-    configured model).
+    configured model). `run_context` is the identity and the scope of the execution; with it, the case memory lives in
+    the session folder instead of the global folder of the configuration.
     """
-    memory = case_memory or CaseMemory(get_settings().runtime_dir, embeddings=embeddings)
+    # Without a context the memory stays in the global folder of the configuration, as it always was. With a context it
+    # lives in the session folder: one visitor does not see the memory of another.
+    memory = case_memory or CaseMemory(
+        run_context.resolve_memory_dir() if run_context is not None else get_settings().runtime_dir,
+        embeddings=embeddings,
+    )
     tools = build_investigation_tools(
         query_model=query_model,
         db_path=db_path,
@@ -174,6 +191,7 @@ def build_executor_integrator(
         case_memory=memory,
         triage=build_triage_declarative(triage_model or get_chat_model()),
         system_prompt=system_prompt,
+        run_context=run_context,
     )
 
 

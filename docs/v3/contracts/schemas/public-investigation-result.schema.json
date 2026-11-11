@@ -1,0 +1,217 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/ledgerlens/spec/public-investigation-result.schema.json",
+  "$comment": "Design contract, not deployed implementation.",
+  "title": "PublicInvestigationResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "run_id",
+    "mode",
+    "snapshot_sha256",
+    "answer",
+    "claims",
+    "evidence",
+    "verdicts",
+    "verification_status",
+    "requires_human_review",
+    "recommended_action"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1"
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "recorded_replay",
+        "deterministic_sandbox",
+        "live_agent"
+      ]
+    },
+    "snapshot_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "account_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "answer": {
+      "type": "string"
+    },
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "fact",
+              "numeric",
+              "policy",
+              "inference"
+            ]
+          },
+          "evidence_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "kind",
+          "evidence_ids"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_type": {
+            "type": "string",
+            "enum": [
+              "sql",
+              "ledger_api",
+              "policy",
+              "fx",
+              "calc",
+              "case"
+            ]
+          },
+          "tool": {
+            "type": "string",
+            "minLength": 1
+          },
+          "ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "content": {
+            "type": "string"
+          },
+          "retrieved_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "source_type",
+          "tool",
+          "ref",
+          "content",
+          "retrieved_at"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "verdicts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "label": {
+            "type": "string",
+            "enum": [
+              "supported",
+              "contradicted",
+              "not_enough_evidence"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "nli",
+              "numeric",
+              "rule",
+              "none"
+            ]
+          },
+          "evidence_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "claim_id",
+          "label",
+          "method",
+          "evidence_ids"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "verification_status": {
+      "type": "string",
+      "enum": [
+        "complete",
+        "partial",
+        "unavailable",
+        "timed_out"
+      ]
+    },
+    "requires_human_review": {
+      "type": "boolean"
+    },
+    "recommended_action": {
+      "type": "string",
+      "enum": [
+        "none",
+        "explain_to_customer",
+        "issue_refund",
+        "reject_refund",
+        "submit_chargeback_evidence",
+        "escalate_to_human",
+        "ask_for_clarification"
+      ]
+    },
+    "missing_information": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "metadata": {
+      "type": "object"
+    }
+  }
+}

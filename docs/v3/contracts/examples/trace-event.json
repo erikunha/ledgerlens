@@ -1,0 +1,16 @@
+{
+  "schema_version": "1",
+  "run_id": "run_demo_001",
+  "seq": 2,
+  "at": "2026-11-11T12:00:00Z",
+  "event_type": "span.ended",
+  "span_id": "s2",
+  "parent_span_id": "s1",
+  "payload": {
+    "name": "query_ledger",
+    "status": "ok",
+    "duration_ms": 19
+  },
+  "snapshot_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "mode": "recorded_replay"
+}

@@ -1,0 +1,48 @@
+{
+  "schema_version": "1",
+  "run_id": "run_demo_001",
+  "mode": "recorded_replay",
+  "snapshot_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "account_id": "C-0412",
+  "answer": "The FX rate caused a difference [fx:1].",
+  "claims": [
+    {
+      "id": "CL1",
+      "text": "The FX rate caused a difference.",
+      "kind": "fact",
+      "evidence_ids": [
+        "fx:1"
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "id": "fx:1",
+      "source_type": "fx",
+      "tool": "get_reference_fx",
+      "ref": "fixture:eur-brl",
+      "content": "sample FX rate fixture",
+      "retrieved_at": "2026-11-11T12:00:00Z"
+    }
+  ],
+  "verdicts": [
+    {
+      "claim_id": "CL1",
+      "label": "not_enough_evidence",
+      "method": "nli",
+      "evidence_ids": [
+        "fx:1"
+      ],
+      "note": "Illustrative; not a verified real claim."
+    }
+  ],
+  "verification_status": "partial",
+  "requires_human_review": true,
+  "recommended_action": "escalate_to_human",
+  "missing_information": [
+    "Original exchange rate"
+  ],
+  "metadata": {
+    "design_example": true
+  }
+}

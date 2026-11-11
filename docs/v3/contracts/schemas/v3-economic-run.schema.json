@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ledgerlens:v3:economic-run",
+  "title": "LedgerLens v3 economic-run",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "3"
+    },
+    "experiment_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "snapshot_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "recorded_replay",
+        "deterministic_sandbox",
+        "live_provider"
+      ]
+    },
+    "case_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "correct_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "total_model_usd": {
+      "type": "string",
+      "pattern": "^-?\\d+(?:\\.\\d{1,10})?$",
+      "description": "Exact Decimal encoded as a string, not JSON floating-point money"
+    },
+    "total_compute_usd": {
+      "type": "string",
+      "pattern": "^-?\\d+(?:\\.\\d{1,10})?$",
+      "description": "Exact Decimal encoded as a string, not JSON floating-point money"
+    },
+    "total_review_usd": {
+      "type": "string",
+      "pattern": "^-?\\d+(?:\\.\\d{1,10})?$",
+      "description": "Exact Decimal encoded as a string, not JSON floating-point money"
+    },
+    "total_error_usd": {
+      "type": "string",
+      "pattern": "^-?\\d+(?:\\.\\d{1,10})?$",
+      "description": "Exact Decimal encoded as a string, not JSON floating-point money"
+    },
+    "total_usd": {
+      "type": "string",
+      "pattern": "^-?\\d+(?:\\.\\d{1,10})?$",
+      "description": "Exact Decimal encoded as a string, not JSON floating-point money"
+    },
+    "cost_per_correct_usd": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^-?\\d+(?:\\.\\d{1,10})?$",
+          "description": "Exact Decimal encoded as a string, not JSON floating-point money"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "money_provenance": {
+      "type": "string",
+      "enum": [
+        "observed",
+        "computed_from_observed",
+        "simulated",
+        "assumed",
+        "replayed",
+        "estimated",
+        "unknown"
+      ]
+    },
+    "assumptions": {
+      "type": "object",
+      "properties": {
+        "loaded_hourly_usd": {
+          "type": "string",
+          "pattern": "^-?\\d+(?:\\.\\d{1,10})?$",
+          "description": "Exact Decimal encoded as a string, not JSON floating-point money"
+        },
+        "mean_review_minutes": {
+          "type": "string",
+          "pattern": "^-?\\d+(?:\\.\\d{1,10})?$",
+          "description": "Exact Decimal encoded as a string, not JSON floating-point money"
+        },
+        "error_loss_assumptions": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "loaded_hourly_usd",
+        "mean_review_minutes",
+        "error_loss_assumptions"
+      ],
+      "additionalProperties": false
+    },
+    "compared_against": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "comparable": {
+      "type": "boolean"
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "experiment_id",
+    "snapshot_hash",
+    "mode",
+    "case_count",
+    "correct_count",
+    "total_model_usd",
+    "total_compute_usd",
+    "total_review_usd",
+    "total_error_usd",
+    "total_usd",
+    "cost_per_correct_usd",
+    "money_provenance",
+    "assumptions",
+    "compared_against",
+    "comparable",
+    "notes"
+  ],
+  "additionalProperties": false
+}

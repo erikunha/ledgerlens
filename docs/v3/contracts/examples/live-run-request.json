@@ -1,0 +1,17 @@
+{
+  "mode": "live_agent",
+  "scenario_id": "S01",
+  "sandbox_id": "sb_demo",
+  "expected_revision": 0,
+  "account_id": "C-0412",
+  "question": "Why was the refund lower?",
+  "variant": "C",
+  "model_profile_id": "openai-verified-small",
+  "credential_handle": "cred_example",
+  "limits": {
+    "max_model_calls": 8,
+    "max_tool_calls": 12,
+    "max_wall_seconds": 60,
+    "max_output_tokens": 2500
+  }
+}

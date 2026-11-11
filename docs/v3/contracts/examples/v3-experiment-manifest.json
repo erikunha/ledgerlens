@@ -1,0 +1,32 @@
+{
+  "schema_version": "3",
+  "experiment_id": "paired-abc-01",
+  "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "dataset_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "evaluation_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "seed": 42,
+  "mode": "recorded_replay",
+  "architectures": [
+    "A_chain",
+    "B_react",
+    "C_verified"
+  ],
+  "case_ids": [
+    "S01",
+    "S02"
+  ],
+  "run_ids": [
+    "run-a01",
+    "run-b01",
+    "run-c01"
+  ],
+  "correctness_method": "oracle-v1",
+  "model_versions": [
+    "openai:gpt-example-placeholder"
+  ],
+  "sample_size": 2,
+  "limitations": [
+    "Illustrative manifest; no live run performed."
+  ],
+  "complete": false
+}

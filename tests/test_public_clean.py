@@ -22,8 +22,9 @@ _WORDS = [
     "nb0" + "[0-9]",
     "video" + "_script",
     "vi" + "deo_link",
-    "spec" + "-kit",
-    r"\." + "spec" + "ify",
+    # The specification toolkit is part of the work, so its folder name is allowed. What is not allowed is the local
+    # planning state it holds, and the feature branches it used to create outside the release branch.
+    r"\.specify/feature\.json",
 ]
 FORBIDDEN = re.compile("|".join(_WORDS), re.IGNORECASE)
 # a course acronym: upper case only and as a whole word
@@ -52,7 +53,7 @@ _PT_WORDS = re.compile(
 )
 _PT_FUNCTION_WORDS = re.compile(" (?:" + "d" + "e" + "|" + "pa" + "ra" + ") ")
 PORTUGUESE = (_PT_LETTERS, _PT_WORDS, _PT_FUNCTION_WORDS)
-PORTUGUESE_SCOPE = ("ledgerlens/", "app/", "data/", "docs/", "tests/")
+PORTUGUESE_SCOPE = ("ledgerlens/", "app/", "data/", "docs/", "tests/", "specs/", ".specify/")
 PORTUGUESE_SUFFIXES = {".py", ".md", ".jsonl", ".json"}
 # Recorded responses of Brazilian public APIs (holiday names, Banco Central bulletins): external data, kept as
 # the source returned it.
@@ -95,6 +96,15 @@ def _offenders(*patterns: re.Pattern[str]) -> list[str]:
     return found
 
 
+def _tooling_files() -> list[str]:
+    """The files of the specification toolkit, which are tool code and not the content of this repository.
+
+    The toolkit names its own state files and its own vocabulary, so the content rules of the repository do not apply
+    to it. The rules still apply to everything it produces: the constitution and the specs.
+    """
+    return [name for name in _files() if name.startswith(".specify/scripts/") or name.startswith(".specify/templates/")]
+
+
 def is_portuguese(line: str) -> bool:
     for name in PORTUGUESE_ALLOWED_NAMES:
         line = line.replace(name, "")
@@ -113,7 +123,11 @@ def _portuguese_scope() -> list[str]:
 
 
 def test_no_course_material_in_tracked_files():
-    assert not _offenders(FORBIDDEN, FORBIDDEN_CASE)
+    tooling = set(_tooling_files())
+    found = [
+        hit for hit in _offenders(FORBIDDEN, FORBIDDEN_CASE) if hit.rsplit(":", 1)[0] not in tooling
+    ]
+    assert not found, found[:20]
 
 
 def test_no_machine_paths_in_tracked_files():
@@ -125,8 +139,16 @@ def test_no_secrets_in_tracked_files():
 
 
 def test_course_directories_are_absent():
-    for name in ("note" + "books", "specs", ".specify", "docs/report", "docs/evidence"):
+    """The course material stays out. The spec-kit folders are part of the work and do stay in."""
+    for name in ("note" + "books", "docs/report", "docs/evidence"):
         assert not (ROOT / name).exists(), name
+
+
+def test_the_spec_kit_folders_are_present():
+    """The spec-kit toolkit and the specs it writes are versioned, so the plan is readable with the code."""
+    assert (ROOT / ".specify" / "memory" / "constitution.md").is_file()
+    assert (ROOT / "specs").is_dir()
+    assert list((ROOT / "specs").glob("*/spec.md")), "no feature spec is versioned"
 
 
 def test_the_portuguese_markers_catch_portuguese_and_spare_english():
@@ -159,6 +181,11 @@ def test_no_portuguese_in_code_data_docs_or_tests():
 
 
 def test_local_tool_folders_are_never_tracked():
-    """Planning and editor state live next to the code but must not be published."""
-    local = (".plans/", ".claude/", ".obsidian/", ".specify/")
+    """Planning and editor state live next to the code but must not be published.
+
+    The specification toolkit is the exception: it is part of the work, and the constitution and the specs it writes
+    have to be readable next to the code. What stays out is its per-machine state.
+    """
+    local = (".plans/", ".claude/", ".obsidian/")
     assert not [name for name in _files() if name.startswith(local)]
+    assert not [name for name in _files() if name.startswith(".specify/") and name.endswith("feature.json")]

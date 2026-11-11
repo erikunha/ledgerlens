@@ -1,0 +1,1454 @@
+{
+  "schema_version": "1",
+  "tasks": [
+    {
+      "id": "LL-V3-R0-01",
+      "release": "R0",
+      "title": "Freeze baseline commit, lockfile and scenario hashes",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R0-02",
+      "release": "R0",
+      "title": "Run offline tests and record exact output",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R0-03",
+      "release": "R0",
+      "title": "Normalize existing Span to public TraceEvent schema",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R0-04",
+      "release": "R0",
+      "title": "Capture and redact canonical replay bundle",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R0-05",
+      "release": "R0",
+      "title": "Reconcile reported 30-vs-43 case verifier claims",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R0-06",
+      "release": "R0",
+      "title": "Add migration-safe Python RunContext",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R0-07",
+      "release": "R0",
+      "title": "Document current SQL guard and account isolation",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R1-01",
+      "release": "R1",
+      "title": "Implement Next.js shell and responsive design tokens",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R1-02",
+      "release": "R1",
+      "title": "Ship zero-auth scenario gallery with provenance",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R1-03",
+      "release": "R1",
+      "title": "Render true recorded trace stepping",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R1-04",
+      "release": "R1",
+      "title": "Implement payment record explorer",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R1-05",
+      "release": "R1",
+      "title": "Show claim/verdict/evidence linked inspector",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R1-06",
+      "release": "R1",
+      "title": "Add architecture explorer with source anchors",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R1-07",
+      "release": "R1",
+      "title": "Automate accessibility and mobile Playwright tests",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R2-01",
+      "release": "R2",
+      "title": "Design typed sandbox event/mutation commands",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R2-02",
+      "release": "R2",
+      "title": "Fork immutable base snapshot per session",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R2-03",
+      "release": "R2",
+      "title": "Implement idempotent append/projection",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R2-04",
+      "release": "R2",
+      "title": "Preview and diff sandbox mutations",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R2-05",
+      "release": "R2",
+      "title": "Recompute scenario oracle after mutation",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R2-06",
+      "release": "R2",
+      "title": "Implement reset/hash consistency and TTL",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R2-07",
+      "release": "R2",
+      "title": "Run two-visitor isolation and conflict E2E",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R3-01",
+      "release": "R3",
+      "title": "Build tested model/provider registry",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R3-02",
+      "release": "R3",
+      "title": "Implement ephemeral BYOK secret handle and delete",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R3-03",
+      "release": "R3",
+      "title": "Create Python run coordinator and strict budget",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R3-04",
+      "release": "R3",
+      "title": "Stream typed SSE and cancellation",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R3-05",
+      "release": "R3",
+      "title": "Wire model selector and transparent consent",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R3-06",
+      "release": "R3",
+      "title": "Conformance-test tool-calling on selected provider",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R3-07",
+      "release": "R3",
+      "title": "Exercise key/trace redaction under failure",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R4-01",
+      "release": "R4",
+      "title": "Freeze comparable A/B/C eval manifests",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R4-02",
+      "release": "R4",
+      "title": "Reproduce old benchmark and report deviations",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R4-03",
+      "release": "R4",
+      "title": "Build dataset slice/relevance metadata",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R4-04",
+      "release": "R4",
+      "title": "Implement paired quality/latency/cost chart",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R4-05",
+      "release": "R4",
+      "title": "Expose NLI and numeric verifier disagreements",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R4-06",
+      "release": "R4",
+      "title": "Run heldout regression and uncertainty estimates",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R4-07",
+      "release": "R4",
+      "title": "Publish failure gallery and test limitations",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R5-01",
+      "release": "R5",
+      "title": "Deploy static replay fallback separate from runtime",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R5-02",
+      "release": "R5",
+      "title": "Implement safe degradation and status dashboard",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R5-03",
+      "release": "R5",
+      "title": "Publish code-linked architecture case study",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R5-04",
+      "release": "R5",
+      "title": "Verify keyboard and screenreader task completion",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R5-05",
+      "release": "R5",
+      "title": "Perform dependency/security and threat review",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R5-06",
+      "release": "R5",
+      "title": "Measure hosting, rate limit and p95 under sample load",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R6-01",
+      "release": "R6",
+      "title": "Implement narrow specialist dispatcher behind flag",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R6-02",
+      "release": "R6",
+      "title": "Define strict specialist output/evidence schema",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R6-03",
+      "release": "R6",
+      "title": "Benchmark specialist against baseline C on paired set",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R6-04",
+      "release": "R6",
+      "title": "Compare parallel and sequential critical path",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R6-05",
+      "release": "R6",
+      "title": "Publish negative results if no benefit",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R6-06",
+      "release": "R6",
+      "title": "Enforce call/recursion/cost ceilings",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R7-01",
+      "release": "R7",
+      "title": "Collect safe canned adversarial prompts",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R7-02",
+      "release": "R7",
+      "title": "Simulate tool timeout and provider 429",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R7-03",
+      "release": "R7",
+      "title": "Show error source and safe recovery trace",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R7-04",
+      "release": "R7",
+      "title": "Build fault injector with no network side effects",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R7-05",
+      "release": "R7",
+      "title": "Regression-test missing policy/FX scenarios",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R7-06",
+      "release": "R7",
+      "title": "Create reproducible incident tour",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R8-01",
+      "release": "R8",
+      "title": "Design immutable EvidenceRef + SourceVersion schema",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R8-02",
+      "release": "R8",
+      "title": "Build relational evidence link traversal",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R8-03",
+      "release": "R8",
+      "title": "Implement temporal policy selectors",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R8-04",
+      "release": "R8",
+      "title": "Render claim-to-record provenance graph",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R8-05",
+      "release": "R8",
+      "title": "Reject forged or stale citation references",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R8-06",
+      "release": "R8",
+      "title": "Provide trace-linked export and source hashes",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R9-01",
+      "release": "R9",
+      "title": "Implement Decimal-based per-case economic ledger",
+      "acceptance_evidence": "economic/functional oracle + paired test + assumptions",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R9-02",
+      "release": "R9",
+      "title": "Capture provider token cost with date/version",
+      "acceptance_evidence": "economic/functional oracle + paired test + assumptions",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R9-03",
+      "release": "R9",
+      "title": "Build cost-per-correct and provenance UI",
+      "acceptance_evidence": "economic/functional oracle + paired test + assumptions",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R9-04",
+      "release": "R9",
+      "title": "Add review and error-risk assumptions panel",
+      "acceptance_evidence": "economic/functional oracle + paired test + assumptions",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R9-05",
+      "release": "R9",
+      "title": "Compute paired economic frontiers",
+      "acceptance_evidence": "economic/functional oracle + paired test + assumptions",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R9-06",
+      "release": "R9",
+      "title": "Test no-double-count and undefined denominators",
+      "acceptance_evidence": "economic/functional oracle + paired test + assumptions",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R9-07",
+      "release": "R9",
+      "title": "Publish hypothetical vs observed labels",
+      "acceptance_evidence": "economic/functional oracle + paired test + assumptions",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R10-01",
+      "release": "R10",
+      "title": "Implement review task/decision state machine",
+      "acceptance_evidence": "economic/functional oracle + paired test + assumptions",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R10-02",
+      "release": "R10",
+      "title": "Add reviewer role simulation and audit",
+      "acceptance_evidence": "economic/functional oracle + paired test + assumptions",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R10-03",
+      "release": "R10",
+      "title": "Build queue simulation and capacity slider",
+      "acceptance_evidence": "economic/functional oracle + paired test + assumptions",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R10-04",
+      "release": "R10",
+      "title": "Compare review thresholds to false errors",
+      "acceptance_evidence": "economic/functional oracle + paired test + assumptions",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R10-05",
+      "release": "R10",
+      "title": "Introduce selective prediction/abstention view",
+      "acceptance_evidence": "economic/functional oracle + paired test + assumptions",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R10-06",
+      "release": "R10",
+      "title": "Verify pause/resume after human decision",
+      "acceptance_evidence": "economic/functional oracle + paired test + assumptions",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R10-07",
+      "release": "R10",
+      "title": "Test overloaded queue display",
+      "acceptance_evidence": "economic/functional oracle + paired test + assumptions",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R11-01",
+      "release": "R11",
+      "title": "Define DAG/supervisor/agent-tool schema",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R11-02",
+      "release": "R11",
+      "title": "Implement bounded parallel dispatch",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R11-03",
+      "release": "R11",
+      "title": "Build agent topology editor with simulation",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R11-04",
+      "release": "R11",
+      "title": "Add handoff and context filtering tests",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R11-05",
+      "release": "R11",
+      "title": "Checkpoint and resume after interruption",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R11-06",
+      "release": "R11",
+      "title": "Compare multiagent and singleagent outcome/cost",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R11-07",
+      "release": "R11",
+      "title": "Visualize plan-vs-actual dependencies",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R12-01",
+      "release": "R12",
+      "title": "Create temporal memory and source provenance schema",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R12-02",
+      "release": "R12",
+      "title": "Implement BM25/hybrid/re-rank lab",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R12-03",
+      "release": "R12",
+      "title": "Evaluate dense vs hybrid on same relevance labels",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R12-04",
+      "release": "R12",
+      "title": "Add memory inspect/edit/delete flow",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R12-05",
+      "release": "R12",
+      "title": "Quarantine untrusted memory injection",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R12-06",
+      "release": "R12",
+      "title": "Test cross-account retrieval boundary",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R12-07",
+      "release": "R12",
+      "title": "Benchmark evidence/tokens trade-off",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R13-01",
+      "release": "R13",
+      "title": "Map OWASP agentic threats to safe fixtures",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R13-02",
+      "release": "R13",
+      "title": "Build prompt and tool poisoning labs",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R13-03",
+      "release": "R13",
+      "title": "Implement privilege intersections at dispatcher",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R13-04",
+      "release": "R13",
+      "title": "Create malicious citation detector",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R13-05",
+      "release": "R13",
+      "title": "Stress-test BYOK data egress prevention",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R13-06",
+      "release": "R13",
+      "title": "Publish threat matrix and limits",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R13-07",
+      "release": "R13",
+      "title": "Verify kill/revoke on incident",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R14-01",
+      "release": "R14",
+      "title": "Expose read-only case/replay resources via MCP",
+      "acceptance_evidence": "schema conformance + auth/isolation test + example",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R14-02",
+      "release": "R14",
+      "title": "Add typed tool registry and permission spec",
+      "acceptance_evidence": "schema conformance + auth/isolation test + example",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R14-03",
+      "release": "R14",
+      "title": "Build A2A mock external-review protocol",
+      "acceptance_evidence": "schema conformance + auth/isolation test + example",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R14-04",
+      "release": "R14",
+      "title": "Sign/verify delegated case identity in simulation",
+      "acceptance_evidence": "schema conformance + auth/isolation test + example",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R14-05",
+      "release": "R14",
+      "title": "Reject malformed or elevated tool manifests",
+      "acceptance_evidence": "schema conformance + auth/isolation test + example",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R14-06",
+      "release": "R14",
+      "title": "Conformance-test timeouts/retries",
+      "acceptance_evidence": "schema conformance + auth/isolation test + example",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R15-01",
+      "release": "R15",
+      "title": "Add provider adapters behind shared typed gateway",
+      "acceptance_evidence": "economic/functional oracle + paired test + assumptions",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R15-02",
+      "release": "R15",
+      "title": "Implement per-intent routing table and fallback",
+      "acceptance_evidence": "economic/functional oracle + paired test + assumptions",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R15-03",
+      "release": "R15",
+      "title": "Log and present routing decision rationale",
+      "acceptance_evidence": "economic/functional oracle + paired test + assumptions",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R15-04",
+      "release": "R15",
+      "title": "Calibrate price snapshots and cost estimates",
+      "acceptance_evidence": "economic/functional oracle + paired test + assumptions",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R15-05",
+      "release": "R15",
+      "title": "Test small-vs-large model cost per correct",
+      "acceptance_evidence": "economic/functional oracle + paired test + assumptions",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R15-06",
+      "release": "R15",
+      "title": "Apply circuit breaker and hard spend cap",
+      "acceptance_evidence": "economic/functional oracle + paired test + assumptions",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R15-07",
+      "release": "R15",
+      "title": "Validate provider schema drift reporting",
+      "acceptance_evidence": "economic/functional oracle + paired test + assumptions",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R16-01",
+      "release": "R16",
+      "title": "Persist durable graph checkpoints and job journals",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R16-02",
+      "release": "R16",
+      "title": "Implement idempotent restart recovery",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R16-03",
+      "release": "R16",
+      "title": "Instrument OpenTelemetry GenAI spans safely",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R16-04",
+      "release": "R16",
+      "title": "Build health/incident SLO dashboard",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R16-05",
+      "release": "R16",
+      "title": "Load test concurrent visit branches",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R16-06",
+      "release": "R16",
+      "title": "Run chaos drills for cancellation/duplicate events",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R16-07",
+      "release": "R16",
+      "title": "Document deployment and rollback",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R17-01",
+      "release": "R17",
+      "title": "Expand seeded operational event generator",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R17-02",
+      "release": "R17",
+      "title": "Add arrival/service review queue events",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R17-03",
+      "release": "R17",
+      "title": "Model divergent stakeholder incentives",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R17-04",
+      "release": "R17",
+      "title": "Implement workload pressure simulation UI",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R17-05",
+      "release": "R17",
+      "title": "Bound and expose simulation assumptions",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R17-06",
+      "release": "R17",
+      "title": "Validate projector with property tests",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R17-07",
+      "release": "R17",
+      "title": "Build synthetic data quality report",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R18-01",
+      "release": "R18",
+      "title": "Build synthetic PDF/receipt/document fixture set",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R18-02",
+      "release": "R18",
+      "title": "Extract OCR fields with source coordinates",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R18-03",
+      "release": "R18",
+      "title": "Create document-to-ledger matching experiment",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R18-04",
+      "release": "R18",
+      "title": "Evaluate multilingual policy passage retrieval",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R18-05",
+      "release": "R18",
+      "title": "Implement safe upload/size/retention controls",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R18-06",
+      "release": "R18",
+      "title": "Compare OCR and vision models vs ground truth",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R18-07",
+      "release": "R18",
+      "title": "Publish extraction failure examples",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R19-01",
+      "release": "R19",
+      "title": "Define structural causal assumptions and interventions",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R19-02",
+      "release": "R19",
+      "title": "Implement FX/policy counterfactual branch tool",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R19-03",
+      "release": "R19",
+      "title": "Show direct and downstream consequences",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R19-04",
+      "release": "R19",
+      "title": "Build causal-vs-correlational explanation test",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R19-05",
+      "release": "R19",
+      "title": "Validate with synthetic structural oracle",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R19-06",
+      "release": "R19",
+      "title": "Include confounder and identifiability caveats",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R20-01",
+      "release": "R20",
+      "title": "Implement feedback-to-gold-label review pipeline",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R20-02",
+      "release": "R20",
+      "title": "Add dataset versioning and holdout isolation",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R20-03",
+      "release": "R20",
+      "title": "Calibrate NLI/abstention thresholds",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R20-04",
+      "release": "R20",
+      "title": "Train optional small intent model with license review",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R20-05",
+      "release": "R20",
+      "title": "Ablate prompt/retrieval/fine-tune alternatives",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R20-06",
+      "release": "R20",
+      "title": "Publish measured drift and rollback report",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R20-07",
+      "release": "R20",
+      "title": "Maintain failure-to-regression ledger",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R21-01",
+      "release": "R21",
+      "title": "Generate TS client from OpenAPI schema",
+      "acceptance_evidence": "schema conformance + auth/isolation test + example",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R21-02",
+      "release": "R21",
+      "title": "Publish Python CLI and SDK for replay/evals",
+      "acceptance_evidence": "schema conformance + auth/isolation test + example",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R21-03",
+      "release": "R21",
+      "title": "Support MCP read-only tool delivery",
+      "acceptance_evidence": "schema conformance + auth/isolation test + example",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R21-04",
+      "release": "R21",
+      "title": "Add typed example conformance suites",
+      "acceptance_evidence": "schema conformance + auth/isolation test + example",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R21-05",
+      "release": "R21",
+      "title": "Create local docker/uv quickstart offline",
+      "acceptance_evidence": "schema conformance + auth/isolation test + example",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R21-06",
+      "release": "R21",
+      "title": "Package portable benchmark bundles",
+      "acceptance_evidence": "schema conformance + auth/isolation test + example",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R21-07",
+      "release": "R21",
+      "title": "Version tool contracts and semver guarantees",
+      "acceptance_evidence": "schema conformance + auth/isolation test + example",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R22-01",
+      "release": "R22",
+      "title": "Generate source-linked shareable case study artifacts",
+      "acceptance_evidence": "accessible artifact + verified public proof",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R22-02",
+      "release": "R22",
+      "title": "Create accessible short demos and captions",
+      "acceptance_evidence": "accessible artifact + verified public proof",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R22-03",
+      "release": "R22",
+      "title": "Define privacy-safe portfolio visitor analytics",
+      "acceptance_evidence": "accessible artifact + verified public proof",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R22-04",
+      "release": "R22",
+      "title": "Run five-person comprehension usability audit",
+      "acceptance_evidence": "accessible artifact + verified public proof",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R22-05",
+      "release": "R22",
+      "title": "Publish reproducibility and attribution checklist",
+      "acceptance_evidence": "accessible artifact + verified public proof",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R22-06",
+      "release": "R22",
+      "title": "Collect external engineering reviews",
+      "acceptance_evidence": "accessible artifact + verified public proof",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R22-07",
+      "release": "R22",
+      "title": "Review conversion/feedback not vanity metrics",
+      "acceptance_evidence": "accessible artifact + verified public proof",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R23+-01",
+      "release": "R23+",
+      "title": "Define next research candidate with hypothesis and evidence",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R23+-02",
+      "release": "R23+",
+      "title": "Select independent research baseline and oracle",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R23+-03",
+      "release": "R23+",
+      "title": "Build smallest safe synthetic demonstrator",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R23+-04",
+      "release": "R23+",
+      "title": "Publish positive or negative result with limitations",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R23+-05",
+      "release": "R23+",
+      "title": "Review cost/ownership/scope before public claim",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    },
+    {
+      "id": "LL-V3-R23+-06",
+      "release": "R23+",
+      "title": "Append capability without renumbering existing IDs",
+      "acceptance_evidence": "reproducible test + trace/fixture + source link",
+      "status": "proposed",
+      "spec_ref": null,
+      "verification_ref": null
+    }
+  ]
+}

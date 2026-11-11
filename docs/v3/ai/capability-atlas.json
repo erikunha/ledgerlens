@@ -1,0 +1,2348 @@
+{
+  "schema_version": "1",
+  "source": "LedgerLens v3 proposed design",
+  "status_note": "none of these are implementation claims",
+  "count": 234,
+  "capabilities": [
+    {
+      "id": "CAP-001",
+      "area": "Data integrity",
+      "title": "Immutable scenario manifest",
+      "phase": "R0-R2",
+      "lens": "Proof of Work",
+      "check": "A replay hash resolves to same canonical input",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-002",
+      "area": "Data integrity",
+      "title": "Event-sourced financial ledger",
+      "phase": "R0-R2",
+      "lens": "Proof of Work",
+      "check": "Replay gives identical ledger projection",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-003",
+      "area": "Data integrity",
+      "title": "Sandbox branch isolation",
+      "phase": "R0-R2",
+      "lens": "Proof of Work",
+      "check": "Two visitors cannot read/write each others branch",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-004",
+      "area": "Data integrity",
+      "title": "Snapshot hash & version",
+      "phase": "R0-R2",
+      "lens": "Proof of Work",
+      "check": "Mismatched revision returns 409",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-005",
+      "area": "Data integrity",
+      "title": "Typed mutation commands",
+      "phase": "R0-R2",
+      "lens": "Proof of Work",
+      "check": "Invalid money/currency rejected before event append",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-006",
+      "area": "Data integrity",
+      "title": "Reset to base",
+      "phase": "R0-R2",
+      "lens": "Proof of Work",
+      "check": "Reset produces identical canonical hash",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-007",
+      "area": "Data integrity",
+      "title": "Temporal policy versioning",
+      "phase": "R0-R2",
+      "lens": "Proof of Work",
+      "check": "Old case evaluates against policy valid at event time",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-008",
+      "area": "Data integrity",
+      "title": "Deterministic currencies",
+      "phase": "R0-R2",
+      "lens": "Proof of Work",
+      "check": "Minor-unit and rounding tests for currency",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-009",
+      "area": "Data integrity",
+      "title": "Simulated business calendars",
+      "phase": "R0-R2",
+      "lens": "Proof of Work",
+      "check": "Holiday and timezone boundaries verified",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-010",
+      "area": "Data integrity",
+      "title": "Data lineage explorer",
+      "phase": "R0-R2",
+      "lens": "Proof of Work",
+      "check": "Every row maps to source fixture and transformation",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-011",
+      "area": "Data integrity",
+      "title": "Controlled synthetic generator",
+      "phase": "R0-R2",
+      "lens": "Proof of Work",
+      "check": "Same seed and version reproduce case",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-012",
+      "area": "Data integrity",
+      "title": "Replay stale detection",
+      "phase": "R0-R2",
+      "lens": "Proof of Work",
+      "check": "Mutated branch invalidates recorded answer",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-013",
+      "area": "Data integrity",
+      "title": "Data license manifest",
+      "phase": "R0-R2",
+      "lens": "Proof of Work",
+      "check": "Every external dataset has attribution",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-014",
+      "area": "Data integrity",
+      "title": "Cross-account projection",
+      "phase": "R0-R2",
+      "lens": "Proof of Work",
+      "check": "Scoped copies exclude other account rows",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-015",
+      "area": "Frontend experience",
+      "title": "Guided 60s demo",
+      "phase": "R1-R5",
+      "lens": "Distribution Advantage",
+      "check": "First-time visitor reaches a resolved case keyless",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-016",
+      "area": "Frontend experience",
+      "title": "Payment portal modern UX",
+      "phase": "R1-R5",
+      "lens": "Distribution Advantage",
+      "check": "Customer and merchant records filter correctly",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-017",
+      "area": "Frontend experience",
+      "title": "Case gallery and difficulty",
+      "phase": "R1-R5",
+      "lens": "Distribution Advantage",
+      "check": "Each scenario links to truth and reproduction",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-018",
+      "area": "Frontend experience",
+      "title": "Recorded trace scrubber",
+      "phase": "R1-R5",
+      "lens": "Distribution Advantage",
+      "check": "Pause/seek never triggers provider request",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-019",
+      "area": "Frontend experience",
+      "title": "Agent execution timeline",
+      "phase": "R1-R5",
+      "lens": "Distribution Advantage",
+      "check": "Critical steps and data inputs visible",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-020",
+      "area": "Frontend experience",
+      "title": "Claim to source clickthrough",
+      "phase": "R1-R5",
+      "lens": "Distribution Advantage",
+      "check": "Each claim resolves original evidence",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-021",
+      "area": "Frontend experience",
+      "title": "Accessible data tables",
+      "phase": "R1-R5",
+      "lens": "Distribution Advantage",
+      "check": "Keyboard/screen-reader tests pass",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-022",
+      "area": "Frontend experience",
+      "title": "Mobile responsive trace",
+      "phase": "R1-R5",
+      "lens": "Distribution Advantage",
+      "check": "No clipped controls on 360px viewport",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-023",
+      "area": "Frontend experience",
+      "title": "Clear mode labels",
+      "phase": "R1-R5",
+      "lens": "Distribution Advantage",
+      "check": "Replay/sandbox/live labels always shown",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-024",
+      "area": "Frontend experience",
+      "title": "Shareable sanitized permalink",
+      "phase": "R1-R5",
+      "lens": "Distribution Advantage",
+      "check": "Shared artifact has no secrets or branch access",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-025",
+      "area": "Frontend experience",
+      "title": "Theme and contrast",
+      "phase": "R1-R5",
+      "lens": "Distribution Advantage",
+      "check": "WCAG checks and system theme adaptation",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-026",
+      "area": "Frontend experience",
+      "title": "Failure-first onboarding",
+      "phase": "R1-R5",
+      "lens": "Distribution Advantage",
+      "check": "Visitor can start with injection/outage example",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-027",
+      "area": "Frontend experience",
+      "title": "Interactive architecture map",
+      "phase": "R1-R5",
+      "lens": "Distribution Advantage",
+      "check": "Every node links to existing source or planned spec",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-028",
+      "area": "Frontend experience",
+      "title": "Public methodology page",
+      "phase": "R1-R5",
+      "lens": "Distribution Advantage",
+      "check": "Research claims carry samples and limitations",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-029",
+      "area": "Financial reasoning",
+      "title": "Decimal arithmetic engine",
+      "phase": "R2-R9",
+      "lens": "Follow the Money",
+      "check": "Exact cents for refund and fee arithmetic",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-030",
+      "area": "Financial reasoning",
+      "title": "Applied vs reference FX",
+      "phase": "R2-R9",
+      "lens": "Follow the Money",
+      "check": "Different rate sources never conflated",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-031",
+      "area": "Financial reasoning",
+      "title": "Refund difference decomposition",
+      "phase": "R2-R9",
+      "lens": "Follow the Money",
+      "check": "Rate vs markup components sum correctly",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-032",
+      "area": "Financial reasoning",
+      "title": "Merchant payout reconciliation",
+      "phase": "R2-R9",
+      "lens": "Follow the Money",
+      "check": "Gross minus adjustments equals net",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-033",
+      "area": "Financial reasoning",
+      "title": "Duplicate charge heuristic",
+      "phase": "R2-R9",
+      "lens": "Follow the Money",
+      "check": "False positive cases represented",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-034",
+      "area": "Financial reasoning",
+      "title": "Chargeback deadline calculator",
+      "phase": "R2-R9",
+      "lens": "Follow the Money",
+      "check": "Business-day and timezone cutoffs correct",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-035",
+      "area": "Financial reasoning",
+      "title": "Refund window evaluator",
+      "phase": "R2-R9",
+      "lens": "Follow the Money",
+      "check": "Policy versions and capture dates enforced",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-036",
+      "area": "Financial reasoning",
+      "title": "Currency precision adapters",
+      "phase": "R2-R9",
+      "lens": "Follow the Money",
+      "check": "JPY/zero-decimal and 3-decimal round-trip",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-037",
+      "area": "Financial reasoning",
+      "title": "Multi-currency accounting view",
+      "phase": "R2-R9",
+      "lens": "Follow the Money",
+      "check": "Money provenance and conversion dated",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-038",
+      "area": "Financial reasoning",
+      "title": "Policy-to-executable rule projection",
+      "phase": "R2-R9",
+      "lens": "Follow the Money",
+      "check": "Generated suggestion validated by code",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-039",
+      "area": "Financial reasoning",
+      "title": "Financial invariant monitor",
+      "phase": "R2-R9",
+      "lens": "Follow the Money",
+      "check": "Perturbation violating conservation flagged",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-040",
+      "area": "Financial reasoning",
+      "title": "Cross-source reconciliation",
+      "phase": "R2-R9",
+      "lens": "Follow the Money",
+      "check": "Conflicting ledger/API statuses escalated",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-041",
+      "area": "Financial reasoning",
+      "title": "Negative/partial adjustment simulation",
+      "phase": "R2-R9",
+      "lens": "Follow the Money",
+      "check": "Signed money behavior exact",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-042",
+      "area": "Financial reasoning",
+      "title": "Business-case risk scoring",
+      "phase": "R2-R9",
+      "lens": "Follow the Money",
+      "check": "Assumptions explicit and not called actual loss",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-043",
+      "area": "Agent runtime",
+      "title": "Bounded ReAct loop",
+      "phase": "R3-R11",
+      "lens": "Follow the Bottleneck",
+      "check": "Cannot exceed configured tool/model iterations",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-044",
+      "area": "Agent runtime",
+      "title": "Structured triage",
+      "phase": "R3-R11",
+      "lens": "Follow the Bottleneck",
+      "check": "Pydantic entities and plan validated",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-045",
+      "area": "Agent runtime",
+      "title": "Triage clarification control",
+      "phase": "R3-R11",
+      "lens": "Follow the Bottleneck",
+      "check": "Ambiguous id never invents transaction",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-046",
+      "area": "Agent runtime",
+      "title": "Supervisor-specialist graph",
+      "phase": "R3-R11",
+      "lens": "Follow the Bottleneck",
+      "check": "Least-privilege delegation demonstrated",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-047",
+      "area": "Agent runtime",
+      "title": "Parallel evidence fan-out",
+      "phase": "R3-R11",
+      "lens": "Follow the Bottleneck",
+      "check": "Independent nodes run concurrently with cost tracked",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-048",
+      "area": "Agent runtime",
+      "title": "Specialist as tool",
+      "phase": "R3-R11",
+      "lens": "Follow the Bottleneck",
+      "check": "Supervisor retains final output and citations",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-049",
+      "area": "Agent runtime",
+      "title": "Handoff routing",
+      "phase": "R3-R11",
+      "lens": "Follow the Bottleneck",
+      "check": "Specialist assumes only scoped conversation",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-050",
+      "area": "Agent runtime",
+      "title": "Independent critic",
+      "phase": "R3-R11",
+      "lens": "Follow the Bottleneck",
+      "check": "Contradictions caught without self-confirmation",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-051",
+      "area": "Agent runtime",
+      "title": "Graph pause and resume",
+      "phase": "R3-R11",
+      "lens": "Follow the Bottleneck",
+      "check": "Checkpoint survives simulated restart",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-052",
+      "area": "Agent runtime",
+      "title": "Durable run journal",
+      "phase": "R3-R11",
+      "lens": "Follow the Bottleneck",
+      "check": "Duplicate event does not duplicate effect",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-053",
+      "area": "Agent runtime",
+      "title": "Graph cancellation",
+      "phase": "R3-R11",
+      "lens": "Follow the Bottleneck",
+      "check": "Stops work and exposes partial trace",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-054",
+      "area": "Agent runtime",
+      "title": "Idempotent retry",
+      "phase": "R3-R11",
+      "lens": "Follow the Bottleneck",
+      "check": "Tool retry bounded and traceable",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-055",
+      "area": "Agent runtime",
+      "title": "Budget exhaustion",
+      "phase": "R3-R11",
+      "lens": "Follow the Bottleneck",
+      "check": "Fails safely with no extra provider calls",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-056",
+      "area": "Agent runtime",
+      "title": "Plan vs execution diff",
+      "phase": "R3-R11",
+      "lens": "Follow the Bottleneck",
+      "check": "Tool trajectory compared with approved plan",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-057",
+      "area": "Agent runtime",
+      "title": "Agent-to-agent spoof test",
+      "phase": "R3-R11",
+      "lens": "Follow the Bottleneck",
+      "check": "Invalid delegate identity is rejected",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-058",
+      "area": "Agent runtime",
+      "title": "Cross-agent context filter",
+      "phase": "R3-R11",
+      "lens": "Follow the Bottleneck",
+      "check": "No widened data scope in subagent",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-059",
+      "area": "Model provider & FinOps",
+      "title": "User-supplied ephemeral key",
+      "phase": "R3-R15",
+      "lens": "Opportunity Cost",
+      "check": "No key persisted or exported",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-060",
+      "area": "Model provider & FinOps",
+      "title": "Provider capability probe",
+      "phase": "R3-R15",
+      "lens": "Opportunity Cost",
+      "check": "Tool-calling models enabled only when tested",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-061",
+      "area": "Model provider & FinOps",
+      "title": "OpenAI model adapter",
+      "phase": "R3-R15",
+      "lens": "Opportunity Cost",
+      "check": "Schema and tool tests pass",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-062",
+      "area": "Model provider & FinOps",
+      "title": "Anthropic model adapter",
+      "phase": "R3-R15",
+      "lens": "Opportunity Cost",
+      "check": "Tool results normalized with tested conformance",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-063",
+      "area": "Model provider & FinOps",
+      "title": "Google model adapter",
+      "phase": "R3-R15",
+      "lens": "Opportunity Cost",
+      "check": "Rate/capability tests recorded",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-064",
+      "area": "Model provider & FinOps",
+      "title": "Local OpenAI-compatible mode",
+      "phase": "R3-R15",
+      "lens": "Opportunity Cost",
+      "check": "User-run environment without SSRF",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-065",
+      "area": "Model provider & FinOps",
+      "title": "Multi-model policy router",
+      "phase": "R3-R15",
+      "lens": "Opportunity Cost",
+      "check": "Routing decision and eval recorded",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-066",
+      "area": "Model provider & FinOps",
+      "title": "Cheap-first cascade",
+      "phase": "R3-R15",
+      "lens": "Opportunity Cost",
+      "check": "Fallback only under budget/policy constraints",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-067",
+      "area": "Model provider & FinOps",
+      "title": "Latency-aware routing",
+      "phase": "R3-R15",
+      "lens": "Opportunity Cost",
+      "check": "p95 regression visible",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-068",
+      "area": "Model provider & FinOps",
+      "title": "Cost-aware routing",
+      "phase": "R3-R15",
+      "lens": "Opportunity Cost",
+      "check": "Cost per correct reported, not tokens alone",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-069",
+      "area": "Model provider & FinOps",
+      "title": "Fallback/circuit breaker",
+      "phase": "R3-R15",
+      "lens": "Opportunity Cost",
+      "check": "Provider outage yields bounded retry",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-070",
+      "area": "Model provider & FinOps",
+      "title": "Price snapshot versioning",
+      "phase": "R3-R15",
+      "lens": "Opportunity Cost",
+      "check": "USD estimate tied to published date",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-071",
+      "area": "Model provider & FinOps",
+      "title": "Prompt and version registry",
+      "phase": "R3-R15",
+      "lens": "Opportunity Cost",
+      "check": "Diff any experiment prompt by version",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-072",
+      "area": "Model provider & FinOps",
+      "title": "Tool-call schema conformance",
+      "phase": "R3-R15",
+      "lens": "Opportunity Cost",
+      "check": "Malformed calls rejected safely",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-073",
+      "area": "Model provider & FinOps",
+      "title": "Token/cache accounting",
+      "phase": "R3-R15",
+      "lens": "Opportunity Cost",
+      "check": "Provider usage marked observed vs estimated",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-074",
+      "area": "Model provider & FinOps",
+      "title": "Spend kill switch",
+      "phase": "R3-R15",
+      "lens": "Opportunity Cost",
+      "check": "Run stops at hard budget",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-075",
+      "area": "Model provider & FinOps",
+      "title": "Model drift monitoring",
+      "phase": "R3-R15",
+      "lens": "Opportunity Cost",
+      "check": "Regression compared on frozen dataset",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-076",
+      "area": "Retrieval, memory & knowledge",
+      "title": "Dense semantic policy retrieval",
+      "phase": "R8-R12",
+      "lens": "Compounding",
+      "check": "Recall@k tested against labels",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-077",
+      "area": "Retrieval, memory & knowledge",
+      "title": "BM25/lexical retrieval",
+      "phase": "R8-R12",
+      "lens": "Compounding",
+      "check": "Exact identifiers retrieved correctly",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-078",
+      "area": "Retrieval, memory & knowledge",
+      "title": "Hybrid retriever",
+      "phase": "R8-R12",
+      "lens": "Compounding",
+      "check": "Improvement evaluated on paired cases",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-079",
+      "area": "Retrieval, memory & knowledge",
+      "title": "Cross encoder reranking",
+      "phase": "R8-R12",
+      "lens": "Compounding",
+      "check": "Latency vs precision measured",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-080",
+      "area": "Retrieval, memory & knowledge",
+      "title": "Query rewriting ablation",
+      "phase": "R8-R12",
+      "lens": "Compounding",
+      "check": "Loss of original terms detectable",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-081",
+      "area": "Retrieval, memory & knowledge",
+      "title": "Temporal policy retrieval",
+      "phase": "R8-R12",
+      "lens": "Compounding",
+      "check": "Correct revision selected for case date",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-082",
+      "area": "Retrieval, memory & knowledge",
+      "title": "Evidence source hashing",
+      "phase": "R8-R12",
+      "lens": "Compounding",
+      "check": "Citations resolve immutable digest",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-083",
+      "area": "Retrieval, memory & knowledge",
+      "title": "Structured query routing",
+      "phase": "R8-R12",
+      "lens": "Compounding",
+      "check": "SQL preferred to vector for exact fields",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-084",
+      "area": "Retrieval, memory & knowledge",
+      "title": "Evidence relational graph",
+      "phase": "R8-R12",
+      "lens": "Compounding",
+      "check": "Trace references and causal caveats represented",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-085",
+      "area": "Retrieval, memory & knowledge",
+      "title": "Session memory lifecycle",
+      "phase": "R8-R12",
+      "lens": "Compounding",
+      "check": "Thread reset and TTL enforced",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-086",
+      "area": "Retrieval, memory & knowledge",
+      "title": "Case episodic memory",
+      "phase": "R8-R12",
+      "lens": "Compounding",
+      "check": "Cross-account recall forbidden",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-087",
+      "area": "Retrieval, memory & knowledge",
+      "title": "Memory provenance tags",
+      "phase": "R8-R12",
+      "lens": "Compounding",
+      "check": "Origin and approval status visible",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-088",
+      "area": "Retrieval, memory & knowledge",
+      "title": "Memory poisoning quarantine",
+      "phase": "R8-R12",
+      "lens": "Compounding",
+      "check": "Malicious case cannot become instruction",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-089",
+      "area": "Retrieval, memory & knowledge",
+      "title": "Memory edit/forget",
+      "phase": "R8-R12",
+      "lens": "Compounding",
+      "check": "Deletion verified in retriever",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-090",
+      "area": "Retrieval, memory & knowledge",
+      "title": "Graph RAG experiment",
+      "phase": "R8-R12",
+      "lens": "Compounding",
+      "check": "Benchmarks vs relational evidence baseline",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-091",
+      "area": "Retrieval, memory & knowledge",
+      "title": "Context budgeting",
+      "phase": "R8-R12",
+      "lens": "Compounding",
+      "check": "Token/coverage tradeoff reported",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-092",
+      "area": "Verification & evaluation",
+      "title": "Claim-level numeric verifier",
+      "phase": "R4-R20",
+      "lens": "Proof of Work",
+      "check": "Amount/currency/date mismatches caught",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-093",
+      "area": "Verification & evaluation",
+      "title": "Textual NLI verifier",
+      "phase": "R4-R20",
+      "lens": "Proof of Work",
+      "check": "Labeled 43-case set versioned",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-094",
+      "area": "Verification & evaluation",
+      "title": "Citation existence check",
+      "phase": "R4-R20",
+      "lens": "Proof of Work",
+      "check": "Missing ids marked unsupported",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-095",
+      "area": "Verification & evaluation",
+      "title": "Verbal and numeric coherence",
+      "phase": "R4-R20",
+      "lens": "Proof of Work",
+      "check": "Claim conflict flagged by rules",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-096",
+      "area": "Verification & evaluation",
+      "title": "Strict and equivalent trajectories",
+      "phase": "R4-R20",
+      "lens": "Proof of Work",
+      "check": "Both scoring definitions retained",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-097",
+      "area": "Verification & evaluation",
+      "title": "Paired A/B/C benchmark",
+      "phase": "R4-R20",
+      "lens": "Proof of Work",
+      "check": "Same snapshot used for variants",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-098",
+      "area": "Verification & evaluation",
+      "title": "Multi-agent D experiment",
+      "phase": "R4-R20",
+      "lens": "Proof of Work",
+      "check": "Gain compared to C including cost",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-099",
+      "area": "Verification & evaluation",
+      "title": "Thread-level evaluation",
+      "phase": "R4-R20",
+      "lens": "Proof of Work",
+      "check": "Follow-up case outcome checked",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-100",
+      "area": "Verification & evaluation",
+      "title": "Cost per correct evaluation",
+      "phase": "R4-R20",
+      "lens": "Proof of Work",
+      "check": "Undefined denominator reported explicitly",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-101",
+      "area": "Verification & evaluation",
+      "title": "Calibrated risk-coverage",
+      "phase": "R4-R20",
+      "lens": "Proof of Work",
+      "check": "ECE/Brier only if valid probability inputs",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-102",
+      "area": "Verification & evaluation",
+      "title": "Review threshold ablation",
+      "phase": "R4-R20",
+      "lens": "Proof of Work",
+      "check": "False escalation and misses reported",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-103",
+      "area": "Verification & evaluation",
+      "title": "Negative-case gallery",
+      "phase": "R4-R20",
+      "lens": "Proof of Work",
+      "check": "Failures are visible with reproduction",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-104",
+      "area": "Verification & evaluation",
+      "title": "Frozen holdout suite",
+      "phase": "R4-R20",
+      "lens": "Proof of Work",
+      "check": "No prompt optimization on holdout",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-105",
+      "area": "Verification & evaluation",
+      "title": "Judge agreement study",
+      "phase": "R4-R20",
+      "lens": "Proof of Work",
+      "check": "LLM grader checked against humans",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-106",
+      "area": "Verification & evaluation",
+      "title": "Statistical uncertainty interval",
+      "phase": "R4-R20",
+      "lens": "Proof of Work",
+      "check": "Sample and method declared",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-107",
+      "area": "Verification & evaluation",
+      "title": "CI regression detection",
+      "phase": "R4-R20",
+      "lens": "Proof of Work",
+      "check": "Fail gates for critical factual regressions",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-108",
+      "area": "Verification & evaluation",
+      "title": "Architecture ablation suite",
+      "phase": "R4-R20",
+      "lens": "Proof of Work",
+      "check": "Remove component to measure marginal effect",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-109",
+      "area": "Verification & evaluation",
+      "title": "Benchmark artifact export",
+      "phase": "R4-R20",
+      "lens": "Proof of Work",
+      "check": "Version, hashes and run IDs included",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-110",
+      "area": "Security & permissions",
+      "title": "SQL AST allowlist",
+      "phase": "R3-R13",
+      "lens": "Inversion",
+      "check": "Only bounded SELECT supported",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-111",
+      "area": "Security & permissions",
+      "title": "Readonly SQLite defense",
+      "phase": "R3-R13",
+      "lens": "Inversion",
+      "check": "Database connection cannot mutate",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-112",
+      "area": "Security & permissions",
+      "title": "Account scoped data",
+      "phase": "R3-R13",
+      "lens": "Inversion",
+      "check": "Cross-account access attempt denied",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-113",
+      "area": "Security & permissions",
+      "title": "Prompt injection in ledger note",
+      "phase": "R3-R13",
+      "lens": "Inversion",
+      "check": "System instructions from row ignored",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-114",
+      "area": "Security & permissions",
+      "title": "Policy text injection",
+      "phase": "R3-R13",
+      "lens": "Inversion",
+      "check": "Retrieved passage cannot grant rights",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-115",
+      "area": "Security & permissions",
+      "title": "MCP tool poisoning detector",
+      "phase": "R3-R13",
+      "lens": "Inversion",
+      "check": "Manifest expansion rejected by server policy",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-116",
+      "area": "Security & permissions",
+      "title": "Inter-agent identity verification",
+      "phase": "R3-R13",
+      "lens": "Inversion",
+      "check": "Spoofed sender rejected",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-117",
+      "area": "Security & permissions",
+      "title": "Memory poisoning prevention",
+      "phase": "R3-R13",
+      "lens": "Inversion",
+      "check": "Unapproved content quarantined",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-118",
+      "area": "Security & permissions",
+      "title": "BYOK leakage scanner",
+      "phase": "R3-R13",
+      "lens": "Inversion",
+      "check": "Keys absent from logs/spans/exports",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-119",
+      "area": "Security & permissions",
+      "title": "Run concurrency limiter",
+      "phase": "R3-R13",
+      "lens": "Inversion",
+      "check": "Excess requests safely throttled",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-120",
+      "area": "Security & permissions",
+      "title": "No arbitrary remote URLs",
+      "phase": "R3-R13",
+      "lens": "Inversion",
+      "check": "Server rejects SSRF-style model endpoint",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-121",
+      "area": "Security & permissions",
+      "title": "Permission downgrade test",
+      "phase": "R3-R13",
+      "lens": "Inversion",
+      "check": "Parent tool scope cannot widen",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-122",
+      "area": "Security & permissions",
+      "title": "Sandbox resource quotas",
+      "phase": "R3-R13",
+      "lens": "Inversion",
+      "check": "Time/memory/network bounded",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-123",
+      "area": "Security & permissions",
+      "title": "Trace privacy filter",
+      "phase": "R3-R13",
+      "lens": "Inversion",
+      "check": "PII and secrets redacted",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-124",
+      "area": "Security & permissions",
+      "title": "Supply chain and SBOM checks",
+      "phase": "R3-R13",
+      "lens": "Inversion",
+      "check": "Dependency vulnerabilities documented",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-125",
+      "area": "Security & permissions",
+      "title": "Incident stop controls",
+      "phase": "R3-R13",
+      "lens": "Inversion",
+      "check": "Revoke key and terminate outstanding run",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-126",
+      "area": "Security & permissions",
+      "title": "Attack replay corpus",
+      "phase": "R3-R13",
+      "lens": "Inversion",
+      "check": "Safe fixtures reproducible",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-127",
+      "area": "Security & permissions",
+      "title": "Audit chain integrity",
+      "phase": "R3-R13",
+      "lens": "Inversion",
+      "check": "Event provenance tampering detected",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-128",
+      "area": "Human review & workflow",
+      "title": "Typed review tasks",
+      "phase": "R10",
+      "lens": "Follow the Incentives",
+      "check": "Evidence and reason mandatory",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-129",
+      "area": "Human review & workflow",
+      "title": "Review decision state machine",
+      "phase": "R10",
+      "lens": "Follow the Incentives",
+      "check": "Invalid transition rejected",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-130",
+      "area": "Human review & workflow",
+      "title": "Reviewer role simulation",
+      "phase": "R10",
+      "lens": "Follow the Incentives",
+      "check": "Approvals sandbox-only and attributed",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-131",
+      "area": "Human review & workflow",
+      "title": "Escalation policy editor",
+      "phase": "R10",
+      "lens": "Follow the Incentives",
+      "check": "Threshold change visibly affects queue",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-132",
+      "area": "Human review & workflow",
+      "title": "Review queue metrics",
+      "phase": "R10",
+      "lens": "Follow the Incentives",
+      "check": "Wait/service/rework distinguished",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-133",
+      "area": "Human review & workflow",
+      "title": "Human attention budget",
+      "phase": "R10",
+      "lens": "Follow the Incentives",
+      "check": "Workload simulated separately from model latency",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-134",
+      "area": "Human review & workflow",
+      "title": "Risk-based triage",
+      "phase": "R10",
+      "lens": "Follow the Incentives",
+      "check": "False approve/reject tradeoff displayed",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-135",
+      "area": "Human review & workflow",
+      "title": "Second-opinion experiment",
+      "phase": "R10",
+      "lens": "Follow the Incentives",
+      "check": "Human vs model decisions compared",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-136",
+      "area": "Human review & workflow",
+      "title": "Disagreement review",
+      "phase": "R10",
+      "lens": "Follow the Incentives",
+      "check": "Conflicting verifier results preserve context",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-137",
+      "area": "Human review & workflow",
+      "title": "Selective prediction",
+      "phase": "R10",
+      "lens": "Follow the Incentives",
+      "check": "Agent can abstain explicitly",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-138",
+      "area": "Human review & workflow",
+      "title": "Reviewer feedback to eval",
+      "phase": "R10",
+      "lens": "Follow the Incentives",
+      "check": "Verified corrections become cases",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-139",
+      "area": "Human review & workflow",
+      "title": "Review history and audit",
+      "phase": "R10",
+      "lens": "Follow the Incentives",
+      "check": "Decisions immutable and versioned",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-140",
+      "area": "Human review & workflow",
+      "title": "Override rationale",
+      "phase": "R10",
+      "lens": "Follow the Incentives",
+      "check": "Reason recorded without altering raw truth",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-141",
+      "area": "Human review & workflow",
+      "title": "Human verification drill",
+      "phase": "R10",
+      "lens": "Follow the Incentives",
+      "check": "Visitor confirms groundedness manually",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-142",
+      "area": "Ops economics",
+      "title": "Observed vs assumed spend",
+      "phase": "R9",
+      "lens": "Value Capture",
+      "check": "Money metric cannot hide provenance",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-143",
+      "area": "Ops economics",
+      "title": "Model token cost ledger",
+      "phase": "R9",
+      "lens": "Value Capture",
+      "check": "Provider per-run costs reconciled",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-144",
+      "area": "Ops economics",
+      "title": "Compute overhead cost",
+      "phase": "R9",
+      "lens": "Value Capture",
+      "check": "Show non-token cost if measured",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-145",
+      "area": "Ops economics",
+      "title": "Labor cost assumption slider",
+      "phase": "R9",
+      "lens": "Value Capture",
+      "check": "Rate visible and not represented as market average",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-146",
+      "area": "Ops economics",
+      "title": "Review burden simulator",
+      "phase": "R9",
+      "lens": "Value Capture",
+      "check": "Manual minutes tied to method",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-147",
+      "area": "Ops economics",
+      "title": "Cost per correct case",
+      "phase": "R9",
+      "lens": "Value Capture",
+      "check": "Explicit numerator denominator and cohorts",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-148",
+      "area": "Ops economics",
+      "title": "Risk-weighted expected loss",
+      "phase": "R9",
+      "lens": "Value Capture",
+      "check": "Probability and impact separately labeled",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-149",
+      "area": "Ops economics",
+      "title": "Quality/cost Pareto chart",
+      "phase": "R9",
+      "lens": "Value Capture",
+      "check": "Dominated strategies visible",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-150",
+      "area": "Ops economics",
+      "title": "Break-even analysis",
+      "phase": "R9",
+      "lens": "Value Capture",
+      "check": "Only for stated hypothetical economics",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-151",
+      "area": "Ops economics",
+      "title": "Queue utilization",
+      "phase": "R9",
+      "lens": "Value Capture",
+      "check": "Overload shown at >= 1",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-152",
+      "area": "Ops economics",
+      "title": "Critical-path analysis",
+      "phase": "R9",
+      "lens": "Value Capture",
+      "check": "Latency vs total-work difference shown",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-153",
+      "area": "Ops economics",
+      "title": "Performance budget dashboard",
+      "phase": "R9",
+      "lens": "Value Capture",
+      "check": "p95/throughput visible",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-154",
+      "area": "Ops economics",
+      "title": "Policy change economics",
+      "phase": "R9",
+      "lens": "Value Capture",
+      "check": "Wrong-policy impact bounded by assumptions",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-155",
+      "area": "Ops economics",
+      "title": "No-double-count validator",
+      "phase": "R9",
+      "lens": "Value Capture",
+      "check": "Repeated benefits not summed twice",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-156",
+      "area": "Ops economics",
+      "title": "Economic experiment export",
+      "phase": "R9",
+      "lens": "Value Capture",
+      "check": "Assumptions included in JSON",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-157",
+      "area": "Simulation & data science",
+      "title": "Seeded scenario generator",
+      "phase": "R2-R19",
+      "lens": "Second-Order Thinking",
+      "check": "Same config reproduces dataset",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-158",
+      "area": "Simulation & data science",
+      "title": "Event fork and projector",
+      "phase": "R2-R19",
+      "lens": "Second-Order Thinking",
+      "check": "Branches do not change root data",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-159",
+      "area": "Simulation & data science",
+      "title": "Mutation preview/apply/reset",
+      "phase": "R2-R19",
+      "lens": "Second-Order Thinking",
+      "check": "Preview and apply exact diff",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-160",
+      "area": "Simulation & data science",
+      "title": "Fault injection FX outage",
+      "phase": "R2-R19",
+      "lens": "Second-Order Thinking",
+      "check": "Unavailable state and escalation correct",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-161",
+      "area": "Simulation & data science",
+      "title": "Fault injection tool timeout",
+      "phase": "R2-R19",
+      "lens": "Second-Order Thinking",
+      "check": "Partial trace and bounded retry",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-162",
+      "area": "Simulation & data science",
+      "title": "Mutation chain/undo",
+      "phase": "R2-R19",
+      "lens": "Second-Order Thinking",
+      "check": "Reversible branch events implemented",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-163",
+      "area": "Simulation & data science",
+      "title": "Scenario versioning",
+      "phase": "R2-R19",
+      "lens": "Second-Order Thinking",
+      "check": "Existing case oracle not silently changed",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-164",
+      "area": "Simulation & data science",
+      "title": "Snapshot-to-run provenance",
+      "phase": "R2-R19",
+      "lens": "Second-Order Thinking",
+      "check": "All runs reference matching branch hash",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-165",
+      "area": "Simulation & data science",
+      "title": "Counterfactual FX analysis",
+      "phase": "R2-R19",
+      "lens": "Second-Order Thinking",
+      "check": "Intervention vs correlation caveat shown",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-166",
+      "area": "Simulation & data science",
+      "title": "Policy sensitivity analysis",
+      "phase": "R2-R19",
+      "lens": "Second-Order Thinking",
+      "check": "Old vs new rule interpretation clear",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-167",
+      "area": "Simulation & data science",
+      "title": "Queue discrete-event simulation",
+      "phase": "R2-R19",
+      "lens": "Second-Order Thinking",
+      "check": "Deterministic arrival/service results",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-168",
+      "area": "Simulation & data science",
+      "title": "Graph state simulator",
+      "phase": "R2-R19",
+      "lens": "Second-Order Thinking",
+      "check": "Agent topology supports finite capped runs",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-169",
+      "area": "Simulation & data science",
+      "title": "Provider response mocking",
+      "phase": "R2-R19",
+      "lens": "Second-Order Thinking",
+      "check": "Test outputs labeled simulated",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-170",
+      "area": "Simulation & data science",
+      "title": "Synthetic label generation",
+      "phase": "R2-R19",
+      "lens": "Second-Order Thinking",
+      "check": "Model-generated labels separated from oracle",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-171",
+      "area": "Simulation & data science",
+      "title": "Dataset contamination check",
+      "phase": "R2-R19",
+      "lens": "Second-Order Thinking",
+      "check": "Train/holdout overlap flagged",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-172",
+      "area": "Simulation & data science",
+      "title": "Simulation validity note",
+      "phase": "R2-R19",
+      "lens": "Second-Order Thinking",
+      "check": "Limitations visible in UI",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-173",
+      "area": "Infrastructure & SRE",
+      "title": "API typed contract",
+      "phase": "R5-R16",
+      "lens": "Theory of Constraints",
+      "check": "OpenAPI schema integration tests",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-174",
+      "area": "Infrastructure & SRE",
+      "title": "SSE event stream",
+      "phase": "R5-R16",
+      "lens": "Theory of Constraints",
+      "check": "Reconnect sequence no event loss",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-175",
+      "area": "Infrastructure & SRE",
+      "title": "Run state checkpoint",
+      "phase": "R5-R16",
+      "lens": "Theory of Constraints",
+      "check": "Recovery after restart idempotent",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-176",
+      "area": "Infrastructure & SRE",
+      "title": "Partial trace after error",
+      "phase": "R5-R16",
+      "lens": "Theory of Constraints",
+      "check": "Root cause details retained",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-177",
+      "area": "Infrastructure & SRE",
+      "title": "OpenTelemetry span mapping",
+      "phase": "R5-R16",
+      "lens": "Theory of Constraints",
+      "check": "GenAI attributes and redaction align",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-178",
+      "area": "Infrastructure & SRE",
+      "title": "Provider error taxonomy",
+      "phase": "R5-R16",
+      "lens": "Theory of Constraints",
+      "check": "429/5xx/timeouts classified",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-179",
+      "area": "Infrastructure & SRE",
+      "title": "Resilient worker queue",
+      "phase": "R5-R16",
+      "lens": "Theory of Constraints",
+      "check": "No duplicate task in restart",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-180",
+      "area": "Infrastructure & SRE",
+      "title": "Static replay fallback",
+      "phase": "R5-R16",
+      "lens": "Theory of Constraints",
+      "check": "Landing works when backend down",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-181",
+      "area": "Infrastructure & SRE",
+      "title": "Multi-session load test",
+      "phase": "R5-R16",
+      "lens": "Theory of Constraints",
+      "check": "No data mixing under concurrency",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-182",
+      "area": "Infrastructure & SRE",
+      "title": "Observability dashboard",
+      "phase": "R5-R16",
+      "lens": "Theory of Constraints",
+      "check": "Critical path and error cohort reported",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-183",
+      "area": "Infrastructure & SRE",
+      "title": "CI contract validation",
+      "phase": "R5-R16",
+      "lens": "Theory of Constraints",
+      "check": "Schemas/examples checked on PR",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-184",
+      "area": "Infrastructure & SRE",
+      "title": "Deployment and rollback runbook",
+      "phase": "R5-R16",
+      "lens": "Theory of Constraints",
+      "check": "Rollback test documented",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-185",
+      "area": "Infrastructure & SRE",
+      "title": "Dependency health and costs",
+      "phase": "R5-R16",
+      "lens": "Theory of Constraints",
+      "check": "Degraded mode shows accurate state",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-186",
+      "area": "Infrastructure & SRE",
+      "title": "Performance and a11y budgets",
+      "phase": "R5-R16",
+      "lens": "Theory of Constraints",
+      "check": "Core E2E thresholds enforced",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-187",
+      "area": "Interoperability & dev tools",
+      "title": "Python SDK for investigations",
+      "phase": "R14-R21",
+      "lens": "Distribution Advantage",
+      "check": "CLI and API use same core",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-188",
+      "area": "Interoperability & dev tools",
+      "title": "Typed TypeScript client",
+      "phase": "R14-R21",
+      "lens": "Distribution Advantage",
+      "check": "OpenAPI generated contract conformance",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-189",
+      "area": "Interoperability & dev tools",
+      "title": "CLI scenario replay",
+      "phase": "R14-R21",
+      "lens": "Distribution Advantage",
+      "check": "No web UI required",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-190",
+      "area": "Interoperability & dev tools",
+      "title": "Read-only MCP resource server",
+      "phase": "R14-R21",
+      "lens": "Distribution Advantage",
+      "check": "No external payment mutation tools",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-191",
+      "area": "Interoperability & dev tools",
+      "title": "MCP tool adapter",
+      "phase": "R14-R21",
+      "lens": "Distribution Advantage",
+      "check": "Tool registry and rights preserved",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-192",
+      "area": "Interoperability & dev tools",
+      "title": "A2A mock partner simulation",
+      "phase": "R14-R21",
+      "lens": "Distribution Advantage",
+      "check": "Cross-agent identity and scope verified",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-193",
+      "area": "Interoperability & dev tools",
+      "title": "Event export JSONL",
+      "phase": "R14-R21",
+      "lens": "Distribution Advantage",
+      "check": "Versioned sanitized event bundle",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-194",
+      "area": "Interoperability & dev tools",
+      "title": "Trace format export",
+      "phase": "R14-R21",
+      "lens": "Distribution Advantage",
+      "check": "Portable evidence/tracing metadata",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-195",
+      "area": "Interoperability & dev tools",
+      "title": "Plugin capability registry",
+      "phase": "R14-R21",
+      "lens": "Distribution Advantage",
+      "check": "Unknown tool disabled by default",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-196",
+      "area": "Interoperability & dev tools",
+      "title": "Developer tool playground",
+      "phase": "R14-R21",
+      "lens": "Distribution Advantage",
+      "check": "Safe fixture inputs only",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-197",
+      "area": "Interoperability & dev tools",
+      "title": "Public reproducibility recipes",
+      "phase": "R14-R21",
+      "lens": "Distribution Advantage",
+      "check": "Cloned repo can run offline",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-198",
+      "area": "Interoperability & dev tools",
+      "title": "Evaluation harness CLI",
+      "phase": "R14-R21",
+      "lens": "Distribution Advantage",
+      "check": "Run manifest and output hashes",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-199",
+      "area": "Interoperability & dev tools",
+      "title": "Local-only container quickstart",
+      "phase": "R14-R21",
+      "lens": "Distribution Advantage",
+      "check": "BYOK not required for baseline",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-200",
+      "area": "Interoperability & dev tools",
+      "title": "Source code deep links",
+      "phase": "R14-R21",
+      "lens": "Distribution Advantage",
+      "check": "Line-level anchors match SHA",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-201",
+      "area": "Learning & distribution",
+      "title": "Interactive predict/reveal",
+      "phase": "R1-R22",
+      "lens": "Proof of Work",
+      "check": "Visitor makes prediction before answer",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-202",
+      "area": "Learning & distribution",
+      "title": "Why tool was chosen",
+      "phase": "R1-R22",
+      "lens": "Proof of Work",
+      "check": "Tool action mapped to case evidence",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-203",
+      "area": "Learning & distribution",
+      "title": "Mistake diagnosis tour",
+      "phase": "R1-R22",
+      "lens": "Proof of Work",
+      "check": "A failure can be reproduced",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-204",
+      "area": "Learning & distribution",
+      "title": "No-key shareable scenarios",
+      "phase": "R1-R22",
+      "lens": "Proof of Work",
+      "check": "First run under three minutes",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-205",
+      "area": "Learning & distribution",
+      "title": "Short accessible demo video",
+      "phase": "R1-R22",
+      "lens": "Proof of Work",
+      "check": "Captions and transcript",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-206",
+      "area": "Learning & distribution",
+      "title": "Portfolio proof cards",
+      "phase": "R1-R22",
+      "lens": "Proof of Work",
+      "check": "Each claim links source/version",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-207",
+      "area": "Learning & distribution",
+      "title": "LinkedIn case study templates",
+      "phase": "R1-R22",
+      "lens": "Proof of Work",
+      "check": "Numbers must be proven by artifact",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-208",
+      "area": "Learning & distribution",
+      "title": "Progressive expert mode",
+      "phase": "R1-R22",
+      "lens": "Proof of Work",
+      "check": "Less novice clutter, same facts",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-209",
+      "area": "Learning & distribution",
+      "title": "Architecture ADR explorer",
+      "phase": "R1-R22",
+      "lens": "Proof of Work",
+      "check": "Decision alternatives readable",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-210",
+      "area": "Learning & distribution",
+      "title": "Quiz by specialization",
+      "phase": "R1-R22",
+      "lens": "Proof of Work",
+      "check": "Agent security/evals/frontend choices",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-211",
+      "area": "Learning & distribution",
+      "title": "Learning path from cases",
+      "phase": "R1-R22",
+      "lens": "Proof of Work",
+      "check": "Optional next challenge recommendation",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-212",
+      "area": "Learning & distribution",
+      "title": "Public feedback collection",
+      "phase": "R1-R22",
+      "lens": "Proof of Work",
+      "check": "No sensitive data collected",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-213",
+      "area": "Learning & distribution",
+      "title": "Release notes grounded in tests",
+      "phase": "R1-R22",
+      "lens": "Proof of Work",
+      "check": "Shipped vs planned explicit",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-214",
+      "area": "Learning & distribution",
+      "title": "Contribution starter tasks",
+      "phase": "R1-R22",
+      "lens": "Proof of Work",
+      "check": "Clear verified reproduction cases",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-215",
+      "area": "Frontier research",
+      "title": "Neuro-symbolic policy engine",
+      "phase": "R23+",
+      "lens": "Asymmetric Bets",
+      "check": "Compared to deterministically encoded rules",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-216",
+      "area": "Frontier research",
+      "title": "Bayesian decision layer",
+      "phase": "R23+",
+      "lens": "Asymmetric Bets",
+      "check": "Calibration and prior sensitivity reported",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-217",
+      "area": "Frontier research",
+      "title": "Causal graphs",
+      "phase": "R23+",
+      "lens": "Asymmetric Bets",
+      "check": "Identification assumptions written",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-218",
+      "area": "Frontier research",
+      "title": "Counterfactual explanation agent",
+      "phase": "R23+",
+      "lens": "Asymmetric Bets",
+      "check": "Interventions tested on synthetic oracle",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-219",
+      "area": "Frontier research",
+      "title": "Adaptive multi-armed model router",
+      "phase": "R23+",
+      "lens": "Asymmetric Bets",
+      "check": "Out-of-sample regret evaluated",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-220",
+      "area": "Frontier research",
+      "title": "Distilled verifier",
+      "phase": "R23+",
+      "lens": "Asymmetric Bets",
+      "check": "Better latency with tested quality",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-221",
+      "area": "Frontier research",
+      "title": "Fine-tuned intent classifier",
+      "phase": "R23+",
+      "lens": "Asymmetric Bets",
+      "check": "Holdout uplift and license verified",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-222",
+      "area": "Frontier research",
+      "title": "Small local tool agent",
+      "phase": "R23+",
+      "lens": "Asymmetric Bets",
+      "check": "Hardware-cost and result benchmark",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-223",
+      "area": "Frontier research",
+      "title": "Multimodal screenshot extraction",
+      "phase": "R23+",
+      "lens": "Asymmetric Bets",
+      "check": "OCR truth and confidence validated",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-224",
+      "area": "Frontier research",
+      "title": "Voice assistant for case exploration",
+      "phase": "R23+",
+      "lens": "Asymmetric Bets",
+      "check": "Accessibility and transcript accuracy tested",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-225",
+      "area": "Frontier research",
+      "title": "Graph RAG over financial evidence",
+      "phase": "R23+",
+      "lens": "Asymmetric Bets",
+      "check": "Better groundedness than baseline",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-226",
+      "area": "Frontier research",
+      "title": "Federated eval benchmark",
+      "phase": "R23+",
+      "lens": "Asymmetric Bets",
+      "check": "No cross-tenant leakage in mock protocol",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-227",
+      "area": "Frontier research",
+      "title": "Privacy-preserving analytics",
+      "phase": "R23+",
+      "lens": "Asymmetric Bets",
+      "check": "Computation vs disclosure tradeoffs measured",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-228",
+      "area": "Frontier research",
+      "title": "Formal state-machine verification",
+      "phase": "R23+",
+      "lens": "Asymmetric Bets",
+      "check": "Safety properties checked exhaustively where finite",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-229",
+      "area": "Frontier research",
+      "title": "Autonomous sandbox planner",
+      "phase": "R23+",
+      "lens": "Asymmetric Bets",
+      "check": "No unsafe external side effects",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-230",
+      "area": "Frontier research",
+      "title": "Model drift forecaster",
+      "phase": "R23+",
+      "lens": "Asymmetric Bets",
+      "check": "Forecast evaluated on held-out time windows",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-231",
+      "area": "Frontier research",
+      "title": "Synthetic curriculum learning",
+      "phase": "R23+",
+      "lens": "Asymmetric Bets",
+      "check": "Scenario novelty and correctness rated",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-232",
+      "area": "Frontier research",
+      "title": "Multi-role collaboration simulator",
+      "phase": "R23+",
+      "lens": "Asymmetric Bets",
+      "check": "Incentive conflicts modeled explicitly",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-233",
+      "area": "Frontier research",
+      "title": "Agent incident detective",
+      "phase": "R23+",
+      "lens": "Asymmetric Bets",
+      "check": "Diagnoses repeated failures on traces",
+      "status": "proposed",
+      "evidence_ref": null
+    },
+    {
+      "id": "CAP-234",
+      "area": "Frontier research",
+      "title": "Research plugin marketplace",
+      "phase": "R23+",
+      "lens": "Asymmetric Bets",
+      "check": "Tools signed, scoped and tested",
+      "status": "proposed",
+      "evidence_ref": null
+    }
+  ]
+}
