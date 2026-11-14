@@ -48,9 +48,11 @@ vocabulary.
 
 **The difference between the facade and the contract is a known and enumerated one.** The guard of the facade changes
 from "every path of the facade is a path of the contract" to "every path of the facade is a path of the contract or one
-of the paths this decision declares", and the test names the three paths, so a route that nobody decided cannot appear
-in the facade. The change of the guard lands with the routes it names, and not before: until then the guard still says
-that every path of the facade is a path of the contract, which is true.
+of the paths this decision declares", and the test names the paths that have landed, so a route that nobody decided
+cannot appear in the facade. The guard widens as each route of this decision lands: the undo landed with its own
+path, and the diff and the history land with theirs, so at every moment the guard names exactly the routes of this
+decision that exist. A path that this decision names but that has not landed yet is not in the guard, because a guard
+that names a route that does not exist is a promise the test cannot keep.
 
 **The reset stays exactly as the contract declares it.** The package already declares the reset, so nothing about it
 changes: the body of the answer is the resource `Sandbox` and nothing else.

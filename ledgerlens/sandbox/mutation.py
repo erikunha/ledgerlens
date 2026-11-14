@@ -12,6 +12,11 @@ The catalog is the promise of the sandbox: only `refund.apply_fx_adjustment` is 
 kind with a round trip test. The other four kinds of the published schema are known and refused with the same code
 as a kind that does not exist, because the catalog says what the sandbox can do (ADR-021).
 
+The undo is not a kind of the catalog: it does not change a record of the case, it changes the log of the branch,
+and it is an event of the vocabulary of the sandbox in its own right (ADR-024). This module owns the plan of the
+undo: the marker it appends, the revision the branch goes back to, the hash of the state it returns to, the diff
+between the two states, the invariants of the new state and the verdict of the case over it.
+
 The shape of a payload is checked against the published command schema with `jsonschema`, the same way the export
 checks the events it publishes. The one field the published schema does not declare is the optional `currency` of
 the data: it is an assertion of the visitor about the record, and the domain checks it against the record before
@@ -37,14 +42,19 @@ from typing import Any
 
 from ledgerlens.sandbox.invariants import evaluate
 from ledgerlens.sandbox.projector import (
+    EVENT_BRANCH_UNDONE,
     EVENT_REFUND_FX_ADJUSTED,
     SANDBOX_ORIGIN,
+    UNDO_COMMAND_ID,
+    UNDO_EVENT_UID,
     ProjectedState,
     Verdict,
     canonical_rate,
     diff_of,
+    is_undo_marker,
     oldest_moment,
     project,
+    undo_marks,
     verdict_of,
 )
 from ledgerlens.sandbox.snapshot import BaseSnapshot
@@ -72,12 +82,14 @@ CODE_PAYLOAD_TOO_LARGE = "PAYLOAD_TOO_LARGE"
 CODE_NOTE_TOO_LONG = "NOTE_TOO_LONG"
 CODE_RESOURCE_LIMIT = "RESOURCE_LIMIT_EXCEEDED"
 CODE_HASH_MISMATCH = "HASH_MISMATCH"
+CODE_NOTHING_TO_UNDO = "NOTHING_TO_UNDO"
 
 # The status of the answer of a refusal. Everything that is not listed here is a rule of the payload.
 STATUS_BY_CODE = {
     CODE_REVISION_CONFLICT: 409,
     CODE_IDEMPOTENCY_MISMATCH: 409,
     CODE_HASH_MISMATCH: 409,
+    CODE_NOTHING_TO_UNDO: 409,
     CODE_PAYLOAD_TOO_LARGE: 413,
     CODE_RESOURCE_LIMIT: 429,
 }
@@ -85,6 +97,10 @@ STATUS_BY_CODE = {
 # The size of a payload and the length of a note, the limits of the resources of a branch (FR-025).
 MAX_PAYLOAD_BYTES = 32 * 1024
 MAX_NOTE_LENGTH = 300
+
+# The kind of the command of an undo. It is not a kind of the catalog: the undo does not change a record of the
+# case, it changes the log of the branch, and the catalog holds the kinds that change a record (ADR-021, ADR-024).
+UNDO_KIND = "branch.undo"
 
 # The fields of the domain the visitor may not set. They belong to the branch and to the event log, and a visitor
 # that sends one of them wants to change something the sandbox owns (FR-029).
@@ -260,6 +276,12 @@ class MutationResult:
     `stale_against` is the base canonical hash of the branch, the hash of the original snapshot the answer was
     computed against. The answer of the past is answered with the mark, so that it is never presented as the current
     result of the branch (FR-022, ADR-022).
+
+    `undone` says that the mutation this answer describes was undone afterwards. It is true for the answer of a
+    mutation that was undone and false for the answer of an undo, because an undo can never be undone: the undo only
+    takes back a mutation, and a marker of the log is not a mutation. `undone_event_uid` says which event the request
+    that this answer describes undid, and it is filled only for the answer of an undo. The two marks never overlap, and
+    they are derived from the log of the branch, so they cannot drift away from the truth (ADR-024).
     """
 
     command_id: str
@@ -272,6 +294,8 @@ class MutationResult:
     replayed: bool = False
     stale: bool = False
     stale_against: str | None = None
+    undone: bool = False
+    undone_event_uid: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -285,7 +309,48 @@ class MutationResult:
             "replayed": self.replayed,
             "stale": self.stale,
             "stale_against": self.stale_against,
+            "undone": self.undone,
+            "undone_event_uid": self.undone_event_uid,
         }
+
+
+@dataclass(frozen=True)
+class UndoPlan:
+    """What an undo would do to the branch, computed in memory and written nowhere.
+
+    The plan holds the marker the undo appends, the revision the branch goes back to, the canonical hash of the
+    state the branch returns to, the diff between the state before the undo and the state after it, the invariants
+    of the new state and the verdict of the case over it (ADR-024).
+    """
+
+    kind: str
+    command_id: str
+    event: SandboxEventRow
+    revision: int
+    canonical_hash: str
+    diff: tuple[dict[str, Any], ...]
+    invariants: tuple[dict[str, Any], ...]
+    verdict: Verdict
+    undone_event_uid: str
+    undone_command_id: str
+    valid: bool
+
+    def to_result(self) -> MutationResult:
+        """The answer of the undo: the revision and the hash of the state the branch returns to."""
+        return MutationResult(
+            command_id=self.command_id,
+            kind=self.kind,
+            revision=self.revision,
+            canonical_hash=self.canonical_hash,
+            diff=self.diff,
+            invariants=self.invariants,
+            verdict=self.verdict.to_dict(),
+            replayed=False,
+            # The answer of the undo names the event it undid, and it is not an undone mutation: an undo can never be
+            # undone, because the undo only takes back a mutation and a marker of the log is not a mutation (ADR-024).
+            undone=False,
+            undone_event_uid=self.undone_event_uid,
+        )
 
 
 class MutationRejected(Exception):
@@ -553,7 +618,17 @@ def payload_digest(command: MutationCommand) -> str:
 
 def command_id_of(command: MutationCommand, digest: str) -> str:
     """The identifier of the request, which ties the events of the branch to the request that made them."""
-    seed = f"{command.idempotency_key or ''}:{digest}"
+    return command_id_from(command.idempotency_key or "", digest)
+
+
+def command_id_from(idempotency_key: str, digest: str) -> str:
+    """The identifier of the request, computed from its key and the digest of its payload.
+
+    Why it is a function of two values and not of the command: the branch remembers the key and the digest of a
+    request and never the command itself, and the mark of the undo names the command id of the request it undoes,
+    so the layer has to be able to compute the command id of a remembered answer (ADR-024).
+    """
+    seed = f"{idempotency_key}:{digest}"
     return "cmd_" + hashlib.sha256(seed.encode("utf-8")).hexdigest()[:24]
 
 
@@ -643,6 +718,92 @@ def _money_of(state: ProjectedState, refund_id: str) -> MoneyValue:
     return MoneyValue(format_minor(int(row.get("payout_amount_minor") or 0), currency), currency)
 
 
+# --- the plan of an undo ---------------------------------------------------------------------------------------
+
+
+def plan_undo(
+    base: BaseSnapshot,
+    branch_id: str,
+    scenario_id: str,
+    revision: int,
+    events: list[SandboxEventRow],
+    command: MutationCommand,
+    now: datetime,
+    before: ProjectedState | None = None,
+) -> UndoPlan:
+    """What the undo of the last mutation would do to the branch, computed in memory and written nowhere.
+
+    Why the undone event is the last live one: the marker of an undo names an event of the log, and the events that
+    are not live are the ones a marker already undid. So the undo takes back the last mutation the branch still
+    holds, and a branch that holds none has nothing to undo (FR-038, ADR-024).
+
+    Why two projections: the diff is the difference between the state the branch is in and the state the undo would
+    produce, so both sides have to exist. The second one is built over a copy of the base, so the branch and the
+    published case are never touched. The state the branch is in is given by the caller when it has already
+    projected it, so the verification of the branch and the plan share one projection.
+    """
+    digest = payload_digest(command)
+    command_id = command_id_of(command, digest)
+    undone = undo_marks(events).undone_event_uids
+    live = [event for event in events if not is_undo_marker(event) and event.event_uid not in undone]
+    if not live:
+        raise MutationRejected(
+            CODE_NOTHING_TO_UNDO,
+            f"the branch {branch_id} holds no mutation left to undo",
+        )
+    target = live[-1]
+    marker = build_undo_event(branch_id, target, command_id, now)
+    before_state = before if before is not None else project(base, events)
+    after_state = project(base, [*events, marker])
+    entries = diff_of(before_state, after_state)
+    results = evaluate(after_state)
+    verdict = verdict_of(after_state, scenario_id)
+    return UndoPlan(
+        kind=command.kind,
+        command_id=command_id,
+        event=marker,
+        revision=revision - 1,
+        canonical_hash=after_state.canonical_hash,
+        diff=tuple(entry.to_dict() for entry in entries),
+        invariants=tuple(result.to_dict() for result in results),
+        verdict=verdict,
+        undone_event_uid=target.event_uid,
+        undone_command_id=target.command_id or "",
+        valid=all(result.passed for result in results),
+    )
+
+
+def build_undo_event(
+    branch_id: str, target: SandboxEventRow, command_id: str, now: datetime
+) -> SandboxEventRow:
+    """The marker of the undo: it names the event it undoes and the request that produced it.
+
+    Why the marker names the command id of the request that produced the undone event: the answers the branch
+    remembers are keyed by their request, so the mark of the undo is the name of that request, and it is derived
+    from the log instead of being stored as a flag (ADR-024).
+    """
+    occurred_at = now.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    payload = {
+        UNDO_EVENT_UID: target.event_uid,
+        UNDO_COMMAND_ID: target.command_id or "",
+    }
+    event_uid = hashlib.sha256(
+        canonical_json(
+            [branch_id, EVENT_BRANCH_UNDONE, target.event_uid, occurred_at, payload, command_id]
+        ).encode("utf-8")
+    ).hexdigest()
+    return SandboxEventRow(
+        event_uid=event_uid,
+        branch_id=branch_id,
+        event_type=EVENT_BRANCH_UNDONE,
+        aggregate_id=target.aggregate_id,
+        occurred_at=occurred_at,
+        payload=payload,
+        origin=SANDBOX_ORIGIN,
+        command_id=command_id,
+    )
+
+
 def new_idempotency_key() -> str:
     """A key for a request that did not bring one."""
     return "cmd_" + secrets.token_hex(12)
@@ -657,6 +818,7 @@ __all__ = [
     "CODE_INVALID_EFFECTIVE_DATE",
     "CODE_INVALID_PAYLOAD",
     "CODE_NOTE_TOO_LONG",
+    "CODE_NOTHING_TO_UNDO",
     "CODE_PAYLOAD_TOO_LARGE",
     "CODE_RESOURCE_LIMIT",
     "CODE_INVALID_REQUEST",
@@ -670,14 +832,18 @@ __all__ = [
     "MAX_PAYLOAD_BYTES",
     "ENABLED_KINDS",
     "READ_ONLY_FIELDS",
+    "UNDO_KIND",
     "MoneyValue",
     "MutationCommand",
     "MutationKind",
     "MutationPlan",
     "MutationRejected",
     "MutationResult",
+    "UndoPlan",
     "ValidatedCommand",
     "build_events",
+    "build_undo_event",
+    "command_id_from",
     "command_id_of",
     "currency_exponent",
     "format_minor",
@@ -685,6 +851,7 @@ __all__ = [
     "parse_rate",
     "payload_digest",
     "plan_mutation",
+    "plan_undo",
     "read_only_field_in",
     "status_for_code",
     "validate_command",

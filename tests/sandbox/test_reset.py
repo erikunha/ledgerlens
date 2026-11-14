@@ -20,6 +20,8 @@ What the file proves:
   fresh fork;
 * the reset of a branch of another session is refused with the same generic error as a branch that does not exist;
 * the reset of an expired branch is refused with `BranchExpired`;
+* the refresh of the deadline moves the deadline and nothing else, so it cannot lose a mutation that landed in
+  between the read and the write (ADR-027);
 * the reset writes nothing to a published artifact (FR-001);
 * the route of the reset answers the resource of the contract, and the three refusals answer the codes of the facade.
 """
@@ -206,6 +208,43 @@ def test_the_reset_refreshes_the_idle_deadline_and_keeps_the_absolute_one(
     reset = layer.reset(session_id, forked_branch.branch_id)
     assert reset.expires_at > forked_branch.expires_at
     assert reset.expires_at <= forked_branch.created_at + timedelta(seconds=layer.absolute_ttl_seconds)
+
+
+# --- the refresh of the deadline --------------------------------------------------------------------
+
+
+def test_the_refresh_of_the_deadline_cannot_lose_a_mutation_that_landed_in_between(
+    layer: BranchLayer,
+    store: BranchStore,
+    owner_session: str,
+    session_id: str,
+    forked_branch: SandboxBranch,
+    adjustment_payload: dict[str, object],
+    clock,
+) -> None:
+    """ADR-027: the refresh of the deadline moves the deadline and nothing else.
+
+    The sequence is the one the defect was reproduced with: a read of the status that refreshes the deadline, the
+    row that the read held, a mutation that lands, and the refresh of the row that the read held.
+
+    Why the branch is still served: the refresh of a read is allowed to move the deadline and to write nothing else,
+    so the mutation stays in the branch and the branch still proves its own state. A refresh that writes the whole
+    row rolls the branch back over the mutation, the row says that the branch holds no event and the log says that
+    it holds one, and the branch is refused with `HASH_MISMATCH` on every route (ADR-021).
+    """
+    layer.status(session_id, forked_branch.branch_id)
+    stale = store.get_branch(forked_branch.branch_id, owner_session)
+    mutation = layer.commit_mutation(
+        session_id, forked_branch.branch_id, _command(adjustment_payload, "cmd-0001")
+    )
+    # The visitor is active again, so the refresh of the row that the read held really writes.
+    clock.advance(timedelta(minutes=10))
+    layer._refresh(stale)
+
+    served = layer.status(session_id, forked_branch.branch_id)
+    assert served.revision == 1
+    assert served.current_canonical_hash == mutation.canonical_hash
+    assert served.expires_at > forked_branch.expires_at
 
 
 def test_the_ledger_of_the_branch_after_the_reset_is_the_ledger_of_the_base(

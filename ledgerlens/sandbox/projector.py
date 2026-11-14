@@ -10,6 +10,9 @@ events of the published ledger and the two never mix. The first event of the voc
 FX rate of a refund: the interpreter recomputes the payout of the refund from the new rate, with `Decimal` and
 never with a float, and it writes the amount in integer minor units the way the ledger does. The conversion is the
 one of the simulator, in `ledgerlens/sim/gaps.py`, so the sandbox and the published ledger agree on the arithmetic.
+The second event of the vocabulary is the marker of an undo (ADR-024): it names the event it undoes and the request
+that produced it, and it changes no row. The projection resolves the markers, so the state of a branch is still a
+pure function of the base and of the log.
 
 Three answers come out of a projection: the canonical hash, the diff of what the events changed, and the verdict of
 the case, which is the comparison of the projected state with the truth of the scenario.
@@ -18,7 +21,7 @@ the case, which is the comparison of the projected state with the truth of the s
 from __future__ import annotations
 
 import sqlite3
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -35,7 +38,13 @@ SANDBOX_ORIGIN = "sandbox"
 
 # The vocabulary of the sandbox. Every event of a branch is one of these, and the interpreter knows each one.
 EVENT_REFUND_FX_ADJUSTED = "sandbox.refund.fx_adjusted"
-EVENT_TYPES = (EVENT_REFUND_FX_ADJUSTED,)
+EVENT_BRANCH_UNDONE = "sandbox.branch.undone"
+EVENT_TYPES = (EVENT_REFUND_FX_ADJUSTED, EVENT_BRANCH_UNDONE)
+
+# The keys of the payload of the marker of an undo: the uid of the event it undoes and the command id of the
+# request that produced that event (ADR-024).
+UNDO_EVENT_UID = "undone_event_uid"
+UNDO_COMMAND_ID = "undone_command_id"
 
 # The four labels of the verdict of a case (ADR-021). The interface renders them and never guesses one.
 VERDICT_WITHIN = "within_expected_range"
@@ -147,17 +156,92 @@ class ProjectedState:
         self.conn.close()
 
 
+@dataclass(frozen=True)
+class UndoMarks:
+    """The marks the undo markers of a log carry.
+
+    `undone_event_uids` are the uids of the events the markers undo, `undone_command_ids` are the command ids of
+    the requests whose mutation was undone, and `undone_event_uid_by_command` names the event that each undo undid,
+    keyed by the command id of the request that asked for it. The marks are derived from the log and never stored as a
+    flag, so they cannot drift away from the truth of the log (ADR-024).
+
+    The two marks never overlap: a request that produced a mutation that was undone is in `undone_command_ids` and
+    names no event, and a request that asked for an undo is in `undone_event_uid_by_command` and is never in
+    `undone_command_ids`, because an undo can never be undone.
+    """
+
+    undone_event_uids: frozenset[str] = frozenset()
+    undone_command_ids: frozenset[str] = frozenset()
+    undone_event_uid_by_command: dict[str, str] = field(default_factory=dict)
+
+
 def project(base: BaseSnapshot, events: list[SandboxEventRow] | tuple[SandboxEventRow, ...]) -> ProjectedState:
     """The projection of a branch: the base, read only, with the events of the branch applied.
 
     Why a copy: the base is the published case, and the sandbox never writes to it (FR-001, FR-007). The copy
     lives in memory, so a preview of a mutation costs nothing on the disk.
+
+    Why the log is read in two passes: the undo markers name the events they undo, and the projection applies only
+    the events that are still live. The marker itself changes no row, so the state of the branch stays a pure
+    function of the base and of the log, and the hash of a branch after an undo is the hash of the state before the
+    undone mutation (FR-009, FR-010, ADR-024).
     """
     conn = _copy_of(base.db_path)
+    undone = undo_marks(events).undone_event_uids
     for event in events:
+        if is_undo_marker(event):
+            # The marker of an undo changes no row: it only names the event it undoes (ADR-024).
+            continue
+        if event.event_uid in undone:
+            # The event was undone, so it is not live any more and the projection does not apply it.
+            continue
         _apply(conn, event)
     rows = {table: dump_rows(conn, table) for table, _ in READ_TABLES}
     return ProjectedState(conn=conn, canonical_hash=canonical_hash(conn), rows=rows)
+
+
+def is_undo_marker(event: SandboxEventRow) -> bool:
+    """True when the event is the marker of an undo of the branch (ADR-024)."""
+    return event.event_type == EVENT_BRANCH_UNDONE
+
+
+def undo_marks(events: list[SandboxEventRow] | tuple[SandboxEventRow, ...]) -> UndoMarks:
+    """The marks the undo markers of the log carry.
+
+    Why the markers are read apart from the events they undo: the projection has to know which events are still
+    live, and the answers of the branch have to know which of them were undone. Both facts come from the log, so
+    neither of them can drift away from the truth (ADR-024).
+
+    Why the two marks are kept apart: the answer of a mutation that was undone and the answer of the undo that undid
+    it both talk about the same event, and a reader must be able to tell them apart. The request that produced the
+    undone mutation is named by the payload of the marker, and the request that asked for the undo is named by the
+    command id of the marker itself.
+    """
+    undone_uids: set[str] = set()
+    undone_commands: set[str] = set()
+    by_undo_request: dict[str, str] = {}
+    for event in events:
+        if not is_undo_marker(event):
+            continue
+        uid = str(event.payload.get(UNDO_EVENT_UID, ""))
+        if not uid:
+            # A marker that names no event undoes nothing.
+            continue
+        undone_uids.add(uid)
+        if event.command_id:
+            # The command id of the request that appended the marker: that request is an undo, and it is the one
+            # that names the event it undid.
+            by_undo_request[event.command_id] = uid
+        command = str(event.payload.get(UNDO_COMMAND_ID, ""))
+        if command:
+            # The command id of the request that produced the undone event: that request is a mutation, and its
+            # mutation was undone.
+            undone_commands.add(command)
+    return UndoMarks(
+        undone_event_uids=frozenset(undone_uids),
+        undone_command_ids=frozenset(undone_commands),
+        undone_event_uid_by_command=by_undo_request,
+    )
 
 
 def diff_of(before: ProjectedState, after: ProjectedState) -> list[DiffEntry]:
@@ -222,6 +306,9 @@ def _apply(conn: sqlite3.Connection, event: SandboxEventRow) -> None:
         raise ProjectionError(f"the event {event.event_uid} does not come from the sandbox")
     if event.event_type == EVENT_REFUND_FX_ADJUSTED:
         _apply_fx_adjustment(conn, event)
+        return
+    if event.event_type == EVENT_BRANCH_UNDONE:
+        # The marker of an undo changes no row: the projection resolves it by skipping the event it undoes.
         return
     raise ProjectionError(f"the sandbox does not know the event {event.event_type}")
 
@@ -424,12 +511,16 @@ def oldest_moment(state: ProjectedState) -> datetime | None:
 
 
 __all__ = [
+    "EVENT_BRANCH_UNDONE",
     "EVENT_REFUND_FX_ADJUSTED",
     "EVENT_TYPES",
+    "UNDO_COMMAND_ID",
+    "UNDO_EVENT_UID",
     "DiffEntry",
     "ProjectedState",
     "ProjectionError",
     "SANDBOX_ORIGIN",
+    "UndoMarks",
     "VALUE_MONETARY",
     "VALUE_NON_MONETARY",
     "VERDICT_ABOVE",
@@ -440,8 +531,10 @@ __all__ = [
     "Verdict",
     "canonical_rate",
     "diff_of",
+    "is_undo_marker",
     "oldest_moment",
     "project",
     "scenario_truth",
+    "undo_marks",
     "verdict_of",
 ]

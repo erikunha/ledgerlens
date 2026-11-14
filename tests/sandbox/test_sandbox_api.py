@@ -279,11 +279,43 @@ def test_the_app_declares_the_security_scheme_of_the_contract(app) -> None:
     assert spec["paths"]["/v1/sandboxes/{sandbox_id}"]["get"]["security"] == [{"anonymousSession": []}]
 
 
-def test_every_path_of_the_facade_is_a_path_of_the_contract(app) -> None:
+# The paths that ADR-023 declares beyond the contract of the design package and that have landed. The contract of
+# the package cannot be edited, so the difference between the facade and the contract is enumerated here. The
+# guard widens as each route of the decision lands: the diff and the history widen it when they land.
+PATHS_BEYOND_THE_CONTRACT = {
+    "/v1/sandboxes/{sandbox_id}/undo",
+}
+
+
+def test_every_path_of_the_facade_is_a_path_of_the_contract_or_one_that_ADR_023_declares(app) -> None:
+    """ADR-023: the guard of the facade names the paths of the decision that have landed.
+
+    Why the guard names the paths that have landed: the specification of the feature asks for a diff, a history and
+    an undo, and the contract of the design package cannot be edited. The test names the paths that exist, so a
+    route that nobody decided still cannot appear in the facade.
+    """
     contract = _contract()
     app_paths = {route.path for route in app.routes if getattr(route, "path", "").startswith("/v1/")}
-    assert app_paths <= set(contract["paths"])
+    assert app_paths <= set(contract["paths"]) | PATHS_BEYOND_THE_CONTRACT
     assert {"/v1/sessions", "/v1/sessions/current", "/v1/sandboxes", "/v1/sandboxes/{sandbox_id}"} <= app_paths
+
+
+def test_the_guard_refuses_a_route_that_nobody_decided(app) -> None:
+    """The guard of the facade is a real guard: a path that nobody decided is refused by it (ADR-023).
+
+    Why it matters: the constant names the paths of the decision that have landed, and a constant that named a
+    path of the facade that does not exist would be a promise the test cannot keep. The guard is therefore checked
+    against a path that nobody decided, so a route that appears in the facade without a decision is refused.
+    """
+    contract = _contract()
+    app_paths = {route.path for route in app.routes if getattr(route, "path", "").startswith("/v1/")}
+    undecided = "/v1/sandboxes/{sandbox_id}/decisions"
+
+    assert undecided not in contract["paths"]
+    assert undecided not in PATHS_BEYOND_THE_CONTRACT
+    assert not (app_paths | {undecided}) <= set(contract["paths"]) | PATHS_BEYOND_THE_CONTRACT
+    # Every path the guard names is a path of the facade: the guard names the routes that have landed.
+    assert PATHS_BEYOND_THE_CONTRACT <= app_paths
 
 
 def test_the_facade_answers_the_resource_of_the_contract(app, session_client: TestClient, scenario_id: str) -> None:

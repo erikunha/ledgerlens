@@ -15,7 +15,9 @@ What this module guarantees, and what the contract suite proves:
 * the payload of an event is written with the canonical serialisation of `ledgerlens.sim.events`, so the same event
   has the same bytes in both stores;
 * the answers of a branch are listed in the order of the commits, because the table of the commands has a sequence of
-  its own, the same order the file backed store keeps in the lines of its log.
+  its own, the same order the file backed store keeps in the lines of its log;
+* the store holds one connection per thread, so two requests of two threads are two sessions of the database and the
+  `FOR UPDATE` of the row of the branch really serialises them (ADR-026).
 
 The store writes no domain rule and decides nothing: the fork, the owner check, the reuse rule and the expiry live in
 `ledgerlens/sandbox/branch.py`.
@@ -30,6 +32,7 @@ two implementations of the protocol carry the same public surface (ADR-022).
 
 from __future__ import annotations
 
+import threading
 from collections.abc import Sequence
 from dataclasses import replace
 from datetime import datetime
@@ -101,13 +104,23 @@ COMMAND_COLUMNS = (
 class PostgresBranchStore:
     """The branch store over a Postgres database.
 
-    The connection opens with the first operation and stays open for the life of the store, so a machine without the
-    driver can still import this module and a test can decide to skip before the first call.
+    The store holds one connection per thread: the connection opens with the first operation of the thread and
+    stays open for the life of the store, so a machine without the driver can still import this module and a test
+    can decide to skip before the first call.
+
+    Why one connection per thread and not one for the store: the store is shared by the threads of the server, and
+    two threads that share one connection share one transaction, so the `FOR UPDATE` of the row of the branch
+    would protect nothing (ADR-026).
     """
 
     def __init__(self, database_url: str) -> None:
         self.database_url = database_url
-        self._connection: Any = None
+        # The connection of the thread that asks for it. It is kept here and not in the store, because the store is
+        # shared by the threads of the server.
+        self._local = threading.local()
+        # Every connection the store opened, so that closing the store closes all of them.
+        self._connections: list[Any] = []
+        self._connections_lock = threading.Lock()
 
     # -- the branches ------------------------------------------------------------------------------
 
@@ -200,6 +213,29 @@ class PostgresBranchStore:
         if not touched:
             raise BranchNotFound()
         return branch
+
+    def touch_branch(
+        self, branch_id: str, owner_session: str, last_activity_at: datetime, expires_at: datetime
+    ) -> SandboxBranchRow:
+        """Moves the deadline of the branch of this session and writes no other column of the row (ADR-027).
+
+        Why one statement of two columns: the write carries the deadline and nothing else, so a mutation that landed
+        between the read and the write is not rolled back by it. The row that is returned is the row of the table
+        after the write, so the caller holds the state of the branch and not the state it read before.
+
+        Why the owner is in the condition of the update: the row of another visitor is never written, and the
+        refusal is the generic one.
+        """
+        _safe_name(owner_session)
+        rows, _ = self._run(
+            "UPDATE sandbox_branches SET last_activity_at = %s, expires_at = %s"
+            " WHERE branch_id = %s AND owner_session = %s"
+            f" RETURNING {', '.join(BRANCH_COLUMNS)}",
+            (last_activity_at, expires_at, branch_id, owner_session),
+        )
+        if not rows:
+            raise BranchNotFound()
+        return _branch_from_record(rows[0])
 
     def delete_branch(self, branch_id: str, owner_session: str) -> bool:
         """Drops the branch and its events. Raises `BranchNotFound` when it is not there or not its own."""
@@ -345,6 +381,84 @@ class PostgresBranchStore:
             return None
         return _command_from_record(rows[0])
 
+    def commit_undo(
+        self,
+        branch_id: str,
+        owner_session: str,
+        event: SandboxEventRow,
+        branch: SandboxBranchRow,
+        answer: SandboxCommandRow,
+    ) -> SandboxBranchRow:
+        """Appends the marker of the undo, moves the row of the branch back and remembers the answer, in one
+        transaction.
+
+        Why one transaction: the append of the marker, the move of the row and the answer of the request are one
+        operation of the domain (FR-033, ADR-024). A crash between them would leave a branch that says one thing and
+        holds another, and the row of the branch is locked while the transaction runs, so the loser of two concurrent
+        undos is refused.
+
+        Why the revision is compared here: the undo moves the branch back by one revision, so the row the caller
+        hands over has to follow the branch, and a branch that moved between the read and the write is refused with
+        `BranchRevisionConflict` and nothing is written.
+        """
+        _safe_name(owner_session)
+        if event.branch_id != branch_id:
+            raise ValueError(f"the event {event.event_uid} does not belong to the branch {branch_id}")
+        connection = self._connect()
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT revision FROM sandbox_branches WHERE branch_id = %s AND owner_session = %s FOR UPDATE",
+                    (branch_id, owner_session),
+                )
+                found = cursor.fetchone()
+                if found is None:
+                    raise BranchNotFound()
+                if int(found[0]) != branch.revision + 1:
+                    raise BranchRevisionConflict(
+                        f"the branch {branch_id} is at revision {found[0]}, and the request expected"
+                        f" {branch.revision + 1}"
+                    )
+                self._insert_events(cursor, branch_id, [event])
+                cursor.execute(
+                    "INSERT INTO sandbox_commands"
+                    " (branch_id, idempotency_key, payload_digest, revision, canonical_hash, response_diff,"
+                    " response_verdict, response_invariants, generation)"
+                    " VALUES (%s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, %s::jsonb, %s)"
+                    " ON CONFLICT (branch_id, idempotency_key) DO NOTHING",
+                    (
+                        answer.branch_id,
+                        answer.idempotency_key,
+                        answer.payload_digest,
+                        answer.revision,
+                        answer.canonical_hash,
+                        canonical_json(answer.response_diff),
+                        canonical_json(answer.response_verdict),
+                        canonical_json(answer.response_invariants),
+                        answer.generation,
+                    ),
+                )
+                cursor.execute(
+                    "UPDATE sandbox_branches SET revision = %s, current_canonical_hash = %s, last_activity_at = %s,"
+                    " expires_at = %s, state = %s, generation = %s WHERE branch_id = %s AND owner_session = %s",
+                    (
+                        branch.revision,
+                        branch.current_canonical_hash,
+                        branch.last_activity_at,
+                        branch.expires_at,
+                        branch.state,
+                        branch.generation,
+                        branch_id,
+                        owner_session,
+                    ),
+                )
+            connection.commit()
+        except Exception:
+            # The transaction is rolled back, so the branch keeps its revision, its hash and its events.
+            connection.rollback()
+            raise
+        return branch
+
     def list_commands(self, branch_id: str, owner_session: str) -> list[SandboxCommandRow]:
         """Every answer the branch remembers, in the order the requests were committed.
 
@@ -427,25 +541,40 @@ class PostgresBranchStore:
         self._run("TRUNCATE sandbox_events, sandbox_commands, sandbox_branches RESTART IDENTITY CASCADE")
 
     def close(self) -> None:
-        """Closes the connection of the store, when there is one."""
-        if self._connection is not None and not self._connection.closed:
-            self._connection.close()
+        """Closes every connection the store opened, one per thread."""
+        with self._connections_lock:
+            connections = list(self._connections)
+            self._connections.clear()
+        for connection in connections:
+            if not connection.closed:
+                connection.close()
+        # The connection of this thread is closed, so the next call opens a new one.
+        self._local.connection = None
 
     # -- the internals -----------------------------------------------------------------------------
 
     def _connect(self) -> Any:
-        """The connection of the store, opened with the first call that needs it."""
-        if self._connection is None or self._connection.closed:
+        """The connection of the thread that asks for it, opened with the first call that needs it.
+
+        Why the connection belongs to the thread and not to the store: two requests of two threads have to be two
+        sessions of the database, otherwise they share one transaction and the `FOR UPDATE` of the row of the
+        branch protects nothing (ADR-026).
+        """
+        connection = getattr(self._local, "connection", None)
+        if connection is None or connection.closed:
             # The driver comes with the `api` extra, so the import is here and not at the top of the module.
             import psycopg
 
-            self._connection = psycopg.connect(self.database_url)
-            with self._connection.cursor() as cursor:
+            connection = psycopg.connect(self.database_url)
+            with connection.cursor() as cursor:
                 # The moments of the store are read and written in UTC, so the answer of a read does not depend on
                 # the time zone of the server.
                 cursor.execute("SET TIME ZONE 'UTC'")
-            self._connection.commit()
-        return self._connection
+            connection.commit()
+            self._local.connection = connection
+            with self._connections_lock:
+                self._connections.append(connection)
+        return connection
 
     def _run(self, sql: str, params: Sequence[Any] = ()) -> tuple[list[tuple[Any, ...]], int]:
         """Runs one statement, commits it, and returns the rows it read and the number of rows it touched."""

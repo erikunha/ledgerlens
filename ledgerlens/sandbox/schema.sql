@@ -38,6 +38,10 @@ CREATE INDEX IF NOT EXISTS sandbox_branches_expires_at_idx ON sandbox_branches (
 -- The events of a branch. The key of the table is the branch and the uid of the event, because that pair is what
 -- makes an append idempotent (FR-011). The sequence is the order of the append, the same order the file backed
 -- store keeps in the lines of its log.
+--
+-- The type of the event is free text on purpose: the vocabulary of the sandbox is the one of the interpreter, in
+-- `ledgerlens/sandbox/projector.py`, and it grows with the code. The marker of an undo is one of its events, and it
+-- changes no row, so the table of the events holds the history of the branch in its order (ADR-024).
 CREATE TABLE IF NOT EXISTS sandbox_events (
     branch_id    text        NOT NULL REFERENCES sandbox_branches (branch_id) ON DELETE CASCADE,
     event_uid    text        NOT NULL,

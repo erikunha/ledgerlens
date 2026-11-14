@@ -17,12 +17,18 @@ need (ADR-022).
 
 The file also holds the choice of the store: the configuration names the database, and the factory turns that name
 into the implementation of the protocol.
+
+The file holds the races as well: two writes that cross on the same branch have to leave one winner and one
+refusal, in the two implementations alike (ADR-026). The races are run with two real threads and not with a mock
+of the lock, because the lock is the promise and a mock would only prove that the mock works.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import threading
+from collections.abc import Callable
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -31,8 +37,17 @@ from typing import Any
 import pytest
 
 from ledgerlens.config import Settings, get_settings
+from ledgerlens.run_context import canonical_session_id
+from ledgerlens.sandbox.branch import BranchHashMismatch, BranchLayer
 from ledgerlens.sandbox.factory import build_branch_store
+from ledgerlens.sandbox.mutation import (
+    MutationCommand,
+    build_undo_event,
+    payload_digest,
+    plan_mutation,
+)
 from ledgerlens.sandbox.postgres_store import PostgresBranchStore, apply_schema
+from ledgerlens.sandbox.projector import EVENT_BRANCH_UNDONE
 from ledgerlens.sandbox.store import (
     BranchNotFound,
     BranchRevisionConflict,
@@ -59,6 +74,15 @@ DEAD_AT = NOW - timedelta(hours=1)
 
 OWNER = "Visitor-A"
 OTHER_OWNER = "visitor-b"
+
+# The time the two threads of a race wait for each other. It is long enough for a slow machine and short enough
+# for a suite that runs offline.
+BARRIER_TIMEOUT = 30.0
+
+# The sessions of the races: one branch per round, so a round that does not cross does not decide the next one.
+# The race is run more than once because two writes that cross is a race, and a race that does not happen in one
+# round is not a proof that the store does not lose anything.
+RACE_SESSIONS = ("race-visitor-1", "race-visitor-2", "race-visitor-3")
 
 
 def _row(
@@ -95,14 +119,32 @@ def _event(branch_id: str, event_uid: str = "evt-1") -> SandboxEventRow:
     )
 
 
-def _answer(branch_id: str, key: str = "cmd-0001") -> SandboxCommandRow:
+def _marker(branch_id: str, event_uid: str = "evt-2") -> SandboxEventRow:
+    """The marker of an undo, as the store keeps it.
+
+    The marker names the event it undoes and the command id of the request that produced it, and it changes no row
+    (ADR-024). The store stores it and never reads it.
+    """
+    return SandboxEventRow(
+        event_uid=event_uid,
+        branch_id=branch_id,
+        event_type="sandbox.branch.undone",
+        aggregate_id="R-0731",
+        occurred_at="2026-11-14T11:00:00Z",
+        payload={"undone_event_uid": "evt-1", "undone_command_id": "cmd-0001"},
+    )
+
+
+def _answer(
+    branch_id: str, key: str = "cmd-0001", revision: int = 1, canonical_hash: str = "1" * 64
+) -> SandboxCommandRow:
     """The answer of a request, as the store keeps it."""
     return SandboxCommandRow(
         branch_id=branch_id,
         idempotency_key=key,
         payload_digest="d" * 64,
-        revision=1,
-        canonical_hash="1" * 64,
+        revision=revision,
+        canonical_hash=canonical_hash,
         response_diff=[
             {
                 "record": "refunds",
@@ -119,6 +161,11 @@ def _answer(branch_id: str, key: str = "cmd-0001") -> SandboxCommandRow:
     )
 
 
+def _undo_answer(branch_id: str, key: str = "cmd-0002") -> SandboxCommandRow:
+    """The answer of an undo, as the store keeps it: the revision goes back and the hash is the one of the base."""
+    return _answer(branch_id, key, revision=0, canonical_hash="0" * 64)
+
+
 def _refusal(action: Any) -> tuple[str, str]:
     """The name of the error and its message, or the mark of an answer that was not a refusal.
 
@@ -130,6 +177,132 @@ def _refusal(action: Any) -> tuple[str, str]:
     except Exception as exc:  # noqa: BLE001 - the answer of the store is what the comparison is about
         return (type(exc).__name__, str(exc))
     return ("no refusal", "")
+
+
+def _write_fails_on(monkeypatch: pytest.MonkeyPatch, name: str) -> None:
+    """Makes the write of the file with this name fail, the way a full disk or a permission error makes it fail.
+
+    Why it exists: the promise of the store is that a commit that fails leaves the branch exactly where it was, and
+    the only way to prove it is to make one of the writes of the store fail on purpose. The other writes go
+    through, so the test sees a branch whose write of the row, of the events or of the answers failed, and not a
+    store that is broken everywhere.
+    """
+    from ledgerlens.sandbox import store as store_module
+
+    original = store_module._write_atomic
+
+    def failing(path: Path, text: str) -> None:
+        if path.name == name:
+            raise OSError("the disk is full")
+        original(path, text)
+
+    monkeypatch.setattr(store_module, "_write_atomic", failing)
+
+
+def _files_of_the_branch(file_store: FileBranchStore) -> dict[str, str | None]:
+    """The content of the three files of the branch, as the store keeps them on the disk.
+
+    Why it exists: the branch is proved by its files, and a branch that looks right through the store and is wrong
+    on the disk is a broken branch. The content is read as text, because the file is compared with the file it was
+    before the failure, and the name of a file that is not there is the mark of its absence.
+    """
+    folder = next(path for path in sorted(file_store.root.glob(f"{OWNER}/*")) if path.is_dir())
+    files: dict[str, str | None] = {}
+    for name in (FileBranchStore.EVENTS_FILE, FileBranchStore.COMMANDS_FILE, FileBranchStore.BRANCH_FILE):
+        path = folder / name
+        files[name] = path.read_text(encoding="utf-8") if path.exists() else None
+    return files
+
+
+def _unknown_event(branch_id: str) -> SandboxEventRow:
+    """An event of a kind the interpreter of the vocabulary of the sandbox does not know.
+
+    Why the event exists: the vocabulary is the one of `ledgerlens/sandbox/projector.py`, and an event of another
+    kind cannot be applied to the projected rows. No visitor can append one, and a corruption of the log can.
+    """
+    return SandboxEventRow(
+        event_uid="evt-unknown-kind",
+        branch_id=branch_id,
+        event_type="sandbox.unknown.kind",
+        aggregate_id="R-0731",
+        occurred_at="2026-11-14T10:00:00Z",
+        payload={"note": "an event of a kind the interpreter does not know"},
+        origin="sandbox",
+        command_id="cmd-unknown-kind",
+    )
+
+
+def _two_threads_that_cross(action: Callable[[], Any]) -> list[tuple[str, Any]]:
+    """Runs the action in two threads that really cross, and returns what each one of them answered.
+
+    Why the barrier: two writes that cross are the case the store has to refuse, and two writes that do not cross
+    prove nothing. The barrier releases the two threads at the same moment, so the second one finds the branch in
+    the state the first one is changing (ADR-026).
+
+    Why the answer of every thread is kept: the test is about the loser of the race, so the refusal of the loser
+    has to be seen and not only the state of the branch afterwards.
+    """
+    barrier = threading.Barrier(2)
+    outcomes: list[tuple[str, Any]] = []
+
+    def run() -> None:
+        try:
+            barrier.wait(timeout=BARRIER_TIMEOUT)
+        except threading.BrokenBarrierError as failure:
+            outcomes.append(("no answer", failure))
+            return
+        try:
+            outcomes.append(("written", action()))
+        except Exception as exc:  # noqa: BLE001 - the refusal of the loser is what the test is about
+            outcomes.append(("refused", exc))
+
+    threads = [threading.Thread(target=run) for _ in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=BARRIER_TIMEOUT)
+    return outcomes
+
+
+def _one_winner_and_one_refusal(outcomes: list[tuple[str, Any]]) -> None:
+    """Asserts that one of the two writes won and that the other one was refused with the conflict of the revision."""
+    written = [value for kind, value in outcomes if kind == "written"]
+    refused = [value for kind, value in outcomes if kind == "refused"]
+    assert len(written) == 1, f"the race had {len(written)} winners and {len(refused)} refusals: {outcomes}"
+    assert len(refused) == 1, f"the race had {len(written)} winners and {len(refused)} refusals: {outcomes}"
+    assert isinstance(refused[0], BranchRevisionConflict), f"the loser was refused with {refused[0]!r}"
+
+
+def _two_commits_that_cross(
+    store: BranchStore,
+    branch_id: str,
+    owner_session: str,
+    events: tuple[SandboxEventRow, ...],
+    moved: SandboxBranchRow,
+    answer: SandboxCommandRow,
+) -> list[tuple[str, Any]]:
+    """Two commits of the same branch that cross, and what each one of them answered.
+
+    Why the helper: the two commits are made by two threads, and the values of the race belong to the round that
+    made them, so they travel as arguments and not as the variables of a loop.
+    """
+    return _two_threads_that_cross(
+        lambda: store.commit_events(branch_id, owner_session, events, moved, answer)
+    )
+
+
+def _two_undos_that_cross(
+    store: BranchStore,
+    branch_id: str,
+    owner_session: str,
+    marker: SandboxEventRow,
+    undone: SandboxBranchRow,
+    answer: SandboxCommandRow,
+) -> list[tuple[str, Any]]:
+    """Two undos of the same branch that cross, and what each one of them answered."""
+    return _two_threads_that_cross(
+        lambda: store.commit_undo(branch_id, owner_session, marker, undone, answer)
+    )
 
 
 # --- the creation ---------------------------------------------------------------------------------
@@ -299,6 +472,60 @@ def test_the_store_refuses_to_save_the_row_of_a_branch_that_does_not_exist(store
         store.save_branch(_row())
 
 
+# --- the touch of the deadline -----------------------------------------------------------------------
+
+
+def test_the_touch_of_the_deadline_moves_only_the_deadline(store: BranchStore) -> None:
+    """ADR-027: the touch of the deadline writes the two fields of the deadline and no other field of the row.
+
+    Why it matters: the deadline is part of the row of the branch, and a write that carries the whole row carries
+    the revision and the hash a reader held a moment ago. A mutation that landed between the read and the write
+    would be rolled back by it, and the branch would lose the proof of its own state (ADR-021).
+    """
+    row = _row()
+    store.create_branch(row)
+    moved = replace(
+        row,
+        revision=3,
+        current_canonical_hash="2" * 64,
+        base_canonical_hash="3" * 64,
+        generation=2,
+    )
+    store.save_branch(moved)
+    later = NOW + timedelta(minutes=10)
+    expiry = later + timedelta(minutes=30)
+
+    touched = store.touch_branch(row.branch_id, OWNER, later, expiry)
+
+    # The state of the branch is the state it had: the revision, the hash, the generation and the base hash.
+    assert touched.revision == 3
+    assert touched.current_canonical_hash == "2" * 64
+    assert touched.generation == 2
+    assert touched.base_canonical_hash == "3" * 64
+    # The deadline is the only thing that moved.
+    assert touched.last_activity_at == later
+    assert touched.expires_at == expiry
+    # The row the store keeps is the row it handed back.
+    assert store.get_branch(row.branch_id, OWNER) == touched
+
+
+def test_the_store_refuses_to_touch_the_deadline_of_the_branch_of_another_session(store: BranchStore) -> None:
+    """ADR-027: the touch of the deadline of a branch of another visitor is refused and writes nothing.
+
+    Why the message is the same as the message of a branch that does not exist: a caller must not be able to tell a
+    branch of another visitor from a branch that is not there.
+    """
+    row = _row()
+    store.create_branch(row)
+    with pytest.raises(BranchNotFound) as of_other:
+        store.touch_branch(row.branch_id, OTHER_OWNER, NOW + timedelta(minutes=10), ALIVE_AT)
+    with pytest.raises(BranchNotFound) as of_missing:
+        store.touch_branch("sb_" + "0" * 24, OTHER_OWNER, NOW + timedelta(minutes=10), ALIVE_AT)
+    assert str(of_other.value) == str(of_missing.value)
+    # Nothing was written: the row of the owner is the row it had.
+    assert store.get_branch(row.branch_id, OWNER) == row
+
+
 # --- the refusal of the branch of another session ----------------------------------------------------
 
 
@@ -403,6 +630,215 @@ def test_the_store_refuses_to_commit_on_the_branch_of_another_session(store: Bra
     moved = replace(row, revision=1, current_canonical_hash="1" * 64)
     with pytest.raises(BranchNotFound):
         store.commit_events(row.branch_id, OTHER_OWNER, [_event(row.branch_id)], moved, _answer(row.branch_id))
+
+
+# --- the commit of an undo ------------------------------------------------------------------------------------
+
+
+def test_the_undo_appends_the_marker_and_moves_the_row_of_the_branch_back(store: BranchStore) -> None:
+    """The undo appends the marker and puts the revision of the branch back to the previous value (ADR-024)."""
+    row = _row()
+    store.create_branch(row)
+    moved = replace(row, revision=1, current_canonical_hash="1" * 64)
+    store.commit_events(row.branch_id, OWNER, [_event(row.branch_id)], moved, _answer(row.branch_id))
+    undone = replace(row, revision=0, current_canonical_hash="0" * 64)
+    written = store.commit_undo(
+        row.branch_id, OWNER, _marker(row.branch_id), undone, _undo_answer(row.branch_id)
+    )
+
+    assert written.revision == 0
+    assert store.get_branch(row.branch_id, OWNER) == undone
+    assert [event.event_uid for event in store.read_events(row.branch_id, OWNER)] == ["evt-1", "evt-2"]
+    assert [event.event_type for event in store.read_events(row.branch_id, OWNER)] == [
+        "refund.fx_adjusted",
+        "sandbox.branch.undone",
+    ]
+
+
+def test_the_undo_remembers_the_answer_of_the_request(store: BranchStore) -> None:
+    """The answer of the undo is remembered with the branch, so the same request is answered the same way."""
+    row = _row()
+    store.create_branch(row)
+    moved = replace(row, revision=1, current_canonical_hash="1" * 64)
+    store.commit_events(row.branch_id, OWNER, [_event(row.branch_id)], moved, _answer(row.branch_id))
+    undone = replace(row, revision=0, current_canonical_hash="0" * 64)
+    store.commit_undo(row.branch_id, OWNER, _marker(row.branch_id), undone, _undo_answer(row.branch_id))
+
+    answer = store.command_answer(row.branch_id, OWNER, "cmd-0002")
+    assert answer is not None
+    assert answer.revision == 0
+    assert answer.canonical_hash == "0" * 64
+    assert answer.payload_digest == "d" * 64
+
+
+def test_the_undo_refuses_a_branch_that_moved_and_writes_nothing(store: BranchStore) -> None:
+    """The row of the branch is locked while the undo runs, so the loser of two undos is refused (ADR-024).
+
+    The request was prepared against a branch at revision one, and the branch moved to revision two. Nothing is
+    written: not the marker, not the answer, and not the row.
+    """
+    row = _row()
+    store.create_branch(row)
+    first = replace(row, revision=1, current_canonical_hash="1" * 64)
+    store.commit_events(
+        row.branch_id, OWNER, [_event(row.branch_id, "evt-1")], first, _answer(row.branch_id, "cmd-0001")
+    )
+    second = replace(row, revision=2, current_canonical_hash="2" * 64)
+    store.commit_events(
+        row.branch_id, OWNER, [_event(row.branch_id, "evt-2")], second, _answer(row.branch_id, "cmd-0002")
+    )
+    stale = replace(row, revision=0, current_canonical_hash="0" * 64)
+
+    with pytest.raises(BranchRevisionConflict):
+        store.commit_undo(
+            row.branch_id, OWNER, _marker(row.branch_id, "evt-3"), stale, _undo_answer(row.branch_id, "cmd-0003")
+        )
+
+    assert store.get_branch(row.branch_id, OWNER) == second
+    assert [event.event_uid for event in store.read_events(row.branch_id, OWNER)] == ["evt-1", "evt-2"]
+    assert store.command_answer(row.branch_id, OWNER, "cmd-0003") is None
+
+
+def test_the_store_refuses_to_undo_the_branch_of_another_session(store: BranchStore) -> None:
+    """The branch of another visitor is refused with the generic error, like every other operation of the store."""
+    row = _row()
+    store.create_branch(row)
+    moved = replace(row, revision=1, current_canonical_hash="1" * 64)
+    store.commit_events(row.branch_id, OWNER, [_event(row.branch_id)], moved, _answer(row.branch_id))
+    undone = replace(row, revision=0, current_canonical_hash="0" * 64)
+
+    with pytest.raises(BranchNotFound):
+        store.commit_undo(
+            row.branch_id, OTHER_OWNER, _marker(row.branch_id), undone, _undo_answer(row.branch_id)
+        )
+
+    assert store.get_branch(row.branch_id, OWNER) == moved
+    assert len(store.read_events(row.branch_id, OWNER)) == 1
+
+
+def test_the_store_refuses_to_undo_a_branch_that_does_not_exist(store: BranchStore) -> None:
+    missing = "sb_" + "0" * 24
+    with pytest.raises(BranchNotFound):
+        store.commit_undo(missing, OWNER, _marker(missing), _row(branch_id=missing), _answer(missing))
+
+
+def test_the_undo_that_cannot_write_the_row_leaves_the_branch_where_it_was(store: BranchStore) -> None:
+    """The marker, the move of the row and the answer of the request happen together (ADR-024, FR-040).
+
+    The row handed over cannot be written, because its expiry is missing. The branch therefore keeps its events, its
+    revision, its hash and its answers: an undo that did not happen is not an undo that happened halfway, and the two
+    stores lose the same thing when an undo fails, which is nothing.
+
+    Why the file backed store is proved the same way: it puts the content of the files of the events and of the
+    answers back when the write of the row fails, and the test reads them again to say that it did.
+    """
+    row = _row()
+    store.create_branch(row)
+    moved = replace(row, revision=1, current_canonical_hash="1" * 64)
+    store.commit_events(row.branch_id, OWNER, [_event(row.branch_id)], moved, _answer(row.branch_id))
+    broken = replace(moved, revision=0, current_canonical_hash="0" * 64, expires_at=None)
+
+    refusal = _refusal(
+        lambda: store.commit_undo(
+            row.branch_id, OWNER, _marker(row.branch_id), broken, _undo_answer(row.branch_id)
+        )
+    )
+
+    assert refusal[0] != "no refusal"
+    assert store.get_branch(row.branch_id, OWNER) == moved
+    assert [event.event_uid for event in store.read_events(row.branch_id, OWNER)] == ["evt-1"]
+    assert store.command_answer(row.branch_id, OWNER, "cmd-0001") is not None
+    assert store.command_answer(row.branch_id, OWNER, "cmd-0002") is None
+
+
+def test_the_undo_of_the_file_store_writes_the_events_before_the_row(
+    file_store: FileBranchStore, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The row of the branch is written last, so a reader that finds an older row refuses the branch (ADR-024).
+
+    The order of the two writes is part of the promise of the store, and the test records the order the writes
+    happen in.
+    """
+    from ledgerlens.sandbox import store as store_module
+
+    written: list[str] = []
+    original = store_module._write_atomic
+
+    def record(path: Path, text: str) -> None:
+        written.append(path.name)
+        original(path, text)
+
+    monkeypatch.setattr(store_module, "_write_atomic", record)
+
+    row = _row()
+    file_store.create_branch(row)
+    moved = replace(row, revision=1, current_canonical_hash="1" * 64)
+    file_store.commit_events(row.branch_id, OWNER, [_event(row.branch_id)], moved, _answer(row.branch_id))
+    # The fork and the commit are not the operation under test: only the writes of the undo are watched.
+    written.clear()
+    undone = replace(row, revision=0, current_canonical_hash="0" * 64)
+    file_store.commit_undo(row.branch_id, OWNER, _marker(row.branch_id), undone, _undo_answer(row.branch_id))
+
+    assert written.index(FileBranchStore.EVENTS_FILE) < written.index(FileBranchStore.BRANCH_FILE)
+    assert written[-1] == FileBranchStore.BRANCH_FILE
+
+
+def test_the_undo_of_the_file_store_that_cannot_write_the_answers_leaves_the_branch_where_it_was(
+    file_store: FileBranchStore, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The undo that cannot write the answers leaves the branch exactly where it was (ADR-024, FR-040).
+
+    The write of the answers fails, the way it fails when the disk is full. The marker of the undo is not left in
+    the log of the branch and the row does not move, so the branch still proves its own state and it is still
+    served: an undo that did not happen is not an undo that happened halfway, and the two implementations of the
+    protocol lose the same thing when an undo fails, which is nothing.
+
+    Why the files are compared and not only the reads of the store: the promise is about the branch on the disk,
+    and a branch that is right in the reads and wrong in the files is a broken branch.
+    """
+    row = _row()
+    file_store.create_branch(row)
+    moved = replace(row, revision=1, current_canonical_hash="1" * 64)
+    file_store.commit_events(row.branch_id, OWNER, [_event(row.branch_id)], moved, _answer(row.branch_id))
+    before = _files_of_the_branch(file_store)
+    _write_fails_on(monkeypatch, FileBranchStore.COMMANDS_FILE)
+
+    undone = replace(row, revision=0, current_canonical_hash="0" * 64)
+    with pytest.raises(OSError):
+        file_store.commit_undo(row.branch_id, OWNER, _marker(row.branch_id), undone, _undo_answer(row.branch_id))
+
+    assert _files_of_the_branch(file_store) == before
+    assert file_store.get_branch(row.branch_id, OWNER) == moved
+    assert [event.event_uid for event in file_store.read_events(row.branch_id, OWNER)] == ["evt-1"]
+    assert file_store.command_answer(row.branch_id, OWNER, "cmd-0001") is not None
+    assert file_store.command_answer(row.branch_id, OWNER, "cmd-0002") is None
+
+
+def test_the_undo_of_the_file_store_that_cannot_write_the_row_leaves_the_branch_where_it_was(
+    file_store: FileBranchStore, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The undo that cannot write the row leaves the branch exactly where it was (ADR-024, FR-040).
+
+    The row is written last on purpose, so a reader that finds an older row refuses the branch instead of
+    serving it half applied. The marker of the undo goes back where it was with it, because an undo that did
+    not happen is not an undo that happened halfway.
+    """
+    row = _row()
+    file_store.create_branch(row)
+    moved = replace(row, revision=1, current_canonical_hash="1" * 64)
+    file_store.commit_events(row.branch_id, OWNER, [_event(row.branch_id)], moved, _answer(row.branch_id))
+    before = _files_of_the_branch(file_store)
+    _write_fails_on(monkeypatch, FileBranchStore.BRANCH_FILE)
+
+    undone = replace(row, revision=0, current_canonical_hash="0" * 64)
+    with pytest.raises(OSError):
+        file_store.commit_undo(row.branch_id, OWNER, _marker(row.branch_id), undone, _undo_answer(row.branch_id))
+
+    assert _files_of_the_branch(file_store) == before
+    assert file_store.get_branch(row.branch_id, OWNER) == moved
+    assert [event.event_uid for event in file_store.read_events(row.branch_id, OWNER)] == ["evt-1"]
+    assert file_store.command_answer(row.branch_id, OWNER, "cmd-0001") is not None
+    assert file_store.command_answer(row.branch_id, OWNER, "cmd-0002") is None
 
 
 # --- the reset of a branch ------------------------------------------------------------------------------
@@ -556,6 +992,122 @@ def test_the_store_refuses_to_list_the_answers_of_the_branch_of_another_session(
         store.list_commands(row.branch_id, OTHER_OWNER)
 
 
+# --- the race of two writes that cross -----------------------------------------------------------------------
+
+
+def test_the_store_refuses_the_loser_of_two_commits_that_cross(
+    layer: BranchLayer,
+    store: BranchStore,
+    scenario_id: str,
+    adjustment: MutationCommand,
+    clock,
+) -> None:
+    """Two commits that cross on the same branch leave one winner and one refusal (ADR-026).
+
+    The two requests carry the same key and the same expected revision, and they were prepared against the same
+    state of the branch, so the loser of the race has nothing left to commit: it is refused with
+    `BranchRevisionConflict` and it writes nothing. The log of the branch holds one event of the mutation and not
+    two, and the branch still proves its own state.
+
+    Why the threads are real: a store that serialises the writes of a branch is the promise, and a mock of the
+    lock would only prove that the mock works.
+    """
+    for session in RACE_SESSIONS:
+        owner = canonical_session_id(session)
+        branch = layer.fork(session, scenario_id).branch
+        row = store.get_branch(branch.branch_id, owner)
+        base = layer.base_resolver(scenario_id)
+        plan = plan_mutation(base, branch.branch_id, scenario_id, 0, [], adjustment, clock.now)
+        moved = replace(row, revision=1, current_canonical_hash=plan.canonical_hash, last_activity_at=clock.now)
+        answer = SandboxCommandRow(
+            branch_id=branch.branch_id,
+            idempotency_key=adjustment.idempotency_key or "cmd-0001",
+            payload_digest=payload_digest(adjustment),
+            revision=1,
+            canonical_hash=plan.canonical_hash,
+            response_diff=list(plan.diff),
+            response_verdict=plan.verdict.to_dict(),
+            response_invariants=list(plan.invariants),
+            generation=row.generation,
+        )
+
+        outcomes = _two_commits_that_cross(store, branch.branch_id, owner, plan.events, moved, answer)
+
+        _one_winner_and_one_refusal(outcomes)
+        events = store.read_events(branch.branch_id, owner)
+        assert [event.event_uid for event in events] == [plan.events[0].event_uid]
+        assert store.get_branch(branch.branch_id, owner) == moved
+        # The branch still proves its own state: the projection of its log agrees with its row (ADR-021).
+        assert layer.status(session, branch.branch_id).revision == 1
+
+
+def test_the_store_refuses_the_loser_of_two_undos_that_cross(
+    layer: BranchLayer,
+    store: BranchStore,
+    scenario_id: str,
+    adjustment: MutationCommand,
+    clock,
+) -> None:
+    """Two undos that cross on the same branch leave one winner and one refusal (ADR-026).
+
+    The two requests carry the same key and the same expected revision, and they were prepared against the same
+    state of the branch, so the loser of the race has nothing left to undo: it is refused with
+    `BranchRevisionConflict` and it writes nothing. The log of the branch holds one marker of the undo and not two,
+    and the branch still proves its own state.
+    """
+    for session in RACE_SESSIONS:
+        owner = canonical_session_id(session)
+        branch = layer.fork(session, scenario_id).branch
+        layer.commit_mutation(session, branch.branch_id, adjustment)
+        row = store.get_branch(branch.branch_id, owner)
+        target = store.read_events(branch.branch_id, owner)[-1]
+        marker = build_undo_event(branch.branch_id, target, "cmd-undo-0001", clock.now)
+        undone = replace(row, revision=0, current_canonical_hash=row.base_canonical_hash, last_activity_at=clock.now)
+        answer = SandboxCommandRow(
+            branch_id=branch.branch_id,
+            idempotency_key="undo-0001",
+            payload_digest="d" * 64,
+            revision=0,
+            canonical_hash=row.base_canonical_hash,
+            response_diff=[],
+            response_verdict={},
+            response_invariants=[],
+            generation=row.generation,
+        )
+
+        outcomes = _two_undos_that_cross(store, branch.branch_id, owner, marker, undone, answer)
+
+        _one_winner_and_one_refusal(outcomes)
+        events = store.read_events(branch.branch_id, owner)
+        assert [event.event_type for event in events].count(EVENT_BRANCH_UNDONE) == 1
+        assert store.get_branch(branch.branch_id, owner) == undone
+        # The branch still proves its own state: the projection of its log agrees with its row (ADR-021).
+        assert layer.status(session, branch.branch_id).revision == 0
+
+
+def test_the_answers_of_a_branch_that_cannot_prove_its_state_are_refused(
+    layer: BranchLayer,
+    store: BranchStore,
+    session_id: str,
+    owner_session: str,
+    scenario_id: str,
+) -> None:
+    """The answers of a branch that cannot prove its own state are never served (ADR-021, ADR-026).
+
+    The log of the branch holds an event of a kind the interpreter does not know, so the branch cannot prove its
+    own state. Every read of a branch verifies it, and the answers are a read like any other, so they are refused
+    with `HASH_MISMATCH` and not served.
+    """
+    branch = layer.fork(session_id, scenario_id).branch
+    store.append_events(branch.branch_id, owner_session, [_unknown_event(branch.branch_id)])
+
+    with pytest.raises(BranchHashMismatch) as refusal:
+        layer.answers(session_id, branch.branch_id)
+
+    assert refusal.value.code == "HASH_MISMATCH"
+    assert "fork" in refusal.value.message
+
+
 # --- the shape of the store on the disk --------------------------------------------------------------------
 
 
@@ -621,11 +1173,74 @@ def test_the_commit_of_the_file_store_writes_the_events_before_the_row(
 
     row = _row()
     file_store.create_branch(row)
+    # The fork is not the operation under test: only the writes of the commit are watched.
+    written.clear()
     moved = replace(row, revision=1, current_canonical_hash="1" * 64)
     file_store.commit_events(row.branch_id, OWNER, [_event(row.branch_id)], moved, _answer(row.branch_id))
 
     assert written.index(FileBranchStore.EVENTS_FILE) < written.index(FileBranchStore.BRANCH_FILE)
     assert written[-1] == FileBranchStore.BRANCH_FILE
+
+
+def test_the_commit_of_the_file_store_that_cannot_write_the_row_leaves_the_branch_where_it_was(
+    file_store: FileBranchStore, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The commit that cannot write the row leaves the branch exactly where it was (FR-040).
+
+    The write of the row fails, the way it fails when the disk is full. The events and the answers go back where
+    they were, so the branch keeps its revision, its hash and its answers, and it still proves its own state: a
+    commit that did not happen is not a commit that happened halfway, and the two implementations of the protocol
+    lose the same thing when a commit fails, which is nothing.
+
+    Why the files are compared and not only the reads of the store: the promise is about the branch on the disk,
+    and a branch that is right in the reads and wrong in the files is a broken branch.
+    """
+    row = _row()
+    file_store.create_branch(row)
+    before = _files_of_the_branch(file_store)
+    _write_fails_on(monkeypatch, FileBranchStore.BRANCH_FILE)
+
+    moved = replace(row, revision=1, current_canonical_hash="1" * 64)
+    with pytest.raises(OSError):
+        file_store.commit_events(row.branch_id, OWNER, [_event(row.branch_id)], moved, _answer(row.branch_id))
+
+    assert _files_of_the_branch(file_store) == before
+    assert file_store.get_branch(row.branch_id, OWNER) == row
+    assert file_store.read_events(row.branch_id, OWNER) == []
+    assert file_store.command_answer(row.branch_id, OWNER, "cmd-0001") is None
+
+
+def test_every_file_of_the_file_store_is_written_with_a_temporary_file(
+    file_store: FileBranchStore, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Every file of the store is written with a temporary file and a rename (ADR-025).
+
+    The row of the fork and the row of the save write one file each, and they write it the way the other paths write
+    theirs. The reason is the same: a reader that finds a row that is half written cannot read the branch at all,
+    and the row is the one file a reader always needs.
+
+    Why the test watches the writes instead of the result: a row that was written the wrong way is a row that is
+    right until the moment the process dies in the middle of the write, and the only way to see that difference is
+    to watch how the file is written.
+    """
+    from ledgerlens.sandbox import store as store_module
+
+    written: list[str] = []
+    original = store_module._write_atomic
+
+    def record(path: Path, text: str) -> None:
+        written.append(path.name)
+        original(path, text)
+
+    monkeypatch.setattr(store_module, "_write_atomic", record)
+    row = _row()
+    file_store.create_branch(row)
+    file_store.save_branch(replace(row, revision=3))
+
+    assert written == [FileBranchStore.BRANCH_FILE, FileBranchStore.BRANCH_FILE]
+    # The temporary file of the write is gone: the rename carried it over.
+    assert not list(file_store.root.glob(f"**/{FileBranchStore.BRANCH_FILE}.tmp"))
+    assert file_store.get_branch(row.branch_id, OWNER).revision == 3
 
 
 def test_the_file_of_another_session_is_never_read(file_store: FileBranchStore) -> None:
@@ -772,6 +1387,13 @@ def _answers(store: BranchStore) -> list[Any]:
     moved = replace(row, revision=1, current_canonical_hash="1" * 64)
     answers.append(store.save_branch(moved) == moved)
     answers.append(store.get_branch(row.branch_id, OWNER) == moved)
+    # The touch of the deadline moves the deadline and nothing else, and the two stores answer the same about it.
+    touched = store.touch_branch(
+        row.branch_id, OWNER, NOW + timedelta(minutes=10), ALIVE_AT + timedelta(minutes=10)
+    )
+    answers.append(touched)
+    answers.append(store.get_branch(row.branch_id, OWNER) == touched)
+    answers.append(_refusal(lambda: store.touch_branch(row.branch_id, OTHER_OWNER, NOW, ALIVE_AT)))
     answers.append(_refusal(lambda: store.get_branch(row.branch_id, OTHER_OWNER)))
     answers.append(_refusal(lambda: store.read_events(row.branch_id, OTHER_OWNER)))
     answers.append(_refusal(lambda: store.append_events(row.branch_id, OTHER_OWNER, [event])))
@@ -815,6 +1437,31 @@ def _answers(store: BranchStore) -> list[Any]:
     )
     answers.append(store.get_branch(committed.branch_id, OWNER) == second)
     answers.append(store.read_events(committed.branch_id, OWNER))
+    # the undo of the last mutation: the marker is appended, the revision goes back and the answer is remembered
+    undone = replace(committed, revision=1, current_canonical_hash="1" * 64)
+    answers.append(
+        store.commit_undo(
+            committed.branch_id,
+            OWNER,
+            _marker(committed.branch_id, "evt-5"),
+            undone,
+            _undo_answer(committed.branch_id, "cmd-0003"),
+        )
+    )
+    answers.append(store.get_branch(committed.branch_id, OWNER) == undone)
+    answers.append([item.event_uid for item in store.read_events(committed.branch_id, OWNER)])
+    answers.append([answer.idempotency_key for answer in store.list_commands(committed.branch_id, OWNER)])
+    answers.append(
+        _refusal(
+            lambda: store.commit_undo(
+                committed.branch_id,
+                OTHER_OWNER,
+                _marker(committed.branch_id, "evt-6"),
+                undone,
+                _undo_answer(committed.branch_id, "cmd-0004"),
+            )
+        )
+    )
     # the reset of the branch and the listing of the answers it remembers
     reset = replace(committed, revision=0, current_canonical_hash=committed.base_canonical_hash, generation=1)
     written = store.reset_branch(committed.branch_id, OWNER, reset)

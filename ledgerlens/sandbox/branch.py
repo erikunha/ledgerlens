@@ -22,6 +22,11 @@ events and compares it with the hash the row of the branch declares. A branch wh
 events may be half applied, and it is refused with the code `HASH_MISMATCH` and never served as valid (ADR-021). The
 same rule compares the base hash recorded at fork time with the base the resolver hands over, so a branch whose base
 moved under it is refused on every route and not only where it is repaired (ADR-022).
+
+A sixth rule keeps the log honest: the undo of the last mutation is an event of the vocabulary of the sandbox, the
+revision of the branch goes back to the previous value, and the event that was undone stays in the log and carries the
+mark that it was undone (ADR-024). The undo is a request with a key and with an expected revision, exactly like a
+mutation, so a request that is delivered twice undoes one mutation and not two.
 """
 
 from __future__ import annotations
@@ -44,12 +49,20 @@ from ledgerlens.sandbox.mutation import (
     MutationPreview,
     MutationRejected,
     MutationResult,
+    command_id_from,
     command_id_of,
     format_minor,
     payload_digest,
     plan_mutation,
+    plan_undo,
 )
-from ledgerlens.sandbox.projector import ProjectedState, project
+from ledgerlens.sandbox.projector import (
+    ProjectedState,
+    ProjectionError,
+    UndoMarks,
+    project,
+    undo_marks,
+)
 from ledgerlens.sandbox.snapshot import BaseSnapshot
 from ledgerlens.sandbox.store import (
     BranchNotFound,
@@ -184,12 +197,18 @@ class SandboxBranch:
 
 @dataclass(frozen=True)
 class RecordedAnswer:
-    """One answer the branch remembers, with the mark of the staleness.
+    """One answer the branch remembers, with the mark of the staleness and the mark of the undo.
 
-    The fields are the ones of the stored answer, plus the mark. `stale` says that the answer was produced in a
+    The fields are the ones of the stored answer, plus the marks. `stale` says that the answer was produced in a
     generation behind the one of the branch, and `stale_against` is the base canonical hash of the branch, the hash of
     the original snapshot the answer was computed against. An answer of the current generation is not stale and
     `stale_against` is None (FR-022, ADR-022).
+
+    `undone` says that the mutation this answer describes was undone afterwards. It is true for the answer of a
+    mutation that was undone and false for the answer of an undo, because an undo can never be undone: the undo only
+    takes back a mutation, and a marker of the log is not a mutation. `undone_event_uid` says which event the request
+    that this answer describes undid, and it is filled only for the answer of an undo. The two marks never overlap, and
+    they are derived from the log of the branch, so they cannot drift away from the truth (ADR-024).
     """
 
     branch_id: str
@@ -203,6 +222,31 @@ class RecordedAnswer:
     generation: int
     stale: bool = False
     stale_against: str | None = None
+    undone: bool = False
+    undone_event_uid: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        """The answer as the interface reads it, with the two marks of the branch.
+
+        Why the marks travel with the answer: an answer of the past is stale and an answer of a mutation that was
+        undone is not the current result of the branch either, so the reader of the answer has to see both (ADR-022,
+        ADR-024).
+        """
+        return {
+            "branch_id": self.branch_id,
+            "idempotency_key": self.idempotency_key,
+            "payload_digest": self.payload_digest,
+            "revision": self.revision,
+            "canonical_hash": self.canonical_hash,
+            "response_diff": list(self.response_diff),
+            "response_verdict": dict(self.response_verdict),
+            "response_invariants": list(self.response_invariants),
+            "generation": self.generation,
+            "stale": self.stale,
+            "stale_against": self.stale_against,
+            "undone": self.undone,
+            "undone_event_uid": self.undone_event_uid,
+        }
 
 
 @dataclass(frozen=True)
@@ -358,7 +402,7 @@ class BranchLayer:
         digest = payload_digest(command)
         stored = self.store.command_answer(branch_id, owner, command.idempotency_key)
         if stored is not None:
-            return self._replay(branch, stored, command, digest)
+            return self._replay(branch, stored, command, digest, events)
         if command.expected_revision != branch.revision:
             raise MutationRejected(
                 CODE_REVISION_CONFLICT,
@@ -400,6 +444,86 @@ class BranchLayer:
             ) from None
         return plan.to_result()
 
+    def undo(self, session_id: str, branch_id: str, command: MutationCommand) -> MutationResult:
+        """The undo of the last mutation of the branch: the revision goes back and the history stays (ADR-024).
+
+        The order of the three rules is the order of the promises, and it is the order of the commit: the idempotency
+        key comes first, so a request that was already answered is answered with the answer that was stored, whatever
+        the expected revision says: a second delivery that was answered with a new undo would undo another mutation,
+        because it would find another mutation to undo (FR-012). A key that was seen with another payload is a
+        conflict, whatever the expected revision says (FR-013). A key that was never seen has to carry the expected
+        revision of the branch, and a stale one is a conflict (FR-014).
+
+        The branch is verified before it moves anything, so a branch that cannot prove its own state is refused with
+        `HASH_MISMATCH` and never served (ADR-021). An undo that has nothing to undo is refused with
+        `NOTHING_TO_UNDO`, and the branch stays untouched (FR-038).
+
+        The revision goes back to the previous value and the hash becomes the hash of the state the branch returns to.
+        The event that was undone stays in the log and the marker is appended to it, so the history is append only
+        (FR-037).
+        """
+        owner = self._owner(session_id)
+        row = self.store.get_branch(branch_id, owner)
+        if row.owner_session != owner:
+            # The store already refuses this, but the layer does not rely on that alone.
+            raise BranchNotFound()
+        if self._expired(row):
+            raise BranchExpired(f"the branch {branch_id} expired; fork the scenario again")
+        branch = self._view(row)
+        base = self.base_resolver(branch.scenario_id)
+        events = self.store.read_events(branch_id, owner)
+        # Every read of the branch is verified: a branch that cannot prove its own state is never served (ADR-021).
+        state = self._verified(row, owner, events)
+        if not command.idempotency_key:
+            raise MutationRejected(CODE_INVALID_REQUEST, "the request carries no idempotency key")
+        if command.expected_revision is None:
+            raise MutationRejected(CODE_INVALID_REQUEST, "the request carries no expected revision")
+        digest = payload_digest(command)
+        stored = self.store.command_answer(branch_id, owner, command.idempotency_key)
+        if stored is not None:
+            return self._replay(branch, stored, command, digest, events)
+        if command.expected_revision != branch.revision:
+            raise MutationRejected(
+                CODE_REVISION_CONFLICT,
+                f"the branch is at revision {branch.revision} and the request expected {command.expected_revision}",
+            )
+        self._check_the_events(events)
+        now = self._clock()
+        plan = plan_undo(
+            base, branch.branch_id, branch.scenario_id, branch.revision, events, command, now, before=state
+        )
+        failed = [result for result in plan.invariants if not result["passed"]]
+        if failed:
+            raise MutationRejected(CODE_INVARIANT_VIOLATION, str(failed[0]["reason"]))
+        new_row = replace(
+            row,
+            # The revision of the branch is the number of the mutations that are still live, so it goes back.
+            revision=branch.revision - 1,
+            current_canonical_hash=plan.canonical_hash,
+            last_activity_at=now,
+            expires_at=self._expiry(now, row.created_at),
+        )
+        answer = SandboxCommandRow(
+            branch_id=branch_id,
+            idempotency_key=command.idempotency_key,
+            payload_digest=digest,
+            revision=new_row.revision,
+            canonical_hash=plan.canonical_hash,
+            response_diff=list(plan.diff),
+            response_verdict=plan.verdict.to_dict(),
+            response_invariants=list(plan.invariants),
+            # The answer remembers the generation it was produced in, so that a reset can mark it stale (ADR-022).
+            generation=branch.generation,
+        )
+        try:
+            self.store.commit_undo(branch_id, owner, plan.event, new_row, answer)
+        except BranchRevisionConflict:
+            # The branch moved between the read and the write: the request is stale, and nothing was written.
+            raise MutationRejected(
+                CODE_REVISION_CONFLICT, "the branch moved while the request was being prepared"
+            ) from None
+        return plan.to_result()
+
     def _check_the_resources(self, branch: SandboxBranch, events: list[Any]) -> None:
         """The resources of the branch: the number of its mutations and the number of its events.
 
@@ -411,6 +535,14 @@ class BranchLayer:
                 CODE_RESOURCE_LIMIT,
                 f"the branch already holds {branch.revision} mutations, and the limit is {MAX_COMMITTED_MUTATIONS}",
             )
+        self._check_the_events(events)
+
+    def _check_the_events(self, events: list[Any]) -> None:
+        """The number of events of the branch.
+
+        Why the undo is measured against this limit and not against the limit of the mutations: an undo frees a
+        mutation and appends an event, so what grows is the number of the events of the log (ADR-024).
+        """
         if len(events) >= MAX_EVENTS:
             raise MutationRejected(
                 CODE_RESOURCE_LIMIT,
@@ -418,7 +550,12 @@ class BranchLayer:
             )
 
     def _replay(
-        self, branch: SandboxBranch, stored: SandboxCommandRow, command: MutationCommand, digest: str
+        self,
+        branch: SandboxBranch,
+        stored: SandboxCommandRow,
+        command: MutationCommand,
+        digest: str,
+        events: list[Any],
     ) -> MutationResult:
         """The answer of a request that was already committed, with the same key and the same payload.
 
@@ -426,6 +563,10 @@ class BranchLayer:
         invariants and the verdict of the request that was committed. They are not recomputed from the current
         projection, because a later mutation may have moved the case and the answer of a request is the answer of
         that request (ADR-021).
+
+        The mark of the undo is the one of the log: the marker of an undo names the command id of the request it
+        undoes, so the answer of a request that was undone carries the mark, and the answer of the undo itself
+        carries the uid of the event it undid (ADR-024).
         """
         if stored.payload_digest != digest:
             raise MutationRejected(
@@ -435,8 +576,14 @@ class BranchLayer:
         # An answer of a generation behind the current one of the branch is stale, and it is answered with the mark,
         # so that the answer of the past is never presented as the current result of the branch (FR-022, ADR-022).
         stale = stored.generation < branch.generation
+        command_id = command_id_of(command, digest)
+        marks = undo_marks(events)
+        # The two marks of the undo never overlap: the answer of a mutation that was undone says that it was undone
+        # and names no event, and the answer of the undo names the event it undid (ADR-024).
+        undone = command_id in marks.undone_command_ids
+        undone_event_uid = marks.undone_event_uid_by_command.get(command_id)
         return MutationResult(
-            command_id=command_id_of(command, digest),
+            command_id=command_id,
             kind=command.kind,
             revision=stored.revision,
             canonical_hash=stored.canonical_hash,
@@ -446,6 +593,8 @@ class BranchLayer:
             replayed=True,
             stale=stale,
             stale_against=branch.base_canonical_hash if stale else None,
+            undone=undone,
+            undone_event_uid=undone_event_uid,
         )
 
     def _verified(
@@ -460,12 +609,23 @@ class BranchLayer:
         Why the base hash is compared here and not only in the reset: the comparison of the base hash is part of the
         verification of the branch, so a branch whose recorded base hash does not match the base it names is refused
         wherever it is asked for and not only where it is repaired (ADR-022).
+
+        Why a log that cannot be projected is refused here: an event of a kind the interpreter does not know, or an
+        event that names a record the projection does not hold, is a branch that cannot prove its own state. The
+        refusal is the one of a branch whose row does not agree with its events, so every route answers it the same
+        way (ADR-024).
         """
         if events is None:
             events = self.store.read_events(row.branch_id, owner)
         base = self.base_resolver(row.scenario_id)
         self._check_the_base(row, base)
-        state = project(base, events)
+        try:
+            state = project(base, events)
+        except ProjectionError as failure:
+            raise BranchHashMismatch(
+                f"the log of the branch {row.branch_id} cannot be projected, so the branch cannot prove its own"
+                " state; fork the scenario again"
+            ) from failure
         if state.canonical_hash != row.current_canonical_hash:
             raise BranchHashMismatch(
                 f"the branch {row.branch_id} cannot prove its own state; fork the scenario again"
@@ -530,14 +690,23 @@ class BranchLayer:
         return self._view(written)
 
     def answers(self, session_id: str, branch_id: str) -> list[RecordedAnswer]:
-        """Every answer the branch remembers, each one marked stale or not.
+        """Every answer the branch remembers, each one marked stale or not, and marked undone or not.
 
         An answer whose generation is behind the generation of the branch is stale, and it carries the base canonical
         hash of the branch, the hash of the original snapshot it was computed against. The mark is derived from the
         two generations, so it cannot drift away from the truth (FR-022, ADR-022).
 
+        The mark of the undo is derived from the log of the branch in the same way: the marker of an undo names the
+        command id of the request it undoes, and the answers of the branch that carry that command id are the ones
+        that were undone (ADR-024).
+
         The base of the branch is verified as well, because a branch whose recorded base hash is wrong is refused
         wherever it is asked for (ADR-022).
+
+        Why the branch is verified like every other read: the answers are derived from the log of the branch, and a
+        branch whose log cannot be projected cannot prove its own state, so it is refused with `HASH_MISMATCH` and
+        never served (ADR-021, ADR-026). The log is read once and the same events are used for the verification
+        and for the marks of the undo.
         """
         owner = self._owner(session_id)
         row = self.store.get_branch(branch_id, owner)
@@ -545,12 +714,21 @@ class BranchLayer:
             raise BranchNotFound()
         if self._expired(row):
             raise BranchExpired(f"the branch {branch_id} expired; fork the scenario again")
-        self._check_the_base(row, self.base_resolver(row.scenario_id))
-        return [self._recorded(row, stored) for stored in self.store.list_commands(branch_id, owner)]
+        events = self.store.read_events(branch_id, owner)
+        # Every read of the branch is verified: a branch that cannot prove its own state is never served (ADR-021).
+        self._verified(row, owner, events)
+        marks = undo_marks(events)
+        return [self._recorded(row, stored, marks) for stored in self.store.list_commands(branch_id, owner)]
 
-    def _recorded(self, row: SandboxBranchRow, stored: SandboxCommandRow) -> RecordedAnswer:
-        """One stored answer, with the mark of the staleness that its generation decides."""
+    def _recorded(self, row: SandboxBranchRow, stored: SandboxCommandRow, marks: UndoMarks) -> RecordedAnswer:
+        """One stored answer, with the mark of the staleness its generation decides and the mark of the undo."""
         stale = stored.generation < row.generation
+        # The command id of the remembered request, computed from the two values the branch keeps.
+        command_id = command_id_from(stored.idempotency_key, stored.payload_digest)
+        # The two marks of the undo never overlap: the answer of a mutation that was undone says that it was undone
+        # and names no event, and the answer of the undo names the event it undid (ADR-024).
+        undone = command_id in marks.undone_command_ids
+        undone_event_uid = marks.undone_event_uid_by_command.get(command_id)
         return RecordedAnswer(
             branch_id=stored.branch_id,
             idempotency_key=stored.idempotency_key,
@@ -563,6 +741,8 @@ class BranchLayer:
             generation=stored.generation,
             stale=stale,
             stale_against=row.base_canonical_hash if stale else None,
+            undone=undone,
+            undone_event_uid=undone_event_uid,
         )
 
     # -- the ledger of the branch ---------------------------------------------------------------------
@@ -637,13 +817,19 @@ class BranchLayer:
     def _refresh(self, row: SandboxBranchRow) -> SandboxBranchRow:
         """The activity of the visitor moves the idle deadline; the absolute deadline never moves.
 
-        Why the row is written again: the deadline is part of the row, so the store has to keep the new one.
+        Why the deadline is moved by the method of the store that moves only the deadline: the write of a whole row
+        carries the revision and the hash that a reader held a moment ago, so a mutation that landed between the
+        read and the write would be rolled back by it. The branch would lose the proof of its own state and would
+        be refused with `HASH_MISMATCH` on every route (ADR-021, ADR-027).
+
+        Why nothing is written when the deadline did not move: a read that finds the deadline where it is leaves
+        the branch exactly where it was.
         """
         now = self._clock()
         expires_at = self._expiry(now, row.created_at)
         if now == row.last_activity_at and expires_at == row.expires_at:
             return row
-        return self.store.save_branch(replace(row, last_activity_at=now, expires_at=expires_at))
+        return self.store.touch_branch(row.branch_id, row.owner_session, now, expires_at)
 
     def _expiry(self, last_activity_at: datetime, created_at: datetime) -> datetime:
         """The expiry of a branch: the idle deadline from the last activity, never past the absolute deadline."""

@@ -9,6 +9,7 @@ layer that forks it.
 
 from ledgerlens.sandbox.branch import (
     BranchExpired,
+    BranchHashMismatch,
     BranchLayer,
     ForkOutcome,
     RecordedAnswer,
@@ -21,6 +22,7 @@ from ledgerlens.sandbox.session import DemoSession, InvalidSession, SessionIssue
 from ledgerlens.sandbox.snapshot import BaseResolver, BaseSnapshot, UnknownScenario
 from ledgerlens.sandbox.store import (
     BranchNotFound,
+    BranchRevisionConflict,
     BranchStore,
     FileBranchStore,
     SandboxBranchRow,
@@ -32,8 +34,10 @@ __all__ = [
     "BaseResolver",
     "BaseSnapshot",
     "BranchExpired",
+    "BranchHashMismatch",
     "BranchLayer",
     "BranchNotFound",
+    "BranchRevisionConflict",
     "BranchStore",
     "DemoSession",
     "FileBranchStore",

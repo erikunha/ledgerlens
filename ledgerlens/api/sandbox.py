@@ -18,6 +18,10 @@ hash of the branch and none for its state, and it accepts no other field. The tw
 `X-LedgerLens-Branch-Hash` and `X-LedgerLens-Branch-State`, and the version of the answers travels in the header
 `X-LedgerLens-Schema-Version` (FR-042). The domain layer keeps them all three.
 
+Three paths of the facade are beyond the contract of the design package, and ADR-023 declares them: the diff of the
+branch, the history of the branch and the undo of the last mutation. The contract of the package cannot be edited,
+so the difference is written down here and in the test that guards the paths.
+
 No route accepts a file path, a SQL statement or a URL, and no route writes to the published snapshot (FR-041).
 """
 
@@ -49,6 +53,7 @@ from ledgerlens.sandbox.mutation import (
     CODE_INVALID_PAYLOAD,
     CODE_INVALID_REQUEST,
     CODE_READ_ONLY_FIELD,
+    UNDO_KIND,
     MutationCommand,
     MutationRejected,
     read_only_field_in,
@@ -305,6 +310,45 @@ def create_app(
         except BranchHashMismatch as mismatch:
             raise ContractError(409, mismatch.code, mismatch.message) from None
         return _sandbox_response(branch, 200)
+
+    @app.post("/v1/sandboxes/{sandbox_id}/undo")
+    def undo_sandbox(
+        sandbox_id: Annotated[str, PathParam(pattern=BRANCH_ID_PATTERN)],
+        cookie: Annotated[str | None, Security(SESSION_SCHEME)],
+        idempotency_key: Annotated[str, Header(alias="Idempotency-Key")],
+        if_match: Annotated[str, Header(alias="If-Match")],
+    ) -> JSONResponse:
+        """The undo of the last mutation of the branch: the revision goes back and the history stays.
+
+        The body of the request is empty, because the undo does not change a record of the case: it changes the log
+        of the branch. The `Idempotency-Key` header names the request and the `If-Match` header carries the revision
+        the visitor believes the branch is at, exactly like the route of the commit, because a request that is
+        delivered twice has to undo one mutation and not two (ADR-024).
+
+        The answer carries the new revision, the new canonical hash, the diff, the invariants and the verdict, plus
+        the mark of the undo and the uid of the event that was undone. The route is one of the three paths that
+        ADR-023 declares beyond the contract of the design package.
+        """
+        session = _session(cookie, issuer)
+        command = MutationCommand(
+            kind=UNDO_KIND,
+            payload={},
+            expected_revision=_revision_of(if_match),
+            idempotency_key=idempotency_key,
+        )
+        try:
+            result = layer.undo(session, sandbox_id, command)
+        except MutationRejected as refusal:
+            raise ContractError(status_for_code(refusal.code), refusal.code, refusal.message) from None
+        except BranchNotFound:
+            raise ContractError(404, "NOT_FOUND", GENERIC_NOT_FOUND) from None
+        except InvalidSessionId:
+            raise ContractError(401, "SESSION_REQUIRED", "no valid session") from None
+        except BranchExpired as expired:
+            raise ContractError(410, "BRANCH_EXPIRED", str(expired)) from None
+        except BranchHashMismatch as mismatch:
+            raise ContractError(409, mismatch.code, mismatch.message) from None
+        return _answer(result.to_dict())
 
     @app.get("/v1/sandboxes/{sandbox_id}/ledger")
     def read_ledger(

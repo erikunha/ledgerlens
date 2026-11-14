@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import secrets
 import shutil
+import threading
 from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
 from datetime import datetime
@@ -144,6 +145,22 @@ class BranchStore(Protocol):
         The store writes no rule: the caller computes the new deadline and hands the row over.
         """
 
+    def touch_branch(
+        self, branch_id: str, owner_session: str, last_activity_at: datetime, expires_at: datetime
+    ) -> SandboxBranchRow:
+        """Moves the deadline of the branch of this session and writes no other field of the row.
+
+        Why the method exists: the deadline is part of the row of the branch, and a write that carries the whole
+        row carries the revision and the hash that a reader held a moment ago. A mutation that landed between the
+        read and the write would be rolled back by it, and the branch would lose the proof of its own state
+        (ADR-021, ADR-027).
+
+        The row that is returned is the row that is kept after the write, so the caller holds the state of the
+        branch and not the state it read before.
+
+        The branch of another visitor is refused with `BranchNotFound`, like every other operation of the store.
+        """
+
     def append_events(self, branch_id: str, owner_session: str, events: Sequence[SandboxEventRow]) -> AppendResult:
         """Appends events to the branch. The append is idempotent on the event uid."""
 
@@ -179,6 +196,24 @@ class BranchStore(Protocol):
         """The answer already given to the request with this key, or None when there is none.
 
         The branch of another visitor is refused with `BranchNotFound`, like every other read of the store.
+        """
+
+    def commit_undo(
+        self,
+        branch_id: str,
+        owner_session: str,
+        event: SandboxEventRow,
+        branch: SandboxBranchRow,
+        answer: SandboxCommandRow,
+    ) -> SandboxBranchRow:
+        """Appends the marker of the undo, moves the row of the branch back and remembers the answer, together.
+
+        Why the three happen together: the undo is one operation of the domain, and the revision of the branch and
+        the marker of the log cannot drift apart (ADR-024). The row that is written is the one the branch moves to,
+        so the store moves it only when the branch is still at the revision after it, and it refuses the request
+        otherwise with `BranchRevisionConflict`.
+
+        The branch of another visitor is refused with `BranchNotFound`, like every other operation of the store.
         """
 
     def reset_branch(self, branch_id: str, owner_session: str, branch: SandboxBranchRow) -> SandboxBranchRow:
@@ -315,6 +350,28 @@ def _write_atomic(path: Path, text: str) -> None:
     temporary.replace(path)
 
 
+def _restore(path: Path, kept: str | None) -> None:
+    """Puts the content of a file back, or drops the file when there was none.
+
+    Why it exists: the store writes the files of a branch one after the other, and a write that fails has to leave
+    the branch exactly where it was, so the content of the files that were written is kept and put back.
+
+    Why the file is read before it is written: a write that failed left the file as it was, and writing it again
+    would fail the same way, so the restore would break a branch that was still whole. A file that cannot be read
+    is a file that has to be written back.
+    """
+    try:
+        changed = (path.read_text(encoding="utf-8") if path.exists() else None) != kept
+    except (OSError, UnicodeDecodeError):
+        changed = True
+    if not changed:
+        return
+    if kept is None:
+        path.unlink(missing_ok=True)
+        return
+    _write_atomic(path, kept)
+
+
 class FileBranchStore:
     """The branch store over a directory of files.
 
@@ -327,6 +384,10 @@ class FileBranchStore:
     The folder of a branch is named after a storage token and not after the branch id, so the path of a file never
     carries the identity of the branch and the isolation never depends on the path. The row names the branch id and
     its owner, and the owner check is made on the row.
+
+    Why the store holds one lock: the instance owns the files, and the write paths of a branch take the lock, so
+    the check of the revision and the write of the row are one step and two writes that cross cannot both pass the
+    check (ADR-026).
     """
 
     BRANCH_FILE = "branch.json"
@@ -336,14 +397,21 @@ class FileBranchStore:
     def __init__(self, root: Path | str) -> None:
         self.root = Path(root)
         self.root.mkdir(parents=True, exist_ok=True)
+        # The lock of the writes of a branch. It belongs to the instance, because the instance owns the files.
+        self._lock = threading.Lock()
 
     # -- the branches ------------------------------------------------------------------------------
 
     def create_branch(self, branch: SandboxBranchRow) -> SandboxBranchRow:
+        """Stores the row of a branch that was forked.
+
+        Why the row is written with a temporary file and a rename: a reader that finds a row that is half written
+        cannot read the branch at all, and the row is the one file a reader always needs (ADR-025).
+        """
         if self._find(branch.branch_id, branch.owner_session) is not None:
             raise ValueError(f"the branch {branch.branch_id} already exists")
         folder = self._new_folder(self._session_folder(branch.owner_session))
-        (folder / self.BRANCH_FILE).write_text(canonical_json(_branch_to_dict(branch)), encoding="utf-8")
+        _write_atomic(folder / self.BRANCH_FILE, canonical_json(_branch_to_dict(branch)))
         return branch
 
     def get_branch(self, branch_id: str, owner_session: str) -> SandboxBranchRow:
@@ -362,13 +430,33 @@ class FileBranchStore:
         """Stores the row of a branch of this session again.
 
         The branch is looked for inside the folder of its owner, so a branch of another visitor is never touched.
+
+        Why the row is written with a temporary file and a rename: a reader that finds a row that is half written
+        cannot read the branch at all, and the row is the one file a reader always needs (ADR-025).
         """
         for path in sorted(self._session_folder(branch.owner_session).glob(f"*/{self.BRANCH_FILE}")):
             row = _branch_from_dict(_read_json(path))
             if row.branch_id == branch.branch_id:
-                path.write_text(canonical_json(_branch_to_dict(branch)), encoding="utf-8")
+                _write_atomic(path, canonical_json(_branch_to_dict(branch)))
                 return branch
         raise BranchNotFound()
+
+    def touch_branch(
+        self, branch_id: str, owner_session: str, last_activity_at: datetime, expires_at: datetime
+    ) -> SandboxBranchRow:
+        """Moves the deadline of the branch of this session and writes no other field of the row (ADR-027).
+
+        Why the lock of the instance: the row that is read is the row that is written, so a mutation that landed
+        between the read and the write is not rolled back by this write (ADR-026).
+
+        Why the row of the owner is looked for and not the row of the branch: a branch of another visitor is not
+        even on the path of the request, and the refusal is the generic one.
+        """
+        with self._lock:
+            folder, row = self._owned(branch_id, owner_session)
+            moved = replace(row, last_activity_at=last_activity_at, expires_at=expires_at)
+            _write_atomic(folder / self.BRANCH_FILE, canonical_json(_branch_to_dict(moved)))
+            return moved
 
     def delete_branch(self, branch_id: str, owner_session: str) -> bool:
         folder, _ = self._owned(branch_id, owner_session)
@@ -434,40 +522,60 @@ class FileBranchStore:
         Why the row is written last: a reader that finds a row that is older than the events refuses the branch
         instead of serving it half applied. The three files are written with a temporary file and a rename, so a
         reader never sees half a file either.
+
+        Why the content of the two files is kept: a write that fails leaves the branch exactly where it was, in
+        this store and in the database one, so the two implementations of the protocol lose the same thing when a
+        commit fails, which is nothing (FR-040). The three writes are inside one block, because the branch is
+        broken by the first of them that fails and the other two have to go back with it.
+
+        Why the lock of the store: the check of the revision and the write of the row are one step, so the loser of
+        two commits that cross is refused with `BranchRevisionConflict` and writes nothing (ADR-026).
         """
-        folder, current = self._owned(branch_id, owner_session)
-        if current.revision != branch.revision - 1:
-            raise BranchRevisionConflict(
-                f"the branch {branch_id} is at revision {current.revision}, and the request expected"
-                f" {branch.revision - 1}"
-            )
-        path = folder / self.EVENTS_FILE
-        stored = self._read_events(path)
-        known = {row.event_uid for row in stored}
-        appended = duplicates = 0
-        for event in events:
-            if event.branch_id != branch_id:
-                raise ValueError(f"the event {event.event_uid} does not belong to the branch {branch_id}")
-            if event.event_uid in known:
-                # The same event twice is a duplicate and not an error, exactly like the event store of the simulator.
-                duplicates += 1
-                continue
-            known.add(event.event_uid)
-            stored.append(event)
-            appended += 1
-        if appended or path.exists():
-            _write_atomic(
-                path, "".join(canonical_json(_event_to_dict(row)) + "\n" for row in stored)
-            )
-        commands_path = folder / self.COMMANDS_FILE
-        commands = self._read_commands(commands_path)
-        if not any(row.idempotency_key == answer.idempotency_key for row in commands):
-            commands.append(answer)
-            _write_atomic(
-                commands_path, "".join(canonical_json(_command_to_dict(row)) + "\n" for row in commands)
-            )
-        _write_atomic(folder / self.BRANCH_FILE, canonical_json(_branch_to_dict(branch)))
-        return AppendResult(appended, duplicates)
+        with self._lock:
+            folder, current = self._owned(branch_id, owner_session)
+            if current.revision != branch.revision - 1:
+                raise BranchRevisionConflict(
+                    f"the branch {branch_id} is at revision {current.revision}, and the request expected"
+                    f" {branch.revision - 1}"
+                )
+            events_path = folder / self.EVENTS_FILE
+            commands_path = folder / self.COMMANDS_FILE
+            kept_events = events_path.read_text(encoding="utf-8") if events_path.exists() else None
+            kept_commands = commands_path.read_text(encoding="utf-8") if commands_path.exists() else None
+            stored = self._read_events(events_path)
+            known = {row.event_uid for row in stored}
+            appended = duplicates = 0
+            for event in events:
+                if event.branch_id != branch_id:
+                    raise ValueError(f"the event {event.event_uid} does not belong to the branch {branch_id}")
+                if event.event_uid in known:
+                    # The same event twice is a duplicate and not an error, exactly like the event store of the
+                    # simulator.
+                    duplicates += 1
+                    continue
+                known.add(event.event_uid)
+                stored.append(event)
+                appended += 1
+            commands = self._read_commands(commands_path)
+            new_answer = not any(row.idempotency_key == answer.idempotency_key for row in commands)
+            if new_answer:
+                commands.append(answer)
+            try:
+                if appended or events_path.exists():
+                    _write_atomic(
+                        events_path, "".join(canonical_json(_event_to_dict(row)) + "\n" for row in stored)
+                    )
+                if new_answer:
+                    _write_atomic(
+                        commands_path, "".join(canonical_json(_command_to_dict(row)) + "\n" for row in commands)
+                    )
+                _write_atomic(folder / self.BRANCH_FILE, canonical_json(_branch_to_dict(branch)))
+            except Exception:
+                # The commit did not happen, so the events and the answers go back where they were (FR-040).
+                _restore(events_path, kept_events)
+                _restore(commands_path, kept_commands)
+                raise
+            return AppendResult(appended, duplicates)
 
     def command_answer(self, branch_id: str, owner_session: str, idempotency_key: str) -> SandboxCommandRow | None:
         """The answer already given to the request with this key, or None when there is none."""
@@ -476,6 +584,63 @@ class FileBranchStore:
             if row.idempotency_key == idempotency_key:
                 return row
         return None
+
+    def commit_undo(
+        self,
+        branch_id: str,
+        owner_session: str,
+        event: SandboxEventRow,
+        branch: SandboxBranchRow,
+        answer: SandboxCommandRow,
+    ) -> SandboxBranchRow:
+        """Appends the marker of the undo, moves the row of the branch back and remembers the answer, together.
+
+        Why the row is written last: a reader that finds a row that is older than the events refuses the branch
+        instead of serving it half applied. The three files are written with a temporary file and a rename, so a
+        reader never sees half a file either.
+
+        Why the content of the two files is kept: a write that fails leaves the branch exactly where it was, in
+        this store and in the database one, so the two implementations of the protocol lose the same thing when an
+        undo fails, which is nothing (ADR-024, FR-040). The three writes are inside one block, because the branch
+        is broken by the first of them that fails and the other two have to go back with it.
+
+        Why the lock of the store: the check of the revision and the write of the row are one step, so the loser of
+        two undos that cross is refused with `BranchRevisionConflict` and writes nothing (ADR-026).
+        """
+        with self._lock:
+            folder, current = self._owned(branch_id, owner_session)
+            if current.revision != branch.revision + 1:
+                # The undo moves the branch back by one revision, so the row it hands over has to follow the branch.
+                raise BranchRevisionConflict(
+                    f"the branch {branch_id} is at revision {current.revision}, and the request expected"
+                    f" {branch.revision + 1}"
+                )
+            if event.branch_id != branch_id:
+                raise ValueError(f"the event {event.event_uid} does not belong to the branch {branch_id}")
+            events_path = folder / self.EVENTS_FILE
+            commands_path = folder / self.COMMANDS_FILE
+            kept_events = events_path.read_text(encoding="utf-8") if events_path.exists() else None
+            kept_commands = commands_path.read_text(encoding="utf-8") if commands_path.exists() else None
+            stored = self._read_events(events_path)
+            if event.event_uid not in {row.event_uid for row in stored}:
+                stored.append(event)
+            commands = self._read_commands(commands_path)
+            new_answer = not any(row.idempotency_key == answer.idempotency_key for row in commands)
+            if new_answer:
+                commands.append(answer)
+            try:
+                _write_atomic(events_path, "".join(canonical_json(_event_to_dict(row)) + "\n" for row in stored))
+                if new_answer:
+                    _write_atomic(
+                        commands_path, "".join(canonical_json(_command_to_dict(row)) + "\n" for row in commands)
+                    )
+                _write_atomic(folder / self.BRANCH_FILE, canonical_json(_branch_to_dict(branch)))
+            except Exception:
+                # The undo did not happen, so the marker and the answer go back where they were (ADR-024).
+                _restore(events_path, kept_events)
+                _restore(commands_path, kept_commands)
+                raise
+            return branch
 
     def list_commands(self, branch_id: str, owner_session: str) -> list[SandboxCommandRow]:
         """Every answer the branch remembers, in the order the requests were committed."""
@@ -497,23 +662,26 @@ class FileBranchStore:
         it was, in this store and in the database one, so the two implementations of the protocol lose the same thing
         when a reset fails, which is nothing (ADR-022, FR-040). The content is put back when the write of the row
         fails, and the failure travels to the caller.
+
+        Why the lock of the store: the drop of the events and the write of the row are one step, so the generation
+        the store writes is the one it found plus one and two resets that cross cannot write the same number twice
+        (ADR-026).
         """
-        folder, current = self._owned(branch_id, owner_session)
-        moved = replace(branch, generation=current.generation + 1)
-        events_path = folder / self.EVENTS_FILE
-        was_there = events_path.exists()
-        kept = events_path.read_text(encoding="utf-8") if was_there else ""
-        _write_atomic(events_path, "")
-        try:
-            _write_atomic(folder / self.BRANCH_FILE, canonical_json(_branch_to_dict(moved)))
-        except Exception:
-            # The reset did not happen, so the events of the branch go back where they were (ADR-022).
-            if was_there:
-                _write_atomic(events_path, kept)
-            else:
-                events_path.unlink(missing_ok=True)
-            raise
-        return moved
+        with self._lock:
+            folder, current = self._owned(branch_id, owner_session)
+            moved = replace(branch, generation=current.generation + 1)
+            events_path = folder / self.EVENTS_FILE
+            # The content of the events is kept before it is dropped, so a reset that did not happen puts it back
+            # (ADR-022, ADR-025).
+            kept = events_path.read_text(encoding="utf-8") if events_path.exists() else None
+            _write_atomic(events_path, "")
+            try:
+                _write_atomic(folder / self.BRANCH_FILE, canonical_json(_branch_to_dict(moved)))
+            except Exception:
+                # The reset did not happen, so the events of the branch go back where they were (ADR-022).
+                _restore(events_path, kept)
+                raise
+            return moved
 
     # -- the maintenance ---------------------------------------------------------------------------
 
