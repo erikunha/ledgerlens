@@ -27,6 +27,13 @@ A sixth rule keeps the log honest: the undo of the last mutation is an event of 
 revision of the branch goes back to the previous value, and the event that was undone stays in the log and carries the
 mark that it was undone (ADR-024). The undo is a request with a key and with an expected revision, exactly like a
 mutation, so a request that is delivered twice undoes one mutation and not two.
+
+Two reads of the branch follow from those rules (ADR-028). The diff of the branch is the difference between the
+published base and the state the branch holds now, and not the diff of the last mutation: a branch that was mutated
+and then undone answers an empty diff and the hash of the base, because the state of the branch after the undo IS the
+state of the base, row for row. The history of the branch carries the events of the log in the order of the log and
+the answers the branch remembers, with the mark of the staleness (ADR-022) and the mark of the undo (ADR-024). Both
+reads verify the branch before they answer it, exactly like every other read.
 """
 
 from __future__ import annotations
@@ -38,6 +45,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from ledgerlens.run_context import SESSION_ID_PATTERN, canonical_session_id
+from ledgerlens.sandbox.invariants import evaluate
 from ledgerlens.sandbox.mutation import (
     CODE_HASH_MISMATCH,
     CODE_IDEMPOTENCY_MISMATCH,
@@ -60,8 +68,11 @@ from ledgerlens.sandbox.projector import (
     ProjectedState,
     ProjectionError,
     UndoMarks,
+    diff_of,
+    is_undo_marker,
     project,
     undo_marks,
+    verdict_of,
 )
 from ledgerlens.sandbox.snapshot import BaseSnapshot
 from ledgerlens.sandbox.store import (
@@ -246,6 +257,66 @@ class RecordedAnswer:
             "stale_against": self.stale_against,
             "undone": self.undone,
             "undone_event_uid": self.undone_event_uid,
+        }
+
+
+@dataclass(frozen=True)
+class BranchDiff:
+    """The difference between the published base of the branch and the state the branch holds now (ADR-028).
+
+    `base_canonical_hash` names the published case the branch was forked from and `canonical_hash` names the state
+    the branch holds now. They are the same hash when the branch was never mutated, and they are the same hash again
+    when the branch was mutated and then undone, because the state of the branch after the undo IS the state of the
+    base, row for row: that is the cost ADR-024 already accepted.
+
+    The entries are the ones of the projector and the values are texts, so the interface never reads a number and
+    never calculates one. `invariants` are the rules of the domain over the current state and `verdict` is the
+    verdict of the case over it, the same two things the answer of the commit carries.
+    """
+
+    revision: int
+    base_canonical_hash: str
+    canonical_hash: str
+    diff: list[dict[str, Any]]
+    invariants: list[dict[str, Any]]
+    verdict: dict[str, Any]
+
+    def to_dict(self) -> dict[str, Any]:
+        """The answer of the diff, as the interface reads it."""
+        return {
+            "revision": self.revision,
+            "base_canonical_hash": self.base_canonical_hash,
+            "canonical_hash": self.canonical_hash,
+            "diff": list(self.diff),
+            "invariants": list(self.invariants),
+            "verdict": dict(self.verdict),
+        }
+
+
+@dataclass(frozen=True)
+class BranchHistory:
+    """The log of the branch and the answers the branch remembers, with their marks (ADR-028).
+
+    The events come in the order of the log, and every one of them carries the mark that says it was undone. The
+    marks come from the log and never from a stored flag, so they cannot drift away from the truth of the log
+    (ADR-024).
+
+    The answers carry the mark of the staleness of ADR-022 and the mark of the undo of ADR-024, and they carry the
+    same fields they carry everywhere else, so the interface reads one vocabulary.
+    """
+
+    revision: int
+    canonical_hash: str
+    events: list[dict[str, Any]]
+    answers: list[RecordedAnswer]
+
+    def to_dict(self) -> dict[str, Any]:
+        """The answer of the history, as the interface reads it."""
+        return {
+            "revision": self.revision,
+            "canonical_hash": self.canonical_hash,
+            "events": list(self.events),
+            "answers": [answer.to_dict() for answer in self.answers],
         }
 
 
@@ -745,6 +816,90 @@ class BranchLayer:
             undone_event_uid=undone_event_uid,
         )
 
+    # -- the diff and the history of the branch -------------------------------------------------------
+
+    def diff(self, session_id: str, branch_id: str) -> BranchDiff:
+        """The difference between the published base of the branch and the state the branch holds now (ADR-028).
+
+        Why the base and not the last mutation: there are three diffs in the sandbox and they are not the same
+        thing. The diff of a mutation is in the answer of the commit and of the preview, the diff of the undo is
+        in the answer of the undo, and this one is the difference between the base and the state of the branch as it
+        is now, so the interface can show the before and after of a revision (FR-034).
+
+        Why a branch that was mutated and then undone answers an empty diff: the state of the branch after the undo
+        IS the state of the base, row for row. That is the cost ADR-024 already accepted, and the route shows it
+        honestly instead of hiding it: only the history tells that something happened.
+
+        The branch is verified before it is answered: a branch that cannot prove its own state is refused with
+        `HASH_MISMATCH` and is never served (ADR-021).
+        """
+        owner = self._owner(session_id)
+        row = self.store.get_branch(branch_id, owner)
+        if row.owner_session != owner:
+            # The store already refuses this, but the layer does not rely on that alone.
+            raise BranchNotFound()
+        if self._expired(row):
+            raise BranchExpired(f"the branch {branch_id} expired; fork the scenario again")
+        base = self.base_resolver(row.scenario_id)
+        events = self.store.read_events(branch_id, owner)
+        # Every read of the branch is verified: a branch that cannot prove its own state is never served (ADR-021).
+        state = self._verified(row, owner, events)
+        # The published base is the other side of the difference: the branch holds it plus the events.
+        base_state = project(base, [])
+        entries = diff_of(base_state, state)
+        results = evaluate(state)
+        return BranchDiff(
+            revision=row.revision,
+            base_canonical_hash=row.base_canonical_hash,
+            canonical_hash=state.canonical_hash,
+            diff=[entry.to_dict() for entry in entries],
+            invariants=[result.to_dict() for result in results],
+            verdict=verdict_of(state, row.scenario_id).to_dict(),
+        )
+
+    def history(self, session_id: str, branch_id: str) -> BranchHistory:
+        """The log of the branch and the answers the branch remembers, with their marks (ADR-028).
+
+        The log is read once and the same log is used for the verification of the branch and for the marks, so the
+        marks of the history are the marks of the log that was verified (ADR-021, ADR-024).
+
+        The marks come from the log and never from a stored flag: the marker of an undo names the event it undid and
+        the request that produced it, and the answers of the branch that carry that command id are the ones that were
+        undone (ADR-024). The mark of the staleness comes from the two generations of the branch and of the answer
+        (ADR-022).
+        """
+        owner = self._owner(session_id)
+        row = self.store.get_branch(branch_id, owner)
+        if row.owner_session != owner:
+            raise BranchNotFound()
+        if self._expired(row):
+            raise BranchExpired(f"the branch {branch_id} expired; fork the scenario again")
+        events = self.store.read_events(branch_id, owner)
+        # Every read of the branch is verified: a branch that cannot prove its own state is never served (ADR-021).
+        self._verified(row, owner, events)
+        marks = undo_marks(events)
+        return BranchHistory(
+            revision=row.revision,
+            canonical_hash=row.current_canonical_hash,
+            events=[self._event_of(event, marks) for event in events],
+            answers=[self._recorded(row, stored, marks) for stored in self.store.list_commands(branch_id, owner)],
+        )
+
+    def _event_of(self, event: Any, marks: UndoMarks) -> dict[str, Any]:
+        """One event of the log, with the mark that says it was undone.
+
+        Why the marker of an undo is never marked as undone: an undo can never be undone, because the undo only takes
+        back a mutation and a marker of the log is not a mutation (ADR-024).
+        """
+        return {
+            "event_uid": event.event_uid,
+            "event_type": event.event_type,
+            "aggregate_id": event.aggregate_id,
+            "occurred_at": event.occurred_at,
+            "payload": dict(event.payload),
+            "undone": not is_undo_marker(event) and event.event_uid in marks.undone_event_uids,
+        }
+
     # -- the ledger of the branch ---------------------------------------------------------------------
 
     def ledger(
@@ -843,7 +998,9 @@ class BranchLayer:
 
 __all__ = [
     "BRANCH_ID_PREFIX",
+    "BranchDiff",
     "BranchExpired",
+    "BranchHistory",
     "BranchLayer",
     "ForkOutcome",
     "InvalidSessionId",

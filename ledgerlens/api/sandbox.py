@@ -350,6 +350,61 @@ def create_app(
             raise ContractError(409, mismatch.code, mismatch.message) from None
         return _answer(result.to_dict())
 
+    @app.get("/v1/sandboxes/{sandbox_id}/diff")
+    def read_diff(
+        sandbox_id: Annotated[str, PathParam(pattern=BRANCH_ID_PATTERN)],
+        cookie: Annotated[str | None, Security(SESSION_SCHEME)],
+    ) -> JSONResponse:
+        """The difference between the published base of the branch and the state the branch holds now (ADR-028).
+
+        The answer carries the revision, the canonical hash of the base, the canonical hash of the branch, the entries
+        of the difference, the invariants of the current state and the verdict of the case over it. The values of the
+        entries are texts, so the interface never reads a number and never calculates one.
+
+        The branch is a read like every other read: it is verified before it is answered, so a branch that cannot
+        prove its own state is refused with `HASH_MISMATCH` and is never served (ADR-021). The route is one of the
+        three paths that ADR-023 declares beyond the contract of the design package.
+        """
+        session = _session(cookie, issuer)
+        try:
+            diff = layer.diff(session, sandbox_id)
+        except BranchNotFound:
+            raise ContractError(404, "NOT_FOUND", GENERIC_NOT_FOUND) from None
+        except InvalidSessionId:
+            raise ContractError(401, "SESSION_REQUIRED", "no valid session") from None
+        except BranchExpired as expired:
+            raise ContractError(410, "BRANCH_EXPIRED", str(expired)) from None
+        except BranchHashMismatch as mismatch:
+            raise ContractError(409, mismatch.code, mismatch.message) from None
+        return _answer(diff.to_dict())
+
+    @app.get("/v1/sandboxes/{sandbox_id}/history")
+    def read_history(
+        sandbox_id: Annotated[str, PathParam(pattern=BRANCH_ID_PATTERN)],
+        cookie: Annotated[str | None, Security(SESSION_SCHEME)],
+    ) -> JSONResponse:
+        """The log of the branch and the answers the branch remembers, with their marks (ADR-028).
+
+        The events come in the order of the log and every one of them carries the mark that says it was undone. The
+        answers carry the mark of the staleness of ADR-022 and the mark of the undo of ADR-024.
+
+        The branch is a read like every other read: it is verified before it is answered, so a branch that cannot
+        prove its own state is refused with `HASH_MISMATCH` and is never served (ADR-021). The route is one of the
+        three paths that ADR-023 declares beyond the contract of the design package.
+        """
+        session = _session(cookie, issuer)
+        try:
+            history = layer.history(session, sandbox_id)
+        except BranchNotFound:
+            raise ContractError(404, "NOT_FOUND", GENERIC_NOT_FOUND) from None
+        except InvalidSessionId:
+            raise ContractError(401, "SESSION_REQUIRED", "no valid session") from None
+        except BranchExpired as expired:
+            raise ContractError(410, "BRANCH_EXPIRED", str(expired)) from None
+        except BranchHashMismatch as mismatch:
+            raise ContractError(409, mismatch.code, mismatch.message) from None
+        return _answer(history.to_dict())
+
     @app.get("/v1/sandboxes/{sandbox_id}/ledger")
     def read_ledger(
         sandbox_id: Annotated[str, PathParam(pattern=BRANCH_ID_PATTERN)],

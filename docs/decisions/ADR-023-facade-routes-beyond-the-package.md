@@ -73,9 +73,13 @@ changes: the body of the answer is the resource `Sandbox` and nothing else.
 
 ## Consequences
 
-- The facade has eight paths today, and it serves nothing beyond the contract. It will have eleven when the three
-  routes of this decision land, and every one of them is either a path of the contract or a path this decision names.
+- The facade has eleven paths today: the seven of the contract of the package, the route of the current session and
+  the three of this decision. Every one of them is either a path of the contract or a path this decision names.
 - The interface has one vocabulary: the error resource, the header of the version and the session cookie of the contract.
+  The one field that two routes share with two meanings is the `diff`: in the answer of a commit and in the answer of
+  an undo it is the difference that the request made, and in the answer of the diff of the branch it is the difference
+  between the base and the state of the branch. The route says which one it answers, and ADR-028 names the difference
+  of the branch.
 - The difference between the package and the repository is visible in the code and in the test, and not hidden in a
   route that nobody declared.
 - The reset, the diff, the history and the undo can be read by the interface that is paused, without a translation
