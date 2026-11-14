@@ -9,11 +9,18 @@ test session is enough. Every test then reads the same bytes and the same canoni
 and the immutability tests need.
 
 The store lives in a temporary folder of the test, never in the repository: a test must not leave a branch behind.
+The database store lives in the database of the sandbox, and every test starts with a database that holds nothing,
+the way the file backed store starts with an empty folder of the test.
+
+The database case is skipped with an explicit reason when the driver or the container is not there. A skip is never
+silent, because a suite that quietly stops testing half of the protocol is a suite that lies (ADR-020).
 """
 
 from __future__ import annotations
 
 import hashlib
+import importlib.util
+import os
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -21,6 +28,7 @@ from pathlib import Path
 import pytest
 
 from ledgerlens.sandbox.branch import BranchLayer
+from ledgerlens.sandbox.postgres_store import DEFAULT_DATABASE_URL, PostgresBranchStore, apply_schema
 from ledgerlens.sandbox.snapshot import BaseResolver, BaseSnapshot
 from ledgerlens.sandbox.store import BranchStore, FileBranchStore
 
@@ -35,6 +43,19 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 # fresh checkout the ledger is absent and the guard has to hold in that case as well.
 PUBLISHED_FILES = (PROJECT_ROOT / "data" / "scenarios.json", PROJECT_ROOT / "data" / "ledger.db")
 
+# The setting that names the database of the store, and the fallback of the container of `docker-compose.yml`.
+DATABASE_URL_ENV = "LEDGERLENS_SANDBOX_DATABASE_URL"
+
+# The tests that read the layout of the store on the disk. The layout is a property of the file backed store alone,
+# so the database case of them is skipped with an explicit reason.
+FILE_LAYOUT_TESTS = frozenset(
+    {
+        "test_the_folder_of_one_session_holds_no_branch_of_another_session",
+        "test_the_two_sessions_have_two_different_folders",
+        "test_the_end_of_the_session_purges_the_branches_of_the_session",
+    }
+)
+
 
 def _digest(path: Path) -> str | None:
     """The digest of a published file, or None when the file does not exist."""
@@ -45,11 +66,41 @@ def _digest(path: Path) -> str | None:
 # built. Nothing may move them while the suite runs (FR-001, SC-004).
 PUBLISHED_DIGESTS_AT_IMPORT = {path.name: _digest(path) for path in PUBLISHED_FILES}
 
-# The implementations of the `BranchStore` protocol that the contract suite runs against. The database one joins this
-# list in the milestone that adds it, and it inherits the whole suite with no change to the tests.
+
+def _database_url() -> str:
+    """The url of the database of the store: the setting first, the container of `docker-compose.yml` otherwise."""
+    return os.environ.get(DATABASE_URL_ENV, "").strip() or DEFAULT_DATABASE_URL
+
+
+def _database_store(root: Path) -> BranchStore:
+    """The database store of the contract suite.
+
+    The folder the file backed store would use is not used here: the branches of every test live in the database,
+    and the test empties it before it starts.
+
+    Why the skip: a machine without the driver or without the container cannot run this half of the suite. The reason
+    is explicit, because a skip that says nothing is a suite that pretends to have tested both implementations.
+    """
+    url = _database_url()
+    if importlib.util.find_spec("psycopg") is None:
+        pytest.skip("the driver of the sandbox store is not installed; install the extra 'api'")
+    try:
+        apply_schema(url)
+        store = PostgresBranchStore(url)
+        # The database starts empty for every test, the way the folder of the file backed store does.
+        store.truncate()
+    except Exception as exc:
+        pytest.skip(f"the database of the sandbox is not reachable at {url}: {exc}")
+    return store
+
+
+# The implementations of the `BranchStore` protocol that the contract suite runs against. The suite is written once
+# and every implementation inherits it, so the two are compared by one suite (FR-040, SC-015).
 STORE_IMPLEMENTATIONS: list[tuple[str, Callable[[Path], BranchStore]]] = [
     ("file", lambda root: FileBranchStore(root)),
+    ("postgres", _database_store),
 ]
+
 
 
 class FakeClock:
@@ -103,10 +154,30 @@ def base_snapshot(base_resolver: BaseResolver) -> BaseSnapshot:
 
 
 @pytest.fixture(params=STORE_IMPLEMENTATIONS, ids=[name for name, _ in STORE_IMPLEMENTATIONS])
-def store(request: pytest.FixtureRequest, tmp_path: Path) -> BranchStore:
+def store(request: pytest.FixtureRequest, tmp_path: Path) -> Iterator[BranchStore]:
     """The branch store of the contract suite, once for every implementation of the protocol."""
     _, factory = request.param
-    return factory(tmp_path / "sandbox")
+    implementation = factory(tmp_path / "sandbox")
+    yield implementation
+    close = getattr(implementation, "close", None)
+    if callable(close):
+        close()
+
+
+@pytest.fixture
+def file_store(tmp_path: Path) -> BranchStore:
+    """The file backed store alone, for the test that compares the two implementations."""
+    return FileBranchStore(tmp_path / "sandbox_file")
+
+
+@pytest.fixture
+def database_store(tmp_path: Path) -> Iterator[BranchStore]:
+    """The database store alone, for the test that compares the two implementations."""
+    implementation = _database_store(tmp_path / "sandbox_database")
+    yield implementation
+    close = getattr(implementation, "close", None)
+    if callable(close):
+        close()
 
 
 @pytest.fixture
@@ -139,3 +210,23 @@ def scenario_id() -> str:
 @pytest.fixture
 def other_scenario_id() -> str:
     return OTHER_SCENARIO_ID
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    """Skips the tests that read the layout of the store on the disk when the store is not the file backed one.
+
+    Why: the layout on the disk is a property of the file backed store, and a test that reads it says nothing about
+    the database one. The reason of the skip is explicit, so the report of the suite shows what did not run.
+    """
+    for item in items:
+        name, _, parameter = item.name.partition("[")
+        if name not in FILE_LAYOUT_TESTS or not parameter:
+            continue
+        implementation = parameter.rstrip("]")
+        if implementation == "file":
+            continue
+        item.add_marker(
+            pytest.mark.skip(
+                reason=f"the layout on the disk belongs to the file backed store, not to the {implementation} one"
+            )
+        )

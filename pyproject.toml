@@ -36,6 +36,8 @@ verify = [
 api = [
     "fastapi>=0.162",
     "uvicorn>=0.30",
+    # The driver of the sandbox store. It comes with the binary wheel, so the container needs no compiler.
+    "psycopg[binary]>=3.2",
 ]
 app = [
     "streamlit>=1.67",

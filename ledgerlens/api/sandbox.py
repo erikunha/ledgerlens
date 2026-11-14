@@ -43,9 +43,10 @@ from ledgerlens.sandbox.branch import (
     InvalidSessionId,
     SandboxBranch,
 )
+from ledgerlens.sandbox.factory import build_branch_store
 from ledgerlens.sandbox.session import InvalidSession, SessionIssuer
 from ledgerlens.sandbox.snapshot import BaseResolver, UnknownScenario
-from ledgerlens.sandbox.store import BranchNotFound, BranchStore, FileBranchStore
+from ledgerlens.sandbox.store import BranchNotFound, BranchStore
 
 # The version of the shape of the answers. It travels in a header, because the resource `Sandbox` accepts no other
 # field and the interface reads that resource.
@@ -108,13 +109,14 @@ def create_app(
 ) -> FastAPI:
     """Builds the app over a store, a base resolver and a session issuer.
 
-    Without arguments the store is the file backed one in the runtime folder of the configuration, the base is built
-    from the published sample and the session is signed with a key of the runtime folder, so the facade runs with no
-    database and no key. The clock is the server clock, and it is injected so that a test can move the expiry.
+    Without arguments the store comes from the configuration: the database one when the setting of the database url
+    is filled, the file backed one otherwise. The base is built from the published sample and the session is signed
+    with a key of the runtime folder, so the facade runs with no database and no key. The clock is the server clock,
+    and it is injected so that a test can move the expiry.
     """
     settings = get_settings()
     app = FastAPI(title="LedgerLens sandbox", description="Private branches of the published cases.")
-    branch_store = store if store is not None else FileBranchStore(settings.runtime_dir / "sandbox")
+    branch_store = store if store is not None else build_branch_store(settings)
     issuer = session_issuer or SessionIssuer(
         settings.runtime_dir / "sandbox-session.key",
         ttl_seconds=settings.sandbox_branch_absolute_ttl_seconds,

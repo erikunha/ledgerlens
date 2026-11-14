@@ -14,6 +14,8 @@ from ledgerlens.sandbox.branch import (
     SandboxBranch,
     new_branch_id,
 )
+from ledgerlens.sandbox.factory import build_branch_store
+from ledgerlens.sandbox.postgres_store import PostgresBranchStore
 from ledgerlens.sandbox.session import DemoSession, InvalidSession, SessionIssuer
 from ledgerlens.sandbox.snapshot import BaseResolver, BaseSnapshot, UnknownScenario
 from ledgerlens.sandbox.store import (
@@ -35,10 +37,12 @@ __all__ = [
     "FileBranchStore",
     "ForkOutcome",
     "InvalidSession",
+    "PostgresBranchStore",
     "SandboxBranch",
     "SandboxBranchRow",
     "SandboxEventRow",
     "SessionIssuer",
     "UnknownScenario",
+    "build_branch_store",
     "new_branch_id",
 ]

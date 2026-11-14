@@ -19,8 +19,25 @@ jobs:
   gate:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # The container of the sandbox store. The image is the one of `docker-compose.yml`, so the suite of the store
+    # runs against the same database as the local run.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: ledgerlens
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: ledgerlens_sandbox
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U ledgerlens -d ledgerlens_sandbox"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
     env:
       LEDGERLENS_OFFLINE: "1"
+      LEDGERLENS_SANDBOX_DATABASE_URL: postgresql://ledgerlens@127.0.0.1:5433/ledgerlens_sandbox
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
@@ -33,5 +50,7 @@ jobs:
           key: fastembed-${{ hashFiles('ledgerlens/embeddings.py', 'ledgerlens/config.py') }}
       - name: Install locked dependencies
         run: uv sync --frozen --extra dev --extra app --extra api
+      - name: Apply the schema of the sandbox store
+        run: uv run python scripts/apply_sandbox_schema.py
       - name: Gate (ruff, pytest offline)
         run: bash scripts/gate.sh

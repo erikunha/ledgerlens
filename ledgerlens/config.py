@@ -12,6 +12,9 @@ raised again with every known key replaced by `[redacted]`.
 
 Configurable paths: the ledger database (`LEDGERLENS_LEDGER_DB`) and the vector index folder
 (`LEDGERLENS_INDEX_DIR`). Both default to `data/`.
+
+The sandbox store: `LEDGERLENS_SANDBOX_DATABASE_URL` names the database of the branches. It is empty by default, and
+an empty url means the file backed store.
 """
 
 from __future__ import annotations
@@ -62,6 +65,9 @@ class Settings(BaseModel):
     # backed store is `runtime_dir / "sandbox"`, so it stays out of git with the rest of the runtime material.
     sandbox_branch_idle_ttl_seconds: int = 3600
     sandbox_branch_absolute_ttl_seconds: int = 14400
+    # The url of the database of the sandbox store. Empty means the file backed store, which is the one the fast
+    # unit tests use. The url points at the container of `docker-compose.yml`.
+    sandbox_database_url: str | None = None
 
     def secrets(self) -> list[str]:
         """The key values held, for redaction. Never log this list."""
@@ -109,6 +115,7 @@ def get_settings(env: Mapping[str, str] | None = None) -> Settings:
     index_dir = _text(values.get("LEDGERLENS_INDEX_DIR"))
     idle_ttl = _text(values.get("LEDGERLENS_SANDBOX_BRANCH_IDLE_TTL_SECONDS"))
     absolute_ttl = _text(values.get("LEDGERLENS_SANDBOX_BRANCH_ABSOLUTE_TTL_SECONDS"))
+    sandbox_database_url = _text(values.get("LEDGERLENS_SANDBOX_DATABASE_URL"))
     settings = Settings(
         offline=_flag(values.get("LEDGERLENS_OFFLINE")),
         model=_text(values.get("LEDGERLENS_MODEL")),
@@ -124,6 +131,7 @@ def get_settings(env: Mapping[str, str] | None = None) -> Settings:
         **({"index_dir": Path(index_dir)} if index_dir else {}),
         **({"sandbox_branch_idle_ttl_seconds": int(idle_ttl)} if idle_ttl else {}),
         **({"sandbox_branch_absolute_ttl_seconds": int(absolute_ttl)} if absolute_ttl else {}),
+        **({"sandbox_database_url": sandbox_database_url} if sandbox_database_url else {}),
     )
     log.debug("settings loaded: %r", settings)
     return settings
