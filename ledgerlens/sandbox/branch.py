@@ -19,7 +19,9 @@ counted from the last activity of the visitor, and the absolute deadline, counte
 
 A fifth rule keeps the branch honest: every read of a branch recomputes the canonical hash of the projection of its
 events and compares it with the hash the row of the branch declares. A branch whose row does not agree with its
-events may be half applied, and it is refused with the code `HASH_MISMATCH` and never served as valid (ADR-021).
+events may be half applied, and it is refused with the code `HASH_MISMATCH` and never served as valid (ADR-021). The
+same rule compares the base hash recorded at fork time with the base the resolver hands over, so a branch whose base
+moved under it is refused on every route and not only where it is repaired (ADR-022).
 """
 
 from __future__ import annotations
@@ -161,6 +163,9 @@ class SandboxBranch:
     `owner_session` is the canonical form of the session identifier, because the identifier lands in a path and a
     filesystem may ignore the case of a name. `base_snapshot_id` names the published snapshot the branch was forked
     from and `base_canonical_hash` is the canonical hash of the account scoped projection the branch reads.
+
+    `generation` counts the resets the branch went through, and it is what tells an answer of the past from the
+    current result of the branch (ADR-022).
     """
 
     branch_id: str
@@ -174,6 +179,30 @@ class SandboxBranch:
     last_activity_at: datetime
     expires_at: datetime
     state: str = STATE_ACTIVE
+    generation: int = 0
+
+
+@dataclass(frozen=True)
+class RecordedAnswer:
+    """One answer the branch remembers, with the mark of the staleness.
+
+    The fields are the ones of the stored answer, plus the mark. `stale` says that the answer was produced in a
+    generation behind the one of the branch, and `stale_against` is the base canonical hash of the branch, the hash of
+    the original snapshot the answer was computed against. An answer of the current generation is not stale and
+    `stale_against` is None (FR-022, ADR-022).
+    """
+
+    branch_id: str
+    idempotency_key: str
+    payload_digest: str
+    revision: int
+    canonical_hash: str
+    response_diff: list[dict[str, Any]]
+    response_verdict: dict[str, Any]
+    response_invariants: list[dict[str, Any]]
+    generation: int
+    stale: bool = False
+    stale_against: str | None = None
 
 
 @dataclass(frozen=True)
@@ -359,6 +388,8 @@ class BranchLayer:
             response_diff=list(plan.diff),
             response_verdict=plan.verdict.to_dict(),
             response_invariants=list(plan.invariants),
+            # The answer remembers the generation it was produced in, so that a reset can mark it stale (ADR-022).
+            generation=branch.generation,
         )
         try:
             self.store.commit_events(branch_id, owner, plan.events, new_row, answer)
@@ -401,6 +432,9 @@ class BranchLayer:
                 CODE_IDEMPOTENCY_MISMATCH,
                 "the idempotency key was already used with another payload",
             )
+        # An answer of a generation behind the current one of the branch is stale, and it is answered with the mark,
+        # so that the answer of the past is never presented as the current result of the branch (FR-022, ADR-022).
+        stale = stored.generation < branch.generation
         return MutationResult(
             command_id=command_id_of(command, digest),
             kind=command.kind,
@@ -410,26 +444,126 @@ class BranchLayer:
             invariants=tuple(stored.response_invariants),
             verdict=dict(stored.response_verdict),
             replayed=True,
+            stale=stale,
+            stale_against=branch.base_canonical_hash if stale else None,
         )
 
     def _verified(
         self, row: SandboxBranchRow, owner: str, events: list[Any] | None = None
     ) -> ProjectedState:
-        """The projection of the branch, after the row and the events have been compared.
+        """The projection of the branch, after the row, the events and the base have been compared.
 
         Why the comparison is made on every read: the row of the branch and the events of the branch move together,
         and a crash between the two leaves a branch that says one thing and holds another. Such a branch is refused
         with `HASH_MISMATCH` and is never served as valid (ADR-021, FR-032).
+
+        Why the base hash is compared here and not only in the reset: the comparison of the base hash is part of the
+        verification of the branch, so a branch whose recorded base hash does not match the base it names is refused
+        wherever it is asked for and not only where it is repaired (ADR-022).
         """
         if events is None:
             events = self.store.read_events(row.branch_id, owner)
         base = self.base_resolver(row.scenario_id)
+        self._check_the_base(row, base)
         state = project(base, events)
         if state.canonical_hash != row.current_canonical_hash:
             raise BranchHashMismatch(
                 f"the branch {row.branch_id} cannot prove its own state; fork the scenario again"
             )
         return state
+
+    def _check_the_base(self, row: SandboxBranchRow, base: BaseSnapshot) -> None:
+        """The base hash recorded at fork time against the base the resolver hands over.
+
+        Why the comparison is part of the verification of the branch: a base that moved under the branch is a branch
+        that cannot prove its own state, and the message offers a fresh fork, because the branch itself cannot be
+        repaired (ADR-022, FR-032).
+        """
+        if base.canonical_hash != row.base_canonical_hash:
+            raise BranchHashMismatch(
+                f"the base of the branch {row.branch_id} does not match the base it was forked from;"
+                " fork the scenario again"
+            )
+
+    # -- the reset and the answers of the branch -----------------------------------------------------
+
+    def reset(self, session_id: str, branch_id: str) -> SandboxBranch:
+        """The branch back at the published base: no events, revision zero and the hash of the fork.
+
+        The reset is refused before anything moves when the branch is not the one of this session, when it outlived
+        its time to live, when the projection of its events does not agree with its row, or when the base moved under
+        it. The two last cases are refused with `HASH_MISMATCH` and the message offers a fresh fork, because a
+        branch that cannot prove its own state cannot be repaired (FR-021, FR-032, ADR-022).
+
+        The generation of the branch moves forward by one, and the answers the branch remembers keep the generation
+        they were produced in, so that the answers of the past can be marked stale. The number is not computed here:
+        the store moves it under its own lock and hands back the row it wrote, so two resets that cross cannot write
+        the same generation twice (ADR-022).
+        """
+        owner = self._owner(session_id)
+        row = self.store.get_branch(branch_id, owner)
+        if row.owner_session != owner:
+            # The store already refuses this, but the layer does not rely on that alone.
+            raise BranchNotFound()
+        if self._expired(row):
+            raise BranchExpired(f"the branch {branch_id} expired; fork the scenario again")
+        base = self.base_resolver(row.scenario_id)
+        if base.canonical_hash != row.base_canonical_hash:
+            # The reset keeps its own message for the case in which the base moved under the branch.
+            raise BranchHashMismatch(
+                f"the base of the branch {branch_id} moved under it; fork the scenario again"
+            )
+        events = self.store.read_events(branch_id, owner)
+        # The branch proves its own state before it moves anything: the projection of its events has to agree with
+        # its row, and the base it names has to be the base the resolver hands over (ADR-021, ADR-022).
+        self._verified(row, owner, events)
+        now = self._clock()
+        reset = replace(
+            row,
+            revision=0,
+            current_canonical_hash=row.base_canonical_hash,
+            last_activity_at=now,
+            expires_at=self._expiry(now, row.created_at),
+        )
+        # The store moves the generation under its own lock and returns the row it wrote.
+        written = self.store.reset_branch(branch_id, owner, reset)
+        return self._view(written)
+
+    def answers(self, session_id: str, branch_id: str) -> list[RecordedAnswer]:
+        """Every answer the branch remembers, each one marked stale or not.
+
+        An answer whose generation is behind the generation of the branch is stale, and it carries the base canonical
+        hash of the branch, the hash of the original snapshot it was computed against. The mark is derived from the
+        two generations, so it cannot drift away from the truth (FR-022, ADR-022).
+
+        The base of the branch is verified as well, because a branch whose recorded base hash is wrong is refused
+        wherever it is asked for (ADR-022).
+        """
+        owner = self._owner(session_id)
+        row = self.store.get_branch(branch_id, owner)
+        if row.owner_session != owner:
+            raise BranchNotFound()
+        if self._expired(row):
+            raise BranchExpired(f"the branch {branch_id} expired; fork the scenario again")
+        self._check_the_base(row, self.base_resolver(row.scenario_id))
+        return [self._recorded(row, stored) for stored in self.store.list_commands(branch_id, owner)]
+
+    def _recorded(self, row: SandboxBranchRow, stored: SandboxCommandRow) -> RecordedAnswer:
+        """One stored answer, with the mark of the staleness that its generation decides."""
+        stale = stored.generation < row.generation
+        return RecordedAnswer(
+            branch_id=stored.branch_id,
+            idempotency_key=stored.idempotency_key,
+            payload_digest=stored.payload_digest,
+            revision=stored.revision,
+            canonical_hash=stored.canonical_hash,
+            response_diff=list(stored.response_diff),
+            response_verdict=dict(stored.response_verdict),
+            response_invariants=list(stored.response_invariants),
+            generation=stored.generation,
+            stale=stale,
+            stale_against=row.base_canonical_hash if stale else None,
+        )
 
     # -- the ledger of the branch ---------------------------------------------------------------------
 
@@ -497,6 +631,7 @@ class BranchLayer:
             last_activity_at=row.last_activity_at,
             expires_at=row.expires_at,
             state=STATE_EXPIRED if self._expired(row) else row.state,
+            generation=row.generation,
         )
 
     def _refresh(self, row: SandboxBranchRow) -> SandboxBranchRow:
@@ -526,6 +661,7 @@ __all__ = [
     "BranchLayer",
     "ForkOutcome",
     "InvalidSessionId",
+    "RecordedAnswer",
     "SandboxBranch",
     "STATE_ACTIVE",
     "STATE_EXPIRED",

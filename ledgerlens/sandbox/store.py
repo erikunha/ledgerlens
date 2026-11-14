@@ -16,7 +16,7 @@ import json
 import secrets
 import shutil
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
@@ -57,6 +57,9 @@ class SandboxBranchRow:
     from and `base_canonical_hash` is the canonical hash of the account scoped projection the branch reads.
     `last_activity_at` is the moment of the last activity of the visitor, and the idle deadline of the branch is
     computed from it.
+
+    `generation` counts the resets the branch went through. It is what marks the answers of the past as stale, and it
+    is compared instead of a flag, because a flag can drift away from the truth (ADR-022).
     """
 
     branch_id: str
@@ -70,6 +73,7 @@ class SandboxBranchRow:
     last_activity_at: datetime
     expires_at: datetime
     state: str = "active"
+    generation: int = 0
 
 
 @dataclass(frozen=True)
@@ -99,6 +103,10 @@ class SandboxCommandRow:
     mutation, the verdict of the case and the invariants of the domain. The whole answer is stored so that the
     same request, sent twice, is answered the same way, and the verdict and the invariants are part of it because
     a later mutation may have moved the case (FR-012, FR-013).
+
+    `generation` is the generation the branch was in when the answer was produced. The answer of a generation behind
+    the current one of the branch is stale, and the branch marks it instead of presenting it as the current result
+    (FR-022, ADR-022).
     """
 
     branch_id: str
@@ -109,6 +117,7 @@ class SandboxCommandRow:
     response_diff: list[dict[str, Any]]
     response_verdict: dict[str, Any] = field(default_factory=dict)
     response_invariants: list[dict[str, Any]] = field(default_factory=list)
+    generation: int = 0
 
 
 @runtime_checkable
@@ -172,6 +181,27 @@ class BranchStore(Protocol):
         The branch of another visitor is refused with `BranchNotFound`, like every other read of the store.
         """
 
+    def reset_branch(self, branch_id: str, owner_session: str, branch: SandboxBranchRow) -> SandboxBranchRow:
+        """Drops every event of the branch, writes the row of it, and returns the row it wrote.
+
+        Why the two happen together: the reset is one operation of the domain, and a branch whose row does not agree
+        with its events is refused instead of being served (ADR-021, ADR-022). The answers the branch remembers are
+        kept with the generation they were produced in, because an answer that is deleted cannot be marked stale.
+
+        Why the store moves the generation: the store is the only place where the row of the branch is locked, so the
+        store is the only place where the number can move safely. The store reads the generation it finds in the row
+        and writes one more, and it ignores the generation of the row the caller hands over. The caller therefore
+        receives the truth and not a hope (ADR-022).
+
+        The branch of another visitor is refused with `BranchNotFound`, like every other operation of the store.
+        """
+
+    def list_commands(self, branch_id: str, owner_session: str) -> list[SandboxCommandRow]:
+        """Every answer the branch remembers, in the order the requests were committed.
+
+        The branch of another visitor is refused with `BranchNotFound`, like every other read of the store.
+        """
+
 
 def _safe_name(name: str) -> str:
     """A name that can be a folder of the store: no separator, no dot segment and no empty name.
@@ -197,6 +227,7 @@ def _branch_to_dict(row: SandboxBranchRow) -> dict[str, Any]:
         "last_activity_at": row.last_activity_at.isoformat(),
         "expires_at": row.expires_at.isoformat(),
         "state": row.state,
+        "generation": row.generation,
     }
 
 
@@ -213,6 +244,8 @@ def _branch_from_dict(data: dict[str, Any]) -> SandboxBranchRow:
         last_activity_at=datetime.fromisoformat(data["last_activity_at"]),
         expires_at=datetime.fromisoformat(data["expires_at"]),
         state=data.get("state", "active"),
+        # The generation is read with a default of zero, so a file written by an older version still loads.
+        generation=int(data.get("generation", 0)),
     )
 
 
@@ -252,6 +285,7 @@ def _command_to_dict(row: SandboxCommandRow) -> dict[str, Any]:
         "response_diff": row.response_diff,
         "response_verdict": row.response_verdict,
         "response_invariants": row.response_invariants,
+        "generation": row.generation,
     }
 
 
@@ -265,6 +299,8 @@ def _command_from_dict(data: dict[str, Any]) -> SandboxCommandRow:
         response_diff=list(data["response_diff"]),
         response_verdict=dict(data.get("response_verdict") or {}),
         response_invariants=list(data.get("response_invariants") or []),
+        # The generation is read with a default of zero, so a file written by an older version still loads.
+        generation=int(data.get("generation", 0)),
     )
 
 
@@ -439,6 +475,66 @@ class FileBranchStore:
         for row in self._read_commands(folder / self.COMMANDS_FILE):
             if row.idempotency_key == idempotency_key:
                 return row
+        return None
+
+    def list_commands(self, branch_id: str, owner_session: str) -> list[SandboxCommandRow]:
+        """Every answer the branch remembers, in the order the requests were committed."""
+        folder, _ = self._owned(branch_id, owner_session)
+        return self._read_commands(folder / self.COMMANDS_FILE)
+
+    def reset_branch(self, branch_id: str, owner_session: str, branch: SandboxBranchRow) -> SandboxBranchRow:
+        """Drops every event of the branch, writes the row of it, and returns the row it wrote.
+
+        Why the store moves the generation: the generation is what marks the answers of the past as stale, and the
+        store is the place where the row of the branch is read and written. The store reads the generation it finds
+        in the row on the disk and writes one more, so the caller never computes the number itself (ADR-022).
+
+        Why the file of the events is emptied first: a failure in between leaves a branch whose row does not agree
+        with its events, and such a branch is detected and refused by the verification of the read instead of being
+        served (ADR-021). The row is written with a temporary file and a rename, so a reader never sees half a file.
+
+        Why the content of the file of the events is kept: a reset that did not happen leaves the branch exactly where
+        it was, in this store and in the database one, so the two implementations of the protocol lose the same thing
+        when a reset fails, which is nothing (ADR-022, FR-040). The content is put back when the write of the row
+        fails, and the failure travels to the caller.
+        """
+        folder, current = self._owned(branch_id, owner_session)
+        moved = replace(branch, generation=current.generation + 1)
+        events_path = folder / self.EVENTS_FILE
+        was_there = events_path.exists()
+        kept = events_path.read_text(encoding="utf-8") if was_there else ""
+        _write_atomic(events_path, "")
+        try:
+            _write_atomic(folder / self.BRANCH_FILE, canonical_json(_branch_to_dict(moved)))
+        except Exception:
+            # The reset did not happen, so the events of the branch go back where they were (ADR-022).
+            if was_there:
+                _write_atomic(events_path, kept)
+            else:
+                events_path.unlink(missing_ok=True)
+            raise
+        return moved
+
+    # -- the maintenance ---------------------------------------------------------------------------
+
+    def truncate(self) -> None:
+        """Drops every branch of the store, the way the database store drops every row of its tables.
+
+        Why it exists: the two implementations of the protocol offer the same maintenance operations, so a test that
+        empties the store before it starts does the same thing on both (ADR-022).
+        """
+        for path in sorted(self.root.glob("*")):
+            if path.is_dir():
+                shutil.rmtree(path)
+            else:
+                path.unlink()
+
+    def close(self) -> None:
+        """Closes the store. The file backed store holds nothing open, so there is nothing to close.
+
+        Why it exists: the two implementations of the protocol offer the same maintenance operations, and the suite
+        closes what it opens (ADR-022).
+        """
         return None
 
     # -- the internals -----------------------------------------------------------------------------

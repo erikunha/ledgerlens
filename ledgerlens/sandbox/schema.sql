@@ -24,7 +24,8 @@ CREATE TABLE IF NOT EXISTS sandbox_branches (
     created_at             timestamptz NOT NULL,
     last_activity_at       timestamptz NOT NULL,
     expires_at             timestamptz NOT NULL,
-    state                  text        NOT NULL DEFAULT 'active'
+    state                  text        NOT NULL DEFAULT 'active',
+    generation             integer     NOT NULL DEFAULT 0
 );
 
 -- Every read of a branch filters by the owner session, so this is the index a read of the branches of a visitor
@@ -68,6 +69,8 @@ CREATE TABLE IF NOT EXISTS sandbox_commands (
     response_verdict    jsonb       NOT NULL DEFAULT '{}'::jsonb,
     response_invariants jsonb       NOT NULL DEFAULT '[]'::jsonb,
     created_at          timestamptz NOT NULL DEFAULT now(),
+    generation          integer     NOT NULL DEFAULT 0,
+    command_seq         bigint      GENERATED ALWAYS AS IDENTITY,
     CONSTRAINT sandbox_commands_pkey PRIMARY KEY (branch_id, idempotency_key)
 );
 
@@ -76,3 +79,14 @@ CREATE TABLE IF NOT EXISTS sandbox_commands (
 -- run over a database that already has the shape.
 ALTER TABLE sandbox_commands ADD COLUMN IF NOT EXISTS response_verdict jsonb NOT NULL DEFAULT '{}'::jsonb;
 ALTER TABLE sandbox_commands ADD COLUMN IF NOT EXISTS response_invariants jsonb NOT NULL DEFAULT '[]'::jsonb;
+
+-- The generation of the branch and the generation of every answer it remembers. The generation counts the resets the
+-- branch went through, and it is what marks the answers of the past as stale (ADR-022). The two statements carry
+-- `IF NOT EXISTS` for the same reason the others do, so the script may run over a database that already has the shape.
+ALTER TABLE sandbox_branches ADD COLUMN IF NOT EXISTS generation integer NOT NULL DEFAULT 0;
+ALTER TABLE sandbox_commands ADD COLUMN IF NOT EXISTS generation integer NOT NULL DEFAULT 0;
+
+-- The sequence of the answers of a branch. It is the order of the commit, the same order the file backed store keeps
+-- in the lines of its log, so the two stores list the answers of a branch in the same order (ADR-022). The statement
+-- carries `IF NOT EXISTS` for the same reason the others do.
+ALTER TABLE sandbox_commands ADD COLUMN IF NOT EXISTS command_seq bigint GENERATED ALWAYS AS IDENTITY;

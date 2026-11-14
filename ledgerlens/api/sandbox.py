@@ -282,6 +282,30 @@ def create_app(
             raise ContractError(409, mismatch.code, mismatch.message) from None
         return _answer(result.to_dict())
 
+    @app.post("/v1/sandboxes/{sandbox_id}/reset")
+    def reset_sandbox(
+        sandbox_id: Annotated[str, PathParam(pattern=BRANCH_ID_PATTERN)],
+        cookie: Annotated[str | None, Security(SESSION_SCHEME)],
+    ) -> JSONResponse:
+        """The branch back at the published base: no events, revision zero and the hash of the fork.
+
+        The body of the answer is exactly the resource `Sandbox` of the contract, field for field, and the headers
+        carry the version of the schema, the current canonical hash of the branch and its state, like the answers of
+        the other routes.
+        """
+        session = _session(cookie, issuer)
+        try:
+            branch = layer.reset(session, sandbox_id)
+        except BranchNotFound:
+            raise ContractError(404, "NOT_FOUND", GENERIC_NOT_FOUND) from None
+        except InvalidSessionId:
+            raise ContractError(401, "SESSION_REQUIRED", "no valid session") from None
+        except BranchExpired as expired:
+            raise ContractError(410, "BRANCH_EXPIRED", str(expired)) from None
+        except BranchHashMismatch as mismatch:
+            raise ContractError(409, mismatch.code, mismatch.message) from None
+        return _sandbox_response(branch, 200)
+
     @app.get("/v1/sandboxes/{sandbox_id}/ledger")
     def read_ledger(
         sandbox_id: Annotated[str, PathParam(pattern=BRANCH_ID_PATTERN)],

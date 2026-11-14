@@ -11,6 +11,7 @@ from ledgerlens.sandbox.branch import (
     BranchExpired,
     BranchLayer,
     ForkOutcome,
+    RecordedAnswer,
     SandboxBranch,
     new_branch_id,
 )
@@ -23,6 +24,7 @@ from ledgerlens.sandbox.store import (
     BranchStore,
     FileBranchStore,
     SandboxBranchRow,
+    SandboxCommandRow,
     SandboxEventRow,
 )
 
@@ -38,8 +40,10 @@ __all__ = [
     "ForkOutcome",
     "InvalidSession",
     "PostgresBranchStore",
+    "RecordedAnswer",
     "SandboxBranch",
     "SandboxBranchRow",
+    "SandboxCommandRow",
     "SandboxEventRow",
     "SessionIssuer",
     "UnknownScenario",

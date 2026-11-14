@@ -254,7 +254,13 @@ class MutationPlan:
 
 @dataclass(frozen=True)
 class MutationResult:
-    """The answer of a commit: the new revision, the new canonical hash and the diff of the mutation."""
+    """The answer of a commit: the new revision, the new canonical hash and the diff of the mutation.
+
+    `stale` says that the answer was produced in a generation of the branch that a reset has closed, and
+    `stale_against` is the base canonical hash of the branch, the hash of the original snapshot the answer was
+    computed against. The answer of the past is answered with the mark, so that it is never presented as the current
+    result of the branch (FR-022, ADR-022).
+    """
 
     command_id: str
     kind: str
@@ -264,6 +270,8 @@ class MutationResult:
     invariants: tuple[dict[str, Any], ...]
     verdict: dict[str, Any]
     replayed: bool = False
+    stale: bool = False
+    stale_against: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -275,6 +283,8 @@ class MutationResult:
             "invariants": list(self.invariants),
             "verdict": dict(self.verdict),
             "replayed": self.replayed,
+            "stale": self.stale,
+            "stale_against": self.stale_against,
         }
 
 
