@@ -16,7 +16,7 @@ import json
 import secrets
 import shutil
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
@@ -37,6 +37,15 @@ class BranchNotFound(Exception):
 
     def __init__(self, message: str = GENERIC_NOT_FOUND) -> None:
         super().__init__(message)
+
+
+class BranchRevisionConflict(Exception):
+    """The branch moved while the request was being prepared.
+
+    Why the store raises it: the append of the events and the move of the row happen together, so the store is the
+    only place where the revision of the branch can be compared with the revision the visitor expected. The loser of
+    two concurrent commits is refused here, and nothing is written.
+    """
 
 
 @dataclass(frozen=True)
@@ -81,6 +90,27 @@ class SandboxEventRow:
     command_id: str | None = None
 
 
+@dataclass(frozen=True)
+class SandboxCommandRow:
+    """The answer of a request that was committed, remembered with the branch.
+
+    `idempotency_key` names the request, `payload_digest` is the digest of the payload it carried, and the other
+    fields are the answer: the revision the commit produced, the canonical hash of the branch, the diff of the
+    mutation, the verdict of the case and the invariants of the domain. The whole answer is stored so that the
+    same request, sent twice, is answered the same way, and the verdict and the invariants are part of it because
+    a later mutation may have moved the case (FR-012, FR-013).
+    """
+
+    branch_id: str
+    idempotency_key: str
+    payload_digest: str
+    revision: int
+    canonical_hash: str
+    response_diff: list[dict[str, Any]]
+    response_verdict: dict[str, Any] = field(default_factory=dict)
+    response_invariants: list[dict[str, Any]] = field(default_factory=list)
+
+
 @runtime_checkable
 class BranchStore(Protocol):
     """One method per operation of the branch layer.
@@ -119,6 +149,28 @@ class BranchStore(Protocol):
 
     def delete_branch(self, branch_id: str, owner_session: str) -> bool:
         """Drops the branch and its events. Raises `BranchNotFound` when it is not there or not its own."""
+
+    def commit_events(
+        self,
+        branch_id: str,
+        owner_session: str,
+        events: Sequence[SandboxEventRow],
+        branch: SandboxBranchRow,
+        answer: SandboxCommandRow,
+    ) -> AppendResult:
+        """Appends the events, moves the row of the branch and remembers the answer of the request, together.
+
+        Why the three happen together: the append of the events and the move of the row are one operation of the
+        domain, and a request that is answered has to be answered the same way the second time (ADR-021). The row
+        that is written is the one the branch moves to, so the store moves it only when the branch is still at the
+        revision before it, and it refuses the request otherwise with `BranchRevisionConflict`.
+        """
+
+    def command_answer(self, branch_id: str, owner_session: str, idempotency_key: str) -> SandboxCommandRow | None:
+        """The answer already given to the request with this key, or None when there is none.
+
+        The branch of another visitor is refused with `BranchNotFound`, like every other read of the store.
+        """
 
 
 def _safe_name(name: str) -> str:
@@ -190,6 +242,43 @@ def _event_from_dict(data: dict[str, Any]) -> SandboxEventRow:
     )
 
 
+def _command_to_dict(row: SandboxCommandRow) -> dict[str, Any]:
+    return {
+        "branch_id": row.branch_id,
+        "idempotency_key": row.idempotency_key,
+        "payload_digest": row.payload_digest,
+        "revision": row.revision,
+        "canonical_hash": row.canonical_hash,
+        "response_diff": row.response_diff,
+        "response_verdict": row.response_verdict,
+        "response_invariants": row.response_invariants,
+    }
+
+
+def _command_from_dict(data: dict[str, Any]) -> SandboxCommandRow:
+    return SandboxCommandRow(
+        branch_id=data["branch_id"],
+        idempotency_key=data["idempotency_key"],
+        payload_digest=data["payload_digest"],
+        revision=int(data["revision"]),
+        canonical_hash=data["canonical_hash"],
+        response_diff=list(data["response_diff"]),
+        response_verdict=dict(data.get("response_verdict") or {}),
+        response_invariants=list(data.get("response_invariants") or []),
+    )
+
+
+def _write_atomic(path: Path, text: str) -> None:
+    """Writes a file with a temporary file and a rename, so a reader never sees half a file.
+
+    Why: the reader of the store may read a file while the process writes it, and a file that is half written is a
+    branch that cannot be served.
+    """
+    temporary = path.with_name(path.name + ".tmp")
+    temporary.write_text(text, encoding="utf-8")
+    temporary.replace(path)
+
+
 class FileBranchStore:
     """The branch store over a directory of files.
 
@@ -197,6 +286,7 @@ class FileBranchStore:
 
         <root>/<canonical session>/<storage token>/branch.json    the row of the branch
         <root>/<canonical session>/<storage token>/events.jsonl   the events of the branch, one per line
+        <root>/<canonical session>/<storage token>/commands.jsonl the answers of the requests, one per line
 
     The folder of a branch is named after a storage token and not after the branch id, so the path of a file never
     carries the identity of the branch and the isolation never depends on the path. The row names the branch id and
@@ -205,6 +295,7 @@ class FileBranchStore:
 
     BRANCH_FILE = "branch.json"
     EVENTS_FILE = "events.jsonl"
+    COMMANDS_FILE = "commands.jsonl"
 
     def __init__(self, root: Path | str) -> None:
         self.root = Path(root)
@@ -292,6 +383,64 @@ class FileBranchStore:
         path.unlink(missing_ok=True)
         return count
 
+    # -- the commit and the answers of the requests ---------------------------------------------------
+
+    def commit_events(
+        self,
+        branch_id: str,
+        owner_session: str,
+        events: Sequence[SandboxEventRow],
+        branch: SandboxBranchRow,
+        answer: SandboxCommandRow,
+    ) -> AppendResult:
+        """Appends the events, moves the row of the branch and remembers the answer, together.
+
+        Why the row is written last: a reader that finds a row that is older than the events refuses the branch
+        instead of serving it half applied. The three files are written with a temporary file and a rename, so a
+        reader never sees half a file either.
+        """
+        folder, current = self._owned(branch_id, owner_session)
+        if current.revision != branch.revision - 1:
+            raise BranchRevisionConflict(
+                f"the branch {branch_id} is at revision {current.revision}, and the request expected"
+                f" {branch.revision - 1}"
+            )
+        path = folder / self.EVENTS_FILE
+        stored = self._read_events(path)
+        known = {row.event_uid for row in stored}
+        appended = duplicates = 0
+        for event in events:
+            if event.branch_id != branch_id:
+                raise ValueError(f"the event {event.event_uid} does not belong to the branch {branch_id}")
+            if event.event_uid in known:
+                # The same event twice is a duplicate and not an error, exactly like the event store of the simulator.
+                duplicates += 1
+                continue
+            known.add(event.event_uid)
+            stored.append(event)
+            appended += 1
+        if appended or path.exists():
+            _write_atomic(
+                path, "".join(canonical_json(_event_to_dict(row)) + "\n" for row in stored)
+            )
+        commands_path = folder / self.COMMANDS_FILE
+        commands = self._read_commands(commands_path)
+        if not any(row.idempotency_key == answer.idempotency_key for row in commands):
+            commands.append(answer)
+            _write_atomic(
+                commands_path, "".join(canonical_json(_command_to_dict(row)) + "\n" for row in commands)
+            )
+        _write_atomic(folder / self.BRANCH_FILE, canonical_json(_branch_to_dict(branch)))
+        return AppendResult(appended, duplicates)
+
+    def command_answer(self, branch_id: str, owner_session: str, idempotency_key: str) -> SandboxCommandRow | None:
+        """The answer already given to the request with this key, or None when there is none."""
+        folder, _ = self._owned(branch_id, owner_session)
+        for row in self._read_commands(folder / self.COMMANDS_FILE):
+            if row.idempotency_key == idempotency_key:
+                return row
+        return None
+
     # -- the internals -----------------------------------------------------------------------------
 
     def _session_folder(self, owner_session: str) -> Path:
@@ -350,6 +499,15 @@ class FileBranchStore:
                 rows.append(_event_from_dict(json.loads(line)))
         return rows
 
+    def _read_commands(self, path: Path) -> list[SandboxCommandRow]:
+        if not path.exists():
+            return []
+        rows = []
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                rows.append(_command_from_dict(json.loads(line)))
+        return rows
+
 
 def _read_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
@@ -357,9 +515,11 @@ def _read_json(path: Path) -> dict[str, Any]:
 
 __all__ = [
     "BranchNotFound",
+    "BranchRevisionConflict",
     "BranchStore",
     "FileBranchStore",
     "GENERIC_NOT_FOUND",
     "SandboxBranchRow",
+    "SandboxCommandRow",
     "SandboxEventRow",
 ]

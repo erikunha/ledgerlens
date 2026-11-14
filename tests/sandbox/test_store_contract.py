@@ -23,7 +23,15 @@ import pytest
 from ledgerlens.config import Settings, get_settings
 from ledgerlens.sandbox.factory import build_branch_store
 from ledgerlens.sandbox.postgres_store import PostgresBranchStore
-from ledgerlens.sandbox.store import BranchNotFound, BranchStore, FileBranchStore, SandboxBranchRow, SandboxEventRow
+from ledgerlens.sandbox.store import (
+    BranchNotFound,
+    BranchRevisionConflict,
+    BranchStore,
+    FileBranchStore,
+    SandboxBranchRow,
+    SandboxCommandRow,
+    SandboxEventRow,
+)
 
 # The moments of the fixtures. They are fixed and not the clock of the machine, so the two stores are compared on
 # the same values.
@@ -66,6 +74,30 @@ def _event(branch_id: str, event_uid: str = "evt-1") -> SandboxEventRow:
         aggregate_id="R-0731",
         occurred_at="2026-11-14T10:00:00Z",
         payload={"kind": "settlement", "rate": "5.41250000"},
+    )
+
+
+def _answer(branch_id: str, key: str = "cmd-0001") -> SandboxCommandRow:
+    """The answer of a request, as the store keeps it."""
+    return SandboxCommandRow(
+        branch_id=branch_id,
+        idempotency_key=key,
+        payload_digest="d" * 64,
+        revision=1,
+        canonical_hash="1" * 64,
+        response_diff=[
+            {
+                "record": "refunds",
+                "record_id": "R-0731",
+                "field": "payout_amount_minor",
+                "before": "549.31",
+                "after": "541.25",
+                "value_kind": "monetary",
+                "currency": "BRL",
+            }
+        ],
+        response_verdict={"label": "above_expected_range"},
+        response_invariants=[{"identifier": "fx_rate_positive_and_finite", "passed": True}],
     )
 
 
@@ -281,6 +313,67 @@ def test_the_store_refuses_to_delete_the_branch_of_another_session(store: Branch
     assert store.get_branch(row.branch_id, OWNER) == row
 
 
+# --- the commit of the events and the answer of a request ------------------------------------------------------
+
+
+def test_the_commit_appends_the_events_and_moves_the_row_of_the_branch(store: BranchStore) -> None:
+    row = _row()
+    store.create_branch(row)
+    moved = replace(row, revision=1, current_canonical_hash="1" * 64)
+    result = store.commit_events(row.branch_id, OWNER, [_event(row.branch_id)], moved, _answer(row.branch_id))
+    assert result.appended == 1
+    assert store.get_branch(row.branch_id, OWNER) == moved
+    assert len(store.read_events(row.branch_id, OWNER)) == 1
+
+
+def test_the_commit_remembers_the_answer_of_the_request(store: BranchStore) -> None:
+    row = _row()
+    store.create_branch(row)
+    moved = replace(row, revision=1, current_canonical_hash="1" * 64)
+    store.commit_events(row.branch_id, OWNER, [_event(row.branch_id)], moved, _answer(row.branch_id))
+    answer = store.command_answer(row.branch_id, OWNER, "cmd-0001")
+    assert answer is not None
+    assert answer.revision == 1
+    assert answer.canonical_hash == "1" * 64
+    assert answer.payload_digest == "d" * 64
+    assert answer.response_diff[0]["record_id"] == "R-0731"
+    assert answer.response_verdict["label"] == "above_expected_range"
+    assert answer.response_invariants[0]["identifier"] == "fx_rate_positive_and_finite"
+
+
+def test_the_commit_refuses_a_branch_that_moved_and_writes_nothing(store: BranchStore) -> None:
+    row = _row()
+    store.create_branch(row)
+    # The branch is at revision zero, so a row that claims revision two is a row of a request that is stale.
+    moved = replace(row, revision=2, current_canonical_hash="2" * 64)
+    with pytest.raises(BranchRevisionConflict):
+        store.commit_events(row.branch_id, OWNER, [_event(row.branch_id)], moved, _answer(row.branch_id))
+    assert store.get_branch(row.branch_id, OWNER) == row
+    assert store.read_events(row.branch_id, OWNER) == []
+    assert store.command_answer(row.branch_id, OWNER, "cmd-0001") is None
+
+
+def test_the_store_reads_no_answer_of_a_request_that_was_not_made(store: BranchStore) -> None:
+    row = _row()
+    store.create_branch(row)
+    assert store.command_answer(row.branch_id, OWNER, "cmd-0001") is None
+
+
+def test_the_store_refuses_to_read_the_answer_of_the_branch_of_another_session(store: BranchStore) -> None:
+    row = _row()
+    store.create_branch(row)
+    with pytest.raises(BranchNotFound):
+        store.command_answer(row.branch_id, OTHER_OWNER, "cmd-0001")
+
+
+def test_the_store_refuses_to_commit_on_the_branch_of_another_session(store: BranchStore) -> None:
+    row = _row()
+    store.create_branch(row)
+    moved = replace(row, revision=1, current_canonical_hash="1" * 64)
+    with pytest.raises(BranchNotFound):
+        store.commit_events(row.branch_id, OTHER_OWNER, [_event(row.branch_id)], moved, _answer(row.branch_id))
+
+
 # --- the choice of the store ------------------------------------------------------------------------
 
 
@@ -347,6 +440,28 @@ def _answers(store: BranchStore) -> list[Any]:
     answers.append(_refusal(lambda: store.delete_branch(row.branch_id, OTHER_OWNER)))
     answers.append(store.delete_branch(row.branch_id, OWNER))
     answers.append(store.list_branches(OWNER))
+    # the commit of the events and the answer of the request
+    committed = _row(branch_id="sb_" + "c" * 24)
+    store.create_branch(committed)
+    committed_event = _event(committed.branch_id, "evt-3")
+    moved = replace(committed, revision=1, current_canonical_hash="1" * 64)
+    answers.append(
+        store.commit_events(committed.branch_id, OWNER, [committed_event], moved, _answer(committed.branch_id))
+    )
+    answers.append(store.get_branch(committed.branch_id, OWNER) == moved)
+    answers.append(store.command_answer(committed.branch_id, OWNER, "cmd-0001"))
+    answers.append(store.command_answer(committed.branch_id, OWNER, "cmd-0002"))
+    answers.append(_refusal(lambda: store.command_answer(committed.branch_id, OTHER_OWNER, "cmd-0001")))
+    stale = replace(committed, revision=3, current_canonical_hash="3" * 64)
+    answers.append(
+        _refusal(
+            lambda: store.commit_events(
+                committed.branch_id, OWNER, [committed_event], stale, _answer(committed.branch_id)
+            )
+        )
+    )
+    answers.append(store.get_branch(committed.branch_id, OWNER) == moved)
+    answers.append(store.read_events(committed.branch_id, OWNER))
     return answers
 
 

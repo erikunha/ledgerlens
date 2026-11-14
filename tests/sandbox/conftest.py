@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import json
 import os
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime, timedelta
@@ -27,10 +28,19 @@ from pathlib import Path
 
 import pytest
 
-from ledgerlens.sandbox.branch import BranchLayer
+from ledgerlens.run_context import canonical_session_id
+from ledgerlens.sandbox.branch import BranchLayer, SandboxBranch
+from ledgerlens.sandbox.mutation import MutationCommand
 from ledgerlens.sandbox.postgres_store import DEFAULT_DATABASE_URL, PostgresBranchStore, apply_schema
 from ledgerlens.sandbox.snapshot import BaseResolver, BaseSnapshot
-from ledgerlens.sandbox.store import BranchStore, FileBranchStore
+from ledgerlens.sandbox.store import (
+    BranchStore,
+    FileBranchStore,
+    SandboxEventRow,
+    _branch_from_dict,
+    _event_to_dict,
+)
+from ledgerlens.sim.events import canonical_json
 
 SCENARIO_ID = "S01"
 OTHER_SCENARIO_ID = "S02"
@@ -210,6 +220,95 @@ def scenario_id() -> str:
 @pytest.fixture
 def other_scenario_id() -> str:
     return OTHER_SCENARIO_ID
+
+
+# --- the fixtures of the mutation loop ----------------------------------------------------------------
+
+
+@pytest.fixture
+def owner_session(session_id: str) -> str:
+    """The canonical owner of the session: the name the store files the branch under."""
+    return canonical_session_id(session_id)
+
+
+@pytest.fixture
+def forked_branch(layer: BranchLayer, session_id: str, scenario_id: str) -> SandboxBranch:
+    """The private branch of the scenario, at revision zero, owned by the session of the test."""
+    return layer.fork(session_id, scenario_id).branch
+
+
+@pytest.fixture
+def effective_at(clock: FakeClock) -> str:
+    """A moment inside the window the server accepts: the day before the clock of the test."""
+    return (clock.now - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+@pytest.fixture
+def adjustment_payload(effective_at: str) -> dict[str, object]:
+    """The payload of a valid adjustment of the FX rate of the refund of S01."""
+    return {"refund_id": "R-0731", "applied_rate": "5.41250000", "effective_at": effective_at}
+
+
+@pytest.fixture
+def adjustment(adjustment_payload: dict[str, object]) -> MutationCommand:
+    """The command of the adjustment, with the revision and the key the tests send."""
+    return MutationCommand(
+        kind="refund.apply_fx_adjustment",
+        payload=dict(adjustment_payload),
+        reason="the visitor tries another rate",
+        expected_revision=0,
+        idempotency_key="cmd-0001",
+    )
+
+
+@pytest.fixture
+def event_count(store: BranchStore, owner_session: str):
+    """A reader of the number of events of a branch, as the store keeps them."""
+
+    def count(branch_id: str) -> int:
+        return len(store.read_events(branch_id, owner_session))
+
+    return count
+
+
+@pytest.fixture
+def tamper_events(store: BranchStore):
+    """A writer that replaces the events of a branch, the way a crash or a corruption would.
+
+    Why the fixture is here: the test that proves the refusal of a branch that cannot prove its own state has to
+    build that state honestly, and the two stores keep their events in two different places. The branch is found
+    by its identifier, so the writer works on a branch of any session. The store of the test lives in a temporary
+    folder or in the database of the suite, never in the published artifacts.
+    """
+
+    def replace(branch_id: str, events: list[SandboxEventRow]) -> None:
+        if isinstance(store, FileBranchStore):
+            for path in sorted(store.root.glob(f"*/*/{store.BRANCH_FILE}")):
+                row = _branch_from_dict(json.loads(path.read_text(encoding="utf-8")))
+                if row.branch_id == branch_id:
+                    (path.parent / store.EVENTS_FILE).write_text(
+                        "".join(canonical_json(_event_to_dict(row)) + "\n" for row in events), encoding="utf-8"
+                    )
+                    return
+            raise AssertionError(f"the branch {branch_id} is not in the store of the test")
+        store._run("DELETE FROM sandbox_events WHERE branch_id = %s", (branch_id,))
+        for event in events:
+            store._run(
+                "INSERT INTO sandbox_events (branch_id, event_uid, event_type, aggregate_id, occurred_at, payload,"
+                " origin, command_id) VALUES (%s,%s,%s,%s,%s,%s::jsonb,%s,%s)",
+                (
+                    event.branch_id,
+                    event.event_uid,
+                    event.event_type,
+                    event.aggregate_id,
+                    event.occurred_at,
+                    canonical_json(event.payload),
+                    event.origin,
+                    event.command_id,
+                ),
+            )
+
+    return replace
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:

@@ -28,7 +28,7 @@ from collections.abc import Callable
 from datetime import datetime
 from typing import Annotated, Any
 
-from fastapi import FastAPI, Request, Security
+from fastapi import FastAPI, Header, Query, Request, Security
 from fastapi import Path as PathParam
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
@@ -39,11 +39,21 @@ from ledgerlens.config import get_settings
 from ledgerlens.sandbox.branch import (
     BRANCH_ID_PREFIX,
     BranchExpired,
+    BranchHashMismatch,
     BranchLayer,
     InvalidSessionId,
     SandboxBranch,
 )
 from ledgerlens.sandbox.factory import build_branch_store
+from ledgerlens.sandbox.mutation import (
+    CODE_INVALID_PAYLOAD,
+    CODE_INVALID_REQUEST,
+    CODE_READ_ONLY_FIELD,
+    MutationCommand,
+    MutationRejected,
+    read_only_field_in,
+    status_for_code,
+)
 from ledgerlens.sandbox.session import InvalidSession, SessionIssuer
 from ledgerlens.sandbox.snapshot import BaseResolver, UnknownScenario
 from ledgerlens.sandbox.store import BranchNotFound, BranchStore
@@ -173,7 +183,8 @@ def create_app(
         session = _session(cookie, issuer)
         for row in branch_store.list_branches(session):
             branch_store.delete_branch(row.branch_id, session)
-        response = Response(status_code=204)
+        # The version of the shape of the answers travels in the header of every answer of the facade (FR-042).
+        response = Response(status_code=204, headers={SCHEMA_VERSION_HEADER: SCHEMA_VERSION})
         response.delete_cookie(SESSION_COOKIE, path="/")
         return response
 
@@ -211,7 +222,91 @@ def create_app(
             raise ContractError(401, "SESSION_REQUIRED", "no valid session") from None
         except BranchExpired as expired:
             raise ContractError(410, "BRANCH_EXPIRED", str(expired)) from None
+        except BranchHashMismatch as mismatch:
+            raise ContractError(409, mismatch.code, mismatch.message) from None
         return _sandbox_response(branch, 200)
+
+    @app.post("/v1/sandboxes/{sandbox_id}/mutations/preview")
+    def preview_mutation(
+        sandbox_id: Annotated[str, PathParam(pattern=BRANCH_ID_PATTERN)],
+        body: dict[str, Any],
+        cookie: Annotated[str | None, Security(SESSION_SCHEME)],
+    ) -> JSONResponse:
+        """What a typed mutation would do to the branch, computed without writing anything.
+
+        The answer carries the values before and after as decimal texts with their currency, the records the
+        mutation touches, the invariants of the domain and the verdict of the case.
+        """
+        session = _session(cookie, issuer)
+        command = _command_of(body)
+        try:
+            preview = layer.preview_mutation(session, sandbox_id, command)
+        except MutationRejected as refusal:
+            raise ContractError(status_for_code(refusal.code), refusal.code, refusal.message) from None
+        except BranchNotFound:
+            raise ContractError(404, "NOT_FOUND", GENERIC_NOT_FOUND) from None
+        except InvalidSessionId:
+            raise ContractError(401, "SESSION_REQUIRED", "no valid session") from None
+        except BranchExpired as expired:
+            raise ContractError(410, "BRANCH_EXPIRED", str(expired)) from None
+        except BranchHashMismatch as mismatch:
+            raise ContractError(409, mismatch.code, mismatch.message) from None
+        return _answer(preview.to_dict())
+
+    @app.post("/v1/sandboxes/{sandbox_id}/mutations")
+    def commit_mutation(
+        sandbox_id: Annotated[str, PathParam(pattern=BRANCH_ID_PATTERN)],
+        body: dict[str, Any],
+        cookie: Annotated[str | None, Security(SESSION_SCHEME)],
+        idempotency_key: Annotated[str, Header(alias="Idempotency-Key")],
+        if_match: Annotated[str, Header(alias="If-Match")],
+    ) -> JSONResponse:
+        """The commit of a typed mutation: the events, the revision and the canonical hash move together.
+
+        The `Idempotency-Key` header names the request and the `If-Match` header carries the revision the visitor
+        believes the branch is at. The answer carries the new revision, the new canonical hash and the diff.
+        """
+        session = _session(cookie, issuer)
+        command = _command_of(body, idempotency_key=idempotency_key, expected_revision=_revision_of(if_match))
+        try:
+            result = layer.commit_mutation(session, sandbox_id, command)
+        except MutationRejected as refusal:
+            raise ContractError(status_for_code(refusal.code), refusal.code, refusal.message) from None
+        except BranchNotFound:
+            raise ContractError(404, "NOT_FOUND", GENERIC_NOT_FOUND) from None
+        except InvalidSessionId:
+            raise ContractError(401, "SESSION_REQUIRED", "no valid session") from None
+        except BranchExpired as expired:
+            raise ContractError(410, "BRANCH_EXPIRED", str(expired)) from None
+        except BranchHashMismatch as mismatch:
+            raise ContractError(409, mismatch.code, mismatch.message) from None
+        return _answer(result.to_dict())
+
+    @app.get("/v1/sandboxes/{sandbox_id}/ledger")
+    def read_ledger(
+        sandbox_id: Annotated[str, PathParam(pattern=BRANCH_ID_PATTERN)],
+        account_id: Annotated[str, Query(min_length=1)],
+        cookie: Annotated[str | None, Security(SESSION_SCHEME)],
+        cursor: Annotated[str | None, Query(min_length=1)] = None,
+    ) -> JSONResponse:
+        """The ledger of the account of the branch: the rows of the projection and the cursor of the next page.
+
+        The body is exactly the resource of the contract: the rows and the cursor, and no other field.
+        """
+        session = _session(cookie, issuer)
+        try:
+            page = layer.ledger(session, sandbox_id, account_id, cursor)
+        except MutationRejected as refusal:
+            raise ContractError(status_for_code(refusal.code), refusal.code, refusal.message) from None
+        except BranchNotFound:
+            raise ContractError(404, "NOT_FOUND", GENERIC_NOT_FOUND) from None
+        except InvalidSessionId:
+            raise ContractError(401, "SESSION_REQUIRED", "no valid session") from None
+        except BranchExpired as expired:
+            raise ContractError(410, "BRANCH_EXPIRED", str(expired)) from None
+        except BranchHashMismatch as mismatch:
+            raise ContractError(409, mismatch.code, mismatch.message) from None
+        return _answer({"items": list(page.items), "next_cursor": page.next_cursor})
 
     return app
 
@@ -226,6 +321,49 @@ def _session(cookie_value: str | None, issuer: SessionIssuer) -> str:
         return issuer.session_id(cookie_value)
     except InvalidSession:
         raise ContractError(401, "SESSION_REQUIRED", "no valid session") from None
+
+
+def _command_of(
+    body: dict[str, Any], *, idempotency_key: str | None = None, expected_revision: int | None = None
+) -> MutationCommand:
+    """The command of the request: the kind, the payload and the reason, and the two names of the request.
+
+    Why the body is read here and not by the framework: the body of a command is the one of the published schema,
+    and the rules about it belong to the domain, which knows the kind of the command.
+    """
+    field = read_only_field_in(body)
+    if field is not None:
+        raise ContractError(
+            422,
+            CODE_READ_ONLY_FIELD,
+            f"the field {field!r} is a read only field; the visitor may not change it",
+        )
+    data = body.get("data")
+    if not isinstance(data, dict):
+        raise ContractError(422, CODE_INVALID_PAYLOAD, "the payload of the command is not an object")
+    kind = body.get("kind")
+    reason = body.get("reason")
+    return MutationCommand(
+        kind=kind if isinstance(kind, str) else "",
+        payload=data,
+        reason=reason if isinstance(reason, str) else None,
+        expected_revision=expected_revision,
+        idempotency_key=idempotency_key,
+    )
+
+
+def _revision_of(if_match: str) -> int:
+    """The expected revision of the request, taken from the `If-Match` header of the contract."""
+    text = if_match.strip().strip('"')
+    try:
+        return int(text)
+    except ValueError:
+        raise ContractError(422, CODE_INVALID_REQUEST, "the If-Match header does not carry a revision") from None
+
+
+def _answer(content: dict[str, Any]) -> JSONResponse:
+    """An answer of the facade, with the version of the shape of the answers in its header (FR-042)."""
+    return JSONResponse(status_code=200, content=content, headers={SCHEMA_VERSION_HEADER: SCHEMA_VERSION})
 
 
 def _sandbox_response(branch: SandboxBranch, status_code: int) -> JSONResponse:

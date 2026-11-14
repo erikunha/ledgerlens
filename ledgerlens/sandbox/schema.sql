@@ -54,13 +54,25 @@ CREATE TABLE IF NOT EXISTS sandbox_events (
 -- The commands of a branch. The key of the table is the branch and the idempotency key, because that pair is what
 -- makes a repeated request idempotent (FR-012). The table is the home of the answer of a command, so a request
 -- that arrives twice reads the answer that was already stored instead of doing the work again.
+--
+-- The whole answer is stored: the diff, the verdict of the case and the invariants of the domain. They are part
+-- of the answer of the request, because a later mutation may have moved the case and the replay of a request has
+-- to be the answer of that request and not the answer of the state of today.
 CREATE TABLE IF NOT EXISTS sandbox_commands (
-    branch_id        text        NOT NULL REFERENCES sandbox_branches (branch_id) ON DELETE CASCADE,
-    idempotency_key  text        NOT NULL,
-    payload_digest   text        NOT NULL,
-    revision         integer     NOT NULL,
-    canonical_hash   text        NOT NULL,
-    response_diff    jsonb       NOT NULL,
-    created_at       timestamptz NOT NULL DEFAULT now(),
+    branch_id           text        NOT NULL REFERENCES sandbox_branches (branch_id) ON DELETE CASCADE,
+    idempotency_key     text        NOT NULL,
+    payload_digest      text        NOT NULL,
+    revision            integer     NOT NULL,
+    canonical_hash      text        NOT NULL,
+    response_diff       jsonb       NOT NULL,
+    response_verdict    jsonb       NOT NULL DEFAULT '{}'::jsonb,
+    response_invariants jsonb       NOT NULL DEFAULT '[]'::jsonb,
+    created_at          timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT sandbox_commands_pkey PRIMARY KEY (branch_id, idempotency_key)
 );
+
+-- The two columns of the verdict and of the invariants, for a database that already holds the table of an older
+-- version of the code. The statement carries `IF NOT EXISTS` for the same reason the tables do, so the script may
+-- run over a database that already has the shape.
+ALTER TABLE sandbox_commands ADD COLUMN IF NOT EXISTS response_verdict jsonb NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE sandbox_commands ADD COLUMN IF NOT EXISTS response_invariants jsonb NOT NULL DEFAULT '[]'::jsonb;

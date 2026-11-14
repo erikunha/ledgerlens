@@ -29,7 +29,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from ledgerlens.sandbox.store import BranchNotFound, SandboxBranchRow, SandboxEventRow, _safe_name
+from ledgerlens.sandbox.store import (
+    BranchNotFound,
+    BranchRevisionConflict,
+    SandboxBranchRow,
+    SandboxCommandRow,
+    SandboxEventRow,
+    _safe_name,
+)
 from ledgerlens.sim.events import AppendResult, canonical_json
 
 # The schema of the store, versioned with the code. The script `scripts/apply_sandbox_schema.py` applies it.
@@ -67,6 +74,18 @@ EVENT_COLUMNS = (
     "payload",
     "origin",
     "command_id",
+)
+
+# The columns of the answer of a request, in the order the queries read them.
+COMMAND_COLUMNS = (
+    "branch_id",
+    "idempotency_key",
+    "payload_digest",
+    "revision",
+    "canonical_hash",
+    "response_diff",
+    "response_verdict",
+    "response_invariants",
 )
 
 
@@ -207,28 +226,10 @@ class PostgresBranchStore:
         for event in events:
             if event.branch_id != branch_id:
                 raise ValueError(f"the event {event.event_uid} does not belong to the branch {branch_id}")
-        values = []
-        for event in events:
-            values.append(
-                (
-                    event.branch_id,
-                    event.event_uid,
-                    event.event_type,
-                    event.aggregate_id,
-                    event.occurred_at,
-                    # The canonical serialisation, so that the same event has the same bytes in both stores.
-                    canonical_json(event.payload),
-                    event.origin,
-                    event.command_id,
-                )
-            )
-        placeholders = ", ".join(["(%s, %s, %s, %s, %s, %s::jsonb, %s, %s)"] * len(values))
-        _, appended = self._run(
-            "INSERT INTO sandbox_events"
-            " (branch_id, event_uid, event_type, aggregate_id, occurred_at, payload, origin, command_id)"
-            f" VALUES {placeholders} ON CONFLICT (branch_id, event_uid) DO NOTHING",
-            [value for row in values for value in row],
-        )
+        connection = self._connect()
+        with connection.cursor() as cursor:
+            appended = self._insert_events(cursor, branch_id, events)
+        connection.commit()
         return AppendResult(appended, len(events) - appended)
 
     def read_events(self, branch_id: str, owner_session: str) -> list[SandboxEventRow]:
@@ -247,6 +248,89 @@ class PostgresBranchStore:
         self._require_branch(branch_id, owner_session)
         _, dropped = self._run("DELETE FROM sandbox_events WHERE branch_id = %s", (branch_id,))
         return dropped
+
+    # -- the commit and the answers of the requests ---------------------------------------------------
+
+    def commit_events(
+        self,
+        branch_id: str,
+        owner_session: str,
+        events: Sequence[SandboxEventRow],
+        branch: SandboxBranchRow,
+        answer: SandboxCommandRow,
+    ) -> AppendResult:
+        """Appends the events, moves the row of the branch and remembers the answer, in one transaction.
+
+        Why one transaction: the append of the events and the move of the row are one operation of the domain
+        (FR-033). A crash between them would leave a branch that says one thing and holds another, and the row of
+        the branch is locked while the transaction runs, so the loser of two concurrent commits is refused.
+        """
+        _safe_name(owner_session)
+        connection = self._connect()
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT revision FROM sandbox_branches WHERE branch_id = %s AND owner_session = %s FOR UPDATE",
+                    (branch_id, owner_session),
+                )
+                found = cursor.fetchone()
+                if found is None:
+                    raise BranchNotFound()
+                if int(found[0]) != branch.revision - 1:
+                    raise BranchRevisionConflict(
+                        f"the branch {branch_id} is at revision {found[0]}, and the request expected"
+                        f" {branch.revision - 1}"
+                    )
+                appended = self._insert_events(cursor, branch_id, events)
+                cursor.execute(
+                    "INSERT INTO sandbox_commands"
+                    " (branch_id, idempotency_key, payload_digest, revision, canonical_hash, response_diff,"
+                    " response_verdict, response_invariants)"
+                    " VALUES (%s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, %s::jsonb)"
+                    " ON CONFLICT (branch_id, idempotency_key) DO NOTHING",
+                    (
+                        answer.branch_id,
+                        answer.idempotency_key,
+                        answer.payload_digest,
+                        answer.revision,
+                        answer.canonical_hash,
+                        canonical_json(answer.response_diff),
+                        canonical_json(answer.response_verdict),
+                        canonical_json(answer.response_invariants),
+                    ),
+                )
+                cursor.execute(
+                    "UPDATE sandbox_branches SET revision = %s, current_canonical_hash = %s, last_activity_at = %s,"
+                    " expires_at = %s, state = %s WHERE branch_id = %s AND owner_session = %s",
+                    (
+                        branch.revision,
+                        branch.current_canonical_hash,
+                        branch.last_activity_at,
+                        branch.expires_at,
+                        branch.state,
+                        branch_id,
+                        owner_session,
+                    ),
+                )
+            connection.commit()
+        except Exception:
+            # The transaction is rolled back, so the branch keeps its revision, its hash and its events.
+            connection.rollback()
+            raise
+        return AppendResult(appended, len(events) - appended)
+
+    def command_answer(self, branch_id: str, owner_session: str, idempotency_key: str) -> SandboxCommandRow | None:
+        """The answer already given to the request with this key, or None when there is none."""
+        _safe_name(owner_session)
+        self._require_branch(branch_id, owner_session)
+        rows, _ = self._run(
+            f"SELECT {', '.join(COMMAND_COLUMNS)} FROM sandbox_commands"
+            " WHERE branch_id = %s AND idempotency_key = %s",
+            (branch_id, idempotency_key),
+        )
+        if not rows:
+            return None
+        return _command_from_record(rows[0])
 
     # -- the maintenance ---------------------------------------------------------------------------
 
@@ -300,6 +384,38 @@ class PostgresBranchStore:
         )
         if not rows:
             raise BranchNotFound()
+
+    def _insert_events(self, cursor: Any, branch_id: str, events: Sequence[SandboxEventRow]) -> int:
+        """Inserts the events of a branch and returns how many were really appended.
+
+        Why the insert refuses the event that is already there: the append is idempotent on the uid of the event
+        (FR-011), and the count of the rows that were not refused is the count of the appended ones.
+        """
+        if not events:
+            return 0
+        values = []
+        for event in events:
+            values.append(
+                (
+                    event.branch_id,
+                    event.event_uid,
+                    event.event_type,
+                    event.aggregate_id,
+                    event.occurred_at,
+                    # The canonical serialisation, so that the same event has the same bytes in both stores.
+                    canonical_json(event.payload),
+                    event.origin,
+                    event.command_id,
+                )
+            )
+        placeholders = ", ".join(["(%s, %s, %s, %s, %s, %s::jsonb, %s, %s)"] * len(values))
+        cursor.execute(
+            "INSERT INTO sandbox_events"
+            " (branch_id, event_uid, event_type, aggregate_id, occurred_at, payload, origin, command_id)"
+            f" VALUES {placeholders} ON CONFLICT (branch_id, event_uid) DO NOTHING",
+            [value for row in values for value in row],
+        )
+        return cursor.rowcount
 
 
 def _unique_violation(error: Exception) -> bool:
@@ -357,8 +473,22 @@ def _event_from_record(record: Sequence[Any]) -> SandboxEventRow:
     )
 
 
+def _command_from_record(record: Sequence[Any]) -> SandboxCommandRow:
+    return SandboxCommandRow(
+        branch_id=record[0],
+        idempotency_key=record[1],
+        payload_digest=record[2],
+        revision=int(record[3]),
+        canonical_hash=record[4],
+        response_diff=list(record[5]),
+        response_verdict=dict(record[6] or {}),
+        response_invariants=list(record[7] or []),
+    )
+
+
 __all__ = [
     "BRANCH_COLUMNS",
+    "COMMAND_COLUMNS",
     "DEFAULT_DATABASE_URL",
     "EVENT_COLUMNS",
     "PostgresBranchStore",

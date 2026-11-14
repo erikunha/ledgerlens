@@ -4,7 +4,7 @@ Why it exists: a visitor of the public demo needs a private working copy of a pu
 never see the work of another one. The rules live here and not in the store, so the storage can be replaced without
 the rules changing, and the layer never writes SQL and never writes to the published base.
 
-The four rules of this module:
+The four rules of the fork:
 
 * the fork reads the base, computes its canonical hash and creates a branch at revision zero;
 * the identifier of the branch is opaque: it carries no session, no scenario and no path;
@@ -16,6 +16,10 @@ Two rules keep the owner honest and the branch alive. The session identifier is 
 pattern of ADR-015, because the canonical form is injective only over that alphabet, so an identifier outside it is
 refused instead of becoming the owner of another visitor. The expiry of a branch is the earlier of the idle deadline,
 counted from the last activity of the visitor, and the absolute deadline, counted from the creation.
+
+A fifth rule keeps the branch honest: every read of a branch recomputes the canonical hash of the projection of its
+events and compares it with the hash the row of the branch declares. A branch whose row does not agree with its
+events may be half applied, and it is refused with the code `HASH_MISMATCH` and never served as valid (ADR-021).
 """
 
 from __future__ import annotations
@@ -24,15 +28,89 @@ import secrets
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from ledgerlens.run_context import SESSION_ID_PATTERN, canonical_session_id
+from ledgerlens.sandbox.mutation import (
+    CODE_HASH_MISMATCH,
+    CODE_IDEMPOTENCY_MISMATCH,
+    CODE_INVALID_REQUEST,
+    CODE_INVARIANT_VIOLATION,
+    CODE_RESOURCE_LIMIT,
+    CODE_REVISION_CONFLICT,
+    MutationCommand,
+    MutationPreview,
+    MutationRejected,
+    MutationResult,
+    command_id_of,
+    format_minor,
+    payload_digest,
+    plan_mutation,
+)
+from ledgerlens.sandbox.projector import ProjectedState, project
 from ledgerlens.sandbox.snapshot import BaseSnapshot
-from ledgerlens.sandbox.store import BranchNotFound, BranchStore, SandboxBranchRow
+from ledgerlens.sandbox.store import (
+    BranchNotFound,
+    BranchRevisionConflict,
+    BranchStore,
+    SandboxBranchRow,
+    SandboxCommandRow,
+)
 
 BRANCH_ID_PREFIX = "sb_"
 BRANCH_ID_HEX_CHARS = 24
 STATE_ACTIVE = "active"
 STATE_EXPIRED = "expired"
+# The number of rows of one page of the ledger of a branch.
+LEDGER_PAGE_SIZE = 50
+# The resources of one branch (FR-025). A branch that reaches one of them is refused, and the branch is not
+# bigger than the resources of the server that holds it.
+MAX_COMMITTED_MUTATIONS = 20
+MAX_EVENTS = 200
+
+
+def _ledger_items(state: Any) -> list[dict[str, object]]:
+    """The rows of the ledger of a branch: the movements of the account, oldest first.
+
+    Why the amounts are decimal texts: the interface never calculates money, and the rows of the ledger are the
+    same rows the projection holds.
+    """
+    items: list[dict[str, object]] = []
+    for row in state.rows.get("transactions", []):
+        items.append(
+            {
+                "kind": "transaction",
+                "id": row["id"],
+                "at": row["created_at"],
+                "amount": format_minor(int(row["amount_minor"]), str(row["currency"])),
+                "currency": row["currency"],
+                "status": row["status"],
+            }
+        )
+    for row in state.rows.get("refunds", []):
+        items.append(
+            {
+                "kind": "refund",
+                "id": row["id"],
+                "at": row["created_at"],
+                "amount": format_minor(int(row["payout_amount_minor"] or 0), str(row["payout_currency"])),
+                "currency": row["payout_currency"],
+                "status": row["status"],
+            }
+        )
+    for row in state.rows.get("chargebacks", []):
+        items.append(
+            {
+                "kind": "chargeback",
+                "id": row["id"],
+                "at": row["opened_at"],
+                "amount": format_minor(int(row["amount_minor"]), str(row["currency"])),
+                "currency": row["currency"],
+                "status": row["stage"],
+            }
+        )
+    items.sort(key=lambda item: (str(item["at"]), str(item["kind"]), str(item["id"])))
+    return items
 
 
 class InvalidSessionId(ValueError):
@@ -50,6 +128,21 @@ class BranchExpired(Exception):
 
     The caller owns the branch, so the message may name the state. It offers to fork the scenario again.
     """
+
+
+class BranchHashMismatch(Exception):
+    """The row of the branch does not agree with the projection of its events.
+
+    Why the branch is refused instead of served: a branch that cannot prove its own state is a branch that may be
+    half applied, and a visitor must never be shown a ledger that says one thing and holds another (ADR-021). The
+    message offers a fresh fork, because the branch itself cannot be repaired.
+    """
+
+    code = CODE_HASH_MISMATCH
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.message = message
 
 
 def new_branch_id() -> str:
@@ -92,6 +185,17 @@ class ForkOutcome:
 
     branch: SandboxBranch
     created: bool
+
+
+@dataclass(frozen=True)
+class LedgerPage:
+    """One page of the ledger of a branch: the rows of the account and the cursor of the next page.
+
+    The cursor is None when the page is the last one, so the interface knows that it has read everything.
+    """
+
+    items: tuple[dict[str, object], ...]
+    next_cursor: str | None = None
 
 
 class BranchLayer:
@@ -154,6 +258,9 @@ class BranchLayer:
         A branch of another session is refused with the same generic answer as a branch that does not exist, so
         nothing about the existence of the branch leaks. Reading the branch is an activity: the idle deadline of the
         branch moves, the absolute deadline never does.
+
+        The branch is verified before it is served: the hash of the projection of its events has to be the hash the
+        row declares, or the branch cannot prove its own state and is refused (ADR-021).
         """
         owner = self._owner(session_id)
         row = self.store.get_branch(branch_id, owner)
@@ -162,7 +269,201 @@ class BranchLayer:
             raise BranchNotFound()
         if self._expired(row):
             raise BranchExpired(f"the branch {branch_id} expired; fork the scenario again")
+        self._verified(row, owner)
         return self._view(self._refresh(row))
+
+    # -- the mutation loop ---------------------------------------------------------------------------
+
+    def preview_mutation(self, session_id: str, branch_id: str, command: MutationCommand) -> MutationPreview:
+        """What the command would do to the branch, computed in memory and written nowhere.
+
+        The preview reads the branch, projects it with the event the command would produce over a copy of the base
+        and answers with the values before and after, the records, the invariants and the verdict. The revision,
+        the canonical hash and the events of the branch are the same before and after (FR-016).
+        """
+        owner = self._owner(session_id)
+        row = self.store.get_branch(branch_id, owner)
+        if self._expired(row):
+            raise BranchExpired(f"the branch {branch_id} expired; fork the scenario again")
+        branch = self._view(row)
+        base = self.base_resolver(branch.scenario_id)
+        events = self.store.read_events(branch_id, owner)
+        state = self._verified(row, owner, events)
+        plan = plan_mutation(
+            base,
+            branch.branch_id,
+            branch.scenario_id,
+            branch.revision,
+            events,
+            command,
+            self._clock(),
+            before=state,
+        )
+        return plan.to_preview(branch.current_canonical_hash)
+
+    def commit_mutation(self, session_id: str, branch_id: str, command: MutationCommand) -> MutationResult:
+        """The commit of a command: the events, the revision and the canonical hash move together.
+
+        The order of the three rules is the order of the promises. The idempotency key comes first, so that a
+        request that was already committed is answered with the answer that was stored, whatever the expected
+        revision of the request says: the second delivery of a request carries the expected revision it was sent
+        with, and that revision is stale by then, because the first delivery moved the branch (FR-012). A key that
+        was seen with another payload is a conflict, whatever the expected revision says (FR-013). The expected
+        revision of a request that was never seen has to match the current one, or the request is refused and
+        never rebased (FR-014). The rules of the payload and the invariants are checked last, over the projection
+        the command would produce, and a rule that does not hold means that nothing is written at all (FR-018).
+        """
+        owner = self._owner(session_id)
+        row = self.store.get_branch(branch_id, owner)
+        if self._expired(row):
+            raise BranchExpired(f"the branch {branch_id} expired; fork the scenario again")
+        branch = self._view(row)
+        base = self.base_resolver(branch.scenario_id)
+        events = self.store.read_events(branch_id, owner)
+        # Every read of the branch is verified: a branch that cannot prove its own state is never served (ADR-021).
+        state = self._verified(row, owner, events)
+        if not command.idempotency_key:
+            raise MutationRejected(CODE_INVALID_REQUEST, "the request carries no idempotency key")
+        if command.expected_revision is None:
+            raise MutationRejected(CODE_INVALID_REQUEST, "the request carries no expected revision")
+        digest = payload_digest(command)
+        stored = self.store.command_answer(branch_id, owner, command.idempotency_key)
+        if stored is not None:
+            return self._replay(branch, stored, command, digest)
+        if command.expected_revision != branch.revision:
+            raise MutationRejected(
+                CODE_REVISION_CONFLICT,
+                f"the branch is at revision {branch.revision} and the request expected {command.expected_revision}",
+            )
+        self._check_the_resources(branch, events)
+        now = self._clock()
+        plan = plan_mutation(
+            base, branch.branch_id, branch.scenario_id, branch.revision, events, command, now, before=state
+        )
+        failed = [result for result in plan.invariants if not result["passed"]]
+        if failed:
+            raise MutationRejected(CODE_INVARIANT_VIOLATION, str(failed[0]["reason"]))
+        new_row = replace(
+            row,
+            revision=branch.revision + 1,
+            current_canonical_hash=plan.canonical_hash,
+            last_activity_at=now,
+            expires_at=self._expiry(now, row.created_at),
+        )
+        answer = SandboxCommandRow(
+            branch_id=branch_id,
+            idempotency_key=command.idempotency_key,
+            payload_digest=digest,
+            revision=new_row.revision,
+            canonical_hash=plan.canonical_hash,
+            response_diff=list(plan.diff),
+            response_verdict=plan.verdict.to_dict(),
+            response_invariants=list(plan.invariants),
+        )
+        try:
+            self.store.commit_events(branch_id, owner, plan.events, new_row, answer)
+        except BranchRevisionConflict:
+            # The branch moved between the read and the write: the request is stale, and nothing was written.
+            raise MutationRejected(
+                CODE_REVISION_CONFLICT, "the branch moved while the request was being prepared"
+            ) from None
+        return plan.to_result()
+
+    def _check_the_resources(self, branch: SandboxBranch, events: list[Any]) -> None:
+        """The resources of the branch: the number of its mutations and the number of its events.
+
+        Why the refusal comes before the work: a branch that reached its limit is refused without a projection,
+        so the server never spends the resources of a request it will refuse anyway (FR-025).
+        """
+        if branch.revision >= MAX_COMMITTED_MUTATIONS:
+            raise MutationRejected(
+                CODE_RESOURCE_LIMIT,
+                f"the branch already holds {branch.revision} mutations, and the limit is {MAX_COMMITTED_MUTATIONS}",
+            )
+        if len(events) >= MAX_EVENTS:
+            raise MutationRejected(
+                CODE_RESOURCE_LIMIT,
+                f"the branch already holds {len(events)} events, and the limit is {MAX_EVENTS}",
+            )
+
+    def _replay(
+        self, branch: SandboxBranch, stored: SandboxCommandRow, command: MutationCommand, digest: str
+    ) -> MutationResult:
+        """The answer of a request that was already committed, with the same key and the same payload.
+
+        The answer that is returned is the answer that was remembered: the revision, the hash, the diff, the
+        invariants and the verdict of the request that was committed. They are not recomputed from the current
+        projection, because a later mutation may have moved the case and the answer of a request is the answer of
+        that request (ADR-021).
+        """
+        if stored.payload_digest != digest:
+            raise MutationRejected(
+                CODE_IDEMPOTENCY_MISMATCH,
+                "the idempotency key was already used with another payload",
+            )
+        return MutationResult(
+            command_id=command_id_of(command, digest),
+            kind=command.kind,
+            revision=stored.revision,
+            canonical_hash=stored.canonical_hash,
+            diff=tuple(stored.response_diff),
+            invariants=tuple(stored.response_invariants),
+            verdict=dict(stored.response_verdict),
+            replayed=True,
+        )
+
+    def _verified(
+        self, row: SandboxBranchRow, owner: str, events: list[Any] | None = None
+    ) -> ProjectedState:
+        """The projection of the branch, after the row and the events have been compared.
+
+        Why the comparison is made on every read: the row of the branch and the events of the branch move together,
+        and a crash between the two leaves a branch that says one thing and holds another. Such a branch is refused
+        with `HASH_MISMATCH` and is never served as valid (ADR-021, FR-032).
+        """
+        if events is None:
+            events = self.store.read_events(row.branch_id, owner)
+        base = self.base_resolver(row.scenario_id)
+        state = project(base, events)
+        if state.canonical_hash != row.current_canonical_hash:
+            raise BranchHashMismatch(
+                f"the branch {row.branch_id} cannot prove its own state; fork the scenario again"
+            )
+        return state
+
+    # -- the ledger of the branch ---------------------------------------------------------------------
+
+    def ledger(
+        self, session_id: str, branch_id: str, account_id: str, cursor: str | None = None
+    ) -> LedgerPage:
+        """The ledger of the account of the branch: the rows of the projection, one page at a time.
+
+        The rows are the ones of the account of the branch, and the account of another one is refused, so a read
+        never returns a row of another account (FR-026).
+        """
+        owner = self._owner(session_id)
+        row = self.store.get_branch(branch_id, owner)
+        if self._expired(row):
+            raise BranchExpired(f"the branch {branch_id} expired; fork the scenario again")
+        branch = self._view(row)
+        base = self.base_resolver(branch.scenario_id)
+        if account_id != base.account_id:
+            # The branch holds the rows of one account, and the account of the request is not that one.
+            raise BranchNotFound()
+        events = self.store.read_events(branch_id, owner)
+        state = self._verified(row, owner, events)
+        items = _ledger_items(state)
+        keys = [f"{item['kind']}:{item['id']}" for item in items]
+        start = 0
+        if cursor:
+            if cursor not in keys:
+                raise MutationRejected(CODE_INVALID_REQUEST, "the cursor is not one of the rows of this ledger")
+            start = keys.index(cursor) + 1
+        page = items[start : start + LEDGER_PAGE_SIZE]
+        following = None
+        if page and start + len(page) < len(items):
+            following = f"{page[-1]['kind']}:{page[-1]['id']}"
+        return LedgerPage(items=tuple(page), next_cursor=following)
 
     # -- the internals -----------------------------------------------------------------------------
 
