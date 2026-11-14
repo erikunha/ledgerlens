@@ -8,7 +8,11 @@ execution, because a replay read as a live execution is the worst failure this r
 key inside does not open, even when the hash matches; (f) a tampered bundle does not open; (g) repeating the bundle in
 a sink gives back exactly the recorded events; (h) the write path refuses a live execution and a mixed set before any
 file is written, and the manifest carries the single mode every event carries; (i) a manifest whose event count was
-changed does not open.
+changed does not open; (j) the manifest declares the provenance it has and stays silent about the provenance it does
+not have; (k) a commit hash, a capture kind and a capture moment outside the shape of the contract are refused
+before any file is written; (l) a bundle that declares provenance survives the round trip through the write and the
+read; (m) a bundle that declares no provenance keeps the manifest of the previous version, key for key, so the files
+of the two versions are the same bytes.
 
 The canonical bundle is the one of the S01 scenario, recorded by the offline path of the product, with the scripted
 model and the recorded exchange rate. It calls no model at all.
@@ -27,6 +31,7 @@ from ledgerlens.replay.bundle import (
     EVENTS_FILE,
     MANIFEST_FILE,
     BundleError,
+    BundleManifest,
     bundle_digest,
     load_bundle,
     replay,
@@ -37,6 +42,17 @@ ROOT = Path(__file__).resolve().parents[2]
 CANONICAL = ROOT / "data" / "eval" / "replay" / "s01"
 SCHEMA = ROOT / "docs" / "v3" / "contracts" / "schemas" / "trace-event.schema.json"
 FAKE_KEY = "sk-fakefake1234"
+# The optional fields of the bundle contract, written down here so the test does not depend on the writer to know
+# which fields are the provenance.
+PROVENANCE_KEYS = (
+    "capture_kind",
+    "recorded_at",
+    "model_profile",
+    "code_sha",
+    "prompt_hash",
+    "policy_version",
+    "redaction_version",
+)
 
 
 def _event(seq: int, mode: TraceMode = "deterministic_sandbox") -> TraceEvent:
@@ -369,3 +385,182 @@ def test_the_manifest_and_the_events_file_are_the_only_parts(tmp_path: Path):
     write_bundle(directory, [event], scenario="S99")
     assert sorted(path.name for path in directory.iterdir()) == [EVENTS_FILE, MANIFEST_FILE]
     assert len(bundle_digest(directory)) == 64
+
+
+def test_the_manifest_writes_the_provenance_it_has_and_omits_the_provenance_it_does_not_have():
+    """The manifest declares the fields of the contract it has and says nothing about the ones it does not have.
+
+    FR-009 asks for a field only when the bundle declares it, so a field that is absent never reaches the file.
+    """
+    manifest = BundleManifest(
+        run_id="r1",
+        mode="deterministic_sandbox",
+        scenario="S99",
+        events=1,
+        capture_kind="scripted_fixture",
+        code_sha="0" * 40,
+    )
+    data = manifest.to_dict()
+    assert data["capture_kind"] == "scripted_fixture"
+    assert data["code_sha"] == "0" * 40
+    for absent in ("recorded_at", "model_profile", "prompt_hash", "policy_version", "redaction_version"):
+        assert absent not in data
+
+
+def test_the_manifest_reads_the_provenance_back():
+    """A manifest read from a file carries the provenance the file declares, and none of the rest."""
+    data = {
+        "bundle_schema_version": "1",
+        "run_id": "r1",
+        "mode": "deterministic_sandbox",
+        "scenario": "S99",
+        "events": 1,
+        "files": {},
+        "created_at": "2026-11-11T12:00:00+00:00",
+        "note": "a note",
+        "capture_kind": "real_model_recorded",
+        "recorded_at": "2026-11-11T12:00:00Z",
+        "model_profile": "scripted-fixture",
+        "code_sha": "a" * 40,
+        "prompt_hash": "b" * 64,
+        "policy_version": "policies-v1",
+        "redaction_version": "1",
+    }
+    manifest = BundleManifest.from_dict(data)
+    assert manifest.capture_kind == "real_model_recorded"
+    assert manifest.recorded_at == "2026-11-11T12:00:00Z"
+    assert manifest.model_profile == "scripted-fixture"
+    assert manifest.code_sha == "a" * 40
+    assert manifest.prompt_hash == "b" * 64
+    assert manifest.policy_version == "policies-v1"
+    assert manifest.redaction_version == "1"
+
+    bare = BundleManifest.from_dict({key: value for key, value in data.items() if key not in PROVENANCE_KEYS})
+    assert bare.capture_kind is None
+    assert bare.recorded_at is None
+    assert bare.model_profile is None
+    assert bare.code_sha is None
+    assert bare.prompt_hash is None
+    assert bare.policy_version is None
+    assert bare.redaction_version is None
+
+
+def test_a_manifest_without_provenance_keeps_the_manifest_of_today():
+    """A manifest that declares no provenance has exactly the keys the manifest had before.
+
+    The set of the keys is asserted one by one, so a field that starts to be written always is caught here.
+    """
+    manifest = BundleManifest(run_id="r1", mode="deterministic_sandbox", scenario="S99", events=1)
+    assert set(manifest.to_dict()) == {
+        "bundle_schema_version",
+        "run_id",
+        "mode",
+        "scenario",
+        "events",
+        "files",
+        "created_at",
+        "note",
+    }
+
+
+def test_a_bundle_written_without_provenance_keeps_the_manifest_of_today(tmp_path: Path):
+    """A bundle written with no provenance at all is the file the previous version wrote, key for key.
+
+    The two versions of the writer have to stay compatible, because the canonical bundle of the repository was
+    written by the previous one and has to keep opening.
+    """
+    directory = tmp_path / "bundle"
+    write_bundle(directory, [_event(1)], scenario="S99")
+
+    written = json.loads((directory / MANIFEST_FILE).read_text(encoding="utf-8"))
+    assert set(written) == {
+        "bundle_schema_version",
+        "run_id",
+        "mode",
+        "scenario",
+        "events",
+        "files",
+        "created_at",
+        "note",
+    }
+    manifest, _ = load_bundle(directory)
+    assert set(manifest.to_dict()) == set(written)
+
+
+def test_a_code_sha_outside_the_shape_of_a_commit_is_refused(tmp_path: Path):
+    """A commit hash that is not forty lowercase hexadecimal characters never reaches a file.
+
+    The claim of the provenance has to be checkable by anybody, so a hash of the wrong shape is refused before the
+    write starts.
+    """
+    directory = tmp_path / "bundle"
+    with pytest.raises(BundleError, match="code_sha"):
+        write_bundle(directory, [_event(1)], scenario="S99", code_sha="not-a-commit")
+    assert not directory.exists()
+
+
+def test_a_capture_kind_outside_the_contract_is_refused(tmp_path: Path):
+    """Only the two capture kinds of the contract exist, so any other one is refused before the write starts."""
+    directory = tmp_path / "bundle"
+    with pytest.raises(BundleError, match="capture_kind"):
+        write_bundle(directory, [_event(1)], scenario="S99", capture_kind="hand_written")
+    assert not directory.exists()
+
+
+def test_a_recorded_at_outside_the_shape_of_a_moment_is_refused(tmp_path: Path):
+    """A capture moment without a time zone, or without the shape the interface accepts, is refused.
+
+    The interface reads the moment of the capture and refuses what it cannot parse, so the bundle refuses it first.
+    """
+    directory = tmp_path / "bundle"
+    with pytest.raises(BundleError, match="recorded_at"):
+        write_bundle(directory, [_event(1)], scenario="S99", recorded_at="2026-11-11 12:00:00")
+    assert not directory.exists()
+
+    with pytest.raises(BundleError, match="recorded_at"):
+        write_bundle(directory, [_event(1)], scenario="S99", recorded_at="2026-11-11T12:00:00")
+    assert not directory.exists()
+
+
+def test_a_bundle_with_provenance_survives_the_round_trip(tmp_path: Path):
+    """A bundle that declares the whole provenance opens with the same provenance it was written with."""
+    directory = tmp_path / "bundle"
+    written = write_bundle(
+        directory,
+        [_event(1)],
+        scenario="S99",
+        capture_kind="scripted_fixture",
+        recorded_at="2026-11-11T12:00:00Z",
+        model_profile="scripted-fixture",
+        code_sha="a" * 40,
+        prompt_hash="b" * 64,
+        policy_version="policies-v1",
+        redaction_version="1",
+    )
+
+    read, _ = load_bundle(directory)
+    assert read == written
+    assert read.capture_kind == "scripted_fixture"
+    assert read.recorded_at == "2026-11-11T12:00:00Z"
+    assert read.model_profile == "scripted-fixture"
+    assert read.code_sha == "a" * 40
+    assert read.prompt_hash == "b" * 64
+    assert read.policy_version == "policies-v1"
+    assert read.redaction_version == "1"
+
+    on_disk = json.loads((directory / MANIFEST_FILE).read_text(encoding="utf-8"))
+    for key in PROVENANCE_KEYS:
+        assert on_disk[key] == written.to_dict()[key]
+
+
+def test_the_capture_moment_defaults_to_the_moment_the_bundle_was_written(tmp_path: Path):
+    """A bundle that declares provenance but no capture moment carries the moment it was written.
+
+    The moment the bundle was written is `created_at`, and the capture happened at that moment.
+    """
+    directory = tmp_path / "bundle"
+    manifest = write_bundle(directory, [_event(1)], scenario="S99", capture_kind="scripted_fixture")
+
+    assert manifest.recorded_at == manifest.created_at
+    read, _ = load_bundle(directory)
+    assert read.recorded_at == read.created_at

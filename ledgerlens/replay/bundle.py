@@ -19,11 +19,18 @@ The integrity check is by hash: the manifest keeps the sha256 of each file, and 
 bundle. It is what allows the bundle hash to be cited as proof that the replay is the same one as always. What the
 manifest declares is also checked against what the events say: the run id has to be the run id of the events, and the
 directory has to hold exactly the files the manifest declares, with nothing smuggled beside them.
+
+The manifest also declares the provenance of the recording: the kind of the capture, the moment of the capture, the
+model profile, the commit of the code, the hash of the prompt, the policy version and the version of the redaction.
+Every one of those fields is optional and it is written only when the bundle declares it, because a field that
+cannot be computed is better absent than invented. A bundle that declares no provenance keeps the manifest of the
+previous version, key for key, so the files of the two versions are the same bytes.
 """
 
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -40,10 +47,32 @@ DEFAULT_NOTE = (
     "This is not a live execution and it calls no model."
 )
 
+# The commit of the code, in the shape the bundle contract of the design package demands: forty lowercase
+# hexadecimal characters, so that anybody can check the claim against the repository.
+CODE_SHA_PATTERN = re.compile(r"^[a-f0-9]{40}$")
+
+# The two kinds of capture the bundle contract of the design package accepts: a real model run and a fixture.
+CAPTURE_KINDS = ("real_model_recorded", "scripted_fixture")
+
+# The shape of an ISO 8601 moment with a time zone, the same one the interface accepts for the moment of the
+# capture. It lives here so the bundle refuses a moment the interface would not be able to read.
+RECORDED_AT_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$")
+
+# The optional fields of the contract, in the order the manifest declares them.
+PROVENANCE_FIELDS = (
+    "capture_kind",
+    "recorded_at",
+    "model_profile",
+    "code_sha",
+    "prompt_hash",
+    "policy_version",
+    "redaction_version",
+)
+
 
 class BundleError(Exception):
     """The bundle does not open or does not get written: the hash is wrong, there is a secret inside, an event is
-    invalid or the events have no honest single mode."""
+    invalid, the events have no honest single mode or the provenance is outside the contract."""
 
 
 @dataclass(frozen=True)
@@ -58,6 +87,13 @@ class BundleManifest:
     snapshot_sha256: str | None = None
     created_at: str = ""
     note: str = DEFAULT_NOTE
+    capture_kind: str | None = None
+    recorded_at: str | None = None
+    model_profile: str | None = None
+    code_sha: str | None = None
+    prompt_hash: str | None = None
+    policy_version: str | None = None
+    redaction_version: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """The manifest as a dictionary, with what the reader needs to check it."""
@@ -73,6 +109,11 @@ class BundleManifest:
         }
         if self.snapshot_sha256:
             data["snapshot_sha256"] = self.snapshot_sha256
+        # The provenance is declared field by field: a field the bundle does not declare never reaches the file.
+        for name in PROVENANCE_FIELDS:
+            value = getattr(self, name)
+            if value:
+                data[name] = value
         return data
 
     @classmethod
@@ -87,7 +128,21 @@ class BundleManifest:
             snapshot_sha256=data.get("snapshot_sha256"),
             created_at=str(data.get("created_at") or ""),
             note=str(data.get("note") or DEFAULT_NOTE),
+            capture_kind=_optional_text(data.get("capture_kind")),
+            recorded_at=_optional_text(data.get("recorded_at")),
+            model_profile=_optional_text(data.get("model_profile")),
+            code_sha=_optional_text(data.get("code_sha")),
+            prompt_hash=_optional_text(data.get("prompt_hash")),
+            policy_version=_optional_text(data.get("policy_version")),
+            redaction_version=_optional_text(data.get("redaction_version")),
         )
+
+
+def _optional_text(value: Any) -> str | None:
+    """A field of the manifest that is either a text or nothing at all."""
+    if value is None:
+        return None
+    return str(value) or None
 
 
 def _sha256(path: Path) -> str:
@@ -104,6 +159,13 @@ def write_bundle(
     scenario: str,
     snapshot_sha256: str | None = None,
     note: str = DEFAULT_NOTE,
+    capture_kind: str | None = None,
+    recorded_at: str | None = None,
+    model_profile: str | None = None,
+    code_sha: str | None = None,
+    prompt_hash: str | None = None,
+    policy_version: str | None = None,
+    redaction_version: str | None = None,
 ) -> BundleManifest:
     """Writes the bundle and returns the manifest.
 
@@ -112,7 +174,16 @@ def write_bundle(
     only one honest label. The events go out in sequence order, one per line, and the manifest declares the single
     mode they all share. The manifest is written afterwards, with the hash of each file, and it is what closes the
     package.
+
+    The provenance of the contract is optional and it is checked before anything is written: a commit hash outside
+    the shape of a commit, a capture kind outside the contract and a moment outside the shape the interface accepts
+    are refused, because a claim that cannot be checked is worse than no claim.
+
+    The moment of the capture, `recorded_at`, defaults to the moment the bundle was written, which is `created_at`,
+    as soon as the bundle declares any provenance at all. A bundle that declares no provenance keeps the manifest of
+    the previous version, key for key, so the files of the two versions are the same bytes.
     """
+    _check_provenance(capture_kind=capture_kind, recorded_at=recorded_at, code_sha=code_sha)
     if not events:
         raise BundleError("a bundle with no event at all serves nothing")
     modes = {event.mode for event in events}
@@ -134,6 +205,16 @@ def write_bundle(
     lines = [event.to_json() for event in ordered]
     events_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
+    created_at = datetime.now(UTC).isoformat(timespec="seconds")
+    # The capture happened when the bundle was written, so the moment of the capture is the moment of the write,
+    # unless the caller states another one. A bundle that declares no provenance at all keeps the manifest of the
+    # previous version, key for key, and then the moment stays only in created_at.
+    if recorded_at is None and any(
+        value is not None
+        for value in (capture_kind, model_profile, code_sha, prompt_hash, policy_version, redaction_version)
+    ):
+        recorded_at = created_at
+
     manifest = BundleManifest(
         run_id=ordered[0].run_id,
         mode=mode,
@@ -141,13 +222,30 @@ def write_bundle(
         events=len(events),
         files={EVENTS_FILE: _sha256(events_path)},
         snapshot_sha256=snapshot_sha256,
-        created_at=datetime.now(UTC).isoformat(timespec="seconds"),
+        created_at=created_at,
         note=note,
+        capture_kind=capture_kind,
+        recorded_at=recorded_at,
+        model_profile=model_profile,
+        code_sha=code_sha,
+        prompt_hash=prompt_hash,
+        policy_version=policy_version,
+        redaction_version=redaction_version,
     )
     (directory / MANIFEST_FILE).write_text(
         json.dumps(manifest.to_dict(), ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
     return manifest
+
+
+def _check_provenance(*, capture_kind: str | None, recorded_at: str | None, code_sha: str | None) -> None:
+    """The provenance of the bundle, checked against the contract before any file exists."""
+    if code_sha is not None and not CODE_SHA_PATTERN.match(code_sha):
+        raise BundleError("the code_sha is not the shape of a commit: forty lowercase hexadecimal characters")
+    if capture_kind is not None and capture_kind not in CAPTURE_KINDS:
+        raise BundleError(f"the capture_kind is not one of the kinds of the contract: {list(CAPTURE_KINDS)}")
+    if recorded_at is not None and not RECORDED_AT_PATTERN.match(recorded_at):
+        raise BundleError("the recorded_at is not an ISO 8601 moment with a time zone")
 
 
 def load_bundle(directory: Path) -> tuple[BundleManifest, list[TraceEvent]]:

@@ -6,8 +6,17 @@ of the product itself: scripted model, recorded exchange rate, no key and no net
 bundle manifest says the execution is deterministic, never live.
 
 What the script writes is the canonical bundle, in `data/eval/replay/<scenario>/`: the public events as JSON lines and
-the manifest, with the hash of each part and the hash of the ledger the execution read. To redo the bundle, run the
-script again: the content changes in the timestamps and in the execution identifiers, and the rest is the same.
+the manifest, with the hash of each part, the hash of the ledger the execution read and the provenance of the
+recording. The provenance is the commit the capture ran from, the kind of the capture, the moment of the capture, the
+model profile and the policy version. The hash of the prompt and the version of the redaction are not written, because
+the repository has neither of them, and a value that is invented is worse than a value that is missing.
+
+The capture refuses to run on a dirty tracked tree, because the recording names a commit and the claim has to be
+true. That check looks only at the tracked tree, because the repository keeps untracked material on purpose, such as
+the paused frontend and the local notes, and the commit the recording names is the commit of the tracked code. The
+output folder of the capture is left out of that check as well, so a second capture into the same folder is not
+blocked by the bundle the first one wrote. To redo the bundle, run the script again: the content changes in the
+timestamps, in the execution identifiers and in the commit, and the rest is the same.
 
 Usage:
 
@@ -22,8 +31,10 @@ from __future__ import annotations
 import argparse
 import hashlib
 import os
+import subprocess
 import sys
 import tempfile
+from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -38,9 +49,116 @@ from ledgerlens.api.accounts import scoped_ledger  # noqa: E402
 from ledgerlens.observability.trace_event import InMemoryTraceSink, TraceEventStream  # noqa: E402
 from ledgerlens.offline import ScriptedChatModel  # noqa: E402
 from ledgerlens.replay.bundle import bundle_digest, write_bundle  # noqa: E402
+from ledgerlens.run_context import POLICY_VERSION  # noqa: E402
 from ledgerlens.sim.config import SimConfig  # noqa: E402
 from ledgerlens.sim.pipeline import build_ledger  # noqa: E402
 from ledgerlens.tools.fx import FxClient  # noqa: E402
+
+# The kind of the capture and the model behind it: the capture runs the scripted model, never a real one.
+CAPTURE_KIND = "scripted_fixture"
+MODEL_PROFILE = "scripted-fixture"
+
+
+class GitError(Exception):
+    """Git cannot answer in the repository."""
+
+
+def _git(root: Path, *args: str) -> str:
+    """The output of a git command in the repository.
+
+    The hooks of the repository are never touched and no flag bypasses them: the capture only reads. The output
+    comes back as it is, because the status of the working tree starts with the column of the status.
+    """
+    try:
+        done = subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True, text=True)
+    except (OSError, subprocess.CalledProcessError) as error:
+        raise GitError(f"git {args[0]} cannot answer in {root}: {error}") from error
+    return done.stdout
+
+
+def code_sha(root: Path) -> str:
+    """The commit of the repository, the one the recording names as the provenance of the code.
+
+    A capture that cannot state a commit refuses to run, because a recording that names a commit it does not know is
+    a claim that cannot be checked.
+    """
+    try:
+        commit = _git(root, "rev-parse", "HEAD").strip()
+    except GitError as error:
+        raise SystemExit(
+            f"the commit of the repository cannot be read, so the capture refuses to run: {error}"
+        ) from error
+    if not commit:
+        raise SystemExit("the commit of the repository cannot be read, so the capture refuses to run")
+    return commit
+
+
+def _status_entries(text: str) -> list[tuple[str, str]]:
+    """The status and the path of every line of `git status --porcelain`."""
+    entries: list[tuple[str, str]] = []
+    for line in text.splitlines():
+        if not line.strip():
+            continue
+        status, path = line[:2], line[3:]
+        if " -> " in path:
+            # A rename carries the old path and the new one, and the new one is the path on the disk.
+            path = path.split(" -> ", 1)[1]
+        entries.append((status.strip(), path.strip().strip('"')))
+    return entries
+
+
+def _relative_to_root(path: Path | None, root: Path) -> str | None:
+    """The path of a folder relative to the root of the repository, when it is inside it."""
+    if path is None:
+        return None
+    try:
+        return path.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return None
+
+
+def _covered_by_output(path: str, out_relative: str) -> bool:
+    """Whether a path of the status is the output folder of the capture, or a part of it."""
+    clean = path.rstrip("/")
+    return clean == out_relative or clean.startswith(out_relative + "/")
+
+
+def dirty_paths(root: Path, out: Path | None = None) -> list[str]:
+    """The paths of the tracked tree that are not clean, without the output folder of the capture.
+
+    Only the tracked tree counts: the repository keeps untracked material on purpose, such as the paused frontend and
+    the local notes, and the commit the recording names is the commit of the tracked code. The output folder is left
+    out because the bundle of a previous capture is the output of the capture, not a change of the code, and the
+    canonical bundle is tracked, so it shows up as a modification.
+    """
+    try:
+        text = _git(root, "status", "--porcelain", "--untracked-files=no")
+    except GitError as error:
+        raise SystemExit(
+            "the state of the working tree cannot be read, so the capture cannot check that the recording names the "
+            f"commit it was made from, and it refuses to run: {error}"
+        ) from error
+    out_relative = _relative_to_root(out, root)
+    dirty: list[str] = []
+    for _status, path in _status_entries(text):
+        if out_relative is not None and _covered_by_output(path, out_relative):
+            continue
+        dirty.append(path)
+    return dirty
+
+
+def ensure_clean_tree(root: Path, out: Path | None = None) -> None:
+    """The refusal of a dirty tracked tree, because the recording names a commit and the claim has to be true.
+
+    Only the tracked tree counts: an untracked file or folder is material the repository keeps on purpose, and it is
+    not part of the commit the recording names.
+    """
+    dirty = dirty_paths(root, out)
+    if dirty:
+        raise SystemExit(
+            "the tracked tree is dirty, and the recording names the commit it was made from, so the claim would be "
+            f"a lie. Commit or drop the changes and capture again: {', '.join(dirty[:5])}"
+        )
 
 
 def _sha256(path: Path) -> str:
@@ -57,16 +175,25 @@ def _planted(manifest: dict, scenario_id: str) -> tuple[str, str]:
     return item.question, accounts[0]
 
 
-def capture(scenario_id: str, out: Path) -> Path:
-    """Runs the planted scenario in deterministic mode and writes the bundle."""
+def capture(scenario_id: str, out: Path, root: Path = ROOT) -> Path:
+    """Runs the planted scenario in deterministic mode and writes the bundle.
+
+    The capture names the commit it ran from and refuses to run on a dirty tracked tree, because the recording
+    claims a commit and the claim has to be true. The tree is checked before the commit is read, so the refusal a
+    reader needs comes first. Only the tracked tree counts: the repository keeps untracked material on purpose, and
+    the commit named is the commit of the tracked code.
+    """
+    ensure_clean_tree(root, out)
+    commit = code_sha(root)
+
     manifest = demo.load_manifest()
     question, account_id = _planted(manifest, scenario_id)
 
     with tempfile.TemporaryDirectory(prefix="ledgerlens_replay_") as work:
-        root = Path(work)
-        base = root / "ledger.db"
+        work_root = Path(work)
+        base = work_root / "ledger.db"
         build_ledger(SimConfig(source="sample"), base).conn.close()
-        account_db = scoped_ledger(base, account_id, root / "account.db")
+        account_db = scoped_ledger(base, account_id, work_root / "account.db")
 
         model, query_model, triage_model = (ScriptedChatModel(script=[]) for _ in range(3))
         agent = build_integrator(
@@ -103,6 +230,11 @@ def capture(scenario_id: str, out: Path) -> Path:
                 f"Deterministic execution of the scenario {scenario_id}, account {account_id}, with the scripted model "
                 "and the recorded exchange rate. This is not a live execution and it calls no model."
             ),
+            capture_kind=CAPTURE_KIND,
+            recorded_at=datetime.now(UTC).isoformat(timespec="seconds"),
+            model_profile=MODEL_PROFILE,
+            code_sha=commit,
+            policy_version=POLICY_VERSION,
         )
         print(f"bundle in {out}")
         print(f"events: {manifest_bundle.events}")
