@@ -1,0 +1,27 @@
+[
+  {
+    "bundle_digest": "bbbe1e54fcae712df66a3a6096838ab5b7f8c938e2e47b7ef6681e43cafa84ac",
+    "bundle_path": "s01",
+    "capture_kind": "scripted_fixture",
+    "code_sha": "9dc3af946b223496c7ed2e897b1e4152bbf9234f",
+    "concepts": [
+      "read_only_ledger_query",
+      "policy_retrieval",
+      "exchange_rate_reference",
+      "decimal_calculation"
+    ],
+    "data_origin": "UCI Online Retail II",
+    "data_origin_detail": {
+      "dataset": "UCI Online Retail II",
+      "kind": "public-derived",
+      "license": "CC BY 4.0",
+      "reference": "https://doi.org/10.24432/C5CG6D",
+      "seed": 42
+    },
+    "id": "S01",
+    "name": "fx_markup_refund",
+    "provenance_sha256": "c879b10e32cc1f889cac717141da83da78bd3ac2497ebaf774a05090a73d06e5",
+    "question": "Why was the BRL refund for TX-2048 lower than the EUR payment?",
+    "status": "Recorded"
+  }
+]

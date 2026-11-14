@@ -2,7 +2,9 @@ name: gate
 
 on:
   push:
-    branches: [main]
+    # The work of the v3 cycle goes straight into feature/v3, with no pull request, so the branch is listed here.
+    # Without it the gate of this repository would never run for the work that is actually being made.
+    branches: [main, feature/v3]
   pull_request:
   workflow_dispatch:
 

@@ -51,8 +51,15 @@ the fields the interface reads for the provenance panel (`mode`, `capture_kind`,
 `model_profile`, `code_sha`, `snapshot_sha256`, `policy_version`, `files`, `created_at`, `note`) and the
 export level extras under names of their own (`bundle_digest`, `artifacts`, `dataset_sha256`). The exported
 `index.json` holds one card per scenario with `id`, `name`, `question`, `concepts`, `data_origin` as a string,
-`status`, `capture_kind` and `bundle_path`. The shapes come from the versioned contracts of the design package
-and from the entity of the specification; the interface transcribes them.
+`status`, `capture_kind` and `bundle_path`, plus the export level extras of the card (`data_origin_detail`,
+`bundle_digest`, `provenance_sha256` and `code_sha`). The shapes come from the versioned contracts of the
+design package and from the entity of the specification; the interface transcribes them.
+
+**The digests form a chain, and the chain is what covers the artifacts.** Each artifact is covered by the digest
+that the next one carries: the provenance cites the digest of the events and of the manifest, and the card of the
+catalog cites the digest of the provenance and the digest of the bundle. A file cannot carry its own digest, and
+the catalog cannot carry the digest of itself, so the last link of the chain is the check of the export, which
+compares the catalog on the disk with the catalog the bundle produces, byte for byte.
 
 **The artifacts are published in the repository.** They live in `site/replay/`, one folder per scenario plus the
 catalog at the root. The default output of the export script is that folder, and the gate runs the check of the
@@ -61,8 +68,11 @@ stays untouched: it is paused, and the artifacts it will read are generated into
 
 **The export refuses what it cannot prove.** Every recorded line is validated against the versioned trace event
 schema, the moment of the event is checked against the ISO 8601 shape the interface expects, and a bundle that
-does not hold up is refused before anything is written. The write also removes the files of the scenarios that
-left the set, so what is published is exactly what was exported.
+does not hold up is refused before anything is written. A bundle whose scenario is not in the shape of the
+contract is refused too, so the exported manifest is never one the interface would reject. The write also removes
+the files of the scenarios that left the set, so what is published is exactly what was exported, and a dotfile is
+exempt from both the write and the check, because the desktop writes Finder metadata into folders and that is not
+content of the export.
 
 ## Alternatives considered
 
@@ -82,11 +92,14 @@ left the set, so what is published is exactly what was exported.
 ## Consequences
 
 - The provenance of a published artifact names the commit that produced the recording, the bundle it came from,
-  the digest of every bundle file and the digest of every artifact, and nothing is invented.
-- The canonical bundle is captured again, so its digest and its snapshot hash change. The numbers frozen in the
-  handoff are regenerated in the same commit, as the handoff itself requires.
-- The capture refuses to run on a dirty tree. The capture code has to be committed before the recording, because
-  the recording names the commit it was made from.
-- The published artifacts are part of the repository and are covered by the gate.
+  the digest of every bundle file and the digest of the artifacts it describes, and nothing is invented.
+- The canonical bundle is captured again, so its digest changes and its snapshot hash stays the same, because the
+  ledger the run reads is deterministic. The numbers frozen in the handoff are regenerated in the same commit, as
+  the handoff itself requires.
+- The capture refuses to run on a dirty tracked tree. The capture code has to be committed before the recording,
+  because the recording names the commit it was made from. The untracked material of the repository, such as the
+  paused frontend and the local handoff, does not block the capture.
+- The published artifacts are part of the repository and are covered by the gate, and the continuous integration
+  runs the gate on the branch of the cycle.
 - A bundle that declares no commit yields a provenance without a commit, and the interface shows that field as
   unavailable, exactly as FR-009 asks.
