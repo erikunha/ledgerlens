@@ -15,7 +15,9 @@ The four rules of the fork:
 Two rules keep the owner honest and the branch alive. The session identifier is accepted only when it matches the
 pattern of ADR-015, because the canonical form is injective only over that alphabet, so an identifier outside it is
 refused instead of becoming the owner of another visitor. The expiry of a branch is the earlier of the idle deadline,
-counted from the last activity of the visitor, and the absolute deadline, counted from the creation.
+counted from the last activity of the visitor, and the absolute deadline, counted from the creation. That rule does
+not live here: it lives in `ledgerlens/sandbox/ttl.py`, and the layer asks that module for the expiry of a branch,
+because the job that deletes the expired branches uses the same rule (ADR-029).
 
 A fifth rule keeps the branch honest: every read of a branch recomputes the canonical hash of the projection of its
 events and compares it with the hash the row of the branch declares. A branch whose row does not agree with its
@@ -41,7 +43,7 @@ from __future__ import annotations
 import secrets
 from collections.abc import Callable
 from dataclasses import dataclass, replace
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Any
 
 from ledgerlens.run_context import SESSION_ID_PATTERN, canonical_session_id
@@ -82,6 +84,7 @@ from ledgerlens.sandbox.store import (
     SandboxBranchRow,
     SandboxCommandRow,
 )
+from ledgerlens.sandbox.ttl import expiry_of, is_expired
 
 BRANCH_ID_PREFIX = "sb_"
 BRANCH_ID_HEX_CHARS = 24
@@ -987,13 +990,22 @@ class BranchLayer:
         return self.store.touch_branch(row.branch_id, row.owner_session, now, expires_at)
 
     def _expiry(self, last_activity_at: datetime, created_at: datetime) -> datetime:
-        """The expiry of a branch: the idle deadline from the last activity, never past the absolute deadline."""
-        idle = last_activity_at + timedelta(seconds=self.idle_ttl_seconds)
-        absolute = created_at + timedelta(seconds=self.absolute_ttl_seconds)
-        return min(idle, absolute)
+        """The expiry of a branch, asked to the module that holds the rule of the time to live (ADR-029).
+
+        Why the layer asks and does not compute: the job that deletes the expired branches uses the same rule, and
+        two copies of it would drift apart. A branch that the layer refuses and a branch that the job deletes have
+        to be the same branch at the same moment.
+        """
+        return expiry_of(
+            last_activity_at,
+            created_at,
+            idle_ttl_seconds=self.idle_ttl_seconds,
+            absolute_ttl_seconds=self.absolute_ttl_seconds,
+        )
 
     def _expired(self, row: SandboxBranchRow) -> bool:
-        return self._clock() >= row.expires_at
+        """Whether the branch outlived its time to live, asked to the module that holds the rule (ADR-029)."""
+        return is_expired(row, self._clock())
 
 
 __all__ = [

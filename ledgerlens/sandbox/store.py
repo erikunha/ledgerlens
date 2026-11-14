@@ -6,8 +6,8 @@ and every method that names a branch also names the owner session: a branch that
 refused with `BranchNotFound`, the same error as a branch that does not exist, so nothing about the existence of a
 branch leaks. The isolation is therefore proven in the data and not only in the path of the domain layer.
 
-The store writes no domain rule and decides nothing. It stores what it is given: the fork, the owner check, the reuse
-rule and the expiry live in `ledgerlens/sandbox/branch.py`.
+The store writes no domain rule and decides nothing. It stores what it is given: the fork, the owner check and the
+reuse rule live in `ledgerlens/sandbox/branch.py`, and the rule of the expiry lives in `ledgerlens/sandbox/ttl.py`.
 """
 
 from __future__ import annotations

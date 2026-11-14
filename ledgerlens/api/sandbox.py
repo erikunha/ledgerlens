@@ -22,14 +22,19 @@ Three paths of the facade are beyond the contract of the design package, and ADR
 branch, the history of the branch and the undo of the last mutation. The contract of the package cannot be edited,
 so the difference is written down here and in the test that guards the paths.
 
+The cleanup of the expired branches is a job of the process, not a path: the lifespan of the app starts a daemon
+thread that sweeps the expired branches every thirty seconds, and the same sweep runs from the command line, so the
+two ways of cleaning up cannot disagree (ADR-029).
+
 No route accepts a file path, a SQL statement or a URL, and no route writes to the published snapshot (FR-041).
 """
 
 from __future__ import annotations
 
 import secrets
-from collections.abc import Callable
-from datetime import datetime
+from collections.abc import AsyncIterator, Callable
+from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from typing import Annotated, Any
 
 from fastapi import FastAPI, Header, Query, Request, Security
@@ -62,6 +67,7 @@ from ledgerlens.sandbox.mutation import (
 from ledgerlens.sandbox.session import InvalidSession, SessionIssuer
 from ledgerlens.sandbox.snapshot import BaseResolver, UnknownScenario
 from ledgerlens.sandbox.store import BranchNotFound, BranchStore
+from ledgerlens.sandbox.ttl import CleanupWorker
 
 # The version of the shape of the answers. It travels in a header, because the resource `Sandbox` accepts no other
 # field and the interface reads that resource.
@@ -130,18 +136,43 @@ def create_app(
     and it is injected so that a test can move the expiry.
     """
     settings = get_settings()
-    app = FastAPI(title="LedgerLens sandbox", description="Private branches of the published cases.")
     branch_store = store if store is not None else build_branch_store(settings)
     issuer = session_issuer or SessionIssuer(
         settings.runtime_dir / "sandbox-session.key",
         ttl_seconds=settings.sandbox_branch_absolute_ttl_seconds,
     )
+    # The clock of the server, shared by the layer and by the job of the cleanup, so the branch that the layer
+    # refuses and the branch that the job deletes are the same branch at the same moment (FR-031, ADR-029).
+    server_clock = clock or (lambda: datetime.now(UTC))
     layer = BranchLayer(
         branch_store,
         base_resolver if base_resolver is not None else BaseResolver(),
         idle_ttl_seconds=settings.sandbox_branch_idle_ttl_seconds,
         absolute_ttl_seconds=settings.sandbox_branch_absolute_ttl_seconds,
-        clock=clock,
+        clock=server_clock,
+    )
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        """Starts the job of the cleanup when the app starts and stops it when the app stops (ADR-029).
+
+        Why the job lives in the lifespan and not in the module: a thread that starts with the module would run in
+        every test that builds the app, and a test that moves the clock would race with the sweep. The sweep is a
+        daemon thread, so a process that is killed does not wait for it.
+
+        Why the sweep is the same function the command runs: the two ways of cleaning up cannot disagree.
+        """
+        worker = CleanupWorker(branch_store, clock=server_clock)
+        worker.start()
+        try:
+            yield
+        finally:
+            worker.stop()
+
+    app = FastAPI(
+        title="LedgerLens sandbox",
+        description="Private branches of the published cases.",
+        lifespan=lifespan,
     )
 
     @app.exception_handler(ContractError)
