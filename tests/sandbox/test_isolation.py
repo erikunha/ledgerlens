@@ -11,10 +11,13 @@ from pathlib import Path
 
 import pytest
 
+from ledgerlens.memory.long_term import CaseMemory
 from ledgerlens.run_context import canonical_session_id
 from ledgerlens.sandbox.branch import BranchLayer
+from ledgerlens.sandbox.memory import branch_run_context
 from ledgerlens.sandbox.snapshot import BaseSnapshot
 from ledgerlens.sandbox.store import BranchNotFound, FileBranchStore, SandboxEventRow
+from ledgerlens.schemas import Coherence, InvestigationResult, Verdict
 
 
 def _event(branch_id: str) -> SandboxEventRow:
@@ -25,6 +28,21 @@ def _event(branch_id: str) -> SandboxEventRow:
         aggregate_id="R-0731",
         occurred_at="2026-11-14T10:00:00Z",
         payload={"rate": "5.41250000"},
+    )
+
+
+def _supported_result(session_id: str) -> InvestigationResult:
+    """A result whose verdicts are all supported, which is what the case memory accepts."""
+    return InvestigationResult(
+        session_id=session_id,
+        question="the refund came in lower than the payment",
+        answer="The difference is the refund fee.",
+        claims=[],
+        evidence=[],
+        verdicts=[Verdict(claim_id="CL1", label="supported", method="rule")],
+        coherence=Coherence(passed=True),
+        recommended_action="explain_to_customer",
+        requires_human_review=False,
     )
 
 
@@ -132,6 +150,34 @@ def test_the_domain_refuses_a_branch_that_does_not_exist_with_the_same_message(
     with pytest.raises(BranchNotFound) as of_missing:
         layer.status(other_session_id, "sb_" + "0" * 24)
     assert str(of_other.value) == str(of_missing.value)
+
+
+# --- the case memory of one session is not read by another -------------------------------------------
+
+
+def test_the_case_written_in_the_first_session_is_not_found_by_the_second_session(
+    layer: BranchLayer, session_id: str, other_session_id: str, scenario_id: str, tmp_path: Path
+) -> None:
+    """The case memory of a sandbox session is private (FR-027, T062).
+
+    The seeded cases are shared and read-only by design, so both sessions see them. The proof is about what a
+    session writes: the case of the first session does not appear in the records of the second one.
+    """
+    mine = branch_run_context(layer.fork(session_id, scenario_id).branch, runtime_dir=tmp_path)
+    theirs = branch_run_context(layer.fork(other_session_id, scenario_id).branch, runtime_dir=tmp_path)
+
+    memory_mine = CaseMemory(mine.resolve_memory_dir())
+    memory_theirs = CaseMemory(theirs.resolve_memory_dir())
+
+    written = memory_mine.write_case(_supported_result(session_id))
+    assert written["written"] is True, written
+    case_id = written["case_id"]
+
+    ids_mine = {record["case_id"] for record in memory_mine.records()}
+    ids_theirs = {record["case_id"] for record in memory_theirs.records()}
+    assert case_id in ids_mine
+    assert case_id not in ids_theirs
+    assert not memory_theirs.runtime_file.exists()
 
 
 # --- the folders on the disk -----------------------------------------------------------------------

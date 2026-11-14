@@ -30,7 +30,7 @@ from ledgerlens.config import get_settings
 from ledgerlens.memory.long_term import CaseMemory
 from ledgerlens.observability.trace_event import InMemoryTraceSink
 from ledgerlens.offline import ScriptedChatModel
-from ledgerlens.run_context import RunBudget, RunContext
+from ledgerlens.run_context import RunBudget, RunContext, canonical_session_id
 from ledgerlens.schemas import Coherence, InvestigationResult, Verdict
 
 
@@ -119,6 +119,74 @@ def test_a_session_id_that_is_not_an_identifier_is_refused():
             RunContext(run_id="r1", session_id=session_id)
 
 
+def test_a_context_accepts_the_canonical_form_of_a_session_id():
+    """The owner of a branch is stored in the canonical form, and the context accepts that form (ADR-030).
+
+    The canonical form holds the escape marker, which the pattern of a declared identifier refuses. The form is
+    injective over the declared alphabet, so accepting it adds no ambiguity: two identifiers that are different as
+    declared identifiers never name the same folder, and the canonical form of a canonical id is the id itself.
+    """
+    canonical = canonical_session_id("Visitor-A")
+    context = RunContext(run_id="r1", session_id=canonical)
+    assert context.session_id == canonical
+    assert context.canonical_session_id == canonical
+
+
+def test_the_canonical_form_of_a_canonical_id_is_the_id_itself(tmp_path: Path):
+    """The canonical form is idempotent, so a canonical id names the same folder as the id it came from."""
+    canonical = canonical_session_id("Visitor-A")
+    assert canonical_session_id(canonical) == canonical
+
+    context = RunContext(run_id="r1", session_id=canonical)
+    assert context.resolve_memory_dir(tmp_path) == tmp_path / "sessions" / canonical
+
+
+def test_a_session_id_that_is_neither_declared_nor_canonical_is_refused():
+    """The acceptance of the canonical form does not open the door to anything else."""
+    for session_id in ("../../tmp/pwned", "a/b", "", "with space", "-leading", "%zz", "%4", "trailing%"):
+        with pytest.raises(ValueError):
+            RunContext(run_id="r1", session_id=session_id)
+
+
+def test_the_canonical_form_of_a_declared_identifier_is_accepted():
+    """The pattern of the canonical form is the image of the canonical function: what it produces, it accepts."""
+    for declared in ("Visitor-A", "a.b", "A", "sess_0f3a"):
+        canonical = canonical_session_id(declared)
+
+        context = RunContext(run_id="r1", session_id=canonical)
+        assert context.session_id == canonical
+        assert context.canonical_session_id == canonical
+
+
+def test_the_escape_of_an_uppercase_letter_and_the_escape_of_a_dot_are_accepted():
+    """The two escapes that the canonical function produces are the ones that a canonical form may hold."""
+    assert RunContext(run_id="r1", session_id="%61").canonical_session_id == "%61"
+    assert RunContext(run_id="r1", session_id="sess%2e1").canonical_session_id == "sess%2e1"
+
+
+def test_an_escape_that_the_canonical_function_never_produces_is_refused():
+    """The canonical function escapes an uppercase letter and a dot, and nothing else.
+
+    The escape of a slash, of a null byte and of a dot segment would name a folder that the function never
+    produced, so the pattern of the canonical form refuses them.
+    """
+    for session_id in ("%2f", "%00", "%2e%2e%2f", "%41", "%7b", "%2E"):
+        with pytest.raises(ValueError):
+            RunContext(run_id="r1", session_id=session_id)
+
+
+def test_a_canonical_form_longer_than_the_longest_one_of_a_declared_identifier_is_refused():
+    """A declared identifier holds at most 64 characters and an escaped character takes three, so 192 at most."""
+    longest = canonical_session_id("A" * 64)
+    assert len(longest) == 192
+    assert RunContext(run_id="r1", session_id=longest).session_id == longest
+
+    with pytest.raises(ValueError):
+        RunContext(run_id="r1", session_id=longest + "a")
+    with pytest.raises(ValueError):
+        RunContext(run_id="r1", session_id="a" * 600)
+
+
 def test_the_memory_dir_is_the_session_dir():
     """The memory folder is the session one, inside the runtime folder of the configuration."""
     context = RunContext(run_id="r1", session_id="sess-7")
@@ -164,6 +232,12 @@ def test_the_identity_reports_the_declared_session_id():
     assert context.identity()["session_id"] == "Visitor-A"
     assert context.canonical_session_id != context.session_id
     assert context.canonical_session_id == context.canonical_session_id.lower()
+
+
+def test_the_identity_reports_the_revision_of_the_branch():
+    """The revision of the branch travels with the identity, as the decimal text of the integer."""
+    context = RunContext(run_id="r1", session_id="sess-a", branch_id="branch-9", branch_revision=3)
+    assert context.identity()["branch_revision"] == "3"
 
 
 def test_a_case_variant_of_the_session_id_does_not_see_the_case(tmp_path: Path):

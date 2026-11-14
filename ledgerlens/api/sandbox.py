@@ -26,15 +26,24 @@ The cleanup of the expired branches is a job of the process, not a path: the lif
 thread that sweeps the expired branches every thirty seconds, and the same sweep runs from the command line, so the
 two ways of cleaning up cannot disagree (ADR-029).
 
+The end of a session is a path, and it purges the case memory of the session together with its branches: the memory
+of an anonymous visitor dies with the visitor, and the folder it lived in does not stay under an identifier that
+nobody can reach again (ADR-030).
+
 No route accepts a file path, a SQL statement or a URL, and no route writes to the published snapshot (FR-041).
+
+The runtime folder of the facade holds the key of the sessions, the memory of the sessions and the base of the
+scenarios, so a folder that is injected keeps the whole material of the sandbox inside itself.
 """
 
 from __future__ import annotations
 
+import logging
 import secrets
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Annotated, Any
 
 from fastapi import FastAPI, Header, Query, Request, Security
@@ -54,6 +63,7 @@ from ledgerlens.sandbox.branch import (
     SandboxBranch,
 )
 from ledgerlens.sandbox.factory import build_branch_store
+from ledgerlens.sandbox.memory import purge_session_memory
 from ledgerlens.sandbox.mutation import (
     CODE_INVALID_PAYLOAD,
     CODE_INVALID_REQUEST,
@@ -68,6 +78,8 @@ from ledgerlens.sandbox.session import InvalidSession, SessionIssuer
 from ledgerlens.sandbox.snapshot import BaseResolver, UnknownScenario
 from ledgerlens.sandbox.store import BranchNotFound, BranchStore
 from ledgerlens.sandbox.ttl import CleanupWorker
+
+log = logging.getLogger(__name__)
 
 # The version of the shape of the answers. It travels in a header, because the resource `Sandbox` accepts no other
 # field and the interface reads that resource.
@@ -127,6 +139,7 @@ def create_app(
     base_resolver: BaseResolver | None = None,
     session_issuer: SessionIssuer | None = None,
     clock: Callable[[], datetime] | None = None,
+    runtime_dir: Path | str | None = None,
 ) -> FastAPI:
     """Builds the app over a store, a base resolver and a session issuer.
 
@@ -134,11 +147,17 @@ def create_app(
     is filled, the file backed one otherwise. The base is built from the published sample and the session is signed
     with a key of the runtime folder, so the facade runs with no database and no key. The clock is the server clock,
     and it is injected so that a test can move the expiry.
+
+    The runtime folder is the one of the configuration, and it is injected so that a test can point the scope of the
+    session at a temporary folder: the key of the sessions, the memory of the sessions and the base of the scenario
+    live there. Without an injected folder the base is built in the runtime folder of the configuration, exactly as
+    it was before.
     """
     settings = get_settings()
+    runtime = Path(runtime_dir) if runtime_dir is not None else settings.runtime_dir
     branch_store = store if store is not None else build_branch_store(settings)
     issuer = session_issuer or SessionIssuer(
-        settings.runtime_dir / "sandbox-session.key",
+        runtime / "sandbox-session.key",
         ttl_seconds=settings.sandbox_branch_absolute_ttl_seconds,
     )
     # The clock of the server, shared by the layer and by the job of the cleanup, so the branch that the layer
@@ -146,7 +165,9 @@ def create_app(
     server_clock = clock or (lambda: datetime.now(UTC))
     layer = BranchLayer(
         branch_store,
-        base_resolver if base_resolver is not None else BaseResolver(),
+        # The base of a scenario is built in the runtime folder of the facade, so an injected folder keeps the whole
+        # material of the sandbox inside itself and the repository is never written to.
+        base_resolver if base_resolver is not None else BaseResolver(runtime / "sandbox-bases"),
         idle_ttl_seconds=settings.sandbox_branch_idle_ttl_seconds,
         absolute_ttl_seconds=settings.sandbox_branch_absolute_ttl_seconds,
         clock=server_clock,
@@ -215,10 +236,19 @@ def create_app(
 
     @app.delete("/v1/sessions/current", status_code=204)
     def end_session(cookie: Annotated[str | None, Security(SESSION_SCHEME)]) -> Response:
-        """Ends the session of the visitor and purges its branches."""
+        """Ends the session of the visitor, purges its branches and purges its case memory.
+
+        The memory of the session dies with the session (ADR-030): the case memory of an anonymous visitor must not
+        lie around under an identifier that nobody can reach again. The purge is tolerant: a folder that cannot be
+        removed is logged and does not fail the route.
+        """
         session = _session(cookie, issuer)
         for row in branch_store.list_branches(session):
             branch_store.delete_branch(row.branch_id, session)
+        try:
+            purge_session_memory(session, runtime)
+        except Exception as error:  # pragma: no cover - the purge of the memory never fails the route.
+            log.warning("the memory of the session could not be purged: %s", error)
         # The version of the shape of the answers travels in the header of every answer of the facade (FR-042).
         response = Response(status_code=204, headers={SCHEMA_VERSION_HEADER: SCHEMA_VERSION})
         response.delete_cookie(SESSION_COOKIE, path="/")

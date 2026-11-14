@@ -23,6 +23,14 @@ declaration cannot be true there and it is held down to the deterministic sandbo
 The `session_id` lands in a path, and a filesystem may ignore the case of a name. The folder is therefore named after
 the canonical form of the identifier, which keeps `Visitor-A` and `visitor-a` apart on every filesystem: two visitors
 never share the folder of the case memory, and one visitor never reads what another wrote.
+
+ADR-015 declared that the pattern of an identifier refuses the escape marker of the canonical form. ADR-030 amends
+that: the context accepts the canonical form of an identifier as well, because the owner of a branch is stored in
+that form and the context of a branch is built from it. The invariant is about the session and not about the string:
+two identifiers that are different as declared identifiers never name the same folder, because the canonical form is
+injective over the declared alphabet, and the canonical form of an identifier names the folder of that same
+identifier and not the folder of another one. A string that is the canonical form of an identifier is the same
+session as that identifier, and that is why the two of them name the same folder.
 """
 
 from __future__ import annotations
@@ -51,6 +59,20 @@ SESSION_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 # The canonical form of an identifier is written with this marker, and the marker is not part of the identifier
 # pattern, so it cannot be confused with a character of the identifier itself.
 CANONICAL_ESCAPE = "%"
+
+# The canonical form of an identifier is accepted as well, because the owner of a branch is stored in that form
+# (ADR-030). The pattern is the exact image of the canonical function over the declared alphabet: a lowercase
+# letter, a digit, `_` and `-` stay as they are, an uppercase letter becomes the marker and the two hexadecimal
+# digits of its lowercase letter (`%61` to `%7a`), and a dot becomes `%2e`. Nothing else is ever escaped, so nothing
+# else may appear in a canonical form, and an escape that the function never produces is refused.
+#
+# The declared identifier begins with a letter or a digit, so the canonical form begins with one too, and the declared
+# identifier holds at most 64 characters while an escaped character takes three of them. The canonical form therefore
+# holds at most 64 units and 192 characters, and the pattern refuses everything longer: a name of more than 255
+# bytes cannot be created on the disk, and a folder of a session has to exist.
+CANONICAL_SESSION_ID_PATTERN = re.compile(
+    r"^(?:[a-z0-9]|%6[1-9a-f]|%7[0-9a])(?:[a-z0-9_-]|%6[1-9a-f]|%7[0-9a]|%2e){0,63}$"
+)
 
 
 def canonical_session_id(session_id: str) -> str:
@@ -129,10 +151,13 @@ class RunContext:
 
         The mode is part of the public contract, and the session id becomes a path segment. Both are checked here
         because a frozen dataclass does not validate types by itself.
+
+        The session id is accepted in the declared form and in the canonical form, because the owner of a branch is
+        stored in the canonical form and the context of a branch has to be built from it (ADR-030).
         """
         if self.mode is not None and self.mode not in {"recorded_replay", "deterministic_sandbox", "live_agent"}:
             raise ValueError(f"invalid mode: {self.mode!r}")
-        if not SESSION_ID_PATTERN.match(self.session_id):
+        if not (SESSION_ID_PATTERN.match(self.session_id) or CANONICAL_SESSION_ID_PATTERN.match(self.session_id)):
             raise ValueError(f"invalid session_id: {self.session_id!r}")
 
     @property
@@ -193,9 +218,12 @@ class RunContext:
 
         The session id is reported as it was declared, not as its canonical form: the declared id is what the caller
         and the visitor know, and the canonical form is an internal detail of the folder that holds the memory.
+
+        The revision of the branch travels with the identity as the decimal text of the integer, because the identity
+        is a map of texts and the interface never reads a number (FR-042).
         """
         identity = {"run_id": self.run_id, "session_id": self.session_id}
-        for name in ("account_id", "branch_id", "snapshot_sha256", "model_profile_id"):
+        for name in ("account_id", "branch_id", "branch_revision", "snapshot_sha256", "model_profile_id"):
             value = getattr(self, name)
             if value is not None:
                 identity[name] = str(value)
