@@ -58,6 +58,10 @@ class Settings(BaseModel):
     runtime_dir: Path = PROJECT_ROOT / "data" / "runtime"
     ledger_db: Path = PROJECT_ROOT / "data" / "ledger.db"
     index_dir: Path = PROJECT_ROOT / "data" / "index"
+    # The life of a sandbox branch: one hour of idleness and four hours in absolute terms. The folder of the file
+    # backed store is `runtime_dir / "sandbox"`, so it stays out of git with the rest of the runtime material.
+    sandbox_branch_idle_ttl_seconds: int = 3600
+    sandbox_branch_absolute_ttl_seconds: int = 14400
 
     def secrets(self) -> list[str]:
         """The key values held, for redaction. Never log this list."""
@@ -103,6 +107,8 @@ def get_settings(env: Mapping[str, str] | None = None) -> Settings:
     runtime_dir = _text(values.get("LEDGERLENS_RUNTIME_DIR"))
     ledger_db = _text(values.get("LEDGERLENS_LEDGER_DB"))
     index_dir = _text(values.get("LEDGERLENS_INDEX_DIR"))
+    idle_ttl = _text(values.get("LEDGERLENS_SANDBOX_BRANCH_IDLE_TTL_SECONDS"))
+    absolute_ttl = _text(values.get("LEDGERLENS_SANDBOX_BRANCH_ABSOLUTE_TTL_SECONDS"))
     settings = Settings(
         offline=_flag(values.get("LEDGERLENS_OFFLINE")),
         model=_text(values.get("LEDGERLENS_MODEL")),
@@ -116,6 +122,8 @@ def get_settings(env: Mapping[str, str] | None = None) -> Settings:
         **({"runtime_dir": Path(runtime_dir)} if runtime_dir else {}),
         **({"ledger_db": Path(ledger_db)} if ledger_db else {}),
         **({"index_dir": Path(index_dir)} if index_dir else {}),
+        **({"sandbox_branch_idle_ttl_seconds": int(idle_ttl)} if idle_ttl else {}),
+        **({"sandbox_branch_absolute_ttl_seconds": int(absolute_ttl)} if absolute_ttl else {}),
     )
     log.debug("settings loaded: %r", settings)
     return settings
