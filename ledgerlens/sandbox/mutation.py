@@ -8,9 +8,12 @@ The rule that rules above all: no number of this path is a float. Every amount i
 `Decimal`, and the conversion between a rate and an amount is the one of the simulator, in `ledgerlens/sim/gaps.py`,
 so the sandbox and the published ledger agree on the arithmetic (FR-017).
 
-The catalog is the promise of the sandbox: only `refund.apply_fx_adjustment` is enabled, because it is the only
-kind with a round trip test. The other four kinds of the published schema are known and refused with the same code
-as a kind that does not exist, because the catalog says what the sandbox can do (ADR-021).
+The catalog is the promise of the sandbox: a kind is enabled only when it has a round trip test and a coherent
+domain event (ADR-021). Three kinds are enabled: the adjustment of the rate of a refund, the duplicate of a
+payment and the deadline of a chargeback. The other two kinds of the published schema change the state of the
+branch and of the tools and not the rows of the ledger, they need a decision about the hash and the diff that this
+milestone does not take, so they stay disabled and are refused with the same code as a kind that does not exist
+(ADR-031).
 
 The undo is not a kind of the catalog: it does not change a record of the case, it changes the log of the branch,
 and it is an event of the vocabulary of the sandbox in its own right (ADR-024). This module owns the plan of the
@@ -35,7 +38,7 @@ import json
 import re
 import secrets
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import ROUND_HALF_EVEN, Decimal
 from pathlib import Path
 from typing import Any
@@ -43,6 +46,8 @@ from typing import Any
 from ledgerlens.sandbox.invariants import evaluate
 from ledgerlens.sandbox.projector import (
     EVENT_BRANCH_UNDONE,
+    EVENT_CHARGEBACK_DEADLINE_CHANGED,
+    EVENT_PAYMENT_DUPLICATED,
     EVENT_REFUND_FX_ADJUSTED,
     SANDBOX_ORIGIN,
     UNDO_COMMAND_ID,
@@ -52,6 +57,7 @@ from ledgerlens.sandbox.projector import (
     canonical_rate,
     diff_of,
     is_undo_marker,
+    next_transaction_id,
     oldest_moment,
     project,
     undo_marks,
@@ -78,6 +84,10 @@ CODE_IDEMPOTENCY_MISMATCH = "IDEMPOTENCY_MISMATCH"
 CODE_UNKNOWN_RECORD = "UNKNOWN_RECORD"
 CODE_INVALID_PAYLOAD = "INVALID_PAYLOAD"
 CODE_INVALID_REQUEST = "INVALID_REQUEST"
+# The state of a record does not allow the change the visitor asks for. The record exists and the payload has the
+# shape of the published schema, so what does not hold is the state of the record and not the shape of the payload.
+# The status of the answer is the default one of the rules of the payload, 422 (ADR-031).
+CODE_INVALID_STATE = "INVALID_STATE"
 CODE_PAYLOAD_TOO_LARGE = "PAYLOAD_TOO_LARGE"
 CODE_NOTE_TOO_LONG = "NOTE_TOO_LONG"
 CODE_RESOURCE_LIMIT = "RESOURCE_LIMIT_EXCEEDED"
@@ -364,23 +374,41 @@ class MutationRejected(Exception):
 
 @dataclass(frozen=True)
 class ValidatedCommand:
-    """A command that passed every rule, with the values the interpreter needs."""
+    """A command that passed every rule, with the values the interpreter needs.
+
+    Every kind carries what its own interpreter needs and nothing more: the rate and the moment of the adjustment, the
+    elapsed seconds of the duplicate, the new deadline of the chargeback. A field that the kind does not use is
+    None, so the interpreter of a kind never reads a value that belongs to another one (ADR-031).
+    """
 
     kind: str
     record_id: str
-    rate: Decimal
-    effective_at: str
+    rate: Decimal | None = None
+    effective_at: str | None = None
+    elapsed_seconds: int | None = None
+    new_deadline: str | None = None
 
 
-# The catalog of the sandbox. Only the kinds with a round trip test are enabled (ADR-021).
+# The names of the kinds of the catalog that the sandbox can do.
+KIND_FX_ADJUSTMENT = "refund.apply_fx_adjustment"
+KIND_DUPLICATE = "payment.simulate_duplicate"
+KIND_DEADLINE = "chargeback.change_deadline"
+
+# The stages of a chargeback that close the case. A case that was won or lost has no deadline to move (ADR-031).
+CLOSED_CHARGEBACK_STAGES = frozenset({"won", "lost"})
+
+# The status of a transaction that failed. A payment that failed is not charged twice (ADR-031).
+FAILED_TRANSACTION_STATUS = "failed"
+
+# The catalog of the sandbox. Only the kinds with a round trip test are enabled (ADR-021, ADR-031).
 CATALOG: tuple[MutationKind, ...] = (
     MutationKind(
-        "refund.apply_fx_adjustment",
+        KIND_FX_ADJUSTMENT,
         True,
         "the FX rate applied to the payout of a refund",
     ),
-    MutationKind("payment.simulate_duplicate", False, "a second charge of the same payment"),
-    MutationKind("chargeback.change_deadline", False, "the deadline of a chargeback"),
+    MutationKind(KIND_DUPLICATE, True, "a second charge of the same payment"),
+    MutationKind(KIND_DEADLINE, True, "the deadline of a chargeback"),
     MutationKind("tool.fx_outage", False, "the FX tool is unavailable"),
     MutationKind("record.inject_untrusted_note", False, "an untrusted note on a record"),
 )
@@ -499,14 +527,28 @@ def _no_read_only_field(payload: dict[str, Any]) -> None:
 def _validate_of_the_kind(
     kind: MutationKind, command: MutationCommand, state: ProjectedState, now: datetime
 ) -> ValidatedCommand:
-    """The rules of the domain of the kind that is enabled."""
-    if kind.name != "refund.apply_fx_adjustment":
-        # The guard of a kind that is enabled before its rules are written: the catalog grows with a round trip
-        # test, and a kind without one is refused rather than half done.
-        raise MutationRejected(
-            CODE_UNKNOWN_MUTATION_TYPE,
-            f"the mutation kind {kind.name!r} is not enabled; the accepted kinds are: {', '.join(ENABLED_KINDS)}",
-        )
+    """The rules of the domain of the kind of the command.
+
+    Why the dispatch is here: every kind has its own rules, and a rule that belongs to one kind must never refuse a
+    command of another one. The kind that is enabled and has no rules yet is refused, because the catalog grows with
+    a round trip test and a kind without one is refused rather than half done (ADR-021, ADR-031).
+    """
+    if kind.name == KIND_FX_ADJUSTMENT:
+        return _validate_fx_adjustment(kind, command, state, now)
+    if kind.name == KIND_DUPLICATE:
+        return _validate_duplicate(kind, command, state)
+    if kind.name == KIND_DEADLINE:
+        return _validate_deadline(kind, command, state)
+    raise MutationRejected(
+        CODE_UNKNOWN_MUTATION_TYPE,
+        f"the mutation kind {kind.name!r} is not enabled; the accepted kinds are: {', '.join(ENABLED_KINDS)}",
+    )
+
+
+def _validate_fx_adjustment(
+    kind: MutationKind, command: MutationCommand, state: ProjectedState, now: datetime
+) -> ValidatedCommand:
+    """The rules of the adjustment of the rate of a refund."""
     payload = command.payload
     refund_id = payload.get("refund_id")
     record = None
@@ -526,20 +568,124 @@ def _validate_of_the_kind(
                 CODE_INVALID_AMOUNT,
                 "the applied rate is not a decimal number with at most eight decimals",
             ) from None
-    if record is not None and "currency" in payload:
-        expected = str(record.get("payout_currency"))
-        if payload["currency"] != expected:
-            raise MutationRejected(
-                CODE_CURRENCY_MISMATCH,
-                f"the currency {payload['currency']!r} does not match the currency of the record, which is {expected}",
-            )
+    if record is not None:
+        _assert_currency_of_the_record(payload, str(record.get("payout_currency")))
     effective_at = None
     if "effective_at" in payload:
         effective_at = _validate_effective_date(payload["effective_at"], state, now)
     if record is None or rate is None or effective_at is None:
         # A field is missing or has the wrong shape: the check of the published schema names it.
-        return ValidatedCommand(kind=kind.name, record_id=str(refund_id or ""), rate=Decimal(0), effective_at="")
+        return ValidatedCommand(kind=kind.name, record_id=str(refund_id or ""))
     return ValidatedCommand(kind=kind.name, record_id=str(refund_id), rate=rate, effective_at=effective_at)
+
+
+def _assert_currency_of_the_record(payload: dict[str, Any], expected: str) -> None:
+    """Refuses the assertion of the visitor about the currency when it does not match the record.
+
+    Why the check is here and not in the shape of the payload: the published schema does not declare the assertion, and
+    a currency that does not match the record is refused with its own code and not with the code of a shape
+    (ADR-021, ADR-031).
+    """
+    if CURRENCY_ASSERTION not in payload:
+        return
+    sent = payload[CURRENCY_ASSERTION]
+    if sent != expected:
+        raise MutationRejected(
+            CODE_CURRENCY_MISMATCH,
+            f"the currency {sent!r} does not match the currency of the record, which is {expected}",
+        )
+
+
+def _validate_duplicate(
+    kind: MutationKind, command: MutationCommand, state: ProjectedState
+) -> ValidatedCommand:
+    """The rules of the duplicate of a payment.
+
+    The record the command names has to be in the branch, a payment that failed is not charged twice, and the branch
+    has to hold a free identifier for the copy (ADR-031).
+    """
+    payload = command.payload
+    transaction_id = payload.get("transaction_id")
+    if not isinstance(transaction_id, str) or not transaction_id:
+        # The identifier is missing or is not a text: the check of the published schema names it.
+        return ValidatedCommand(kind=kind.name, record_id="")
+    record = state.row("transactions", transaction_id)
+    if record is None:
+        raise MutationRejected(
+            CODE_UNKNOWN_RECORD,
+            f"the transaction {transaction_id} is not in the branch; the branch holds no such record",
+        )
+    # The assertion of the visitor is checked as soon as the record is known: it names the record the visitor means,
+    # and the rules below would be judged against a record it did not name.
+    _assert_currency_of_the_record(payload, str(record.get("currency")))
+    if str(record.get("status")) == FAILED_TRANSACTION_STATUS:
+        raise MutationRejected(
+            CODE_INVALID_STATE,
+            f"the transaction {transaction_id} failed, and a payment that failed is not charged twice",
+        )
+    elapsed = payload.get("elapsed_seconds")
+    if isinstance(elapsed, bool) or not isinstance(elapsed, int):
+        # The elapsed seconds are missing or are not a whole number of seconds: the schema names it.
+        return ValidatedCommand(kind=kind.name, record_id=transaction_id)
+    taken = {str(row.get("id")) for row in state.rows.get("transactions", [])}
+    if next_transaction_id(taken, transaction_id) is None:
+        raise MutationRejected(
+            CODE_RESOURCE_LIMIT,
+            f"the branch holds no free identifier for the duplicate of {transaction_id}",
+        )
+    return ValidatedCommand(kind=kind.name, record_id=transaction_id, elapsed_seconds=elapsed)
+
+
+def _validate_deadline(
+    kind: MutationKind, command: MutationCommand, state: ProjectedState
+) -> ValidatedCommand:
+    """The rules of the change of the deadline of a chargeback.
+
+    The record the command names has to be in the branch, a chargeback that was won or lost is a closed case, and the
+    new deadline has to be a day of the calendar (ADR-031).
+    """
+    payload = command.payload
+    chargeback_id = payload.get("chargeback_id")
+    if not isinstance(chargeback_id, str) or not chargeback_id:
+        # The identifier is missing or is not a text: the check of the published schema names it.
+        return ValidatedCommand(kind=kind.name, record_id="")
+    record = state.row("chargebacks", chargeback_id)
+    if record is None:
+        raise MutationRejected(
+            CODE_UNKNOWN_RECORD,
+            f"the chargeback {chargeback_id} is not in the branch; the branch holds no such record",
+        )
+    # The assertion of the visitor is checked as soon as the record is known: it names the record the visitor means,
+    # and the rules below would be judged against a record it did not name.
+    _assert_currency_of_the_record(payload, str(record.get("currency")))
+    stage = str(record.get("stage"))
+    if stage in CLOSED_CHARGEBACK_STAGES:
+        raise MutationRejected(
+            CODE_INVALID_STATE,
+            f"the chargeback {chargeback_id} was {stage}, and a closed case has no deadline to move",
+        )
+    deadline = payload.get("new_deadline")
+    if not isinstance(deadline, str) or not deadline:
+        # The deadline is missing: the check of the published schema names it.
+        return ValidatedCommand(kind=kind.name, record_id=chargeback_id)
+    if not _is_a_day(deadline):
+        raise MutationRejected(
+            CODE_INVALID_PAYLOAD,
+            "the new deadline is not a day of the calendar, in the shape YYYY-MM-DD",
+        )
+    return ValidatedCommand(kind=kind.name, record_id=chargeback_id, new_deadline=deadline)
+
+
+def _is_a_day(text: str) -> bool:
+    """True when the text is a day of the calendar, in the shape YYYY-MM-DD.
+
+    Why the check is here and not only in the schema: the published schema declares the format of the day, and the
+    checker of the schema does not read the format, so a text that is not a day would reach the row of the ledger.
+    """
+    try:
+        return date.fromisoformat(text).isoformat() == text
+    except ValueError:
+        return False
 
 
 def _validate_effective_date(value: Any, state: ProjectedState, now: datetime) -> str:
@@ -638,22 +784,20 @@ def build_events(
     """The events of the sandbox that a command produces.
 
     Why the events carry the rate and not the amount: the amount is computed by the interpreter from the rate, so
-    the projection of a branch is the same whether it is built by the commit or rebuilt from the events alone.
+    the projection of a branch is the same whether it is built by the commit or rebuilt from the events alone. The
+    same holds for the two other kinds: the event carries the published payload of the command and the interpreter
+    writes the row (ADR-031).
     """
     occurred_at = now.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
-    payload = {
-        "refund_id": validated.record_id,
-        "applied_rate": canonical_rate(validated.rate),
-        "effective_at": validated.effective_at,
-    }
+    event_type, payload = _event_of(validated)
     event_uid = hashlib.sha256(
-        canonical_json([branch_id, EVENT_REFUND_FX_ADJUSTED, validated.record_id, occurred_at, payload, command_id])
+        canonical_json([branch_id, event_type, validated.record_id, occurred_at, payload, command_id])
         .encode("utf-8")
     ).hexdigest()
     event = SandboxEventRow(
         event_uid=event_uid,
         branch_id=branch_id,
-        event_type=EVENT_REFUND_FX_ADJUSTED,
+        event_type=event_type,
         aggregate_id=validated.record_id,
         occurred_at=occurred_at,
         payload=payload,
@@ -661,6 +805,55 @@ def build_events(
         command_id=command_id,
     )
     return (event,)
+
+
+def _event_of(validated: ValidatedCommand) -> tuple[str, dict[str, Any]]:
+    """The type of the event of a kind and its payload, which is the published payload of the command."""
+    if validated.kind == KIND_FX_ADJUSTMENT:
+        if validated.rate is None or validated.effective_at is None:
+            raise MutationRejected(
+                CODE_INVALID_PAYLOAD,
+                "the command of an adjustment of the rate carries no rate and no effective date",
+            )
+        return (
+            EVENT_REFUND_FX_ADJUSTED,
+            {
+                "refund_id": validated.record_id,
+                "applied_rate": canonical_rate(validated.rate),
+                "effective_at": validated.effective_at,
+            },
+        )
+    if validated.kind == KIND_DUPLICATE:
+        if validated.elapsed_seconds is None:
+            raise MutationRejected(
+                CODE_INVALID_PAYLOAD,
+                "the command of a duplicate carries no elapsed seconds",
+            )
+        return (
+            EVENT_PAYMENT_DUPLICATED,
+            {
+                "transaction_id": validated.record_id,
+                "elapsed_seconds": validated.elapsed_seconds,
+            },
+        )
+    if validated.kind == KIND_DEADLINE:
+        if validated.new_deadline is None:
+            raise MutationRejected(
+                CODE_INVALID_PAYLOAD,
+                "the command of a deadline carries no new deadline",
+            )
+        return (
+            EVENT_CHARGEBACK_DEADLINE_CHANGED,
+            {
+                "chargeback_id": validated.record_id,
+                "new_deadline": validated.new_deadline,
+            },
+        )
+    raise MutationRejected(
+        CODE_UNKNOWN_MUTATION_TYPE,
+        f"the mutation kind {validated.kind!r} is not in the catalog of the sandbox;"
+        f" the accepted kinds are: {', '.join(ENABLED_KINDS)}",
+    )
 
 
 # --- the plan of a command ------------------------------------------------------------------------------------
@@ -692,8 +885,8 @@ def plan_mutation(
     entries = diff_of(state, after_state)
     results = evaluate(after_state)
     verdict = verdict_of(after_state, scenario_id)
-    before = _money_of(state, validated.record_id)
-    after = _money_of(after_state, validated.record_id)
+    before = _money_of(state, validated)
+    after = _money_of(after_state, validated)
     return MutationPlan(
         kind=validated.kind,
         command_id=command_id,
@@ -709,13 +902,31 @@ def plan_mutation(
     )
 
 
-def _money_of(state: ProjectedState, refund_id: str) -> MoneyValue:
-    """The payout of a refund in a projection, as the interface reads it."""
-    row = state.row("refunds", refund_id) if refund_id else None
-    if row is None:
-        return MoneyValue("", "")
-    currency = str(row.get("payout_currency") or "")
-    return MoneyValue(format_minor(int(row.get("payout_amount_minor") or 0), currency), currency)
+def _money_of(state: ProjectedState, validated: ValidatedCommand) -> MoneyValue:
+    """The amount of money the command is about, as the interface reads it.
+
+    Why the dispatch: every kind is about a record of its own table, and the amount of the record is what the visitor
+    reads before and after the change (ADR-031).
+    """
+    if validated.kind == KIND_FX_ADJUSTMENT:
+        row = state.row("refunds", validated.record_id) if validated.record_id else None
+        if row is None:
+            return MoneyValue("", "")
+        currency = str(row.get("payout_currency") or "")
+        return MoneyValue(format_minor(int(row.get("payout_amount_minor") or 0), currency), currency)
+    if validated.kind == KIND_DUPLICATE:
+        row = state.row("transactions", validated.record_id) if validated.record_id else None
+        if row is None:
+            return MoneyValue("", "")
+        currency = str(row.get("currency") or "")
+        return MoneyValue(format_minor(int(row.get("amount_minor") or 0), currency), currency)
+    if validated.kind == KIND_DEADLINE:
+        row = state.row("chargebacks", validated.record_id) if validated.record_id else None
+        if row is None:
+            return MoneyValue("", "")
+        currency = str(row.get("currency") or "")
+        return MoneyValue(format_minor(int(row.get("amount_minor") or 0), currency), currency)
+    return MoneyValue("", "")
 
 
 # --- the plan of an undo ---------------------------------------------------------------------------------------
@@ -811,12 +1022,14 @@ def new_idempotency_key() -> str:
 
 __all__ = [
     "CATALOG",
+    "CLOSED_CHARGEBACK_STAGES",
     "CODE_CURRENCY_MISMATCH",
     "CODE_HASH_MISMATCH",
     "CODE_IDEMPOTENCY_MISMATCH",
     "CODE_INVALID_AMOUNT",
     "CODE_INVALID_EFFECTIVE_DATE",
     "CODE_INVALID_PAYLOAD",
+    "CODE_INVALID_STATE",
     "CODE_NOTE_TOO_LONG",
     "CODE_NOTHING_TO_UNDO",
     "CODE_PAYLOAD_TOO_LARGE",
@@ -831,6 +1044,9 @@ __all__ = [
     "MAX_NOTE_LENGTH",
     "MAX_PAYLOAD_BYTES",
     "ENABLED_KINDS",
+    "KIND_DEADLINE",
+    "KIND_DUPLICATE",
+    "KIND_FX_ADJUSTMENT",
     "READ_ONLY_FIELDS",
     "UNDO_KIND",
     "MoneyValue",
