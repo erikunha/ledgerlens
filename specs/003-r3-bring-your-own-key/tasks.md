@@ -88,7 +88,7 @@ and delivered as an MVP increment.
 - [ ] T032 [US1] Implement the ApiKeyDialog in apps/web/features/models/ApiKeyDialog.tsx, with the password field, the disclosure and the no-store header
 - [ ] T033 [US1] Implement the BudgetForm in apps/web/features/models/BudgetForm.tsx, with the four caps and their default values
 - [ ] T034 [US1] Implement the live mode page in apps/web/app/(public)/live/page.tsx, with the picker, the dialog, the form and the run view
-- [ ] T035 [US1] Implement the SSE bridge in apps/web/app/api/live/[handle]/route.ts
+- [ ] T035 [US1] Implement the SSE bridge in apps/web/app/api/live/[runId]/route.ts, where the run identifier is opaque and the credential handle travels in the body of the request or in a header, never in the path (SC-012)
 - [ ] T036 [US1] Add the consent text to the live mode page, saying the provider may charge and that the key is not stored
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently

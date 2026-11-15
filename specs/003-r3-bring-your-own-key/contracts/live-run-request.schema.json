@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/ledgerlens/spec/live-run-request.schema.json",
+  "$comment": "Published contract of the request that starts a live run. The limits of the request are the caps of the RunBudget of the run context, and a cap of money travels as text or as a number that the domain parses into a Decimal.",
+  "title": "RunRequest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "mode",
+    "scenario_id",
+    "sandbox_id",
+    "expected_revision",
+    "account_id",
+    "question",
+    "variant",
+    "limits"
+  ],
+  "properties": {
+    "mode": {
+      "type": "string",
+      "enum": [
+        "live_agent",
+        "deterministic_sandbox"
+      ]
+    },
+    "scenario_id": {
+      "type": "string",
+      "pattern": "^S[0-9]{2}$"
+    },
+    "sandbox_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "expected_revision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "account_id": {
+      "type": "string",
+      "pattern": "^(?:C-[0-9]{4}|M-[0-9]{2})$"
+    },
+    "question": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "variant": {
+      "type": "string",
+      "enum": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ]
+    },
+    "model_profile_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "credential_handle": {
+      "type": "string",
+      "minLength": 1
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_model_calls",
+        "max_tool_calls",
+        "max_wall_seconds",
+        "max_output_tokens"
+      ],
+      "properties": {
+        "max_model_calls": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "max_tool_calls": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 40
+        },
+        "max_wall_seconds": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 180
+        },
+        "max_output_tokens": {
+          "type": "integer",
+          "minimum": 128,
+          "maximum": 16000
+        },
+        "max_input_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "max_estimated_usd": {
+          "type": [
+            "string",
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "live_agent"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "model_profile_id",
+          "credential_handle"
+        ]
+      }
+    }
+  ]
+}

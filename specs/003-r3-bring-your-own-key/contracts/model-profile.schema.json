@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/ledgerlens/spec/model-profile.schema.json",
+  "$comment": "Published contract of the model catalogue of R3. A price travels as text or as a number and the domain parses it into a Decimal, because a price is money and money is never a float.",
+  "title": "ModelProfile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "profile_id",
+    "provider",
+    "model_id",
+    "display_name",
+    "capabilities",
+    "status",
+    "enabled_in_public_demo",
+    "pricing"
+  ],
+  "properties": {
+    "profile_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "provider": {
+      "type": "string",
+      "enum": [
+        "openai",
+        "anthropic",
+        "google",
+        "local"
+      ]
+    },
+    "model_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "display_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "capabilities": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "chat",
+          "tool_calling",
+          "structured_output",
+          "reasoning"
+        ]
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "tested",
+        "experimental",
+        "disabled",
+        "retired"
+      ]
+    },
+    "enabled_in_public_demo": {
+      "type": "boolean"
+    },
+    "pricing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "last_verified",
+        "input_per_1m_usd",
+        "output_per_1m_usd"
+      ],
+      "properties": {
+        "source": {
+          "type": "string",
+          "enum": [
+            "provider",
+            "manual",
+            "unknown"
+          ]
+        },
+        "last_verified": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "input_per_1m_usd": {
+          "type": [
+            "string",
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "output_per_1m_usd": {
+          "type": [
+            "string",
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        }
+      }
+    }
+  }
+}
