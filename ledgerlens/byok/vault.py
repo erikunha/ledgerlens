@@ -21,6 +21,8 @@ What the vault guarantees:
 * the vault is bounded, so a flood of keys cannot grow the memory of the process without a limit (FR-002);
 * every credential expires, the expiry is decided by the injected clock, and the sweep runs on every access and in
   the sweeper thread, so a vault nobody touches still forgets (FR-002, FR-022, SC-011);
+* the life of a credential is handed to the vault by the caller that knows it, and the vault itself is never changed
+  while an acceptance happens, so two acceptances of the same process cannot swap their lives (FR-022);
 * the number of failures of a credential is bounded, and the credential is dropped when the bound is reached (FR-023);
 * the vault scrubs its own secret out of a text, so a provider exception that carries the key cannot carry it out of
   the vault while the credential is alive (FR-018). The boundary that scrubs the key of a run out of the error of a
@@ -200,7 +202,9 @@ class CredentialVault:
 
     # --- the lifecycle of a credential ------------------------------------------------------------------
 
-    def accept(self, secret: str, provider: str, *, session_id: str) -> CredentialHandle:
+    def accept(
+        self, secret: str, provider: str, *, session_id: str, ttl_seconds: int | None = None
+    ) -> CredentialHandle:
         """Accepts the key of a visitor and answers the handle that stands for it.
 
         Why the key is stripped: a visitor pastes a key with a newline or a space around it, and the provider
@@ -212,6 +216,15 @@ class CredentialVault:
         Why the provider has to be one the registry publishes: the public form of the handle carries the provider,
         and the published contract of the handle enumerates the providers of the live mode. A vault that accepted
         any text would break that contract on the day a visitor pastes a name that nobody publishes (FR-004).
+
+        Why the life of the credential is a parameter and not a property that the caller writes: the layer that
+        knows how much life the session of the visitor has left hands that life over, and nothing of the vault is
+        changed while the acceptance happens. A vault whose life was written by the caller for the moment of the
+        acceptance would show a foreign life to every other reader of it, and two acceptances of the same process
+        could swap their lives (FR-022).
+
+        Why the life of the vault is the default: a credential accepted without a life of its own lives as long as
+        the vault says, and the default of the vault never changes because of an acceptance.
         """
         key = secret.strip() if isinstance(secret, str) else ""
         if not key:
@@ -227,7 +240,10 @@ class CredentialVault:
             )
 
         now = self._clock()
-        expires_at = now + timedelta(seconds=self.ttl_seconds)
+        life = self.ttl_seconds if ttl_seconds is None else ttl_seconds
+        if life < 1:
+            raise CredentialRefused("a credential must live at least one second")
+        expires_at = now + timedelta(seconds=life)
         with self._lock:
             self._sweep_locked(now)
             self._make_room_locked()

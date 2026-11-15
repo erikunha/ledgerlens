@@ -285,8 +285,11 @@ def _validate_recorded_events(lines: list[dict[str, Any]], schema_path: Path) ->
     """
     try:
         from jsonschema import Draft202012Validator
-    except ImportError as exc:  # jsonschema is a development dependency, and the export refuses without it
-        raise ExportError("the export needs jsonschema, which the development extra installs") from exc
+    except ImportError as exc:  # jsonschema belongs to the api extra, and the export refuses without it
+        raise ExportError(
+            "the export needs jsonschema, which the api extra and the dev extra install: "
+            "this deployment cannot export, and the bundle is not the reason"
+        ) from exc
 
     try:
         schema = json.loads(schema_path.read_text(encoding="utf-8"))

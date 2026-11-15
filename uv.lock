@@ -872,6 +872,7 @@ dependencies = [
 [package.optional-dependencies]
 api = [
     { name = "fastapi" },
+    { name = "jsonschema" },
     { name = "psycopg", extra = ["binary"] },
     { name = "uvicorn" },
 ]
@@ -896,6 +897,7 @@ requires-dist = [
     { name = "fastembed", specifier = "==0.9.1" },
     { name = "holidays", specifier = ">=0.108" },
     { name = "httpx", specifier = ">=0.28" },
+    { name = "jsonschema", marker = "extra == 'api'", specifier = ">=4.23" },
     { name = "jsonschema", marker = "extra == 'dev'", specifier = ">=4.23" },
     { name = "langchain", specifier = "==1.4.9" },
     { name = "langchain-classic", specifier = "==1.0.8" },

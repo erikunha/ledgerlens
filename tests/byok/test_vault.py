@@ -46,6 +46,7 @@ import pytest
 from jsonschema import Draft202012Validator
 
 from ledgerlens.byok import (
+    DEFAULT_TTL_SECONDS,
     ByokError,
     CapabilityMissing,
     CredentialExpired,
@@ -231,6 +232,53 @@ def test_accepting_a_key_returns_the_handle_the_provider_and_the_expiry(vault: C
     assert handle.handle
     assert handle.expires_at == handle.created_at + timedelta(seconds=vault.ttl_seconds)
     assert handle.expires_at > handle.created_at
+
+
+def test_the_life_of_a_credential_can_be_given_to_the_vault(vault: CredentialVault) -> None:
+    """FR-022: the vault applies the life that it is given, and its own life never changes.
+
+    Why this matters: the layer that knows how much life the session of the visitor has left hands that life over,
+    and the vault is never written to while the acceptance happens. A vault whose life the caller wrote for the
+    moment of the acceptance would show a foreign life to every other reader of it, and two acceptances of the same
+    process could swap their lives.
+    """
+    handle = vault.accept(MARKER, "openai", session_id="sess-a", ttl_seconds=60)
+
+    assert handle.expires_at == handle.created_at + timedelta(seconds=60)
+    assert vault.ttl_seconds == DEFAULT_TTL_SECONDS
+
+
+def test_a_credential_without_a_life_of_its_own_lives_as_long_as_the_vault_says(vault: CredentialVault) -> None:
+    """FR-022: the default of the vault is the life of a credential that is accepted without one."""
+    handle = vault.accept(MARKER, "openai", session_id="sess-a")
+
+    assert handle.expires_at == handle.created_at + timedelta(seconds=vault.ttl_seconds)
+
+
+def test_a_credential_that_is_accepted_with_the_life_of_its_session_dies_with_it(
+    vault: CredentialVault, clock: FakeClock
+) -> None:
+    """FR-022: the life that was given to the vault is the life the credential really has.
+
+    Why the clock is moved: a credential that was accepted with a short life has to die at that short life and not at
+    the life the vault would have given it.
+    """
+    handle = vault.accept(MARKER, "openai", session_id="sess-a", ttl_seconds=60)
+
+    clock.advance(timedelta(seconds=59))
+    assert vault.resolve(handle.handle, session_id="sess-a") == MARKER
+
+    clock.advance(timedelta(seconds=2))
+    with pytest.raises(CredentialExpired):
+        vault.resolve(handle.handle, session_id="sess-a")
+
+
+def test_a_life_that_is_shorter_than_a_second_is_refused(vault: CredentialVault) -> None:
+    """FR-022: a credential that dies at once is a credential nobody can use."""
+    with pytest.raises(CredentialRefused):
+        vault.accept(MARKER, "openai", session_id="sess-a", ttl_seconds=0)
+
+    assert len(vault) == 0
 
 
 def test_the_handle_is_random_and_is_not_derived_from_the_secret(vault: CredentialVault) -> None:

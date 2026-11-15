@@ -53,6 +53,7 @@ from fastapi.responses import JSONResponse, Response
 from fastapi.security import APIKeyCookie
 from pydantic import BaseModel, ConfigDict, Field
 
+from ledgerlens.byok.vault import CredentialVault
 from ledgerlens.config import get_settings
 from ledgerlens.sandbox.branch import (
     BRANCH_ID_PREFIX,
@@ -140,6 +141,7 @@ def create_app(
     session_issuer: SessionIssuer | None = None,
     clock: Callable[[], datetime] | None = None,
     runtime_dir: Path | str | None = None,
+    credential_vault: CredentialVault | None = None,
 ) -> FastAPI:
     """Builds the app over a store, a base resolver and a session issuer.
 
@@ -152,6 +154,10 @@ def create_app(
     session at a temporary folder: the key of the sessions, the memory of the sessions and the base of the scenario
     live there. Without an injected folder the base is built in the runtime folder of the configuration, exactly as
     it was before.
+
+    The vault of the credentials is given to the application and never read from a global: the end of a session drops
+    the credentials of that session from the vault the application was given, and not from a vault of the process
+    that may belong to another application (FR-022, ADR-035).
     """
     settings = get_settings()
     runtime = Path(runtime_dir) if runtime_dir is not None else settings.runtime_dir
@@ -241,6 +247,11 @@ def create_app(
         The memory of the session dies with the session (ADR-030): the case memory of an anonymous visitor must not
         lie around under an identifier that nobody can reach again. The purge is tolerant: a folder that cannot be
         removed is logged and does not fail the route.
+
+        The credentials of the session die with it too: the key of a visitor lives in the memory of the process and
+        nowhere else, so the end of the session drops the credentials that session holds (FR-022). The drop is
+        tolerant in the same way, because a vault that refuses never fails the route, and it comes from the vault the
+        application was given, so the purge of a session drops from the vault of the application it belongs to.
         """
         session = _session(cookie, issuer)
         for row in branch_store.list_branches(session):
@@ -249,6 +260,11 @@ def create_app(
             purge_session_memory(session, runtime)
         except Exception as error:  # pragma: no cover - the purge of the memory never fails the route.
             log.warning("the memory of the session could not be purged: %s", error)
+        if credential_vault is not None:
+            try:
+                credential_vault.forget_session(session)
+            except Exception as error:  # pragma: no cover - the drop of the credentials never fails the route.
+                log.warning("the credentials of the session could not be dropped: %s", error)
         # The version of the shape of the answers travels in the header of every answer of the facade (FR-042).
         response = Response(status_code=204, headers={SCHEMA_VERSION_HEADER: SCHEMA_VERSION})
         response.delete_cookie(SESSION_COOKIE, path="/")

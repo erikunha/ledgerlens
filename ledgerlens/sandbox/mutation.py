@@ -97,6 +97,10 @@ CODE_NOTE_TOO_LONG = "NOTE_TOO_LONG"
 CODE_RESOURCE_LIMIT = "RESOURCE_LIMIT_EXCEEDED"
 CODE_HASH_MISMATCH = "HASH_MISMATCH"
 CODE_NOTHING_TO_UNDO = "NOTHING_TO_UNDO"
+# The check of the shape of a command needs the library that the api extra installs, and a deployment without it
+# cannot serve a mutation. The refusal is a problem of the deployment and not a bad payload of the visitor, so it
+# has its own code and its own status (ADR-035).
+CODE_CONTRACT_UNAVAILABLE = "CONTRACT_UNAVAILABLE"
 
 # The status of the answer of a refusal. Everything that is not listed here is a rule of the payload.
 STATUS_BY_CODE = {
@@ -106,6 +110,7 @@ STATUS_BY_CODE = {
     CODE_NOTHING_TO_UNDO: 409,
     CODE_PAYLOAD_TOO_LARGE: 413,
     CODE_RESOURCE_LIMIT: 429,
+    CODE_CONTRACT_UNAVAILABLE: 503,
 }
 
 # The size of a payload and the length of a note, the limits of the resources of a branch (FR-025).
@@ -813,10 +818,11 @@ def _validator_of(kind: str) -> Any:
     """The validator of the published schema for one kind of the catalog."""
     try:
         from jsonschema import Draft202012Validator
-    except ImportError as exc:  # jsonschema is a development dependency, and the sandbox refuses without it
+    except ImportError as exc:  # jsonschema belongs to the api extra, and the sandbox refuses without it
         raise MutationRejected(
-            CODE_INVALID_PAYLOAD,
-            "the check of the shape of a command needs jsonschema, which the development extra installs",
+            CODE_CONTRACT_UNAVAILABLE,
+            "the check of the shape of a command needs jsonschema, which the api extra and the dev extra install: "
+            "this deployment cannot check the command, and the command of the visitor is not the reason",
         ) from exc
     schema = json.loads(COMMAND_SCHEMA_PATH.read_text(encoding="utf-8"))
     for branch in schema.get("oneOf", []):

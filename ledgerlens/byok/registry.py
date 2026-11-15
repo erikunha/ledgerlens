@@ -15,6 +15,10 @@ A third rule is about the reading of a contract: a payload that cannot be read i
 family and a readable message, and not with an error of the language, because a bad payload is an answer of a
 server and the caller has to be able to read what is wrong with it (FR-030, FR-031).
 
+A fourth rule is about what a refusal carries: a refusal of the registry names the reason and never the value that
+the visitor sent, because the identifier of a model is a value of the visitor and the visitor may have put a key of
+their provider in that field (FR-018, SC-001).
+
 The allowlist is data in this module, next to the code that reads it, so that the price and the date it was last
 verified travel with the model they belong to (FR-031). The catalogue exposes the status and the capabilities of
 each profile, because the interface has to show the visitor what the model can do (FR-030).
@@ -79,8 +83,10 @@ TOKENS_PER_MILLION = Decimal(1_000_000)
 class ModelNotAllowed(ByokError):
     """The requested model is not one the server is allowed to run.
 
-    The message names the identifier and the reason, because the visitor reads it and a silent swap of the model
-    would make the comparison dishonest (FR-016, FR-027).
+    Why the refusal never names the identifier: the identifier is a value the visitor sent, and a refusal that
+    repeats it carries the value of the visitor out of the process, whatever that value is. The refusal names the
+    reason and not the value, and the reason is enough: the visitor reads it and a silent swap of the model would
+    make the comparison dishonest (FR-016, FR-027, FR-018, SC-001).
     """
 
     reason = "the model is not allowed"
@@ -364,12 +370,16 @@ class ProviderRegistry:
         return None
 
     def require(self, identifier: str) -> ModelProfile:
-        """The profile the visitor asked for, or a refusal that names the identifier and the reason.
+        """The profile the visitor asked for, or a refusal that names the reason and not the identifier.
 
         The identifier may be the profile identifier or the model identifier the provider knows, because the
         interface shows one and the request may carry the other. A profile the server knows but does not offer is
         refused too, and the reason says why: an experimental model is not a silent swap away from a tested one
         (FR-027).
+
+        Why the refusal never quotes the identifier: the identifier came from the visitor, and the refusal of the
+        domain reaches the client of the facade. A refusal that carries the value of the visitor carries it out of
+        the process, and the visitor may have put a key of their provider in that field (FR-018, SC-001).
         """
         profile = self.get(identifier)
         if profile is None:
@@ -378,17 +388,15 @@ class ProviderRegistry:
                     profile = candidate
                     break
         if profile is None:
-            raise ModelNotAllowed(
-                f"the model '{identifier}' is not in the allowlist of the server, so the run is refused"
-            )
+            raise ModelNotAllowed("the model is not in the allowlist of the server, so the run is refused")
         if profile.status != "tested":
+            # The status comes from the allowlist of the server and not from the request, so it is safe to name it.
             raise ModelNotAllowed(
-                f"the model '{identifier}' has the status '{profile.status}' and the server only runs tested models"
+                f"the model has the status '{profile.status}' and the server only runs tested models, "
+                "so the run is refused"
             )
         if not profile.enabled_in_public_demo:
-            raise ModelNotAllowed(
-                f"the model '{identifier}' is not enabled in the public demo, so the run is refused"
-            )
+            raise ModelNotAllowed("the model is not enabled in the public demo, so the run is refused")
         return profile
 
     def require_capabilities(self, profile: ModelProfile, required: Iterable[str]) -> None:
@@ -396,12 +404,16 @@ class ProviderRegistry:
 
         The refusal never substitutes another model, because a comparison between two models that the visitor did
         not choose is a lie (FR-015).
+
+        Why the refusal does not name the profile either: the profile came out of the allowlist because the
+        identifier of the visitor matched it, and the identifier of the visitor may be a value that must not travel
+        out of the process. The missing capability is the name of the server and it is enough (FR-018, SC-001).
         """
         missing = sorted(set(required) - set(profile.capabilities))
         if missing:
             names = ", ".join(f"'{capability}'" for capability in missing)
             raise CapabilityMissing(
-                f"the model '{profile.profile_id}' lacks the capability {names} that the architecture needs, "
+                f"the model lacks the capability {names} that the architecture needs, "
                 f"so the run is refused instead of running another model"
             )
 

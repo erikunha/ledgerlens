@@ -7,8 +7,9 @@ profile that lacks a capability the architecture needs is refused with the missi
 (d) a price that was not verified is absent and never a guess, so the cost panel can say unknown (FR-011);
 (e) a price is money, so it is a Decimal and never a float; (f) the catalogue exposes the tested status and the
 capabilities of each profile (FR-030) and a price carries its provenance and the date of the last verification
-(FR-031); (g) the contract of the profile and the dataclass of the domain agree field for field, so the interface
-cannot read a field the server does not fill.
+(FR-031); (h) no refusal of the registry names the identifier that the visitor sent, and it names the reason
+instead (FR-018, SC-001); (i) the contract of the profile and the dataclass of the domain agree field for field, so
+the interface cannot read a field the server does not fill.
 
 Everything offline, with no key and no network: the registry is data and the tests never leave the process.
 """
@@ -104,16 +105,41 @@ def test_each_rule_of_the_catalogue_is_proved_by_a_profile_that_fails_it() -> No
 
 
 def test_a_model_outside_the_allowlist_is_refused_by_the_server() -> None:
-    """FR-027: the interface is not the only place that refuses an unknown model."""
+    """FR-027: the interface is not the only place that refuses an unknown model.
+
+    Why the refusal does not name the identifier: the identifier is a value the visitor sent, and the refusal of the
+    domain travels to the client of the facade, so a refusal that quotes it carries the value of the visitor out of
+    the process, whatever that value is (FR-018, SC-001).
+    """
     registry = ProviderRegistry()
 
     with pytest.raises(ModelNotAllowed) as unknown:
         registry.require("gpt-4o")
 
-    assert "gpt-4o" in str(unknown.value)
+    assert "not in the allowlist" in str(unknown.value)
+    assert "the run is refused" in str(unknown.value)
+    assert "gpt-4o" not in str(unknown.value)
 
     with pytest.raises(ModelNotAllowed):
         registry.require("no-such-profile-id")
+
+
+def test_no_refusal_of_the_registry_carries_the_identifier_of_the_visitor() -> None:
+    """FR-018, SC-001: every refusal of the registry names the reason and never the value of the visitor.
+
+    Why every refusal: the identifier of a model may be the profile identifier or the model identifier, and the
+    visitor may have put a key of their provider in either of them.
+    """
+    registry = ProviderRegistry([priced_profile(), unpriced_profile()])
+
+    refusals = []
+    for identifier in ("gpt-4o", "openai-gpt-4.1", "gpt-4.1"):
+        with pytest.raises(ModelNotAllowed) as refused:
+            registry.require(identifier)
+        refusals.append((identifier, str(refused.value)))
+
+    for identifier, refusal in refusals:
+        assert identifier not in refusal, refusal
 
 
 def test_a_profile_that_is_not_offered_is_refused_with_its_reason() -> None:
@@ -124,10 +150,15 @@ def test_a_profile_that_is_not_offered_is_refused_with_its_reason() -> None:
         registry.require("openai-gpt-4.1")
 
     assert "experimental" in str(refused.value)
+    assert "openai-gpt-4.1" not in str(refused.value)
 
 
 def test_a_profile_without_tool_calling_is_refused_naming_the_capability() -> None:
-    """FR-015: the refusal names the missing capability instead of swapping the model silently."""
+    """FR-015: the refusal names the missing capability instead of swapping the model silently.
+
+    Why the profile is not named: the profile came out of the allowlist because the identifier of the visitor
+    matched it, and that identifier is a value of the visitor (FR-018, SC-001).
+    """
     registry = ProviderRegistry([unpriced_profile(profile_id="openai-chat-only")])
     profile = registry.get("openai-chat-only")
     assert profile is not None
@@ -136,6 +167,7 @@ def test_a_profile_without_tool_calling_is_refused_naming_the_capability() -> No
         registry.require_capabilities(profile, required_capabilities("B"))
 
     assert "tool_calling" in str(refused.value)
+    assert "openai-chat-only" not in str(refused.value)
 
 
 def test_the_architectures_that_need_tool_calling_are_b_and_c() -> None:
