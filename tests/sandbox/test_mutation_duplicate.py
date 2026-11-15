@@ -510,27 +510,17 @@ def test_the_elapsed_seconds_outside_the_window_are_refused_with_INVALID_PAYLOAD
 # --- the catalog of the sandbox ----------------------------------------------------------------------------------
 
 
-def test_the_kinds_that_stay_disabled_are_refused_with_UNKNOWN_MUTATION_TYPE(
+def test_the_refusal_of_a_kind_names_the_five_accepted_kinds(
     layer: BranchLayer, session_id: str, forked_branch: SandboxBranch
 ) -> None:
-    """The two kinds that change the state of the branch and not its rows are not enabled yet (ADR-031)."""
-    for kind, payload in (
-        ("tool.fx_outage", {"enabled": True, "error_code": "UPSTREAM_UNAVAILABLE"}),
-        ("record.inject_untrusted_note", {"record_id": "TX-2048", "text": "a note"}),
-    ):
-        command = MutationCommand(kind=kind, payload=payload, expected_revision=0, idempotency_key="cmd-0001")
-        with pytest.raises(MutationRejected) as refusal:
-            layer.preview_mutation(session_id, forked_branch.branch_id, command)
-        assert refusal.value.code == "UNKNOWN_MUTATION_TYPE"
+    """The message of the refusal names the kinds the sandbox can do, so the visitor knows what to send.
 
-
-def test_the_refusal_of_a_kind_names_the_three_accepted_kinds(
-    layer: BranchLayer, session_id: str, forked_branch: SandboxBranch
-) -> None:
-    """The message of the refusal names the kinds the sandbox can do, so the visitor knows what to send."""
+    Every kind of the published schema is enabled now: the three that change the rows of the ledger and the two that
+    change the state of the branch and not its rows (ADR-032).
+    """
     command = MutationCommand(
-        kind="tool.fx_outage",
-        payload={"enabled": True, "error_code": "UPSTREAM_UNAVAILABLE"},
+        kind="refund.explode",
+        payload={},
         expected_revision=0,
         idempotency_key="cmd-0001",
     )
@@ -538,5 +528,12 @@ def test_the_refusal_of_a_kind_names_the_three_accepted_kinds(
     with pytest.raises(MutationRejected) as refusal:
         layer.preview_mutation(session_id, forked_branch.branch_id, command)
 
-    for kind in ("refund.apply_fx_adjustment", "payment.simulate_duplicate", "chargeback.change_deadline"):
+    assert refusal.value.code == "UNKNOWN_MUTATION_TYPE"
+    for kind in (
+        "refund.apply_fx_adjustment",
+        "payment.simulate_duplicate",
+        "chargeback.change_deadline",
+        "tool.fx_outage",
+        "record.inject_untrusted_note",
+    ):
         assert kind in refusal.value.message

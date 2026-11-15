@@ -13,14 +13,31 @@ one of the simulator, in `ledgerlens/sim/gaps.py`, so the sandbox and the publis
 The second event of the vocabulary is the duplicate of a payment: the interpreter writes the copy of the row of the
 original, with the next free identifier of the branch, the moments moved by the elapsed seconds, the origin of the
 sandbox and the identifier of the original as its source. The third event of the vocabulary is the change of the
-deadline of a chargeback: the interpreter writes the deadline and nothing else of the row moves. The last event of
-the vocabulary is the marker of an undo (ADR-024): it names the event it undoes and the request that produced it,
-and it changes no row. The projection resolves the markers, so the state of a branch is still a pure function of the
-base and of the log.
+deadline of a chargeback: the interpreter writes the deadline and nothing else of the row moves. The fourth event of
+the vocabulary is the outage of the FX tool of the branch, and the fifth is the injection of an untrusted note on a
+record of the branch: neither of them writes a row of the ledger, they change the state of the branch. The last
+event of the vocabulary is the marker of an undo (ADR-024): it names the event it undoes and the request that
+produced it, and it changes no row. The projection resolves the markers, so the state of a branch is still a pure
+function of the base and of the log.
 
 Every event of the vocabulary carries the published payload of the command that produced it and nothing else, and
 the interpreter computes the row out of it. So the preview and the commit see exactly the same row, and a branch
 rebuilt from the events alone is the branch that was committed (ADR-031).
+
+The state of a branch is more than its rows. Beside the rows of the ledger, a branch holds a derived state: the
+state of its tools and the notes of its records. The derived state is derived the same way the rows are, as a pure
+function of the base and of the log, so the interpreter derives it while it applies the events, in the order of the
+log, and two projections of the same log always have the same derived state (FR-009, ADR-032).
+
+The hash of a branch covers the derived state, and the rule of the hash lives in one place, in `branch_hash`, so the
+branch layer and the interpreter cannot disagree about it. A branch that holds no derived state has the hash of its
+rows, and the hash of a forked branch is therefore exactly the hash of the published base (FR-010, ADR-021). A branch
+that holds a derived state has a hash that combines the hash of its rows with the derived state, so a branch whose
+log was tampered with cannot prove its own state and is refused with `HASH_MISMATCH` (ADR-032).
+
+The interpreter reads the payload of every event it applies, and a payload that lost a field it reads is a payload it
+refuses to apply. The refusal is a `ProjectionError`, so the branch layer turns it into `HASH_MISMATCH` and the
+facade answers 409 and never 500 (ADR-021, ADR-032).
 
 Three answers come out of a projection: the canonical hash, the diff of what the events changed, and the verdict of
 the case, which is the comparison of the projected state with the truth of the scenario.
@@ -28,8 +45,10 @@ the case, which is the comparison of the projected state with the truth of the s
 
 from __future__ import annotations
 
+import hashlib
 import sqlite3
-from dataclasses import dataclass, field
+from collections.abc import Callable
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -39,6 +58,7 @@ from ledgerlens.demo import load_manifest
 from ledgerlens.sandbox.snapshot import BaseSnapshot
 from ledgerlens.sandbox.store import SandboxEventRow
 from ledgerlens.sim import gaps
+from ledgerlens.sim.events import canonical_json
 from ledgerlens.sim.projector import READ_TABLES, canonical_hash, dump_rows
 
 # The label of the origin of every event of a branch, so a sandbox event is never a published one (FR-008).
@@ -48,11 +68,15 @@ SANDBOX_ORIGIN = "sandbox"
 EVENT_REFUND_FX_ADJUSTED = "sandbox.refund.fx_adjusted"
 EVENT_PAYMENT_DUPLICATED = "sandbox.payment.duplicated"
 EVENT_CHARGEBACK_DEADLINE_CHANGED = "sandbox.chargeback.deadline_changed"
+EVENT_TOOL_FX_OUTAGE = "sandbox.tool.fx_outage"
+EVENT_RECORD_NOTE_INJECTED = "sandbox.record.note_injected"
 EVENT_BRANCH_UNDONE = "sandbox.branch.undone"
 EVENT_TYPES = (
     EVENT_REFUND_FX_ADJUSTED,
     EVENT_PAYMENT_DUPLICATED,
     EVENT_CHARGEBACK_DEADLINE_CHANGED,
+    EVENT_TOOL_FX_OUTAGE,
+    EVENT_RECORD_NOTE_INJECTED,
     EVENT_BRANCH_UNDONE,
 )
 
@@ -96,6 +120,18 @@ RATE_COLUMNS = frozenset({("fx_applied", "applied_rate")})
 # The truth of a scenario declares the range of a measure, and the measure is named by the key of the range. A
 # scenario whose truth declares no range has no verdict to give.
 RANGE_MEASURES = {"markup_pct_range": "implied_markup_pct"}
+
+# The name of the tool of the branch whose state the outage moves.
+TOOL_FX = "fx"
+# The record of the diff that holds the state of the tools of a branch, and the field that holds the outage of a
+# tool. An empty value means the tool is available (ADR-032).
+TOOLS_RECORD = "tools"
+OUTAGE_FIELD = "outage"
+# The field of the diff that holds the untrusted note of a record.
+NOTE_FIELD = "untrusted_note"
+# The tables of the ledger a record of the case may be. The order is the order the resolver of the table of a record
+# looks for it, so the domain and the interpreter always attach the note to the same table (ADR-032).
+NOTE_TABLES = ("transactions", "refunds", "chargebacks", "settlements")
 
 
 class ProjectionError(RuntimeError):
@@ -153,13 +189,78 @@ class Verdict:
         }
 
 
+@dataclass(frozen=True)
+class DerivedState:
+    """The derived state of a branch: the state of its tools and the notes of its records.
+
+    Why the state is derived and never stored: it is a pure function of the base and of the log, exactly like the
+    rows, so the interpreter derives it while it applies the events, in the order of the log, and two projections of
+    the same log always have the same derived state (FR-009, ADR-032).
+
+    `tools` holds the state of every tool the branch changed, as pairs of the name of the tool and the error code of
+    its outage. A tool that is not named is available. `notes` holds the last untrusted note injected on every record,
+    as triples of the table of the record, the identifier of the record and the text of the note.
+    """
+
+    tools: tuple[tuple[str, str], ...] = ()
+    notes: tuple[tuple[str, str, str], ...] = ()
+
+    def is_empty(self) -> bool:
+        """True when the branch holds no derived state at all."""
+        return not self.tools and not self.notes
+
+    def outage_of(self, tool: str) -> str:
+        """The error code of the outage of a tool, or an empty text when the tool is available."""
+        for name, error_code in self.tools:
+            if name == tool:
+                return error_code
+        return ""
+
+    def note_of(self, table: str, record_id: str) -> str:
+        """The note a record carries, or an empty text when the record carries none."""
+        for note_table, note_id, text in self.notes:
+            if note_table == table and note_id == record_id:
+                return text
+        return ""
+
+    def with_outage(self, tool: str, error_code: str) -> DerivedState:
+        """The state with the outage of a tool."""
+        kept = [(name, code) for name, code in self.tools if name != tool]
+        kept.append((tool, error_code))
+        return replace(self, tools=tuple(sorted(kept)))
+
+    def without_outage(self, tool: str) -> DerivedState:
+        """The state with a tool that is available again."""
+        kept = [(name, code) for name, code in self.tools if name != tool]
+        return replace(self, tools=tuple(sorted(kept)))
+
+    def with_note(self, table: str, record_id: str, text: str) -> DerivedState:
+        """The state with the last note injected on a record."""
+        kept = [note for note in self.notes if not (note[0] == table and note[1] == record_id)]
+        kept.append((table, record_id, text))
+        return replace(self, notes=tuple(sorted(kept)))
+
+    def to_dict(self) -> dict[str, Any]:
+        """The state as the hash reads it: a plain structure with no ambiguity."""
+        return {
+            "tools": [{"tool": name, "outage": code} for name, code in self.tools],
+            "notes": [{"record": table, "record_id": record_id, "text": text} for table, record_id, text in self.notes],
+        }
+
+
 @dataclass
 class ProjectedState:
-    """The derived rows of a branch: the read tables of the base with the events of the branch applied."""
+    """The derived state of a branch: the read tables of the base with the events of the branch applied.
+
+    Beside the rows, the projection holds the derived state of the branch, that is, the state of its tools and the
+    notes of its records. The canonical hash of the projection covers both, and the rule of the hash lives in
+    `branch_hash` so that the branch layer and the interpreter cannot disagree about it (ADR-032).
+    """
 
     conn: sqlite3.Connection
     canonical_hash: str
     rows: dict[str, list[dict[str, Any]]]
+    derived: DerivedState = field(default_factory=DerivedState)
 
     def table(self, name: str) -> list[dict[str, Any]]:
         """The rows of one read table, ordered by their identifier."""
@@ -206,9 +307,13 @@ def project(base: BaseSnapshot, events: list[SandboxEventRow] | tuple[SandboxEve
     the events that are still live. The marker itself changes no row, so the state of the branch stays a pure
     function of the base and of the log, and the hash of a branch after an undo is the hash of the state before the
     undone mutation (FR-009, FR-010, ADR-024).
+
+    Why the derived state is derived here: it is a function of the base and of the log, exactly like the rows, so
+    the interpreter derives it while it applies the events, in the order of the log (FR-009, ADR-032).
     """
     conn = _copy_of(base.db_path)
     undone = undo_marks(events).undone_event_uids
+    derived = DerivedState()
     for event in events:
         if is_undo_marker(event):
             # The marker of an undo changes no row: it only names the event it undoes (ADR-024).
@@ -216,9 +321,36 @@ def project(base: BaseSnapshot, events: list[SandboxEventRow] | tuple[SandboxEve
         if event.event_uid in undone:
             # The event was undone, so it is not live any more and the projection does not apply it.
             continue
-        _apply(conn, event)
+        derived = _apply(conn, event, derived)
     rows = {table: dump_rows(conn, table) for table, _ in READ_TABLES}
-    return ProjectedState(conn=conn, canonical_hash=canonical_hash(conn), rows=rows)
+    return ProjectedState(
+        conn=conn,
+        canonical_hash=branch_hash(canonical_hash(conn), derived),
+        rows=rows,
+        derived=derived,
+    )
+
+
+def branch_hash(rows_hash: str, derived: DerivedState) -> str:
+    """The canonical hash of a branch: the hash of its rows and, when it holds one, of its derived state.
+
+    Why the rule lives in one place: the branch layer compares the hash of the projection with the hash the row of
+    the branch declares, and the interpreter writes the state of the branch. Two copies of the rule would drift
+    apart, and a branch would be refused for a hash it does have (ADR-032).
+
+    Why a branch without derived state has the hash of its rows: the hash of a forked branch has to be the hash of
+    the published base, so the two hashes stay comparable (FR-010, ADR-021).
+
+    Why the derived state joins the hash: a branch whose log was tampered with holds a state that its rows do not
+    prove, and a hash that only covers the rows would let it pass. A branch that cannot prove its own state is
+    refused with `HASH_MISMATCH`, like every other branch that cannot prove itself (ADR-021, ADR-032).
+    """
+    if derived.is_empty():
+        return rows_hash
+    digest = hashlib.sha256()
+    digest.update(f"rows\n{rows_hash}\n".encode())
+    digest.update(canonical_json(derived.to_dict()).encode("utf-8"))
+    return digest.hexdigest()
 
 
 def is_undo_marker(event: SandboxEventRow) -> bool:
@@ -270,6 +402,9 @@ def diff_of(before: ProjectedState, after: ProjectedState) -> list[DiffEntry]:
 
     Why the order is stable: the tables are read in the order of the projector and the rows in the order of their
     identifier, so two readers of the same revision see the same list, byte for byte (FR-019, SC-009).
+
+    Why the entries of the derived state come after the entries of the rows: the state of the tools of a branch and
+    the notes of its records are not rows of the ledger, and the reader of the diff reads the rows first (ADR-032).
     """
     entries: list[DiffEntry] = []
     for table, key in READ_TABLES:
@@ -277,6 +412,32 @@ def diff_of(before: ProjectedState, after: ProjectedState) -> list[DiffEntry]:
         new = {row[key]: row for row in after.rows.get(table, [])}
         for row_id in sorted(set(old) | set(new)):
             entries.extend(_entries_of(table, row_id, old.get(row_id), new.get(row_id)))
+    entries.extend(_derived_entries(before.derived, after.derived))
+    return entries
+
+
+def _derived_entries(before: DerivedState, after: DerivedState) -> list[DiffEntry]:
+    """The entries of the derived state: the state of the tools and the notes of the records.
+
+    Why an empty value means the tool is available: the diff has no other way to say that a tool carries no
+    outage, and the rule is written here once so that every reader of the diff reads it the same way (ADR-032).
+    """
+    entries: list[DiffEntry] = []
+    tools = sorted({name for name, _ in before.tools} | {name for name, _ in after.tools})
+    for tool in tools:
+        old = before.outage_of(tool)
+        new = after.outage_of(tool)
+        if old != new:
+            entries.append(DiffEntry(TOOLS_RECORD, tool, OUTAGE_FIELD, old, new, VALUE_NON_MONETARY, None))
+    records = sorted(
+        {(table, record_id) for table, record_id, _ in before.notes}
+        | {(table, record_id) for table, record_id, _ in after.notes}
+    )
+    for table, record_id in records:
+        old = before.note_of(table, record_id)
+        new = after.note_of(table, record_id)
+        if old != new:
+            entries.append(DiffEntry(table, record_id, NOTE_FIELD, old, new, VALUE_NON_MONETARY, None))
     return entries
 
 
@@ -284,7 +445,20 @@ def verdict_of(state: ProjectedState, scenario_id: str) -> Verdict:
     """The verdict of the case: the projected state compared with the truth of the scenario.
 
     A scenario whose truth declares no range has no verdict to give, and the answer is `not_available`.
+
+    Why the outage of the FX tool comes first: the measure of the case is the markup of the refund, and the markup
+    needs the rate of the reference source. With the source down the measure cannot be computed, so the verdict is
+    `not_available` and the detail of the answer names the outage and its error code (ADR-032).
     """
+    outage = state.derived.outage_of(TOOL_FX)
+    if outage:
+        return Verdict(
+            label=VERDICT_NOT_AVAILABLE,
+            detail=(
+                f"the FX tool is down with the error {outage}, and the rate of the reference source cannot be read,"
+                " so the measure of the case cannot be computed"
+            ),
+        )
     truth = scenario_truth(scenario_id)
     if not truth:
         return Verdict(label=VERDICT_NOT_AVAILABLE, detail=f"the scenario {scenario_id} has no truth")
@@ -321,22 +495,30 @@ def verdict_of(state: ProjectedState, scenario_id: str) -> Verdict:
 # --- the interpreter of the vocabulary -----------------------------------------------------------------------
 
 
-def _apply(conn: sqlite3.Connection, event: SandboxEventRow) -> None:
-    """Applies one event of the sandbox to the projected rows."""
+def _apply(conn: sqlite3.Connection, event: SandboxEventRow, derived: DerivedState) -> DerivedState:
+    """Applies one event of the sandbox to the projected rows and to the derived state of the branch.
+
+    Why the derived state travels with the rows: the two are derived from the same log, in the same order, and the
+    hash of the branch covers the two together (ADR-032).
+    """
     if event.origin != SANDBOX_ORIGIN:
         raise ProjectionError(f"the event {event.event_uid} does not come from the sandbox")
     if event.event_type == EVENT_REFUND_FX_ADJUSTED:
         _apply_fx_adjustment(conn, event)
-        return
+        return derived
     if event.event_type == EVENT_PAYMENT_DUPLICATED:
         _apply_duplicate(conn, event)
-        return
+        return derived
     if event.event_type == EVENT_CHARGEBACK_DEADLINE_CHANGED:
         _apply_deadline_change(conn, event)
-        return
+        return derived
+    if event.event_type == EVENT_TOOL_FX_OUTAGE:
+        return _apply_fx_outage(derived, event)
+    if event.event_type == EVENT_RECORD_NOTE_INJECTED:
+        return _apply_note(conn, derived, event)
     if event.event_type == EVENT_BRANCH_UNDONE:
         # The marker of an undo changes no row: the projection resolves it by skipping the event it undoes.
-        return
+        return derived
     raise ProjectionError(f"the sandbox does not know the event {event.event_type}")
 
 
@@ -348,12 +530,12 @@ def _apply_fx_adjustment(conn: sqlite3.Connection, event: SandboxEventRow) -> No
     the same whether it is built by the commit or rebuilt from the events alone.
     """
     payload = event.payload
-    refund_id = str(payload["refund_id"])
+    refund_id = str(_field_of(payload, "refund_id", event))
     refund = _one(conn, "SELECT * FROM refunds WHERE id = ?", (refund_id,))
     if refund is None:
         raise ProjectionError(f"the refund {refund_id} is not in the projection")
     try:
-        rate = Decimal(str(payload["applied_rate"]))
+        rate = Decimal(str(_field_of(payload, "applied_rate", event)))
     except InvalidOperation:
         raise ProjectionError(f"the rate of the event {event.event_uid} is not a decimal number") from None
     payout_minor = gaps.convert_minor(
@@ -380,7 +562,7 @@ def _apply_duplicate(conn: sqlite3.Connection, event: SandboxEventRow) -> None:
     row of the original.
     """
     payload = event.payload
-    transaction_id = str(payload["transaction_id"])
+    transaction_id = str(_field_of(payload, "transaction_id", event))
     original = _one(conn, "SELECT * FROM transactions WHERE id = ?", (transaction_id,))
     if original is None:
         raise ProjectionError(f"the transaction {transaction_id} is not in the projection")
@@ -418,13 +600,113 @@ def _apply_duplicate(conn: sqlite3.Connection, event: SandboxEventRow) -> None:
 def _apply_deadline_change(conn: sqlite3.Connection, event: SandboxEventRow) -> None:
     """The change of the deadline of a chargeback: the interpreter writes the deadline and nothing else moves."""
     payload = event.payload
-    chargeback_id = str(payload["chargeback_id"])
+    chargeback_id = str(_field_of(payload, "chargeback_id", event))
     chargeback = _one(conn, "SELECT id FROM chargebacks WHERE id = ?", (chargeback_id,))
     if chargeback is None:
         raise ProjectionError(f"the chargeback {chargeback_id} is not in the projection")
     conn.execute(
-        "UPDATE chargebacks SET deadline = ? WHERE id = ?", (str(payload["new_deadline"]), chargeback_id)
+        "UPDATE chargebacks SET deadline = ? WHERE id = ?",
+        (str(_field_of(payload, "new_deadline", event)), chargeback_id),
     )
+
+
+def _apply_fx_outage(derived: DerivedState, event: SandboxEventRow) -> DerivedState:
+    """The outage of the FX tool of the branch: the state of the tool moves and no row of the ledger does.
+
+    Why the event carries the flag and not the state: the event carries the published payload of the command, and
+    the state of the tool is computed out of it. So the preview, the commit and the rebuild of the branch from its
+    events alone see the same state (ADR-031, ADR-032).
+
+    Why the last event of the log wins: the events are applied in the order of the log, and each one moves the state
+    of the tool, so the state of the branch is the state the last one asks for (ADR-032).
+
+    Why the flag says that the outage is on: the flag of the event is the state of the outage and not the state of
+    the tool, so `enabled` true means that the tool of the branch is down with the error code of the event. A
+    payload that lost the flag or the error code is a log that was tampered with, and a tool that is down with no
+    error code would leave the verdict of the case blind (ADR-021, ADR-032).
+    """
+    payload = event.payload
+    enabled = _field_of(payload, "enabled", event)
+    if not isinstance(enabled, bool):
+        raise ProjectionError(f"the flag of the event {event.event_uid} is not a boolean")
+    error_code = _field_of(payload, "error_code", event)
+    if not isinstance(error_code, str) or not error_code:
+        raise ProjectionError(f"the error code of the event {event.event_uid} is not a text")
+    if enabled:
+        return derived.with_outage(TOOL_FX, error_code)
+    return derived.without_outage(TOOL_FX)
+
+
+def _apply_note(conn: sqlite3.Connection, derived: DerivedState, event: SandboxEventRow) -> DerivedState:
+    """The untrusted note of a record of the branch: the note moves and no row of the ledger does.
+
+    Why the table of the record is found here: the published payload of the command names the identifier of the
+    record and not its table, and the table is a property of the state of the branch. So the interpreter asks the
+    resolver of the table, the same one the domain asks, and the two always attach the note to the same table
+    (ADR-032).
+
+    Why the note is not a row: a note is text of an untrusted source. It is not evidence, it does not move the
+    verdict and it does not move the invariants of the domain (ADR-032).
+    """
+    payload = event.payload
+    record_id = str(_field_of(payload, "record_id", event))
+    text = str(_field_of(payload, "text", event))
+    table = table_of_the_record(record_id, _holds_the_record_of_the_connection(conn, record_id))
+    if table is None:
+        raise ProjectionError(f"the record {record_id} is not in the projection")
+    return derived.with_note(table, record_id, text)
+
+
+def _field_of(payload: dict[str, Any], name: str, event: SandboxEventRow) -> Any:
+    """The value of a field of the payload of an event, when the payload carries it.
+
+    Why it raises: a payload that lost a field is a log that was tampered with, and a branch that cannot prove its
+    own state is refused with `HASH_MISMATCH` (ADR-021, ADR-032). A `KeyError` would leave the refusal unhandled
+    and the facade would answer 500 instead of the 409 of the contract.
+    """
+    if name not in payload:
+        raise ProjectionError(f"the payload of the event {event.event_uid} carries no field {name!r}")
+    return payload[name]
+
+
+def _holds_the_record_of_the_connection(conn: sqlite3.Connection, record_id: str) -> Callable[[str], bool]:
+    """The lookup that answers whether a table of the case holds the record, read from the connection.
+
+    Why the rows and not a query of the identifier: the SQL of the product lives in the store of the sandbox, and
+    the interpreter reads the rows of the case with the helper the projector of the simulator uses.
+    """
+    rows = {table: dump_rows(conn, table) for table in NOTE_TABLES}
+    return holds_the_record(rows, record_id)
+
+
+def holds_the_record(rows: dict[str, list[dict[str, Any]]], record_id: str) -> Callable[[str], bool]:
+    """The lookup that answers whether a table of the case holds the record, read from the rows of a projection.
+
+    Why the rule of the row is here: the domain and the interpreter have to agree on the row that holds the
+    record, so the rule of the identifier of a row lives in one place (ADR-032).
+    """
+
+    def holds(table: str) -> bool:
+        return any(str(row.get("id")) == record_id for row in rows.get(table, []))
+
+    return holds
+
+
+def table_of_the_record(record_id: str, holds: Callable[[str], bool]) -> str | None:
+    """The table of the ledger that holds the record, or None when no table of the case holds it.
+
+    Why the lookup is a callable: the domain reads the rows of the branch from the projection it holds and the
+    interpreter reads them from the connection of the branch, and the rule of the table of a record has to be one.
+    So the resolver owns the order of `NOTE_TABLES` and the caller owns the way it reads the rows (ADR-032).
+
+    Why the order of `NOTE_TABLES`: the domain and the interpreter have to attach the note to the same table, and
+    the identifiers of the tables do not collide, so the first table that holds the record is the table of it
+    (ADR-032).
+    """
+    for table in NOTE_TABLES:
+        if holds(table):
+            return table
+    return None
 
 
 def next_transaction_id(taken: set[str], original_id: str) -> str | None:
@@ -659,11 +941,19 @@ __all__ = [
     "EVENT_BRANCH_UNDONE",
     "EVENT_CHARGEBACK_DEADLINE_CHANGED",
     "EVENT_PAYMENT_DUPLICATED",
+    "EVENT_RECORD_NOTE_INJECTED",
     "EVENT_REFUND_FX_ADJUSTED",
+    "EVENT_TOOL_FX_OUTAGE",
     "EVENT_TYPES",
+    "NOTE_FIELD",
+    "NOTE_TABLES",
+    "OUTAGE_FIELD",
+    "TOOLS_RECORD",
+    "TOOL_FX",
     "TRANSACTION_ID_SPACE",
     "UNDO_COMMAND_ID",
     "UNDO_EVENT_UID",
+    "DerivedState",
     "DiffEntry",
     "ProjectedState",
     "ProjectionError",
@@ -677,13 +967,16 @@ __all__ = [
     "VERDICT_NOT_AVAILABLE",
     "VERDICT_WITHIN",
     "Verdict",
+    "branch_hash",
     "canonical_rate",
     "diff_of",
+    "holds_the_record",
     "is_undo_marker",
     "next_transaction_id",
     "oldest_moment",
     "project",
     "scenario_truth",
+    "table_of_the_record",
     "undo_marks",
     "verdict_of",
 ]

@@ -81,15 +81,15 @@ def test_the_preview_refuses_an_unknown_kind_and_names_the_kinds_that_are_accept
     assert "refund.apply_fx_adjustment" in refusal.value.message
 
 
-def test_the_preview_refuses_a_kind_that_is_not_enabled_with_the_same_code(
+def test_the_preview_refuses_a_kind_that_the_catalog_does_not_hold_with_the_same_code(
     layer: BranchLayer, session_id: str, forked_branch: SandboxBranch
 ) -> None:
-    """A kind of the published schema that the catalog does not hold yet is refused like a kind that does not exist.
+    """A kind the catalog does not hold is refused like a kind that does not exist.
 
-    The kind of the example is the outage of the FX tool: it changes the state of the tools and not the rows of the
-    ledger, and it needs a decision about the hash and the diff that the catalog does not have yet (ADR-031).
+    Every kind of the published schema is enabled now, so the kind of the example is one the catalog never held
+    (ADR-032).
     """
-    command = _command("tool.fx_outage", {"enabled": True, "error_code": "UPSTREAM_UNAVAILABLE"})
+    command = _command("refund.explode", {"enabled": True, "error_code": "UPSTREAM_UNAVAILABLE"})
     with pytest.raises(MutationRejected) as refusal:
         layer.preview_mutation(session_id, forked_branch.branch_id, command)
     assert refusal.value.code == "UNKNOWN_MUTATION_TYPE"
@@ -179,7 +179,7 @@ def test_the_preview_refuses_an_effective_date_that_is_not_a_moment(
     "kind,payload",
     [
         ("refund.explode", {}),
-        ("tool.fx_outage", {"enabled": True, "error_code": "UPSTREAM_UNAVAILABLE"}),
+        ("record.inject_untrusted_note", {"record_id": "TX-9999", "text": "a note"}),
         ("refund.apply_fx_adjustment", {"refund_id": "R-0731", "applied_rate": "5.412500001", "effective_at": "x"}),
         ("refund.apply_fx_adjustment", {"refund_id": "R-0731", "applied_rate": "5.4125", "effective_at": "x"}),
     ],

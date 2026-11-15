@@ -9,11 +9,10 @@ The rule that rules above all: no number of this path is a float. Every amount i
 so the sandbox and the published ledger agree on the arithmetic (FR-017).
 
 The catalog is the promise of the sandbox: a kind is enabled only when it has a round trip test and a coherent
-domain event (ADR-021). Three kinds are enabled: the adjustment of the rate of a refund, the duplicate of a
-payment and the deadline of a chargeback. The other two kinds of the published schema change the state of the
-branch and of the tools and not the rows of the ledger, they need a decision about the hash and the diff that this
-milestone does not take, so they stay disabled and are refused with the same code as a kind that does not exist
-(ADR-031).
+domain event (ADR-021). Five kinds are enabled: the adjustment of the rate of a refund, the duplicate of a
+payment, the deadline of a chargeback, the outage of the FX tool of the branch and the untrusted note of a record
+of the branch. The last two kinds change the state of the branch and not the rows of the ledger, and the state of a
+branch is a derived state that the hash of the branch covers (ADR-032).
 
 The undo is not a kind of the catalog: it does not change a record of the case, it changes the log of the branch,
 and it is an event of the vocabulary of the sandbox in its own right (ADR-024). This module owns the plan of the
@@ -48,18 +47,23 @@ from ledgerlens.sandbox.projector import (
     EVENT_BRANCH_UNDONE,
     EVENT_CHARGEBACK_DEADLINE_CHANGED,
     EVENT_PAYMENT_DUPLICATED,
+    EVENT_RECORD_NOTE_INJECTED,
     EVENT_REFUND_FX_ADJUSTED,
+    EVENT_TOOL_FX_OUTAGE,
     SANDBOX_ORIGIN,
+    TOOL_FX,
     UNDO_COMMAND_ID,
     UNDO_EVENT_UID,
     ProjectedState,
     Verdict,
     canonical_rate,
     diff_of,
+    holds_the_record,
     is_undo_marker,
     next_transaction_id,
     oldest_moment,
     project,
+    table_of_the_record,
     undo_marks,
     verdict_of,
 )
@@ -377,8 +381,9 @@ class ValidatedCommand:
     """A command that passed every rule, with the values the interpreter needs.
 
     Every kind carries what its own interpreter needs and nothing more: the rate and the moment of the adjustment, the
-    elapsed seconds of the duplicate, the new deadline of the chargeback. A field that the kind does not use is
-    None, so the interpreter of a kind never reads a value that belongs to another one (ADR-031).
+    elapsed seconds of the duplicate, the new deadline of the chargeback, the state of the FX tool and the text of
+    the untrusted note. A field that the kind does not use is None, so the interpreter of a kind never reads a value
+    that belongs to another one (ADR-031).
     """
 
     kind: str
@@ -387,12 +392,18 @@ class ValidatedCommand:
     effective_at: str | None = None
     elapsed_seconds: int | None = None
     new_deadline: str | None = None
+    enabled: bool | None = None
+    error_code: str | None = None
+    text: str | None = None
+    record_table: str | None = None
 
 
 # The names of the kinds of the catalog that the sandbox can do.
 KIND_FX_ADJUSTMENT = "refund.apply_fx_adjustment"
 KIND_DUPLICATE = "payment.simulate_duplicate"
 KIND_DEADLINE = "chargeback.change_deadline"
+KIND_FX_OUTAGE = "tool.fx_outage"
+KIND_NOTE = "record.inject_untrusted_note"
 
 # The stages of a chargeback that close the case. A case that was won or lost has no deadline to move (ADR-031).
 CLOSED_CHARGEBACK_STAGES = frozenset({"won", "lost"})
@@ -400,7 +411,7 @@ CLOSED_CHARGEBACK_STAGES = frozenset({"won", "lost"})
 # The status of a transaction that failed. A payment that failed is not charged twice (ADR-031).
 FAILED_TRANSACTION_STATUS = "failed"
 
-# The catalog of the sandbox. Only the kinds with a round trip test are enabled (ADR-021, ADR-031).
+# The catalog of the sandbox. Only the kinds with a round trip test are enabled (ADR-021, ADR-031, ADR-032).
 CATALOG: tuple[MutationKind, ...] = (
     MutationKind(
         KIND_FX_ADJUSTMENT,
@@ -409,8 +420,8 @@ CATALOG: tuple[MutationKind, ...] = (
     ),
     MutationKind(KIND_DUPLICATE, True, "a second charge of the same payment"),
     MutationKind(KIND_DEADLINE, True, "the deadline of a chargeback"),
-    MutationKind("tool.fx_outage", False, "the FX tool is unavailable"),
-    MutationKind("record.inject_untrusted_note", False, "an untrusted note on a record"),
+    MutationKind(KIND_FX_OUTAGE, True, "the FX tool is unavailable"),
+    MutationKind(KIND_NOTE, True, "an untrusted note on a record"),
 )
 ENABLED_KINDS: tuple[str, ...] = tuple(kind.name for kind in CATALOG if kind.enabled)
 
@@ -539,6 +550,10 @@ def _validate_of_the_kind(
         return _validate_duplicate(kind, command, state)
     if kind.name == KIND_DEADLINE:
         return _validate_deadline(kind, command, state)
+    if kind.name == KIND_FX_OUTAGE:
+        return _validate_fx_outage(kind, command, state)
+    if kind.name == KIND_NOTE:
+        return _validate_note(kind, command, state)
     raise MutationRejected(
         CODE_UNKNOWN_MUTATION_TYPE,
         f"the mutation kind {kind.name!r} is not enabled; the accepted kinds are: {', '.join(ENABLED_KINDS)}",
@@ -674,6 +689,66 @@ def _validate_deadline(
             "the new deadline is not a day of the calendar, in the shape YYYY-MM-DD",
         )
     return ValidatedCommand(kind=kind.name, record_id=chargeback_id, new_deadline=deadline)
+
+
+def _validate_fx_outage(kind: MutationKind, command: MutationCommand, state: ProjectedState) -> ValidatedCommand:
+    """The rules of the outage of the FX tool of the branch.
+
+    The rule of the state: a command that changes nothing is refused, because the hash of a branch only moves when
+    its state moves, and a commit that moved the revision without moving the hash would break that promise for the
+    visitor. So an outage that is already on is refused, and so is the end of an outage that does not exist
+    (ADR-032).
+    """
+    payload = command.payload
+    enabled = payload.get("enabled")
+    if not isinstance(enabled, bool):
+        # The flag is missing or is not a boolean: the check of the published schema names it.
+        return ValidatedCommand(kind=kind.name, record_id=TOOL_FX)
+    error_code = payload.get("error_code")
+    if not isinstance(error_code, str) or not error_code:
+        # The error code is missing: the check of the published schema names it.
+        return ValidatedCommand(kind=kind.name, record_id=TOOL_FX, enabled=enabled)
+    outage = state.derived.outage_of(TOOL_FX)
+    if enabled and outage:
+        raise MutationRejected(
+            CODE_INVALID_STATE,
+            f"the FX tool is already down with the error {outage}, and there is no outage left to start",
+        )
+    if not enabled and not outage:
+        raise MutationRejected(
+            CODE_INVALID_STATE,
+            "the FX tool is available, and there is no outage to end",
+        )
+    return ValidatedCommand(kind=kind.name, record_id=TOOL_FX, enabled=enabled, error_code=error_code)
+
+
+def _validate_note(kind: MutationKind, command: MutationCommand, state: ProjectedState) -> ValidatedCommand:
+    """The rules of the untrusted note of a record of the branch.
+
+    The record the command names has to be in the branch, and a note that says what the record already carries
+    changes nothing and is refused, for the same reason the outage that changes nothing is refused (ADR-032).
+    """
+    payload = command.payload
+    record_id = payload.get("record_id")
+    if not isinstance(record_id, str) or not record_id:
+        # The identifier is missing or is not a text: the check of the published schema names it.
+        return ValidatedCommand(kind=kind.name, record_id="")
+    table = table_of_the_record(record_id, holds_the_record(state.rows, record_id))
+    if table is None:
+        raise MutationRejected(
+            CODE_UNKNOWN_RECORD,
+            f"the record {record_id} is not in the branch; the branch holds no such record",
+        )
+    text = payload.get("text")
+    if not isinstance(text, str) or not text:
+        # The text is missing: the check of the published schema names it.
+        return ValidatedCommand(kind=kind.name, record_id=record_id, record_table=table)
+    if state.derived.note_of(table, record_id) == text:
+        raise MutationRejected(
+            CODE_INVALID_STATE,
+            f"the record {record_id} already carries this note, and a note that says the same thing changes nothing",
+        )
+    return ValidatedCommand(kind=kind.name, record_id=record_id, record_table=table, text=text)
 
 
 def _is_a_day(text: str) -> bool:
@@ -847,6 +922,32 @@ def _event_of(validated: ValidatedCommand) -> tuple[str, dict[str, Any]]:
             {
                 "chargeback_id": validated.record_id,
                 "new_deadline": validated.new_deadline,
+            },
+        )
+    if validated.kind == KIND_FX_OUTAGE:
+        if validated.enabled is None or validated.error_code is None:
+            raise MutationRejected(
+                CODE_INVALID_PAYLOAD,
+                "the command of an outage carries no state of the tool and no error code",
+            )
+        return (
+            EVENT_TOOL_FX_OUTAGE,
+            {
+                "enabled": validated.enabled,
+                "error_code": validated.error_code,
+            },
+        )
+    if validated.kind == KIND_NOTE:
+        if validated.text is None:
+            raise MutationRejected(
+                CODE_INVALID_PAYLOAD,
+                "the command of a note carries no text",
+            )
+        return (
+            EVENT_RECORD_NOTE_INJECTED,
+            {
+                "record_id": validated.record_id,
+                "text": validated.text,
             },
         )
     raise MutationRejected(
@@ -1047,6 +1148,8 @@ __all__ = [
     "KIND_DEADLINE",
     "KIND_DUPLICATE",
     "KIND_FX_ADJUSTMENT",
+    "KIND_FX_OUTAGE",
+    "KIND_NOTE",
     "READ_ONLY_FIELDS",
     "UNDO_KIND",
     "MoneyValue",

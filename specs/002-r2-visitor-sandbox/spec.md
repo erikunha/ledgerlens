@@ -290,7 +290,11 @@ of deleting history.
   projector, so that replaying the same events on the same base produces the same canonical hash.
 - **FR-010**: The system MUST compute the canonical hash with a canonical serialisation of the
   projected rows, and the same implementation MUST be used for the base snapshot and for every
-  branch, so that the two hashes are comparable.
+  branch, so that the two hashes are comparable. A branch that holds a derived state of its own, the
+  state of its tools or the notes of its records, MUST have a hash that combines the canonical hash
+  of its rows with that derived state, and a branch that holds no derived state MUST have the hash of
+  its rows alone, so that the hash of a freshly forked branch and the hash of the published base stay
+  comparable.
 - **FR-011**: The system MUST be idempotent on append. The same event identity appended twice MUST
   be stored once, and the second append MUST be reported as a duplicate rather than as an error.
 - **FR-012**: The system MUST be idempotent on request. The same idempotency key with the same
@@ -327,8 +331,10 @@ of deleting history.
 - **FR-024**: The system MUST clean expired branches automatically, with a delay of at most 60
   seconds between the expiry moment and the deletion.
 - **FR-025**: The system MUST enforce per branch resource limits: at most 20 committed mutations, at
-  most 200 stored events, a payload of at most 32 kilobytes and a note of at most 300 characters, and
-  MUST answer `429` when the limit is reached.
+  most 200 stored events, a payload of at most 32 kilobytes and a note of at most 300 characters. It
+  MUST answer `429` when the quota of the mutations or of the events of the branch is reached, `413`
+  when the payload is too big, and `422` with the code of the rule that failed when the note or the
+  reason of the command is longer than the limit.
 - **FR-026**: The system MUST scope every read to the account of the branch, and MUST NOT return a
   row of another account.
 - **FR-027**: The system MUST NOT expose any cross visitor read of branch data, of the event log or
@@ -395,8 +401,9 @@ of deleting history.
   undone event. Mutation events are append only and are never updated in place.
 - **ProjectedState**: the derived tables that the projector computes for a branch from the base
   snapshot plus the events of that branch, including the transactions, refunds, chargebacks, FX
-  applications, settlements and the account scoped rows. The projected state is a pure function of
-  the base and of the event log.
+  applications, settlements and the account scoped rows. Beside the rows, the projected state holds the
+  derived state of the branch: the state of its tools and the notes of its records. The projected state
+  is a pure function of the base and of the event log.
 - **Invariant**: a named business rule of the scenario, with an id, a readable description, the
   predicate that checks it and the result of the check, which is pass or fail with the reason. The
   invariants are evaluated after the projection of every mutation.
