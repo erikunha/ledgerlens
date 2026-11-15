@@ -131,6 +131,31 @@ The video below is this app running online with a real model, recorded on 2026-1
 
 Copy `.env.example` to `.env`, fill in the keys (`OPENAI_API_KEY` and, for traces and experiments, `LANGSMITH_API_KEY`), and run without `LEDGERLENS_OFFLINE`. The default model is `gpt-4.1-mini`, with live exchange rates.
 
+## Live mode: bring your own key
+
+The demo runs with no key at all. The live mode is the opt-in branch of it: the visitor runs a real case with a key of their own provider, inside a hard budget, and everything else keeps working exactly as before. In this milestone the branch is server side: the routes exist and the pages that consume them do not ([ADR-035](docs/decisions/ADR-035-the-facade-of-the-live-mode.md)).
+
+What it does:
+
+- the key arrives once, in `POST /v1/credentials`, and it lives in the memory of the server process and nowhere else: no file, no database, no log, no trace, no URL. The answer carries an opaque handle, the provider and the expiry, and never the key itself;
+- the handle is bound to the session of the visitor. A handle of another session is refused with the same message as a handle that never existed;
+- the credential dies when the visitor forgets it, when the session ends, when its time to live passes, when the vault is full, when the server restarts, or when the provider refuses the key too many times. A credential never outlives the session that holds it;
+- the model comes from the catalogue of the server, which lists only the models whose tool calling was really tested. A model that is not in the allowlist is refused by the server, and a model that lacks the capability the architecture needs is refused with the missing capability named, never replaced by another one;
+- the run is bounded by the caps the visitor sets: the calls of the model, the calls of the tools, the output tokens, the wall clock and the money. The cost report shows the observed cost and the estimated cost apart, and a model whose price was never verified shows no amount at all;
+- "forget key" is always there and takes effect at once, and cancelling a run stops the calls that have not started. A call that was already at the provider is a best effort, and the answer says so.
+
+**The disclosure.** It travels in headers, because the contract of the handle accepts no other field:
+
+| Header | What it says |
+|---|---|
+| `X-LedgerLens-Key-Storage` | the key is not stored: it lives in the memory of the server and the credential is dropped when the session ends |
+| `X-LedgerLens-Billing-Disclosure` | your provider may charge you for the calls of this run |
+| `X-LedgerLens-Key-Erasure` | the memory of the machine cannot be guaranteed to be erased: the server drops the key when the credential ends, but no runtime can promise that no copy of the text of the key survives in the memory of the interpreter or in a swap of the operating system |
+
+**The limitation.** The product never writes the key anywhere and drops it when the credential ends, but nobody can promise that no copy of the text of the key survives in the memory of the interpreter or in a swap of the operating system. The server wipes what it can and says out loud that it cannot promise the rest.
+
+While the product runs offline (`LEDGERLENS_OFFLINE=1`) the live mode is refused with a readable reason, and the replay and the sandbox keep working exactly as before.
+
 ## Results
 
 Online evaluation: 30 cases, three runs of each variant, `gpt-4.1-mini` at temperature 0. Mean [min, max] over the three runs.
@@ -173,6 +198,8 @@ docs/         architecture, tools, contracts and decisions (ADRs)
 - Policy retrieval from the offline index misses some hard questions; query rewriting recovers most of them ([ADR-006](docs/decisions/ADR-006-embeddings-and-index.md)).
 - The NLI model often marks true sentences as not enough evidence, so many real answers still go to human review. Numbers, rates and exchange-rate dates are checked by code.
 - The agent only recommends. It does not move money or change records.
+- The live mode never writes the key to a file, a log or a trace and drops it when the credential ends, but no runtime can promise that no copy of the text of the key survives in the memory of the interpreter or in a swap of the operating system.
+- A live run is paid for by the visitor: the provider of the visitor may charge the visitor for the calls of the run.
 
 ## License
 

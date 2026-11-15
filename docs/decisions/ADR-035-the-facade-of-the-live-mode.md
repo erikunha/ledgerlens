@@ -106,7 +106,10 @@ disclosure cannot be a field of the body (FR-004, FR-005). The answer therefore 
 that the credential is dropped when the session ends, and the header `X-LedgerLens-Billing-Disclosure`, which says
 that the provider of the visitor may charge the visitor for the calls of the run (FR-003, FR-008). The answer carries
 `Cache-Control: no-store` with `Pragma: no-cache`, because an answer that holds a handle is not to be kept anywhere.
-The route of the run carries the same disclosure, because the visitor reads it before the first call of the provider.
+The route of the run carries the disclosure of the billing and the disclosure of the erasure, because the visitor reads
+them before the first call of the provider. It does not carry the disclosure of the storage: the answer of the route of
+the run holds no credential, and the header of the storage belongs to the two answers that hold one, the session and
+the credential (FR-003, FR-008, FR-021).
 
 The answer does not promise that the memory of the machine is erased. The product never writes the key to a file, a
 log or a trace and drops it when the credential ends, and nobody can promise that no copy of the text of the key

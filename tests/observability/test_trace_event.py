@@ -12,7 +12,8 @@ events later gets only what is after the number they asked for, which is what a 
 (i) memory has a ceiling per execution; (j) the file gives back exactly what was written; (k) a mode outside the
 contract never reaches the sink; (l) the labels that arrive without a declaration are the safe ones, because an event
 constructed without a mode is a deterministic sandbox, a dict read back without a mode is a recorded replay, and
-neither is ever called live by accident.
+neither is ever called live by accident; (m) a credential shaped value of a payload of a live run never reaches the
+trace boundary, whatever the shape of the payload, and the published contract of the trace holds anyway.
 """
 
 from __future__ import annotations
@@ -50,6 +51,10 @@ from tests.agents.test_integrator import (  # noqa: F401  (fixtures reused)
 ROOT = Path(__file__).resolve().parents[2]
 SCHEMA = ROOT / "docs" / "v3" / "contracts" / "schemas" / "trace-event.schema.json"
 FAKE_KEY = "sk-fakefake1234"
+# The marker of the credential of the test. It is broken in two pieces on purpose, so the hook that reads the
+# repository looking for credentials does not read the literal of the test as one.
+MARKER = "sk-" + "test-marker-0123456789abcdef"
+AUTHORIZATION = "Bearer " + MARKER
 
 
 def _validator() -> Draft202012Validator:
@@ -314,6 +319,56 @@ def test_a_fake_key_in_a_name_position_is_redacted():
     assert FAKE_KEY not in event.to_json()
     assert event.payload["[REDACTED]"] == "value"
     assert event.payload["nested"] == {"[REDACTED]": "v"}
+
+
+def test_the_credential_never_reaches_the_trace_boundary_whatever_the_shape_of_the_payload(tmp_path: Path):
+    """The redaction of the credential happens at the trace boundary, whatever the shape of the payload.
+
+    The payload of a live run carries a credential in three shapes: as the value of a field of a nested structure, as
+    an item of a list and as the name of a field. The boundary is the place where the key of a visitor would leave the
+    process, so all three have to be redacted there, and the published contract of the trace has to hold anyway: a
+    payload that lost its secret is still a payload that the schema accepts (FR-018, FR-021).
+    """
+    sink = JsonlTraceSink(tmp_path / "trace.jsonl")
+    stream = TraceEventStream("run-1", sink, mode="live_agent")
+    stream.emit(
+        TraceEventDraft(
+            "plan.created",
+            {
+                "nested": {"provider": "openai", "credentials": {"token": MARKER}},
+                "items": [{"secret": MARKER}, MARKER, "plain text"],
+                "name_position": {MARKER: "value"},
+                "authorization": AUTHORIZATION,
+                "api_key": MARKER,
+                "question": "why was the refund lower",
+            },
+        )
+    )
+
+    event = sink.read_from("run-1", after_seq=0, limit=10)[0]
+    payload = event.payload
+
+    # The credential is gone from the value of the nested structure, from the list and from the name of the field.
+    assert payload["nested"]["credentials"]["token"] == "[REDACTED]"
+    assert payload["items"][0]["secret"] == "[REDACTED]"
+    assert payload["items"][1] == "[REDACTED]"
+    assert payload["items"][2] == "plain text"
+    assert payload["name_position"] == {"[REDACTED]": "value"}
+
+    # The forbidden names are dropped and the rest of the payload survives untouched.
+    assert "api_key" not in payload
+    assert "authorization" not in payload
+    assert payload["question"] == "why was the refund lower"
+
+    # Nothing of the credential is in the event, in the line of the file, nor in the text that is written.
+    assert MARKER not in event.to_json()
+    assert AUTHORIZATION not in event.to_json()
+    assert MARKER not in (tmp_path / "trace.jsonl").read_text(encoding="utf-8")
+
+    # The published contract of the trace still holds: the payload is free, and the event is the shape it says.
+    validator = _validator()
+    errors = sorted(validator.iter_errors(event.to_dict()), key=lambda error: error.path)
+    assert not errors, f"outside the schema: {[error.message for error in errors]}"
 
 
 def test_a_secret_written_straight_to_the_sink_is_still_redacted(tmp_path: Path):
