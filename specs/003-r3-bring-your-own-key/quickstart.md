@@ -168,8 +168,10 @@ Two things to know about that answer:
 
 ## 7. Run a case
 
-A run carries a model, a question, a scenario, four caps (the calls of the models, the output tokens, the calls of
-the tools and the wall clock) and a cap of money. The body is the published contract of the request
+A run carries a model, a question, a scenario and the caps of the run. The contract asks for four of them (the
+calls of the models, the output tokens, the calls of the tools and the wall clock) and accepts two more: the cap of
+the money and the cap of the input tokens. The cap of the input tokens is checked on the plan of the run, before the
+call, because the size of the request is known before the call. The body is the published contract of the request
 ([live-run-request.schema.json](contracts/live-run-request.schema.json)), and the server checks it before it does
 anything.
 
@@ -490,8 +492,8 @@ Promised, and covered by the tests of the repository:
 - A handle of another session is refused with the same answer as a handle that never existed.
 - The catalogue shows only the models that were really tested, and the price of a model that was never verified is
   absent and never a guess.
-- Every run ends with exactly one terminal event, and no run passes the cap of the calls, the cap of the tokens or
-  the cap of the wall clock.
+- Every run ends with exactly one terminal event, and a run that would pass a cap stops at once and names the cap
+  that stopped it: the report of the run carries that name in `cut_by`.
 - The money of a run comes out of the code and never out of the model. It is a `Decimal` from the request to the
   report, and the report carries it as text.
 
@@ -509,7 +511,7 @@ Not promised, and said out loud by the product itself:
 | Code | Status | What it means |
 | --- | --- | --- |
 | `LIVE_MODE_OFFLINE` | 503 | The product runs offline, so the live mode is off. |
-| `SESSION_REQUIRED` | 401 | No valid session cookie, or the session is not yours. |
+| `SESSION_REQUIRED` | 401 | The session cookie is missing, malformed, expired or wrongly signed. A run of another session is a `NOT_FOUND`, not a `SESSION_REQUIRED`. |
 | `UNKNOWN_PROVIDER` | 422 | The provider is not one the live mode publishes. |
 | `CREDENTIAL_REFUSED` | 422 | The key is empty or too long. |
 | `MODEL_NOT_ALLOWED` | 422 | The model is not in the allowlist, or its status is not `tested`. |
