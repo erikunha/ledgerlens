@@ -35,6 +35,28 @@ def test_every_name_of_the_package_exists() -> None:
     assert missing == []
 
 
+def test_the_package_exports_the_contract_of_the_tool_calling_turn() -> None:
+    """The names the agent of the demo builds against are public names of the package.
+
+    The agent of the demo reaches the caller of the run through a bridge over the model caller, and the bridge is
+    written against these names. A name that lives in the module and never reaches the package is a name the caller
+    cannot find (FR-012).
+    """
+    names = (
+        "ProviderMessage",
+        "ToolCall",
+        "ToolSchema",
+        "request_from_wire",
+        "request_to_wire",
+        "response_from_wire",
+        "response_to_wire",
+    )
+
+    for name in names:
+        assert name in byok.__all__, name
+        assert hasattr(byok, name), name
+
+
 def test_the_package_exports_the_public_names_of_every_module() -> None:
     """A public name of a module that never reaches the package is a name the caller cannot find."""
     exported = set(byok.__all__)

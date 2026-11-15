@@ -15,17 +15,30 @@ arguments is refused by the last resort of the scrub, because the generic path c
 
 Everything offline, with no key and no network. The real adapter is exercised with a client that raises, and the
 client is put in the place of the factory of LangChain, so the path of the real adapter runs without a socket.
+
+This section covers the contract that carries a tool calling turn, the part the agent of the demo needs to reach
+the caller of the run: (i) the request carries the schemas of the tools the model may call and a message that is
+the answer of a tool, with the identifier of the call it answers; (ii) the response carries the calls the provider
+asked for, with the arguments as the text the provider sent, so that the budget and the trace never hold a float
+where a number belongs (FR-012); and the type of the arguments is a rule of the domain and not a hope: a text
+passes through unchanged, a mapping becomes the JSON text of the same values, and a number is refused, because a
+number that arrives as a number has already lost the exact text of the amount; (iii) the converters between the
+domain and the wire of the provider are pure functions that round-trip, so what the provider sent comes back
+exactly; (iv) the fake adapter scripts a tool call, so the bridge over the caller of the run is testable with no
+key and no network.
 """
 
 from __future__ import annotations
 
+import copy
 import os
 import traceback
 from typing import Any
 
 import pytest
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.outputs import ChatGeneration, ChatResult
 from pydantic import PrivateAttr
 
 from ledgerlens.byok.adapter import (
@@ -39,13 +52,21 @@ from ledgerlens.byok.adapter import (
     EndpointRefused,
     FakeProviderAdapter,
     LangChainProviderAdapter,
+    ProviderMessage,
     ProviderRequest,
+    ProviderResponse,
+    ToolCall,
+    ToolSchema,
     build_adapter,
     endpoint_refusal,
     endpoint_verdict,
+    request_from_wire,
+    request_to_wire,
+    response_from_wire,
+    response_to_wire,
     validate_endpoint,
 )
-from ledgerlens.byok.errors import ProviderCallFailed
+from ledgerlens.byok.errors import ByokError, ProviderCallFailed
 
 # The marker of the credential of the run: a shape that no known pattern of the repository matches, so only the
 # adapter that holds the key can scrub it out of a text.
@@ -108,6 +129,44 @@ def _refusing_client(monkeypatch: pytest.MonkeyPatch, error: BaseException) -> N
         raise error
 
     monkeypatch.setattr("langchain.chat_models.init_chat_model", _refuse)
+
+
+class CapturingChatModel(BaseChatModel):
+    """The client of the provider of the tests that watch what the adapter sends and what it reads back.
+
+    It keeps the messages it received and answers with the message the test gave it, so the path of the real
+    adapter runs without a socket and the test can see the turn that reached the provider (FR-012).
+    """
+
+    _sent: Any = PrivateAttr(default=None)
+    _answer: Any = PrivateAttr(default=None)
+
+    @property
+    def _llm_type(self) -> str:
+        """The name of the model in the traces, so the model of the test is never mistaken for a provider."""
+        return "ledgerlens-capturing"
+
+    def _generate(
+        self,
+        messages: list[Any],
+        stop: list[str] | None = None,
+        run_manager: Any = None,
+        **kwargs: Any,
+    ) -> ChatResult:
+        self._sent = list(messages)
+        return ChatResult(generations=[ChatGeneration(message=self._answer)])
+
+    def bind_tools(self, tools: Any, **kwargs: Any) -> CapturingChatModel:  # type: ignore[override]
+        """The same model: the tools do not change the client of the test."""
+        return self
+
+
+def _capturing_client(monkeypatch: pytest.MonkeyPatch, answer: AIMessage) -> CapturingChatModel:
+    """Puts a client that watches and answers in the place of the factory of LangChain."""
+    model = CapturingChatModel()
+    model._answer = answer
+    monkeypatch.setattr("langchain.chat_models.init_chat_model", lambda *args, **kwargs: model)
+    return model
 
 
 def _trace_of(error: BaseException) -> str:
@@ -573,3 +632,296 @@ def test_the_real_adapter_refuses_an_error_whose_text_is_not_built_from_its_argu
 
     assert MARKER not in str(raised.value)
     assert MARKER not in _trace_of(raised.value)
+
+
+# --- the contract that carries a tool calling turn ---------------------------------------------------------
+
+
+def _tool_schema() -> ToolSchema:
+    """The schema of the tool the tests use: a name, a description and the parameters it takes."""
+    return ToolSchema(
+        name="search_ledger",
+        description="search the ledger of the case",
+        parameters={
+            "type": "object",
+            "properties": {"query": {"type": "string"}},
+            "required": ["query"],
+        },
+    )
+
+
+def _tool_call() -> ToolCall:
+    """The call of a tool the provider asked for: an identifier, a name and the arguments as a text."""
+    return ToolCall(id="call_1", name="search_ledger", arguments='{"query": "tx-2048"}')
+
+
+def test_the_request_carries_the_schemas_of_the_tools_the_model_may_call() -> None:
+    """FR-012: the request names the tools the model may call, with the parameters of each one.
+
+    The agent of the demo binds its tools to the model, and the model can only call a tool it was told about.
+    """
+    request = ProviderRequest(model_id="gpt-4.1-mini", tools=(_tool_schema(),))
+
+    assert request.tools[0].name == "search_ledger"
+    assert request.tools[0].description == "search the ledger of the case"
+    assert request.tools[0].parameters["properties"]["query"] == {"type": "string"}
+
+
+def test_the_request_carries_the_answer_of_a_tool_and_the_call_it_answers() -> None:
+    """FR-012: the request carries a whole turn, and not only the role and the content of a message.
+
+    The agent asks the model, the model asks for a tool, the tool answers, and the answer of the tool goes back to
+    the model with the identifier of the call it answers.
+    """
+    request = ProviderRequest(
+        model_id="gpt-4.1-mini",
+        messages=(
+            ProviderMessage(role="user", content="find the payment"),
+            ProviderMessage(role="assistant", content="", tool_calls=(_tool_call(),)),
+            ProviderMessage(role="tool", content="three rows", tool_call_id="call_1"),
+        ),
+    )
+
+    assert request.messages[0].role == "user"
+    assert request.messages[1].tool_calls[0].id == "call_1"
+    assert request.messages[2].role == "tool"
+    assert request.messages[2].tool_call_id == "call_1"
+    assert request.messages[2].content == "three rows"
+
+
+def test_a_message_of_the_domain_is_also_a_mapping() -> None:
+    """The code that reads a request today reads the content of a message with `get`, and it keeps working."""
+    message = ProviderMessage(role="tool", content="three rows", tool_call_id="call_1")
+
+    assert message.get("content", "") == "three rows"
+    assert message["role"] == "tool"
+    assert message.get("tool_call_id") == "call_1"
+
+
+def test_the_response_carries_the_tool_calls_the_provider_asked_for() -> None:
+    """FR-012: the answer of the provider says which tools it wants, with the identifier of each call."""
+    response = ProviderResponse(content="", tool_calls=(_tool_call(),))
+
+    assert response.tool_calls[0].id == "call_1"
+    assert response.tool_calls[0].name == "search_ledger"
+    assert response.tool_calls[0].arguments == '{"query": "tx-2048"}'
+
+
+def test_the_arguments_of_a_tool_stay_a_text_and_never_become_a_number() -> None:
+    """FR-012: the arguments of a call arrive as a text and they stay a text.
+
+    The provider sends the arguments as a JSON text, and a domain that parsed that text would hold a float where
+    the provider sent a number with two decimals. The budget and the trace of the run read these arguments.
+    """
+    call = ToolCall(id="call_1", name="refund", arguments='{"amount": 12.50, "currency": "BRL"}')
+
+    assert isinstance(call.arguments, str)
+    assert call.arguments == '{"amount": 12.50, "currency": "BRL"}'
+
+    again = response_from_wire(response_to_wire(ProviderResponse(content="", tool_calls=(call,))))
+
+    assert again.tool_calls[0].arguments == '{"amount": 12.50, "currency": "BRL"}'
+
+
+def test_the_arguments_of_a_call_that_arrive_as_a_text_stay_that_text() -> None:
+    """FR-012: a text of arguments passes through the domain unchanged, character for character.
+
+    The text is what the provider sent, and the domain does not touch it.
+    """
+    call = ToolCall(id="call_1", name="refund", arguments='{"amount": 12.50, "currency": "BRL"}')
+
+    assert isinstance(call.arguments, str)
+    assert call.arguments == '{"amount": 12.50, "currency": "BRL"}'
+
+
+def test_the_arguments_of_a_call_that_arrive_as_a_mapping_become_a_json_text() -> None:
+    """FR-012: a client that parsed the arguments hands over a mapping, and the domain writes it back as a text.
+
+    The JSON text carries the values the mapping holds. The exact text of the provider is not restored, because the
+    client that parsed it is the one that lost it, and the domain does not pretend otherwise.
+    """
+    call = ToolCall(id="call_1", name="refund", arguments={"amount": "12.50", "currency": "BRL"})
+
+    assert isinstance(call.arguments, str)
+    assert call.arguments == '{"amount": "12.50", "currency": "BRL"}'
+
+
+def test_the_arguments_of_a_call_that_arrive_as_a_number_are_refused() -> None:
+    """FR-012: a number is refused, because the domain cannot write back the text of a number.
+
+    A float that arrives as a float has already lost the exact text of the amount: the domain cannot write '12.50'
+    back for a 12.5, and a text the domain invented would be a text the provider never sent. The budget and the
+    trace of the run would read it as if it were true.
+    """
+    with pytest.raises(ProviderCallFailed) as refused:
+        ToolCall(id="call_1", name="refund", arguments=10.5)  # type: ignore[arg-type]
+
+    assert isinstance(refused.value, ByokError)
+    assert "float" in str(refused.value)
+    assert "refund" in str(refused.value)
+    assert "the arguments of a call are the text the provider sent" in str(refused.value)
+
+
+def test_the_arguments_of_a_call_that_arrive_as_an_integer_are_refused() -> None:
+    """FR-012: an integer is refused the same way a float is, because the arguments are a text and not a number."""
+    with pytest.raises(ProviderCallFailed) as refused:
+        ToolCall(id="call_1", name="refund", arguments=10)  # type: ignore[arg-type]
+
+    assert isinstance(refused.value, ByokError)
+    assert "int" in str(refused.value)
+
+
+def test_the_arguments_of_a_call_of_a_provider_that_arrive_as_a_number_are_refused() -> None:
+    """FR-012: the shape the providers send is refused too, so a number never reaches the domain.
+
+    The call arrives as a mapping of the provider, with the arguments in the shape the provider chose, and a
+    number in that shape is a number the domain cannot read.
+    """
+    with pytest.raises(ProviderCallFailed) as refused:
+        ProviderResponse(
+            content="",
+            tool_calls=({"id": "call_1", "function": {"name": "refund", "arguments": 10.5}},),
+        )
+
+    assert isinstance(refused.value, ByokError)
+    assert "float" in str(refused.value)
+
+
+def test_the_response_of_the_provider_never_holds_a_number_in_the_arguments_of_a_call() -> None:
+    """FR-012: the answer of the provider holds texts in the arguments of its calls, whatever the provider sent."""
+    with pytest.raises(ProviderCallFailed):
+        ProviderResponse(content="", tool_calls=({"id": "call_1", "name": "refund", "arguments": 10.5},))
+
+
+def test_the_request_survives_the_round_trip_to_the_wire() -> None:
+    """What the provider sent comes back exactly: the turn, the tools and the model are the same."""
+    request = ProviderRequest(
+        model_id="gpt-4.1-mini",
+        messages=(
+            ProviderMessage(role="system", content="you are the investigator"),
+            ProviderMessage(role="user", content="find the payment"),
+            ProviderMessage(role="assistant", content="", tool_calls=(_tool_call(),)),
+            ProviderMessage(role="tool", content="three rows", tool_call_id="call_1"),
+        ),
+        tools=(_tool_schema(),),
+    )
+
+    assert request_from_wire(request_to_wire(request)) == request
+
+
+def test_a_request_without_tools_survives_the_round_trip_to_the_wire() -> None:
+    """A request that names no tool is a request like any other, and it comes back the same."""
+    request = ProviderRequest(
+        model_id="gpt-4.1-mini", messages=(ProviderMessage(role="user", content="find the payment"),)
+    )
+
+    assert request_from_wire(request_to_wire(request)) == request
+
+
+def test_the_response_survives_the_round_trip_to_the_wire() -> None:
+    """The answer of the provider comes back exactly, with the tokens it counted."""
+    response = ProviderResponse(
+        content="the answer",
+        input_tokens=11,
+        output_tokens=7,
+        model_id="gpt-4.1-mini",
+        tool_calls=(_tool_call(),),
+    )
+
+    assert response_from_wire(response_to_wire(response)) == response
+
+
+def test_the_wire_carries_the_arguments_of_a_call_as_the_text_the_provider_sent() -> None:
+    """The wire is the shape of the provider, and the provider sends the arguments as a text."""
+    request = ProviderRequest(
+        model_id="gpt-4.1-mini",
+        messages=(ProviderMessage(role="assistant", content="", tool_calls=(_tool_call(),)),),
+    )
+
+    sent = request_to_wire(request)["messages"][0]["tool_calls"][0]
+
+    assert sent["id"] == "call_1"
+    assert sent["function"]["name"] == "search_ledger"
+    assert sent["function"]["arguments"] == '{"query": "tx-2048"}'
+
+
+def test_the_converters_of_the_wire_are_pure() -> None:
+    """The converters read and they build, and they never write what they are given."""
+    payload = {
+        "model": "gpt-4.1-mini",
+        "messages": [{"role": "tool", "tool_call_id": "call_1", "content": "three rows"}],
+        "tools": [
+            {
+                "type": "function",
+                "function": {"name": "search_ledger", "description": "search", "parameters": {}},
+            }
+        ],
+    }
+    before = copy.deepcopy(payload)
+
+    first = request_from_wire(payload)
+    second = request_from_wire(payload)
+
+    assert payload == before
+    assert first == second
+
+
+def test_a_provider_answer_that_cannot_be_read_is_refused() -> None:
+    """A provider that answers without a choice is a provider that broke, and the run has to know."""
+    with pytest.raises(ProviderCallFailed):
+        response_from_wire({"choices": []})
+
+
+# --- the fake adapter scripts a tool call ------------------------------------------------------------------
+
+
+def test_the_fake_adapter_scripts_a_tool_call() -> None:
+    """The bridge over the caller of the run is tested with the fake, with no key and no network (FR-012)."""
+    adapter = FakeProviderAdapter().script_tool_call("search_ledger", '{"query": "tx-2048"}', call_id="call_1")
+
+    response = adapter.complete(ProviderRequest(model_id="gpt-4.1-mini"))
+
+    assert response.tool_calls[0].id == "call_1"
+    assert response.tool_calls[0].name == "search_ledger"
+    assert response.tool_calls[0].arguments == '{"query": "tx-2048"}'
+
+
+def test_the_fake_adapter_answers_a_tool_call_as_a_chat_model_too() -> None:
+    """The fake is a chat model too, and its answer carries the call of the tool."""
+    adapter = FakeProviderAdapter().script_tool_call("search_ledger", '{"query": "tx-2048"}', call_id="call_1")
+
+    answer = adapter.chat_model("gpt-4.1-mini").invoke([HumanMessage("the question")])
+
+    assert answer.tool_calls[0]["name"] == "search_ledger"
+    assert answer.tool_calls[0]["id"] == "call_1"
+    assert answer.tool_calls[0]["args"] == {"query": "tx-2048"}
+
+
+def test_the_real_adapter_sends_the_answer_of_a_tool_and_reads_the_call_it_asked_for(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """FR-012: the real adapter carries a whole turn to the provider and reads the calls of the answer back."""
+    model = _capturing_client(
+        monkeypatch,
+        AIMessage(content="", tool_calls=[{"name": "search_ledger", "args": {"query": "tx-2048"}, "id": "call_1"}]),
+    )
+    adapter = LangChainProviderAdapter("openai", "sk-visitor-key-not-real")
+    request = ProviderRequest(
+        model_id="gpt-4.1-mini",
+        messages=(
+            ProviderMessage(role="user", content="find the payment"),
+            ProviderMessage(role="assistant", content="", tool_calls=(_tool_call(),)),
+            ProviderMessage(role="tool", content="three rows", tool_call_id="call_1"),
+        ),
+        tools=(_tool_schema(),),
+    )
+
+    response = adapter.complete(request)
+
+    sent = model._sent
+    assert sent[0].type == "human"
+    assert sent[1].type == "ai"
+    assert sent[2].type == "tool"
+    assert sent[2].tool_call_id == "call_1"
+    assert response.tool_calls[0].id == "call_1"
+    assert response.tool_calls[0].name == "search_ledger"

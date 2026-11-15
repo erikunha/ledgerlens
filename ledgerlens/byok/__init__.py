@@ -15,6 +15,9 @@ What the package holds today:
   FR-010, FR-011, FR-012);
 * `ledgerlens.byok.adapter`: the interface of a provider, the fake one of the tests, the rule of the endpoint and
   the boundary where the credential of a run is scrubbed out of the error of a provider (FR-007, FR-017, FR-018).
+  It also holds the contract of a tool calling turn: the schemas of the tools the model may call, the message that
+  is the answer of a tool with the identifier of the call it answers, the calls the provider asked for, and the
+  pure converters between the domain and the wire of the provider (FR-012).
 
 Why the names are re-exported here: a caller of the live mode has one import for the pieces it needs and for the
 refusals it may have to answer, and the names of the package are the public names of the slice.
@@ -37,11 +40,18 @@ from ledgerlens.byok.adapter import (
     FakeProviderAdapter,
     LangChainProviderAdapter,
     ProviderAdapter,
+    ProviderMessage,
     ProviderRequest,
     ProviderResponse,
+    ToolCall,
+    ToolSchema,
     build_adapter,
     endpoint_refusal,
     endpoint_verdict,
+    request_from_wire,
+    request_to_wire,
+    response_from_wire,
+    response_to_wire,
     validate_endpoint,
 )
 from ledgerlens.byok.budget import (
@@ -126,14 +136,21 @@ __all__ = [
     "ProfileStatus",
     "ProviderAdapter",
     "ProviderCallFailed",
+    "ProviderMessage",
     "ProviderRegistry",
     "ProviderRequest",
     "ProviderResponse",
+    "ToolCall",
+    "ToolSchema",
     "UnknownProvider",
     "UsageRefused",
     "build_adapter",
     "endpoint_refusal",
     "endpoint_verdict",
+    "request_from_wire",
+    "request_to_wire",
     "required_capabilities",
+    "response_from_wire",
+    "response_to_wire",
     "validate_endpoint",
 ]
