@@ -51,6 +51,7 @@ from ledgerlens.api.live_case import (
 from ledgerlens.api.live_run import LIVE_MODE, LiveRunCoordinator, LiveRunPlan, ModelCaller
 from ledgerlens.byok.adapter import FakeProviderAdapter, ProviderAdapter, ProviderResponse
 from ledgerlens.byok.budget import BudgetCoordinator
+from ledgerlens.byok.errors import ProviderCallFailed
 from ledgerlens.byok.registry import ModelProfile, Pricing, ProviderRegistry
 from ledgerlens.byok.vault import CredentialVault
 from ledgerlens.embeddings import FastEmbedEmbeddings
@@ -624,6 +625,49 @@ def test_the_arguments_that_are_not_a_json_text_travel_unchanged_too() -> None:
 
     request = adapter.calls[1]
     assert request.messages[1].tool_calls[0].arguments == NOT_JSON_ARGUMENTS
+
+
+def test_the_bridge_refuses_a_number_that_arrives_in_the_arguments() -> None:
+    """FR-012: the rule of the arguments is the rule of the domain, and the bridge refuses what the domain refuses.
+
+    Why the number matters: a number that arrives as a number has already lost the exact text of the amount, so
+    the domain refuses it. A bridge that wrote the number as a text would invent a text the provider never sent,
+    and the budget and the trace of the run would read it as if it were true (FR-012).
+    """
+    # The public rule of the domain, imported here so that the file of the test reads even before the rule is
+    # public: the rule is the one of the domain, and the bridge may not be more permissive than it.
+    from ledgerlens.byok import arguments_text
+
+    adapter = FakeProviderAdapter(provider="openai", api_key=MARKER)
+    adapter.script_answer("the answer")
+    bridge = BridgeChatModel(caller=_caller(adapter), model_id=MODEL_ID, slot=SLOT_AGENT).bind_tools([_query_tool()])
+    number = 10.5
+
+    with pytest.raises(ProviderCallFailed) as refusal:
+        bridge.invoke(
+            [
+                HumanMessage(content=QUESTION),
+                AIMessage(
+                    content="",
+                    additional_kwargs={
+                        "tool_calls": [
+                            {
+                                "id": "call_1",
+                                "type": "function",
+                                "function": {"name": "query_ledger", "arguments": number},
+                            }
+                        ]
+                    },
+                ),
+            ]
+        )
+
+    # The refusal of the bridge is the refusal of the domain, with the same words.
+    with pytest.raises(ProviderCallFailed) as domain_refusal:
+        arguments_text(number, name="query_ledger")
+    assert str(refusal.value) == str(domain_refusal.value)
+    # And the provider was never asked: the turn was refused before it left the bridge.
+    assert adapter.calls == []
 
 
 def test_the_run_carries_the_text_of_the_arguments_of_the_provider(case: DemoCase) -> None:

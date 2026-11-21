@@ -55,21 +55,37 @@ so that every execution of it reserves one call of the budget through `caller.ca
 not rewritten: `build_integrator` already takes a model for each of the four slots that FR-012 names, and the live
 mode fills the four with the bridge.
 
-**The bridge is the only place where the turn of LangChain and the turn of the domain meet.** A message of the
+**The bridge is the only place where the turn of the agent and the turn of the domain meet.** A message of the
 domain carries the role, the content and, when the role asks for it, the calls of the tools; the request of the
 domain carries the schemas of the tools the model may call; the answer of the domain carries the text of the
 provider and the calls it asked for, with the arguments of a call as the text the provider sent. The bridge reads a
 turn of LangChain into that request and reads that answer back into the turn of LangChain, the calls of the tools
-included, so the agent runs its loop exactly as it always ran it. The model of the request is always the model of
-the run: the bridge asks the caller and never decides a model of its own, because a run that asked the provider for
-another model would compare two models under one identifier and the trace of the run would lie about what ran
-(FR-013).
+included, so the agent runs its loop exactly as it always ran it. The adapter of the provider translates as well,
+and it is the layer that talks to a real provider: it reads the request of the domain as the messages of LangChain
+(`_as_messages`) and it reads the calls of the tools of the provider back into the turn of the domain
+(`_tool_calls_of`). What belongs to the bridge alone is the meeting of the agent with the domain: the agent runs
+on the bridge, and the adapter is not on the path of the agent, it is the layer behind the caller of the run. The
+model of the request is always the model of the run: the bridge asks the caller and never decides a model of its
+own, because a run that asked the provider for another model would compare two models under one identifier and the
+trace of the run would lie about what ran (FR-013).
 
 The text of the arguments travels inside the domain: the budget, the trace and the request of the domain see the
-text the provider sent, byte for byte, and a text that is not a JSON text at all travels unchanged. The wire
+text the provider sent, byte for byte, and a text that is not a JSON text at all travels unchanged. The rule of the
+arguments of a call is the rule of the domain, and the bridge uses it instead of a rule of its own: a number that
+arrives as a number is refused, because it has already lost the exact text of the amount, and a bridge that wrote
+it as a text would invent a text the provider never sent. The wire
 converters of the domain are NOT on this path: the live path is the bridge, the caller, the adapter and the client
 of the provider, and the client of the provider parses the arguments into a mapping before it sends them. The
 promise of the text therefore holds inside the process, not in the body of the request of the provider (FR-009).
+
+**The limit of the text, said out loud: the client of the provider may lose it before the adapter sees it.** The
+adapter reads the raw text of the arguments from the answer of the client, and the fake of the repository answers
+like a real client does, with the raw text next to the parsed call. The client that this repository pins for
+OpenAI (`langchain-openai`) does NOT keep it: it parses the arguments of a call into a mapping and drops the text,
+so a number that the provider wrote with two decimals reaches the adapter with one. The guarantee of the text is
+therefore a guarantee of the PROCESS, not yet a guarantee of the wire, and the milestone does not claim more than
+that. What would close the limit is a client that keeps the raw text of the arguments, or an adapter that talks to
+the provider without the client of the framework between it and the HTTP request (FR-009, FR-012).
 
 **The four slots of the agent are the four bridges of the run, and the judge of the demo is not one of them.** The
 model of the agent, the triage model, the model that writes the SQL and the policy model are bridges over the

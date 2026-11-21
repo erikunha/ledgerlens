@@ -26,6 +26,12 @@ number that arrives as a number has already lost the exact text of the amount; (
 domain and the wire of the provider are pure functions that round-trip, so what the provider sent comes back
 exactly; (iv) the fake adapter scripts a tool call, so the bridge over the caller of the run is testable with no
 key and no network.
+
+This section also pins the fix of the raw text of the arguments on the path of the real provider: the fake answers
+like a real client, with the raw text of the arguments next to the parsed call, and the adapter of a real provider
+reads that raw text, so the exact text of the amount survives the client (FR-012). And it pins the rule of the
+arguments: the rule is public and it is one rule, `arguments_text` of the package, and a text that looks like a
+number is a text and stays that text (FR-012).
 """
 
 from __future__ import annotations
@@ -895,6 +901,134 @@ def test_the_fake_adapter_answers_a_tool_call_as_a_chat_model_too() -> None:
     assert answer.tool_calls[0]["name"] == "search_ledger"
     assert answer.tool_calls[0]["id"] == "call_1"
     assert answer.tool_calls[0]["args"] == {"query": "tx-2048"}
+
+
+# --- the raw text of the arguments travels with the call ----------------------------------------------------
+
+
+def test_the_fake_answers_a_tool_call_with_the_raw_text_next_to_the_parsed_call() -> None:
+    """F1: the fake answers like a real client: the raw text sits next to the parsed call.
+
+    A real provider sends the arguments of a call as a text, and the client of LangChain parses that text into a
+    mapping. The two live side by side in the answer, and the raw text is the one the domain reads (FR-012).
+    """
+    adapter = FakeProviderAdapter().script_tool_call("refund", '{"amount": 10.50}', call_id="call_1")
+
+    answer = adapter.chat_model("gpt-4.1-mini").invoke([HumanMessage("the question")])
+
+    raw = answer.additional_kwargs["tool_calls"][0]
+    assert raw["id"] == "call_1"
+    assert raw["function"]["name"] == "refund"
+    assert raw["function"]["arguments"] == '{"amount": 10.50}'
+
+
+def test_the_real_adapter_reads_the_raw_text_of_the_arguments_through_the_fake(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """F1: the path of the real provider keeps the exact text of the amount.
+
+    The client of the provider is the fake, so the path of the real adapter runs without a socket. The parsed call
+    of the client has already lost the decimals of the amount, and the raw text is what saves them (FR-012).
+    """
+    fake = FakeProviderAdapter().script_tool_call("refund", '{"amount": 10.50}', call_id="call_1")
+    monkeypatch.setattr(
+        "langchain.chat_models.init_chat_model",
+        lambda *args, **kwargs: fake.chat_model("gpt-4.1-mini"),
+    )
+    adapter = LangChainProviderAdapter("openai", "sk-visitor-key-not-real")
+
+    response = adapter.complete(ProviderRequest(model_id="gpt-4.1-mini"))
+
+    assert response.tool_calls[0].arguments == '{"amount": 10.50}'
+    assert isinstance(response.tool_calls[0].arguments, str)
+
+
+def test_the_real_adapter_keeps_the_raw_text_of_the_arguments_of_a_provider(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """F1: the answer of a real provider carries the raw text, and the domain reads it.
+
+    The client of the provider answers the way a provider answers: the parsed call and the raw text, side by side.
+    The branch that reads the raw text is the one that keeps the decimals of the amount (FR-012).
+    """
+    _capturing_client(
+        monkeypatch,
+        AIMessage(
+            content="",
+            tool_calls=[{"name": "refund", "args": {"amount": 10.5}, "id": "call_1"}],
+            additional_kwargs={
+                "tool_calls": [
+                    {
+                        "id": "call_1",
+                        "type": "function",
+                        "function": {"name": "refund", "arguments": '{"amount": 10.50}'},
+                    }
+                ]
+            },
+        ),
+    )
+    adapter = LangChainProviderAdapter("openai", "sk-visitor-key-not-real")
+
+    response = adapter.complete(ProviderRequest(model_id="gpt-4.1-mini"))
+
+    assert response.tool_calls[0].arguments == '{"amount": 10.50}'
+    assert isinstance(response.tool_calls[0].arguments, str)
+
+
+def test_the_arguments_of_a_call_that_look_like_a_number_stay_that_text() -> None:
+    """F3: a text that looks like a number is a text and stays that text.
+
+    The text '10.50' is not a number the domain may hold: a float would have lost the decimals of the amount, and
+    the budget and the trace of the run read exactly what the provider sent (FR-012).
+    """
+    call = ToolCall(id="c1", name="refund", arguments="10.50")
+
+    assert isinstance(call.arguments, str)
+    assert call.arguments == "10.50"
+
+
+def test_the_arguments_of_a_call_are_always_a_text() -> None:
+    """F3: the arguments of a call are a text in every shape the domain accepts.
+
+    The shape the providers send is a text too, and the rule holds for it exactly as it holds for the plain shape.
+    """
+    call = ToolCall.from_any({"id": "c1", "function": {"name": "refund", "arguments": "10.50"}})
+
+    assert isinstance(call.arguments, str)
+    assert call.arguments == "10.50"
+
+
+def test_the_rule_of_the_arguments_of_a_call_is_public_in_the_package() -> None:
+    """F2: the rule of the arguments is one rule, and it is a public name of the package.
+
+    The bridge of the API layer reads the calls of the model, and it must read them with the rule of the domain
+    and not with a copy of it: a copy that is more forgiving would let a number through (FR-012).
+    """
+    from ledgerlens import byok
+    from ledgerlens.byok.adapter import arguments_text
+
+    assert "arguments_text" in byok.__all__
+    assert byok.arguments_text is arguments_text
+
+
+def test_the_public_rule_keeps_a_text_that_looks_like_a_number_as_it_is() -> None:
+    """F2 and F3: the public rule passes a text through unchanged, character for character."""
+    from ledgerlens.byok.adapter import arguments_text
+
+    assert arguments_text("10.50") == "10.50"
+    assert isinstance(arguments_text("10.50"), str)
+
+
+def test_the_public_rule_refuses_a_number() -> None:
+    """F2: the public rule refuses a number, because a float has already lost the exact text of the amount."""
+    from ledgerlens.byok.adapter import arguments_text
+
+    with pytest.raises(ProviderCallFailed) as refused:
+        arguments_text(10.5, name="refund")
+
+    assert isinstance(refused.value, ByokError)
+    assert "float" in str(refused.value)
+    assert "refund" in str(refused.value)
 
 
 def test_the_real_adapter_sends_the_answer_of_a_tool_and_reads_the_call_it_asked_for(

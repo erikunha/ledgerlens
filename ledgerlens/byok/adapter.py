@@ -41,6 +41,11 @@ The type of the arguments is a rule the domain keeps whatever the caller hands o
 unchanged, a mapping of arguments becomes the JSON text of the same values, and a number is refused. The reason is
 the money: a number that arrives as a float has already lost the exact text of the amount, so the domain cannot
 write '12.50' back for a 12.5, and a text the domain invented would be a text the provider never sent (FR-012).
+The rule is public and it is one rule: it lives in `arguments_text`, and every layer that reads the calls of a tool
+reads them with it, because a copy of the rule that is more forgiving would let a number through.
+
+The fake answers the way a real client answers: the parsed call and the raw text of its arguments, side by side.
+The domain reads the raw text, because the parsed call has already lost the decimals of an amount (FR-012).
 """
 
 from __future__ import annotations
@@ -83,6 +88,7 @@ __all__ = [
     "ToolCall",
     "ToolSchema",
     "UnknownProvider",
+    "arguments_text",
     "build_adapter",
     "endpoint_refusal",
     "endpoint_verdict",
@@ -210,7 +216,7 @@ class ToolCall:
         The rule lives here, and not only in the converters, so a call that is built by hand cannot carry a number
         in its arguments either (FR-012).
         """
-        object.__setattr__(self, "arguments", _arguments_text(self.arguments, name=self.name))
+        object.__setattr__(self, "arguments", arguments_text(self.arguments, name=self.name))
 
     @classmethod
     def from_any(cls, call: ToolCall | Mapping[str, Any]) -> ToolCall:
@@ -228,7 +234,7 @@ class ToolCall:
         return cls(
             id=str(call.get("id") or ""),
             name=name,
-            arguments=_arguments_text(arguments, name=name),
+            arguments=arguments_text(arguments, name=name),
         )
 
 
@@ -329,8 +335,12 @@ class ProviderResponse:
         object.__setattr__(self, "tool_calls", tuple(ToolCall.from_any(call) for call in self.tool_calls))
 
 
-def _arguments_text(arguments: object, *, name: str = "") -> str:
+def arguments_text(arguments: object, name: str = "") -> str:
     """The arguments of a call as a text, whatever the caller handed over.
+
+    Why this rule is public: the type of the arguments is one rule of the domain, and every layer that reads the
+    calls of a tool has to read them with this rule and not with a copy of it. A copy that is more forgiving would
+    let a number through, and the number would already have lost the exact text of the amount (FR-012).
 
     Why a mapping of arguments goes back to a text: the domain keeps the arguments of a call as the text the
     provider sent, and a client that parsed that text into a mapping hands the mapping over (FR-012). The JSON
@@ -338,10 +348,17 @@ def _arguments_text(arguments: object, *, name: str = "") -> str:
     because the client that parsed it is the one that lost it, and a number inside a mapping has already lost its
     exact text there.
 
+    Why a text passes through unchanged: the text is what the provider sent, character for character. A text that
+    looks like a number is a text and not a number, because a float would have lost the decimals of the amount
+    (FR-012).
+
     Why a number is refused and not written as a text: a float that arrives as a float has already lost the exact
     text of the amount, so the domain cannot write '12.50' back for a 12.5. A text the domain invented would be a
     text the provider never sent, and the budget and the trace of the run would read it as if it were true
     (FR-012).
+
+    The name of the call goes in the message of the refusal, so the caller reads which call the domain could not
+    read.
     """
     if arguments is None:
         return ""
@@ -829,7 +846,7 @@ def _tool_calls_of(answer: AIMessage) -> tuple[ToolCall, ...]:
             ToolCall(
                 id=str(item.get("id") or ""),
                 name=name,
-                arguments=_arguments_text(arguments, name=name),
+                arguments=arguments_text(arguments, name=name),
             )
         )
     if calls:
@@ -838,7 +855,7 @@ def _tool_calls_of(answer: AIMessage) -> tuple[ToolCall, ...]:
         ToolCall(
             id=str(call.get("id") or ""),
             name=str(call.get("name") or ""),
-            arguments=_arguments_text(call.get("args"), name=str(call.get("name") or "")),
+            arguments=arguments_text(call.get("args"), name=str(call.get("name") or "")),
         )
         for call in answer.tool_calls
     )
@@ -888,6 +905,17 @@ class _ScriptedChatModel(BaseChatModel):
         answer = self._script.pop(0)
         if answer.error is not None:
             raise _scrubbed_error(answer.error, self._credential) from None
+        # The fake answers the way a real client answers: the parsed call and the raw text of its arguments, side by
+        # side. The raw text is the one the domain reads, because the parsed call has already lost the decimals of an
+        # amount (FR-012).
+        raw_calls = [
+            {
+                "id": call.id,
+                "type": "function",
+                "function": {"name": call.name, "arguments": call.arguments},
+            }
+            for call in answer.tool_calls
+        ]
         message = AIMessage(
             content=answer.content,
             tool_calls=[
@@ -898,6 +926,7 @@ class _ScriptedChatModel(BaseChatModel):
                 }
                 for call in answer.tool_calls
             ],
+            additional_kwargs={"tool_calls": raw_calls} if raw_calls else {},
             usage_metadata={
                 "input_tokens": answer.input_tokens,
                 "output_tokens": answer.output_tokens,

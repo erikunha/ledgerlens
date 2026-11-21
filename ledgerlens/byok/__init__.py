@@ -17,7 +17,9 @@ What the package holds today:
   the boundary where the credential of a run is scrubbed out of the error of a provider (FR-007, FR-017, FR-018).
   It also holds the contract of a tool calling turn: the schemas of the tools the model may call, the message that
   is the answer of a tool with the identifier of the call it answers, the calls the provider asked for, and the
-  pure converters between the domain and the wire of the provider (FR-012).
+  pure converters between the domain and the wire of the provider (FR-012). The rule of the type of the arguments
+  of a call is public there and it is one rule: `arguments_text`, because every layer that reads the calls of a
+  tool has to read them with the rule of the domain and not with a copy of it (FR-012).
 
 Why the names are re-exported here: a caller of the live mode has one import for the pieces it needs and for the
 refusals it may have to answer, and the names of the package are the public names of the slice.
@@ -45,6 +47,7 @@ from ledgerlens.byok.adapter import (
     ProviderResponse,
     ToolCall,
     ToolSchema,
+    arguments_text,
     build_adapter,
     endpoint_refusal,
     endpoint_verdict,
@@ -144,6 +147,7 @@ __all__ = [
     "ToolSchema",
     "UnknownProvider",
     "UsageRefused",
+    "arguments_text",
     "build_adapter",
     "endpoint_refusal",
     "endpoint_verdict",

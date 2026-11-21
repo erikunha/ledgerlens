@@ -29,6 +29,11 @@ a number with one, and a text that is not a JSON text would come back as an empt
 provider said (FR-012). The bridge therefore keeps the raw text of the arguments next to the mapping the client of
 LangChain needs, and the next request of the run carries the raw text, byte for byte.
 
+The rule of the type of the arguments is the rule of the domain (`arguments_text` of `ledgerlens.byok`), and the
+bridge uses it instead of a rule of its own: a number that arrives as a number is refused by the domain, because it
+has already lost the exact text of the amount, and a bridge that wrote it as a text would invent a text the provider
+never sent (FR-012).
+
 What is NOT on the live path, and why: the wire converters of the domain (`request_to_wire` and
 `response_from_wire` of `ledgerlens.byok.adapter`) are not on the path of a live run. The path is the bridge, the
 caller of the run and the adapter of the provider, and the adapter hands the request of the domain to the client of
@@ -67,7 +72,6 @@ turns any failure of a cancelled run back into the cancellation, so the run ends
 from __future__ import annotations
 
 import json
-import logging
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -84,13 +88,12 @@ from pydantic import Field
 
 from ledgerlens.agents.integrator import Integrator, build_integrator, investigate
 from ledgerlens.api.live_run import LiveRunPlan, ModelCaller, RunCancelled
+from ledgerlens.byok import arguments_text
 from ledgerlens.byok.adapter import ProviderMessage, ProviderRequest, ProviderResponse, ToolCall, ToolSchema
 from ledgerlens.byok.errors import ByokError
 from ledgerlens.memory.long_term import CaseMemory
 from ledgerlens.run_context import RunContext
 from ledgerlens.tools.fx import FxClient
-
-log = logging.getLogger(__name__)
 
 __all__ = [
     "MAX_BRIDGE_REQUESTS",
@@ -141,7 +144,7 @@ class BridgeChatModel(BaseChatModel):
     """A chat model whose every generation is one call of the caller of the run.
 
     Why the class exists and not a function: the agent of the demo expects a chat model, and the run expects a
-    caller. The bridge is the object that is both, and it is the only place where the turn of LangChain and the turn
+    caller. The bridge is the object that is both, and it is the only place where the turn of the agent and the turn
     of the domain meet (FR-012).
 
     Why the model of the request is the model of the run: a run that asked the provider for another model would
@@ -472,19 +475,6 @@ def _text_of(message: BaseMessage) -> str:
     return "".join(parts)
 
 
-def _arguments_text(arguments: object) -> str:
-    """The arguments of a call as a text, whatever the caller handed over.
-
-    Why the arguments of a call travel as a text: the providers send them as a JSON text, and the budget and the
-    trace of the run read exactly what the provider said (FR-012).
-    """
-    if arguments is None:
-        return ""
-    if isinstance(arguments, str):
-        return arguments
-    return json.dumps(arguments, sort_keys=False, default=str)
-
-
 def _arguments_mapping(arguments: str) -> dict[str, Any]:
     """The arguments of a call as the mapping the client of LangChain expects.
 
@@ -503,16 +493,17 @@ def _arguments_mapping(arguments: str) -> dict[str, Any]:
 def _tool_call_of(call: Mapping[str, Any]) -> ToolCall:
     """The call of a tool of the domain, from a call of LangChain.
 
-    Why the arguments are read as a text and never as a mapping: the domain keeps the arguments of a call as the
+    Why the arguments are read with the rule of the domain: the domain keeps the arguments of a call as the
     text the provider sent, and a mapping here would be a number that lost its decimals on the way (FR-012).
     """
     arguments = call.get("args")
     if arguments is None:
         arguments = call.get("arguments")
+    name = str(call.get("name") or "")
     return ToolCall(
         id=str(call.get("id") or ""),
-        name=str(call.get("name") or ""),
-        arguments=_arguments_text(arguments),
+        name=name,
+        arguments=arguments_text(arguments, name=name),
     )
 
 
@@ -523,6 +514,10 @@ def _tool_calls_of(message: BaseMessage) -> tuple[ToolCall, ...]:
     sent, and a text that was parsed and written back is not the same text. A number that the provider wrote with
     two decimals would come back with one, and a text that is not a JSON text would come back as an empty object
     (FR-012).
+
+    Why the rule of the domain and not a rule of the bridge: the type of the arguments of a call is one rule of
+    the domain, and a number that arrives as a number is refused by it, because it has already lost the exact
+    text of the amount (FR-012).
     """
     raw = getattr(message, "additional_kwargs", None) or {}
     calls: list[ToolCall] = []
@@ -534,11 +529,12 @@ def _tool_calls_of(message: BaseMessage) -> tuple[ToolCall, ...]:
         arguments = source.get("arguments")
         if arguments is None:
             arguments = item.get("args")
+        name = str(source.get("name") or item.get("name") or "")
         calls.append(
             ToolCall(
                 id=str(item.get("id") or ""),
-                name=str(source.get("name") or item.get("name") or ""),
-                arguments=_arguments_text(arguments),
+                name=name,
+                arguments=arguments_text(arguments, name=name),
             )
         )
     if calls:
