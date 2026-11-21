@@ -1,0 +1,702 @@
+"""The sandbox facade: the routes of the versioned contract of the design package.
+
+Why it exists: the visitor works in a browser and needs two things first, a private branch of a published case and the
+status of that branch. The facade follows `docs/v3/contracts/openapi.yaml`, so the interface that is paused can be
+written against the contract without a translation layer.
+
+What the contract fixes:
+
+* the paths are `/v1/sessions`, `/v1/sandboxes` and `/v1/sandboxes/{sandbox_id}`, and the parameter is `sandbox_id`;
+* the body of a sandbox answer is exactly the resource `Sandbox`: `id`, `base_snapshot_id`, `snapshot_sha256`,
+  `revision` and `expires_at`, and it accepts no other field;
+* the body of a session is exactly the resource `Session`: `id`, `expires_at` and `mode_capabilities`;
+* an error is exactly the resource `Error`: `code`, `message`, `retryable` and `request_id`;
+* the session is the cookie `ledgerlens_session`, HttpOnly and SameSite Lax, and never a header nor a body field.
+
+Where the rest of the branch lives: the resource `Sandbox` of the contract carries no field for the current canonical
+hash of the branch and none for its state, and it accepts no other field. The two therefore travel in the headers
+`X-LedgerLens-Branch-Hash` and `X-LedgerLens-Branch-State`, and the version of the answers travels in the header
+`X-LedgerLens-Schema-Version` (FR-042). The domain layer keeps them all three.
+
+Three paths of the facade are beyond the contract of the design package, and ADR-023 declares them: the diff of the
+branch, the history of the branch and the undo of the last mutation. The contract of the package cannot be edited,
+so the difference is written down here and in the test that guards the paths.
+
+The cleanup of the expired branches is a job of the process, not a path: the lifespan of the app starts a daemon
+thread that sweeps the expired branches every thirty seconds, and the same sweep runs from the command line, so the
+two ways of cleaning up cannot disagree (ADR-029).
+
+The end of a session is a path, and it purges the case memory of the session together with its branches: the memory
+of an anonymous visitor dies with the visitor, and the folder it lived in does not stay under an identifier that
+nobody can reach again (ADR-030).
+
+No route accepts a file path, a SQL statement or a URL, and no route writes to the published snapshot (FR-041).
+
+The runtime folder of the facade holds the key of the sessions, the memory of the sessions and the base of the
+scenarios, so a folder that is injected keeps the whole material of the sandbox inside itself.
+
+The facade has a router of its own, the way the live facade has one, so that a deployment may mount the two facades
+in one application (ADR-039). The router carries the routes and nothing else: the handlers of the refusals live on the
+application, because an included router brings its routes and its lifespan and nothing else. The routes of the
+application are the routes of the router, written once, so that the two answer the same thing.
+"""
+
+from __future__ import annotations
+
+import logging
+import secrets
+from collections.abc import AsyncIterator, Callable
+from contextlib import asynccontextmanager
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Annotated, Any
+
+from fastapi import APIRouter, FastAPI, Header, Query, Request, Security
+from fastapi import Path as PathParam
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse, Response
+from fastapi.security import APIKeyCookie
+from pydantic import BaseModel, ConfigDict, Field
+
+from ledgerlens.byok.vault import CredentialVault
+from ledgerlens.config import get_settings
+from ledgerlens.sandbox.branch import (
+    BRANCH_ID_PREFIX,
+    BranchExpired,
+    BranchHashMismatch,
+    BranchLayer,
+    InvalidSessionId,
+    SandboxBranch,
+)
+from ledgerlens.sandbox.factory import build_branch_store
+from ledgerlens.sandbox.memory import purge_session_memory
+from ledgerlens.sandbox.mutation import (
+    CODE_INVALID_PAYLOAD,
+    CODE_INVALID_REQUEST,
+    CODE_READ_ONLY_FIELD,
+    UNDO_KIND,
+    MutationCommand,
+    MutationRejected,
+    read_only_field_in,
+    status_for_code,
+)
+from ledgerlens.sandbox.session import InvalidSession, SessionIssuer
+from ledgerlens.sandbox.snapshot import BaseResolver, UnknownScenario
+from ledgerlens.sandbox.store import BranchNotFound, BranchStore
+from ledgerlens.sandbox.ttl import CleanupWorker
+
+log = logging.getLogger(__name__)
+
+# The version of the shape of the answers. It travels in a header, because the resource `Sandbox` accepts no other
+# field and the interface reads that resource.
+SCHEMA_VERSION = "1"
+SCHEMA_VERSION_HEADER = "X-LedgerLens-Schema-Version"
+# The current canonical hash of the branch and its state, which the resource `Sandbox` has no field for.
+BRANCH_HASH_HEADER = "X-LedgerLens-Branch-Hash"
+BRANCH_STATE_HEADER = "X-LedgerLens-Branch-State"
+# The cookie of the contract: the opaque session of the visitor.
+SESSION_COOKIE = "ledgerlens_session"
+# The security scheme of the contract: an apiKey in the cookie, and it is not the identity of a person.
+SESSION_SCHEME = APIKeyCookie(
+    name=SESSION_COOKIE,
+    scheme_name="anonymousSession",
+    description="Opaque signed HttpOnly demo session cookie, not user identity.",
+    auto_error=False,
+)
+BRANCH_ID_PATTERN = rf"^{BRANCH_ID_PREFIX}[0-9a-f]{{24}}$"
+SCENARIO_ID_PATTERN = r"^S[0-9]{2}$"
+# The refusal of a branch the session does not own. It says nothing about the owner and nothing about the existence.
+GENERIC_NOT_FOUND = "no sandbox is available for this session"
+
+
+class SandboxRequest(BaseModel):
+    """The body of a fork: exactly the scenario id.
+
+    The contract accepts no other field, so a body with one is refused.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    scenario_id: str = Field(pattern=SCENARIO_ID_PATTERN)
+
+
+class ContractError(Exception):
+    """An answer that is not a resource of the contract, but the resource `Error`."""
+
+    def __init__(self, status_code: int, code: str, message: str, *, retryable: bool = False) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+        self.code = code
+        self.message = message
+        self.retryable = retryable
+
+    def body(self) -> dict[str, Any]:
+        """The resource `Error` of the contract, field for field."""
+        return {
+            "code": self.code,
+            "message": self.message,
+            "retryable": self.retryable,
+            "request_id": f"req_{secrets.token_hex(8)}",
+        }
+
+
+def create_app(
+    store: BranchStore | None = None,
+    base_resolver: BaseResolver | None = None,
+    session_issuer: SessionIssuer | None = None,
+    clock: Callable[[], datetime] | None = None,
+    runtime_dir: Path | str | None = None,
+    credential_vault: CredentialVault | None = None,
+) -> FastAPI:
+    """Builds the app over a store, a base resolver and a session issuer.
+
+    Without arguments the store comes from the configuration: the database one when the setting of the database url
+    is filled, the file backed one otherwise. The base is built from the published sample and the session is signed
+    with a key of the runtime folder, so the facade runs with no database and no key. The clock is the server clock,
+    and it is injected so that a test can move the expiry.
+
+    The runtime folder is the one of the configuration, and it is injected so that a test can point the scope of the
+    session at a temporary folder: the key of the sessions, the memory of the sessions and the base of the scenario
+    live there. Without an injected folder the base is built in the runtime folder of the configuration, exactly as
+    it was before.
+
+    The vault of the credentials is given to the application and never read from a global: the end of a session drops
+    the credentials of that session from the vault the application was given, and not from a vault of the process
+    that may belong to another application (FR-022, ADR-035).
+
+    The routes of the facade are registered on the application itself and the router of the sandbox carries the same
+    routes for the deployment that mounts the two facades in one application, so the sandbox application alone answers
+    exactly as it answered before (ADR-039).
+    """
+    settings = get_settings()
+    runtime = Path(runtime_dir) if runtime_dir is not None else settings.runtime_dir
+    branch_store = store if store is not None else build_branch_store(settings)
+    issuer = session_issuer or SessionIssuer(
+        runtime / "sandbox-session.key",
+        ttl_seconds=settings.sandbox_branch_absolute_ttl_seconds,
+    )
+    # The clock of the server, shared by the layer and by the job of the cleanup, so the branch that the layer
+    # refuses and the branch that the job deletes are the same branch at the same moment (FR-031, ADR-029).
+    server_clock = clock or (lambda: datetime.now(UTC))
+    layer = BranchLayer(
+        branch_store,
+        # The base of a scenario is built in the runtime folder of the facade, so an injected folder keeps the whole
+        # material of the sandbox inside itself and the repository is never written to.
+        base_resolver if base_resolver is not None else BaseResolver(runtime / "sandbox-bases"),
+        idle_ttl_seconds=settings.sandbox_branch_idle_ttl_seconds,
+        absolute_ttl_seconds=settings.sandbox_branch_absolute_ttl_seconds,
+        clock=server_clock,
+    )
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        """Starts the job of the cleanup when the app starts and stops it when the app stops (ADR-029).
+
+        Why the job lives in the lifespan and not in the module: a thread that starts with the module would run in
+        every test that builds the app, and a test that moves the clock would race with the sweep. The sweep is a
+        daemon thread, so a process that is killed does not wait for it.
+
+        Why the sweep is the same function the command runs: the two ways of cleaning up cannot disagree.
+        """
+        worker = CleanupWorker(branch_store, clock=server_clock)
+        worker.start()
+        try:
+            yield
+        finally:
+            worker.stop()
+
+    app = FastAPI(
+        title="LedgerLens sandbox",
+        description="Private branches of the published cases.",
+        lifespan=lifespan,
+    )
+
+    # The handlers of the refusals live on the application and not on the router: an included router brings its routes
+    # and its lifespan and nothing else, so a refusal raised inside a route of an included router would be a `500`
+    # where the contract asks for the resource `Error` (ADR-039).
+    install_refusal_handlers(app, credential_vault=credential_vault)
+
+    # The routes of the facade are registered on the application itself, exactly as they were before the router
+    # existed: an application that includes a router does not list the routes of the router in `app.routes`, and the
+    # guard of the paths of the facade reads that list (ADR-023, ADR-039).
+    _the_routes_of_the_sandbox(
+        app,
+        store=branch_store,
+        layer=layer,
+        session_issuer=issuer,
+        credential_vault=credential_vault,
+        runtime_dir=runtime,
+    )
+    return app
+
+
+def install_refusal_handlers(app: FastAPI, *, credential_vault: CredentialVault | None = None) -> None:
+    """Installs the handlers of the refusals on an application.
+
+    Why they live on the application and not on the router: an included router brings its routes and its lifespan and
+    nothing else, so a composed application that forgets one handler answers `500` where the contract asks for the
+    resource `Error` (ADR-039).
+
+    Why the message of a refusal is scrubbed with the vault when the vault was given: a refusal never carries a value
+    of the visitor, and the vault is the only one that knows the exact text of the key it holds (FR-018, SC-001). The
+    live facade scrubs its refusals the same way.
+    """
+
+    @app.exception_handler(ContractError)
+    async def contract_error(_request: Request, error: ContractError) -> JSONResponse:
+        body = error.body()
+        if credential_vault is not None:
+            body["message"] = credential_vault.scrub(str(body["message"]))
+        return JSONResponse(
+            status_code=error.status_code,
+            content=body,
+            headers={SCHEMA_VERSION_HEADER: SCHEMA_VERSION},
+        )
+
+    @app.exception_handler(RequestValidationError)
+    async def invalid_request(_request: Request, _error: RequestValidationError) -> JSONResponse:
+        # The default body of FastAPI is not the resource `Error` of the contract, so the answer is built here.
+        error = ContractError(422, "INVALID_REQUEST", "the request does not match the contract")
+        return JSONResponse(
+            status_code=error.status_code,
+            content=error.body(),
+            headers={SCHEMA_VERSION_HEADER: SCHEMA_VERSION},
+        )
+
+
+def build_router(
+    *,
+    store: BranchStore,
+    layer: BranchLayer,
+    session_issuer: SessionIssuer,
+    credential_vault: CredentialVault | None = None,
+    runtime_dir: Path | str | None = None,
+) -> APIRouter:
+    """The routes of the sandbox, over the store, the layer and the issuer.
+
+    Why the router exists: ADR-039 mounts the sandbox and the live mode in one application, and a router is what an
+    application mounts. The routes are the ones the contract of the design package fixes, and no route of them changes
+    its behavior because of the router.
+
+    Why the router takes what it needs and reads no global: the router of the sandbox is mounted by a deployment, and
+    that deployment gives the two facades the same issuer, the same store and the same vault on purpose, because the
+    two facades are one visitor only when a deployment wires them that way (ADR-035, ADR-039).
+
+    Why the handlers of the refusals are not here: an included router brings its routes and nothing else, so a
+    composed application installs the handlers on itself (ADR-039).
+    """
+    router = APIRouter()
+    _the_routes_of_the_sandbox(
+        router,
+        store=store,
+        layer=layer,
+        session_issuer=session_issuer,
+        credential_vault=credential_vault,
+        runtime_dir=runtime_dir,
+    )
+    return router
+
+
+def _the_routes_of_the_sandbox(
+    target: FastAPI | APIRouter,
+    *,
+    store: BranchStore,
+    layer: BranchLayer,
+    session_issuer: SessionIssuer,
+    credential_vault: CredentialVault | None = None,
+    runtime_dir: Path | str | None = None,
+) -> None:
+    """The eleven routes of the contract of the sandbox, registered on the target.
+
+    Why the routes are written once and not twice: the application of the sandbox and the router of the sandbox have to
+    answer the same thing, and two copies of the same route drift apart.
+
+    Why the application registers the routes on itself and does not include the router: an application that includes a
+    router does not list the routes of the router in `app.routes`, and the guard of the paths of the facade reads that
+    list (ADR-023). The router exists for the deployment that mounts the two facades in one application (ADR-039).
+
+    Why the target is an application or a router: the decorator of a route is the same on both, so the routes of the
+    facade are the routes of the contract in either case.
+    """
+    settings = get_settings()
+    runtime = Path(runtime_dir) if runtime_dir is not None else settings.runtime_dir
+    branch_store = store
+    issuer = session_issuer
+
+    @target.post("/v1/sessions", status_code=201)
+    def issue_session() -> JSONResponse:
+        """Issues the session of the visitor and sets the cookie of the contract."""
+        session = issuer.issue()
+        body = {
+            "id": session.id,
+            "expires_at": session.expires_at.isoformat(),
+            "mode_capabilities": list(session.mode_capabilities),
+        }
+        response = JSONResponse(status_code=201, content=body, headers={SCHEMA_VERSION_HEADER: SCHEMA_VERSION})
+        response.set_cookie(
+            SESSION_COOKIE,
+            issuer.cookie_value(session),
+            httponly=True,
+            samesite="lax",
+            path="/",
+            max_age=issuer.ttl_seconds,
+        )
+        return response
+
+    @target.delete("/v1/sessions/current", status_code=204)
+    def end_session(cookie: Annotated[str | None, Security(SESSION_SCHEME)]) -> Response:
+        """Ends the session of the visitor, purges its branches and purges its case memory.
+
+        The memory of the session dies with the session (ADR-030): the case memory of an anonymous visitor must not
+        lie around under an identifier that nobody can reach again. The purge is tolerant: a folder that cannot be
+        removed is logged and does not fail the route.
+
+        The credentials of the session die with it too: the key of a visitor lives in the memory of the process and
+        nowhere else, so the end of the session drops the credentials that session holds (FR-022). The drop is
+        tolerant in the same way, because a vault that refuses never fails the route, and it comes from the vault the
+        application was given, so the purge of a session drops from the vault of the application it belongs to.
+        """
+        session = _session(cookie, issuer)
+        for row in branch_store.list_branches(session):
+            branch_store.delete_branch(row.branch_id, session)
+        try:
+            purge_session_memory(session, runtime)
+        except Exception as error:  # pragma: no cover - the purge of the memory never fails the route.
+            log.warning("the memory of the session could not be purged: %s", error)
+        if credential_vault is not None:
+            try:
+                credential_vault.forget_session(session)
+            except Exception as error:  # pragma: no cover - the drop of the credentials never fails the route.
+                log.warning("the credentials of the session could not be dropped: %s", error)
+        # The version of the shape of the answers travels in the header of every answer of the facade (FR-042).
+        response = Response(status_code=204, headers={SCHEMA_VERSION_HEADER: SCHEMA_VERSION})
+        response.delete_cookie(SESSION_COOKIE, path="/")
+        return response
+
+    @target.post("/v1/sandboxes")
+    def fork(
+        payload: SandboxRequest,
+        cookie: Annotated[str | None, Security(SESSION_SCHEME)],
+    ) -> JSONResponse:
+        """Forks the published case into a private branch of the session.
+
+        The answer is `201` when the fork creates a branch and `200` when the reuse rule returns the branch that
+        already exists: the difference matters to a client.
+        """
+        session = _session(cookie, issuer)
+        try:
+            outcome = layer.fork(session, payload.scenario_id)
+        except UnknownScenario:
+            raise ContractError(404, "UNKNOWN_SCENARIO", "no such scenario") from None
+        except InvalidSessionId:
+            raise ContractError(401, "SESSION_REQUIRED", "no valid session") from None
+        return _sandbox_response(outcome.branch, 201 if outcome.created else 200)
+
+    @target.get("/v1/sandboxes/{sandbox_id}")
+    def read_sandbox(
+        sandbox_id: Annotated[str, PathParam(pattern=BRANCH_ID_PATTERN)],
+        cookie: Annotated[str | None, Security(SESSION_SCHEME)],
+    ) -> JSONResponse:
+        """The state of the branch: the revision, the hashes, the creation and the expiry."""
+        session = _session(cookie, issuer)
+        try:
+            branch = layer.status(session, sandbox_id)
+        except BranchNotFound:
+            raise ContractError(404, "NOT_FOUND", GENERIC_NOT_FOUND) from None
+        except InvalidSessionId:
+            raise ContractError(401, "SESSION_REQUIRED", "no valid session") from None
+        except BranchExpired as expired:
+            raise ContractError(410, "BRANCH_EXPIRED", str(expired)) from None
+        except BranchHashMismatch as mismatch:
+            raise ContractError(409, mismatch.code, mismatch.message) from None
+        return _sandbox_response(branch, 200)
+
+    @target.post("/v1/sandboxes/{sandbox_id}/mutations/preview")
+    def preview_mutation(
+        sandbox_id: Annotated[str, PathParam(pattern=BRANCH_ID_PATTERN)],
+        body: dict[str, Any],
+        cookie: Annotated[str | None, Security(SESSION_SCHEME)],
+    ) -> JSONResponse:
+        """What a typed mutation would do to the branch, computed without writing anything.
+
+        The answer carries the values before and after as decimal texts with their currency, the records the
+        mutation touches, the invariants of the domain and the verdict of the case.
+        """
+        session = _session(cookie, issuer)
+        command = _command_of(body)
+        try:
+            preview = layer.preview_mutation(session, sandbox_id, command)
+        except MutationRejected as refusal:
+            raise ContractError(status_for_code(refusal.code), refusal.code, refusal.message) from None
+        except BranchNotFound:
+            raise ContractError(404, "NOT_FOUND", GENERIC_NOT_FOUND) from None
+        except InvalidSessionId:
+            raise ContractError(401, "SESSION_REQUIRED", "no valid session") from None
+        except BranchExpired as expired:
+            raise ContractError(410, "BRANCH_EXPIRED", str(expired)) from None
+        except BranchHashMismatch as mismatch:
+            raise ContractError(409, mismatch.code, mismatch.message) from None
+        return _answer(preview.to_dict())
+
+    @target.post("/v1/sandboxes/{sandbox_id}/mutations")
+    def commit_mutation(
+        sandbox_id: Annotated[str, PathParam(pattern=BRANCH_ID_PATTERN)],
+        body: dict[str, Any],
+        cookie: Annotated[str | None, Security(SESSION_SCHEME)],
+        idempotency_key: Annotated[str, Header(alias="Idempotency-Key")],
+        if_match: Annotated[str, Header(alias="If-Match")],
+    ) -> JSONResponse:
+        """The commit of a typed mutation: the events, the revision and the canonical hash move together.
+
+        The `Idempotency-Key` header names the request and the `If-Match` header carries the revision the visitor
+        believes the branch is at. The answer carries the new revision, the new canonical hash and the diff.
+        """
+        session = _session(cookie, issuer)
+        command = _command_of(body, idempotency_key=idempotency_key, expected_revision=_revision_of(if_match))
+        try:
+            result = layer.commit_mutation(session, sandbox_id, command)
+        except MutationRejected as refusal:
+            raise ContractError(status_for_code(refusal.code), refusal.code, refusal.message) from None
+        except BranchNotFound:
+            raise ContractError(404, "NOT_FOUND", GENERIC_NOT_FOUND) from None
+        except InvalidSessionId:
+            raise ContractError(401, "SESSION_REQUIRED", "no valid session") from None
+        except BranchExpired as expired:
+            raise ContractError(410, "BRANCH_EXPIRED", str(expired)) from None
+        except BranchHashMismatch as mismatch:
+            raise ContractError(409, mismatch.code, mismatch.message) from None
+        return _answer(result.to_dict())
+
+    @target.post("/v1/sandboxes/{sandbox_id}/reset")
+    def reset_sandbox(
+        sandbox_id: Annotated[str, PathParam(pattern=BRANCH_ID_PATTERN)],
+        cookie: Annotated[str | None, Security(SESSION_SCHEME)],
+    ) -> JSONResponse:
+        """The branch back at the published base: no events, revision zero and the hash of the fork.
+
+        The body of the answer is exactly the resource `Sandbox` of the contract, field for field, and the headers
+        carry the version of the schema, the current canonical hash of the branch and its state, like the answers of
+        the other routes.
+        """
+        session = _session(cookie, issuer)
+        try:
+            branch = layer.reset(session, sandbox_id)
+        except BranchNotFound:
+            raise ContractError(404, "NOT_FOUND", GENERIC_NOT_FOUND) from None
+        except InvalidSessionId:
+            raise ContractError(401, "SESSION_REQUIRED", "no valid session") from None
+        except BranchExpired as expired:
+            raise ContractError(410, "BRANCH_EXPIRED", str(expired)) from None
+        except BranchHashMismatch as mismatch:
+            raise ContractError(409, mismatch.code, mismatch.message) from None
+        return _sandbox_response(branch, 200)
+
+    @target.post("/v1/sandboxes/{sandbox_id}/undo")
+    def undo_sandbox(
+        sandbox_id: Annotated[str, PathParam(pattern=BRANCH_ID_PATTERN)],
+        cookie: Annotated[str | None, Security(SESSION_SCHEME)],
+        idempotency_key: Annotated[str, Header(alias="Idempotency-Key")],
+        if_match: Annotated[str, Header(alias="If-Match")],
+    ) -> JSONResponse:
+        """The undo of the last mutation of the branch: the revision goes back and the history stays.
+
+        The body of the request is empty, because the undo does not change a record of the case: it changes the log
+        of the branch. The `Idempotency-Key` header names the request and the `If-Match` header carries the revision
+        the visitor believes the branch is at, exactly like the route of the commit, because a request that is
+        delivered twice has to undo one mutation and not two (ADR-024).
+
+        The answer carries the new revision, the new canonical hash, the diff, the invariants and the verdict, plus
+        the mark of the undo and the uid of the event that was undone. The route is one of the three paths that
+        ADR-023 declares beyond the contract of the design package.
+        """
+        session = _session(cookie, issuer)
+        command = MutationCommand(
+            kind=UNDO_KIND,
+            payload={},
+            expected_revision=_revision_of(if_match),
+            idempotency_key=idempotency_key,
+        )
+        try:
+            result = layer.undo(session, sandbox_id, command)
+        except MutationRejected as refusal:
+            raise ContractError(status_for_code(refusal.code), refusal.code, refusal.message) from None
+        except BranchNotFound:
+            raise ContractError(404, "NOT_FOUND", GENERIC_NOT_FOUND) from None
+        except InvalidSessionId:
+            raise ContractError(401, "SESSION_REQUIRED", "no valid session") from None
+        except BranchExpired as expired:
+            raise ContractError(410, "BRANCH_EXPIRED", str(expired)) from None
+        except BranchHashMismatch as mismatch:
+            raise ContractError(409, mismatch.code, mismatch.message) from None
+        return _answer(result.to_dict())
+
+    @target.get("/v1/sandboxes/{sandbox_id}/diff")
+    def read_diff(
+        sandbox_id: Annotated[str, PathParam(pattern=BRANCH_ID_PATTERN)],
+        cookie: Annotated[str | None, Security(SESSION_SCHEME)],
+    ) -> JSONResponse:
+        """The difference between the published base of the branch and the state the branch holds now (ADR-028).
+
+        The answer carries the revision, the canonical hash of the base, the canonical hash of the branch, the entries
+        of the difference, the invariants of the current state and the verdict of the case over it. The values of the
+        entries are texts, so the interface never reads a number and never calculates one.
+
+        The branch is a read like every other read: it is verified before it is answered, so a branch that cannot
+        prove its own state is refused with `HASH_MISMATCH` and is never served (ADR-021). The route is one of the
+        three paths that ADR-023 declares beyond the contract of the design package.
+        """
+        session = _session(cookie, issuer)
+        try:
+            diff = layer.diff(session, sandbox_id)
+        except BranchNotFound:
+            raise ContractError(404, "NOT_FOUND", GENERIC_NOT_FOUND) from None
+        except InvalidSessionId:
+            raise ContractError(401, "SESSION_REQUIRED", "no valid session") from None
+        except BranchExpired as expired:
+            raise ContractError(410, "BRANCH_EXPIRED", str(expired)) from None
+        except BranchHashMismatch as mismatch:
+            raise ContractError(409, mismatch.code, mismatch.message) from None
+        return _answer(diff.to_dict())
+
+    @target.get("/v1/sandboxes/{sandbox_id}/history")
+    def read_history(
+        sandbox_id: Annotated[str, PathParam(pattern=BRANCH_ID_PATTERN)],
+        cookie: Annotated[str | None, Security(SESSION_SCHEME)],
+    ) -> JSONResponse:
+        """The log of the branch and the answers the branch remembers, with their marks (ADR-028).
+
+        The events come in the order of the log and every one of them carries the mark that says it was undone. The
+        answers carry the mark of the staleness of ADR-022 and the mark of the undo of ADR-024.
+
+        The branch is a read like every other read: it is verified before it is answered, so a branch that cannot
+        prove its own state is refused with `HASH_MISMATCH` and is never served (ADR-021). The route is one of the
+        three paths that ADR-023 declares beyond the contract of the design package.
+        """
+        session = _session(cookie, issuer)
+        try:
+            history = layer.history(session, sandbox_id)
+        except BranchNotFound:
+            raise ContractError(404, "NOT_FOUND", GENERIC_NOT_FOUND) from None
+        except InvalidSessionId:
+            raise ContractError(401, "SESSION_REQUIRED", "no valid session") from None
+        except BranchExpired as expired:
+            raise ContractError(410, "BRANCH_EXPIRED", str(expired)) from None
+        except BranchHashMismatch as mismatch:
+            raise ContractError(409, mismatch.code, mismatch.message) from None
+        return _answer(history.to_dict())
+
+    @target.get("/v1/sandboxes/{sandbox_id}/ledger")
+    def read_ledger(
+        sandbox_id: Annotated[str, PathParam(pattern=BRANCH_ID_PATTERN)],
+        account_id: Annotated[str, Query(min_length=1)],
+        cookie: Annotated[str | None, Security(SESSION_SCHEME)],
+        cursor: Annotated[str | None, Query(min_length=1)] = None,
+    ) -> JSONResponse:
+        """The ledger of the account of the branch: the rows of the projection and the cursor of the next page.
+
+        The body is exactly the resource of the contract: the rows and the cursor, and no other field.
+        """
+        session = _session(cookie, issuer)
+        try:
+            page = layer.ledger(session, sandbox_id, account_id, cursor)
+        except MutationRejected as refusal:
+            raise ContractError(status_for_code(refusal.code), refusal.code, refusal.message) from None
+        except BranchNotFound:
+            raise ContractError(404, "NOT_FOUND", GENERIC_NOT_FOUND) from None
+        except InvalidSessionId:
+            raise ContractError(401, "SESSION_REQUIRED", "no valid session") from None
+        except BranchExpired as expired:
+            raise ContractError(410, "BRANCH_EXPIRED", str(expired)) from None
+        except BranchHashMismatch as mismatch:
+            raise ContractError(409, mismatch.code, mismatch.message) from None
+        return _answer({"items": list(page.items), "next_cursor": page.next_cursor})
+
+
+def _session(cookie_value: str | None, issuer: SessionIssuer) -> str:
+    """The owner session of the request, taken from the cookie of the contract.
+
+    Why the cookie and never a header: the identifier decides what a visitor may read, so the browser never handles
+    it in a place a third party can read, and a cookie that was not issued here is refused.
+    """
+    try:
+        return issuer.session_id(cookie_value)
+    except InvalidSession:
+        raise ContractError(401, "SESSION_REQUIRED", "no valid session") from None
+
+
+def _command_of(
+    body: dict[str, Any], *, idempotency_key: str | None = None, expected_revision: int | None = None
+) -> MutationCommand:
+    """The command of the request: the kind, the payload and the reason, and the two names of the request.
+
+    Why the body is read here and not by the framework: the body of a command is the one of the published schema,
+    and the rules about it belong to the domain, which knows the kind of the command.
+    """
+    field = read_only_field_in(body)
+    if field is not None:
+        raise ContractError(
+            422,
+            CODE_READ_ONLY_FIELD,
+            f"the field {field!r} is a read only field; the visitor may not change it",
+        )
+    data = body.get("data")
+    if not isinstance(data, dict):
+        raise ContractError(422, CODE_INVALID_PAYLOAD, "the payload of the command is not an object")
+    kind = body.get("kind")
+    reason = body.get("reason")
+    return MutationCommand(
+        kind=kind if isinstance(kind, str) else "",
+        payload=data,
+        reason=reason if isinstance(reason, str) else None,
+        expected_revision=expected_revision,
+        idempotency_key=idempotency_key,
+    )
+
+
+def _revision_of(if_match: str) -> int:
+    """The expected revision of the request, taken from the `If-Match` header of the contract."""
+    text = if_match.strip().strip('"')
+    try:
+        return int(text)
+    except ValueError:
+        raise ContractError(422, CODE_INVALID_REQUEST, "the If-Match header does not carry a revision") from None
+
+
+def _answer(content: dict[str, Any]) -> JSONResponse:
+    """An answer of the facade, with the version of the shape of the answers in its header (FR-042)."""
+    return JSONResponse(status_code=200, content=content, headers={SCHEMA_VERSION_HEADER: SCHEMA_VERSION})
+
+
+def _sandbox_response(branch: SandboxBranch, status_code: int) -> JSONResponse:
+    """The resource `Sandbox` of the contract, and the headers that carry what the resource has no field for."""
+    body = {
+        "id": branch.branch_id,
+        "base_snapshot_id": branch.base_snapshot_id,
+        "snapshot_sha256": branch.base_canonical_hash,
+        "revision": branch.revision,
+        "expires_at": branch.expires_at.isoformat(),
+    }
+    return JSONResponse(
+        status_code=status_code,
+        content=body,
+        headers={
+            SCHEMA_VERSION_HEADER: SCHEMA_VERSION,
+            BRANCH_HASH_HEADER: branch.current_canonical_hash,
+            BRANCH_STATE_HEADER: branch.state,
+        },
+    )
+
+
+__all__ = [
+    "BRANCH_HASH_HEADER",
+    "BRANCH_STATE_HEADER",
+    "ContractError",
+    "GENERIC_NOT_FOUND",
+    "SCHEMA_VERSION",
+    "SCHEMA_VERSION_HEADER",
+    "SESSION_COOKIE",
+    "SandboxRequest",
+    "build_router",
+    "create_app",
+    "install_refusal_handlers",
+]

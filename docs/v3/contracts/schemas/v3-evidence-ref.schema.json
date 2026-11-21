@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ledgerlens:v3:evidence-ref",
+  "title": "LedgerLens v3 evidence-ref",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "3"
+    },
+    "evidence_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "snapshot_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "source_kind": {
+      "type": "string",
+      "enum": [
+        "ledger",
+        "policy",
+        "fx",
+        "calculator",
+        "case_memory",
+        "simulated_document",
+        "tool_trace"
+      ]
+    },
+    "source_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "retrieved_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "effective_at": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "trust_level": {
+      "type": "string",
+      "enum": [
+        "trusted_fixture",
+        "approved_policy",
+        "untrusted_external",
+        "model_generated"
+      ]
+    },
+    "redacted": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "schema_version",
+    "evidence_id",
+    "snapshot_hash",
+    "source_kind",
+    "source_ref",
+    "source_sha256",
+    "retrieved_at",
+    "effective_at",
+    "trust_level",
+    "redacted"
+  ],
+  "additionalProperties": false
+}

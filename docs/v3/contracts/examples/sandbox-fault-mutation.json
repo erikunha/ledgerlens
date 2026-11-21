@@ -1,0 +1,8 @@
+{
+  "kind": "tool.fx_outage",
+  "data": {
+    "enabled": true,
+    "error_code": "UPSTREAM_UNAVAILABLE"
+  },
+  "reason": "Demonstrate missing rate"
+}

@@ -1,0 +1,34 @@
+services:
+  postgres:
+    # The image is pinned: the sandbox store runs against one known version of Postgres, in the local run and in
+    # the continuous integration, so that the two behave the same.
+    image: postgres:17-alpine
+    container_name: ledgerlens-postgres
+    environment:
+      POSTGRES_USER: ${LEDGERLENS_SANDBOX_DB_USER:-ledgerlens}
+      # The container has no password: the port is published on the loopback only and the trust method is
+      # enough for a local database of a development machine. A password in a repository is a secret that
+      # has to be rotated, and this database has nothing that is worth a secret.
+      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_DB: ${LEDGERLENS_SANDBOX_DB_NAME:-ledgerlens_sandbox}
+    ports:
+      # The port is published on the loopback only: the store of the sandbox is not a public service.
+      - "127.0.0.1:${LEDGERLENS_SANDBOX_DB_PORT:-5433}:5432"
+    volumes:
+      - ledgerlens-sandbox-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # The gate waits for this, so the tests never run against a database that is still starting.
+      test: ["CMD-SHELL", "pg_isready -U ${LEDGERLENS_SANDBOX_DB_USER:-ledgerlens} -d ${LEDGERLENS_SANDBOX_DB_NAME:-ledgerlens_sandbox}"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+    restart: unless-stopped
+
+volumes:
+  ledgerlens-sandbox-pgdata:
+
+# The url of this container is the default of the setting `LEDGERLENS_SANDBOX_DATABASE_URL`:
+# postgresql://ledgerlens@127.0.0.1:5433/ledgerlens_sandbox
+# The schema of the store is applied with `uv run python scripts/apply_sandbox_schema.py`, which is safe to run
+# twice.

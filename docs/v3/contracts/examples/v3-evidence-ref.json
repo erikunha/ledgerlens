@@ -1,0 +1,12 @@
+{
+  "schema_version": "3",
+  "evidence_id": "sql:1",
+  "snapshot_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "source_kind": "ledger",
+  "source_ref": "transactions/TX-2048",
+  "source_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "retrieved_at": "2026-11-11T10:00:00Z",
+  "effective_at": "2026-10-20",
+  "trust_level": "trusted_fixture",
+  "redacted": true
+}

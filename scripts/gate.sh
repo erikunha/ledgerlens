@@ -13,4 +13,9 @@ uv run ruff check
 echo "== pytest -q (offline)"
 uv run pytest -q
 
+# The published artifacts must match the bundle they claim to show, or the site shows a recording that is not the
+# one that was made. The check writes nothing and fails the gate when it finds a difference.
+echo "== export check (offline)"
+uv run python scripts/export_replay_site.py --check
+
 echo "gate: ok"

@@ -1,0 +1,22 @@
+{
+  "schema_version": "3",
+  "artifact_id": "proof-s01",
+  "mode": "recorded_replay",
+  "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "scenario_id": "S01",
+  "snapshot_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "trace_refs": [
+    "run-s01"
+  ],
+  "claim_evidence_refs": [
+    "sql:1",
+    "fx:1"
+  ],
+  "verdict_summary": "Demonstration only; no validated run attached.",
+  "cost_usd": null,
+  "cost_provenance": "unknown",
+  "known_limitations": [
+    "Fake hashes and IDs in reference example; not a real experiment."
+  ],
+  "privacy_reviewed": false
+}

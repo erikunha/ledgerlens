@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/ledgerlens/spec/model-profile.schema.json",
+  "$comment": "Design contract, not deployed implementation.",
+  "title": "ModelProfile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "profile_id",
+    "provider",
+    "model_id",
+    "display_name",
+    "capabilities",
+    "status",
+    "enabled_in_public_demo",
+    "pricing"
+  ],
+  "properties": {
+    "profile_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "provider": {
+      "type": "string",
+      "enum": [
+        "openai",
+        "anthropic",
+        "google",
+        "local"
+      ]
+    },
+    "model_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "display_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "capabilities": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "chat",
+          "tool_calling",
+          "structured_output",
+          "reasoning"
+        ]
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "tested",
+        "experimental",
+        "disabled",
+        "retired"
+      ]
+    },
+    "enabled_in_public_demo": {
+      "type": "boolean"
+    },
+    "pricing": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string",
+          "enum": [
+            "provider",
+            "manual",
+            "unknown"
+          ]
+        },
+        "last_verified": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "input_per_1m_usd": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "output_per_1m_usd": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        }
+      },
+      "required": [
+        "source",
+        "last_verified",
+        "input_per_1m_usd",
+        "output_per_1m_usd"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

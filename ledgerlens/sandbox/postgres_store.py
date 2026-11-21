@@ -1,0 +1,719 @@
+"""The branch store over Postgres: the second implementation of the `BranchStore` protocol.
+
+Why it exists: ADR-020 put the branch data of the deployment in Postgres, so that the branches of every visitor live
+in one database and the isolation is a condition of the query and not a folder on the disk. The file backed store
+stays the one the fast unit tests use and the one that runs when no database is configured.
+
+What this module guarantees, and what the contract suite proves:
+
+* every method that names a branch also names the owner session, and the owner is a condition of the query: the row
+  of another visitor is never read from the database;
+* the refusal of a branch of another visitor is the same error as the refusal of a branch that does not exist, so
+  nothing about the existence of a branch leaks;
+* the append is idempotent on the uid of the event, because the unique key on `(branch_id, event_uid)` is in the
+  schema of `schema.sql`;
+* the payload of an event is written with the canonical serialisation of `ledgerlens.sim.events`, so the same event
+  has the same bytes in both stores;
+* the answers of a branch are listed in the order of the commits, because the table of the commands has a sequence of
+  its own, the same order the file backed store keeps in the lines of its log;
+* the store holds one connection per thread, so two requests of two threads are two sessions of the database and the
+  `FOR UPDATE` of the row of the branch really serialises them (ADR-026).
+
+The store writes no domain rule and decides nothing: the fork, the owner check, the reuse rule and the expiry live in
+`ledgerlens/sandbox/branch.py`.
+
+The driver is imported inside the methods, and not at the top of the module, so that a machine without the `api`
+extra can still import the package of the sandbox.
+
+This module holds no scaffolding that only a test uses. The shape of the tables before the generation existed, the
+scratch schema of the test of the migration and the helpers that only that test needs live in the tests, so that the
+two implementations of the protocol carry the same public surface (ADR-022).
+"""
+
+from __future__ import annotations
+
+import threading
+from collections.abc import Sequence
+from dataclasses import replace
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+from ledgerlens.sandbox.store import (
+    BranchNotFound,
+    BranchRevisionConflict,
+    SandboxBranchRow,
+    SandboxCommandRow,
+    SandboxEventRow,
+    _safe_name,
+)
+from ledgerlens.sim.events import AppendResult, canonical_json
+
+# The schema of the store, versioned with the code. The script `scripts/apply_sandbox_schema.py` applies it.
+SCHEMA_PATH = Path(__file__).with_name("schema.sql")
+
+# The tables of the store, in the order of the dependency between them.
+SCHEMA_TABLES = ("sandbox_branches", "sandbox_events", "sandbox_commands")
+
+# The url of the container of `docker-compose.yml`. It is the fallback of the setting of the database url, so that
+# the schema script and the suite of the store work on a machine with the container up and nothing else.
+DEFAULT_DATABASE_URL = "postgresql://ledgerlens@127.0.0.1:5433/ledgerlens_sandbox"
+
+# The columns of a branch, in the order the queries read them.
+BRANCH_COLUMNS = (
+    "branch_id",
+    "owner_session",
+    "scenario_id",
+    "base_snapshot_id",
+    "base_canonical_hash",
+    "revision",
+    "current_canonical_hash",
+    "created_at",
+    "last_activity_at",
+    "expires_at",
+    "state",
+    "generation",
+)
+
+# The columns of an event, in the order the queries read them.
+EVENT_COLUMNS = (
+    "event_uid",
+    "branch_id",
+    "event_type",
+    "aggregate_id",
+    "occurred_at",
+    "payload",
+    "origin",
+    "command_id",
+)
+
+# The columns of the answer of a request, in the order the queries read them.
+COMMAND_COLUMNS = (
+    "branch_id",
+    "idempotency_key",
+    "payload_digest",
+    "revision",
+    "canonical_hash",
+    "response_diff",
+    "response_verdict",
+    "response_invariants",
+    "generation",
+)
+
+
+class PostgresBranchStore:
+    """The branch store over a Postgres database.
+
+    The store holds one connection per thread: the connection opens with the first operation of the thread and
+    stays open for the life of the store, so a machine without the driver can still import this module and a test
+    can decide to skip before the first call.
+
+    Why one connection per thread and not one for the store: the store is shared by the threads of the server, and
+    two threads that share one connection share one transaction, so the `FOR UPDATE` of the row of the branch
+    would protect nothing (ADR-026).
+    """
+
+    def __init__(self, database_url: str) -> None:
+        self.database_url = database_url
+        # The connection of the thread that asks for it. It is kept here and not in the store, because the store is
+        # shared by the threads of the server.
+        self._local = threading.local()
+        # Every connection the store opened, so that closing the store closes all of them.
+        self._connections: list[Any] = []
+        self._connections_lock = threading.Lock()
+
+    # -- the branches ------------------------------------------------------------------------------
+
+    def create_branch(self, branch: SandboxBranchRow) -> SandboxBranchRow:
+        """Stores a new branch and returns it.
+
+        The owner session is checked with the same guard as the file backed store, so the two implementations refuse
+        the same names.
+        """
+        _safe_name(branch.owner_session)
+        try:
+            self._run(
+                "INSERT INTO sandbox_branches ("
+                "branch_id, owner_session, scenario_id, base_snapshot_id, base_canonical_hash, revision,"
+                "current_canonical_hash, created_at, last_activity_at, expires_at, state, generation"
+                ") VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                (
+                    branch.branch_id,
+                    branch.owner_session,
+                    branch.scenario_id,
+                    branch.base_snapshot_id,
+                    branch.base_canonical_hash,
+                    branch.revision,
+                    branch.current_canonical_hash,
+                    branch.created_at,
+                    branch.last_activity_at,
+                    branch.expires_at,
+                    branch.state,
+                    branch.generation,
+                ),
+            )
+        except Exception as exc:
+            if _unique_violation(exc):
+                raise ValueError(f"the branch {branch.branch_id} already exists") from None
+            raise
+        return branch
+
+    def get_branch(self, branch_id: str, owner_session: str) -> SandboxBranchRow:
+        """The branch of this session. Raises `BranchNotFound` when it is not there or not its own.
+
+        Why the owner is in the condition of the query and not in a comparison after the read: the row of another
+        visitor must never leave the database.
+        """
+        _safe_name(owner_session)
+        rows, _ = self._run(
+            f"SELECT {', '.join(BRANCH_COLUMNS)} FROM sandbox_branches"
+            " WHERE branch_id = %s AND owner_session = %s",
+            (branch_id, owner_session),
+        )
+        if not rows:
+            raise BranchNotFound()
+        return _branch_from_record(rows[0])
+
+    def list_branches(self, owner_session: str) -> list[SandboxBranchRow]:
+        """Every branch of this session, in the order of the store."""
+        _safe_name(owner_session)
+        rows, _ = self._run(
+            f"SELECT {', '.join(BRANCH_COLUMNS)} FROM sandbox_branches"
+            " WHERE owner_session = %s ORDER BY created_at, branch_id",
+            (owner_session,),
+        )
+        return [_branch_from_record(record) for record in rows]
+
+    def save_branch(self, branch: SandboxBranchRow) -> SandboxBranchRow:
+        """Stores the row of a branch of this session again.
+
+        The owner never changes: the branch is found by its identifier and by its owner, and a branch of another
+        visitor is not touched.
+        """
+        _safe_name(branch.owner_session)
+        _, touched = self._run(
+            "UPDATE sandbox_branches SET scenario_id = %s, base_snapshot_id = %s, base_canonical_hash = %s,"
+            " revision = %s, current_canonical_hash = %s, created_at = %s, last_activity_at = %s, expires_at = %s,"
+            " state = %s, generation = %s WHERE branch_id = %s AND owner_session = %s",
+            (
+                branch.scenario_id,
+                branch.base_snapshot_id,
+                branch.base_canonical_hash,
+                branch.revision,
+                branch.current_canonical_hash,
+                branch.created_at,
+                branch.last_activity_at,
+                branch.expires_at,
+                branch.state,
+                branch.generation,
+                branch.branch_id,
+                branch.owner_session,
+            ),
+        )
+        if not touched:
+            raise BranchNotFound()
+        return branch
+
+    def touch_branch(
+        self, branch_id: str, owner_session: str, last_activity_at: datetime, expires_at: datetime
+    ) -> SandboxBranchRow:
+        """Moves the deadline of the branch of this session and writes no other column of the row (ADR-027).
+
+        Why one statement of two columns: the write carries the deadline and nothing else, so a mutation that landed
+        between the read and the write is not rolled back by it. The row that is returned is the row of the table
+        after the write, so the caller holds the state of the branch and not the state it read before.
+
+        Why the owner is in the condition of the update: the row of another visitor is never written, and the
+        refusal is the generic one.
+        """
+        _safe_name(owner_session)
+        rows, _ = self._run(
+            "UPDATE sandbox_branches SET last_activity_at = %s, expires_at = %s"
+            " WHERE branch_id = %s AND owner_session = %s"
+            f" RETURNING {', '.join(BRANCH_COLUMNS)}",
+            (last_activity_at, expires_at, branch_id, owner_session),
+        )
+        if not rows:
+            raise BranchNotFound()
+        return _branch_from_record(rows[0])
+
+    def delete_branch(self, branch_id: str, owner_session: str) -> bool:
+        """Drops the branch and its events. Raises `BranchNotFound` when it is not there or not its own."""
+        _safe_name(owner_session)
+        _, touched = self._run(
+            "DELETE FROM sandbox_branches WHERE branch_id = %s AND owner_session = %s",
+            (branch_id, owner_session),
+        )
+        if not touched:
+            raise BranchNotFound()
+        # The events of the branch go with it: the key of the table of the events refers to the branch.
+        return True
+
+    def list_expired(self, now: datetime) -> list[SandboxBranchRow]:
+        """Every branch whose expiry has passed, whatever its owner. The cleanup job uses it."""
+        rows, _ = self._run(
+            f"SELECT {', '.join(BRANCH_COLUMNS)} FROM sandbox_branches WHERE expires_at <= %s"
+            " ORDER BY expires_at, branch_id",
+            (now,),
+        )
+        return [_branch_from_record(record) for record in rows]
+
+    # -- the events --------------------------------------------------------------------------------
+
+    def append_events(self, branch_id: str, owner_session: str, events: Sequence[SandboxEventRow]) -> AppendResult:
+        """Appends events to the branch. The append is idempotent on the uid of the event.
+
+        The idempotence is in the database: the insert refuses the event whose key is already there, and the count of
+        the rows that were not refused is the count of the appended ones.
+        """
+        _safe_name(owner_session)
+        self._require_branch(branch_id, owner_session)
+        if not events:
+            return AppendResult(0, 0)
+        for event in events:
+            if event.branch_id != branch_id:
+                raise ValueError(f"the event {event.event_uid} does not belong to the branch {branch_id}")
+        connection = self._connect()
+        with connection.cursor() as cursor:
+            appended = self._insert_events(cursor, branch_id, events)
+        connection.commit()
+        return AppendResult(appended, len(events) - appended)
+
+    def read_events(self, branch_id: str, owner_session: str) -> list[SandboxEventRow]:
+        """The events of the branch of this session, in the order they were appended."""
+        _safe_name(owner_session)
+        self._require_branch(branch_id, owner_session)
+        rows, _ = self._run(
+            f"SELECT {', '.join(EVENT_COLUMNS)} FROM sandbox_events WHERE branch_id = %s ORDER BY event_seq",
+            (branch_id,),
+        )
+        return [_event_from_record(record) for record in rows]
+
+    def delete_events(self, branch_id: str, owner_session: str) -> int:
+        """Drops every event of the branch and returns how many were dropped."""
+        _safe_name(owner_session)
+        self._require_branch(branch_id, owner_session)
+        _, dropped = self._run("DELETE FROM sandbox_events WHERE branch_id = %s", (branch_id,))
+        return dropped
+
+    # -- the commit and the answers of the requests ---------------------------------------------------
+
+    def commit_events(
+        self,
+        branch_id: str,
+        owner_session: str,
+        events: Sequence[SandboxEventRow],
+        branch: SandboxBranchRow,
+        answer: SandboxCommandRow,
+    ) -> AppendResult:
+        """Appends the events, moves the row of the branch and remembers the answer, in one transaction.
+
+        Why one transaction: the append of the events and the move of the row are one operation of the domain
+        (FR-033). A crash between them would leave a branch that says one thing and holds another, and the row of
+        the branch is locked while the transaction runs, so the loser of two concurrent commits is refused.
+        """
+        _safe_name(owner_session)
+        connection = self._connect()
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT revision FROM sandbox_branches WHERE branch_id = %s AND owner_session = %s FOR UPDATE",
+                    (branch_id, owner_session),
+                )
+                found = cursor.fetchone()
+                if found is None:
+                    raise BranchNotFound()
+                if int(found[0]) != branch.revision - 1:
+                    raise BranchRevisionConflict(
+                        f"the branch {branch_id} is at revision {found[0]}, and the request expected"
+                        f" {branch.revision - 1}"
+                    )
+                appended = self._insert_events(cursor, branch_id, events)
+                cursor.execute(
+                    "INSERT INTO sandbox_commands"
+                    " (branch_id, idempotency_key, payload_digest, revision, canonical_hash, response_diff,"
+                    " response_verdict, response_invariants, generation)"
+                    " VALUES (%s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, %s::jsonb, %s)"
+                    " ON CONFLICT (branch_id, idempotency_key) DO NOTHING",
+                    (
+                        answer.branch_id,
+                        answer.idempotency_key,
+                        answer.payload_digest,
+                        answer.revision,
+                        answer.canonical_hash,
+                        canonical_json(answer.response_diff),
+                        canonical_json(answer.response_verdict),
+                        canonical_json(answer.response_invariants),
+                        answer.generation,
+                    ),
+                )
+                cursor.execute(
+                    "UPDATE sandbox_branches SET revision = %s, current_canonical_hash = %s, last_activity_at = %s,"
+                    " expires_at = %s, state = %s, generation = %s WHERE branch_id = %s AND owner_session = %s",
+                    (
+                        branch.revision,
+                        branch.current_canonical_hash,
+                        branch.last_activity_at,
+                        branch.expires_at,
+                        branch.state,
+                        branch.generation,
+                        branch_id,
+                        owner_session,
+                    ),
+                )
+            connection.commit()
+        except Exception:
+            # The transaction is rolled back, so the branch keeps its revision, its hash and its events.
+            connection.rollback()
+            raise
+        return AppendResult(appended, len(events) - appended)
+
+    def command_answer(self, branch_id: str, owner_session: str, idempotency_key: str) -> SandboxCommandRow | None:
+        """The answer already given to the request with this key, or None when there is none."""
+        _safe_name(owner_session)
+        self._require_branch(branch_id, owner_session)
+        rows, _ = self._run(
+            f"SELECT {', '.join(COMMAND_COLUMNS)} FROM sandbox_commands"
+            " WHERE branch_id = %s AND idempotency_key = %s",
+            (branch_id, idempotency_key),
+        )
+        if not rows:
+            return None
+        return _command_from_record(rows[0])
+
+    def commit_undo(
+        self,
+        branch_id: str,
+        owner_session: str,
+        event: SandboxEventRow,
+        branch: SandboxBranchRow,
+        answer: SandboxCommandRow,
+    ) -> SandboxBranchRow:
+        """Appends the marker of the undo, moves the row of the branch back and remembers the answer, in one
+        transaction.
+
+        Why one transaction: the append of the marker, the move of the row and the answer of the request are one
+        operation of the domain (FR-033, ADR-024). A crash between them would leave a branch that says one thing and
+        holds another, and the row of the branch is locked while the transaction runs, so the loser of two concurrent
+        undos is refused.
+
+        Why the revision is compared here: the undo moves the branch back by one revision, so the row the caller
+        hands over has to follow the branch, and a branch that moved between the read and the write is refused with
+        `BranchRevisionConflict` and nothing is written.
+        """
+        _safe_name(owner_session)
+        if event.branch_id != branch_id:
+            raise ValueError(f"the event {event.event_uid} does not belong to the branch {branch_id}")
+        connection = self._connect()
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT revision FROM sandbox_branches WHERE branch_id = %s AND owner_session = %s FOR UPDATE",
+                    (branch_id, owner_session),
+                )
+                found = cursor.fetchone()
+                if found is None:
+                    raise BranchNotFound()
+                if int(found[0]) != branch.revision + 1:
+                    raise BranchRevisionConflict(
+                        f"the branch {branch_id} is at revision {found[0]}, and the request expected"
+                        f" {branch.revision + 1}"
+                    )
+                self._insert_events(cursor, branch_id, [event])
+                cursor.execute(
+                    "INSERT INTO sandbox_commands"
+                    " (branch_id, idempotency_key, payload_digest, revision, canonical_hash, response_diff,"
+                    " response_verdict, response_invariants, generation)"
+                    " VALUES (%s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, %s::jsonb, %s)"
+                    " ON CONFLICT (branch_id, idempotency_key) DO NOTHING",
+                    (
+                        answer.branch_id,
+                        answer.idempotency_key,
+                        answer.payload_digest,
+                        answer.revision,
+                        answer.canonical_hash,
+                        canonical_json(answer.response_diff),
+                        canonical_json(answer.response_verdict),
+                        canonical_json(answer.response_invariants),
+                        answer.generation,
+                    ),
+                )
+                cursor.execute(
+                    "UPDATE sandbox_branches SET revision = %s, current_canonical_hash = %s, last_activity_at = %s,"
+                    " expires_at = %s, state = %s, generation = %s WHERE branch_id = %s AND owner_session = %s",
+                    (
+                        branch.revision,
+                        branch.current_canonical_hash,
+                        branch.last_activity_at,
+                        branch.expires_at,
+                        branch.state,
+                        branch.generation,
+                        branch_id,
+                        owner_session,
+                    ),
+                )
+            connection.commit()
+        except Exception:
+            # The transaction is rolled back, so the branch keeps its revision, its hash and its events.
+            connection.rollback()
+            raise
+        return branch
+
+    def list_commands(self, branch_id: str, owner_session: str) -> list[SandboxCommandRow]:
+        """Every answer the branch remembers, in the order the requests were committed.
+
+        Why the sequence and not the moment of the commit: the sequence is the order of the commit, exactly like the
+        order of the lines of the log of the file backed store. The moment of the commit breaks a tie between two
+        requests that were committed in the same instant, and the key breaks it in the wrong order for the visitor.
+        """
+        _safe_name(owner_session)
+        self._require_branch(branch_id, owner_session)
+        rows, _ = self._run(
+            f"SELECT {', '.join(COMMAND_COLUMNS)} FROM sandbox_commands"
+            " WHERE branch_id = %s ORDER BY command_seq",
+            (branch_id,),
+        )
+        return [_command_from_record(record) for record in rows]
+
+    def reset_branch(self, branch_id: str, owner_session: str, branch: SandboxBranchRow) -> SandboxBranchRow:
+        """Drops every event of the branch, writes the row of it, and returns the row it wrote.
+
+        Why one transaction: the drop of the events and the move of the row are one operation of the domain
+        (ADR-022). A crash between them would leave a branch that says one thing and holds another, and the row of
+        the branch is locked while the transaction runs, so two resets cannot cross.
+
+        Why the store moves the generation: the row is locked here and nowhere else, so the store reads the
+        generation it finds in the row and writes one more. The generation of the row the caller hands over is
+        ignored, because a number computed outside the lock loses an increment when two resets cross (ADR-022).
+        """
+        _safe_name(owner_session)
+        connection = self._connect()
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    f"SELECT {', '.join(BRANCH_COLUMNS)} FROM sandbox_branches"
+                    " WHERE branch_id = %s AND owner_session = %s FOR UPDATE",
+                    (branch_id, owner_session),
+                )
+                found = cursor.fetchone()
+                if found is None:
+                    raise BranchNotFound()
+                current = _branch_from_record(found)
+                moved = replace(branch, generation=current.generation + 1)
+                cursor.execute("DELETE FROM sandbox_events WHERE branch_id = %s", (branch_id,))
+                # The owner is in the condition of the update as well, even though the select above already located
+                # the row with the owner in its condition: the redundancy is harmless and a reader of the statement
+                # expects the owner to be there.
+                cursor.execute(
+                    "UPDATE sandbox_branches SET scenario_id = %s, base_snapshot_id = %s, base_canonical_hash = %s,"
+                    " revision = %s, current_canonical_hash = %s, created_at = %s, last_activity_at = %s,"
+                    " expires_at = %s, state = %s, generation = %s WHERE branch_id = %s AND owner_session = %s",
+                    (
+                        moved.scenario_id,
+                        moved.base_snapshot_id,
+                        moved.base_canonical_hash,
+                        moved.revision,
+                        moved.current_canonical_hash,
+                        moved.created_at,
+                        moved.last_activity_at,
+                        moved.expires_at,
+                        moved.state,
+                        moved.generation,
+                        branch_id,
+                        owner_session,
+                    ),
+                )
+            connection.commit()
+        except Exception:
+            # The transaction is rolled back, so the branch keeps its events, its revision and its hash.
+            connection.rollback()
+            raise
+        return moved
+
+    # -- the maintenance ---------------------------------------------------------------------------
+
+    def truncate(self) -> None:
+        """Drops every row of the tables of the store.
+
+        Why it exists: a test needs a database that holds nothing before it starts, and the cleanup of a deployment
+        needs the same thing. It decides nothing about a branch, so it is not a domain rule.
+        """
+        self._run("TRUNCATE sandbox_events, sandbox_commands, sandbox_branches RESTART IDENTITY CASCADE")
+
+    def close(self) -> None:
+        """Closes every connection the store opened, one per thread."""
+        with self._connections_lock:
+            connections = list(self._connections)
+            self._connections.clear()
+        for connection in connections:
+            if not connection.closed:
+                connection.close()
+        # The connection of this thread is closed, so the next call opens a new one.
+        self._local.connection = None
+
+    # -- the internals -----------------------------------------------------------------------------
+
+    def _connect(self) -> Any:
+        """The connection of the thread that asks for it, opened with the first call that needs it.
+
+        Why the connection belongs to the thread and not to the store: two requests of two threads have to be two
+        sessions of the database, otherwise they share one transaction and the `FOR UPDATE` of the row of the
+        branch protects nothing (ADR-026).
+        """
+        connection = getattr(self._local, "connection", None)
+        if connection is None or connection.closed:
+            # The driver comes with the `api` extra, so the import is here and not at the top of the module.
+            import psycopg
+
+            connection = psycopg.connect(self.database_url)
+            with connection.cursor() as cursor:
+                # The moments of the store are read and written in UTC, so the answer of a read does not depend on
+                # the time zone of the server.
+                cursor.execute("SET TIME ZONE 'UTC'")
+            connection.commit()
+            self._local.connection = connection
+            with self._connections_lock:
+                self._connections.append(connection)
+        return connection
+
+    def _run(self, sql: str, params: Sequence[Any] = ()) -> tuple[list[tuple[Any, ...]], int]:
+        """Runs one statement, commits it, and returns the rows it read and the number of rows it touched."""
+        connection = self._connect()
+        with connection.cursor() as cursor:
+            cursor.execute(sql, params)
+            rows = cursor.fetchall() if cursor.description is not None else []
+            touched = cursor.rowcount
+        connection.commit()
+        return rows, touched
+
+    def _require_branch(self, branch_id: str, owner_session: str) -> None:
+        """Checks that the branch is there and that it belongs to this session.
+
+        Why the owner is in the condition of the query: the branch of another visitor is not even read.
+        """
+        rows, _ = self._run(
+            "SELECT 1 FROM sandbox_branches WHERE branch_id = %s AND owner_session = %s",
+            (branch_id, owner_session),
+        )
+        if not rows:
+            raise BranchNotFound()
+
+    def _insert_events(self, cursor: Any, branch_id: str, events: Sequence[SandboxEventRow]) -> int:
+        """Inserts the events of a branch and returns how many were really appended.
+
+        Why the insert refuses the event that is already there: the append is idempotent on the uid of the event
+        (FR-011), and the count of the rows that were not refused is the count of the appended ones.
+        """
+        if not events:
+            return 0
+        values = []
+        for event in events:
+            values.append(
+                (
+                    event.branch_id,
+                    event.event_uid,
+                    event.event_type,
+                    event.aggregate_id,
+                    event.occurred_at,
+                    # The canonical serialisation, so that the same event has the same bytes in both stores.
+                    canonical_json(event.payload),
+                    event.origin,
+                    event.command_id,
+                )
+            )
+        placeholders = ", ".join(["(%s, %s, %s, %s, %s, %s::jsonb, %s, %s)"] * len(values))
+        cursor.execute(
+            "INSERT INTO sandbox_events"
+            " (branch_id, event_uid, event_type, aggregate_id, occurred_at, payload, origin, command_id)"
+            f" VALUES {placeholders} ON CONFLICT (branch_id, event_uid) DO NOTHING",
+            [value for row in values for value in row],
+        )
+        return cursor.rowcount
+
+
+def _unique_violation(error: Exception) -> bool:
+    """True when the error of the driver is the refusal of a unique key.
+
+    Why the name and not the class: the driver is an optional import, so the class of its error cannot be named at
+    the top of the module.
+    """
+    return type(error).__name__ == "UniqueViolation"
+
+
+def apply_schema(database_url: str | None = None) -> tuple[str, ...]:
+    """Applies the schema of the store to the database and returns the tables that are there.
+
+    Why it is safe to run twice: every statement of the schema carries `IF NOT EXISTS`, so a database that already has
+    the shape is left as it is.
+    """
+    url = database_url or DEFAULT_DATABASE_URL
+    # The driver comes with the `api` extra, so the import is here and not at the top of the module.
+    import psycopg
+
+    with psycopg.connect(url) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(SCHEMA_PATH.read_text(encoding="utf-8"))
+        connection.commit()
+    return SCHEMA_TABLES
+
+
+# The shape of the tables of the store before the generation existed, the scratch schema of the test of the
+# migration and the helpers that only a test uses live in the tests, and not in this module: the rule of the
+# repository is that the SQL of the repository lives in the product modules that own it and, for the things that only
+# a test needs, in the tests themselves (ADR-022).
+
+
+def _branch_from_record(record: Sequence[Any]) -> SandboxBranchRow:
+    return SandboxBranchRow(
+        branch_id=record[0],
+        owner_session=record[1],
+        scenario_id=record[2],
+        base_snapshot_id=record[3],
+        base_canonical_hash=record[4],
+        revision=int(record[5]),
+        current_canonical_hash=record[6],
+        created_at=record[7],
+        last_activity_at=record[8],
+        expires_at=record[9],
+        state=record[10],
+        generation=int(record[11]),
+    )
+
+
+def _event_from_record(record: Sequence[Any]) -> SandboxEventRow:
+    return SandboxEventRow(
+        event_uid=record[0],
+        branch_id=record[1],
+        event_type=record[2],
+        aggregate_id=record[3],
+        occurred_at=record[4],
+        payload=record[5],
+        origin=record[6],
+        command_id=record[7],
+    )
+
+
+def _command_from_record(record: Sequence[Any]) -> SandboxCommandRow:
+    return SandboxCommandRow(
+        branch_id=record[0],
+        idempotency_key=record[1],
+        payload_digest=record[2],
+        revision=int(record[3]),
+        canonical_hash=record[4],
+        response_diff=list(record[5]),
+        response_verdict=dict(record[6] or {}),
+        response_invariants=list(record[7] or []),
+        generation=int(record[8]),
+    )
+
+
+__all__ = [
+    "BRANCH_COLUMNS",
+    "COMMAND_COLUMNS",
+    "DEFAULT_DATABASE_URL",
+    "EVENT_COLUMNS",
+    "PostgresBranchStore",
+    "SCHEMA_PATH",
+    "SCHEMA_TABLES",
+    "apply_schema",
+]

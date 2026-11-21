@@ -1,0 +1,19 @@
+{
+  "profile_id": "openai-verified-small",
+  "provider": "openai",
+  "model_id": "gpt-4.1-mini",
+  "display_name": "Example tool-calling model",
+  "capabilities": [
+    "chat",
+    "tool_calling",
+    "structured_output"
+  ],
+  "status": "experimental",
+  "enabled_in_public_demo": false,
+  "pricing": {
+    "source": "unknown",
+    "last_verified": null,
+    "input_per_1m_usd": null,
+    "output_per_1m_usd": null
+  }
+}
