@@ -5,8 +5,9 @@ Why it exists: the site is a static export, so the artifacts it shows have to ex
 the page. This script turns a bundle into those files: the events, the manifest, the provenance and the index. It
 runs offline, with no key and with no network, and it calls no model at all.
 
-The default output is `site/replay`, the folder the repository publishes. The frontend tree is paused and the
-artifacts it will read are generated into it when it opens, so the export never writes inside `apps/`.
+The default output is `site/replay`, the folder the repository publishes and the only source of truth for the
+recorded artifacts. The frontend tree is open now, and the build of the frontend copies `site/replay` into
+`apps/web/public/replay`, so the export never writes inside `apps/`.
 
 The export is reproducible: every timestamp comes from the bundle and not from the clock, so running the script
 twice leaves the same bytes on the disk. The `--check` mode verifies the artifacts that are already there without

@@ -42,6 +42,7 @@ from fastapi.routing import APIRoute
 
 from ledgerlens.api import byok, sandbox
 from ledgerlens.api.byok import CODE_INVALID_REQUEST, SessionCapabilities
+from ledgerlens.api.cors import install_cors
 from ledgerlens.api.live_case import DemoCase
 from ledgerlens.api.live_run import LiveRunCoordinator
 from ledgerlens.api.sandbox import SCHEMA_VERSION, SCHEMA_VERSION_HEADER, ContractError
@@ -205,6 +206,11 @@ def build_wired_app(
         description="The demo of the visitor: the branch of the sandbox and the live mode, as one visitor.",
         lifespan=lifespan,
     )
+
+    # The CORS of the browser of the visitor, and only when the deployment declares the origins: a deployment that
+    # declares none answers exactly as it answered before (ADR-040). The middleware adds no route, so the list of the
+    # routes of the wired application, which ADR-039 pins, does not change.
+    install_cors(app, allowed_origins=the_settings.cors_origins)
 
     @app.exception_handler(ContractError)
     async def contract_error(_request: Request, error: ContractError) -> JSONResponse:

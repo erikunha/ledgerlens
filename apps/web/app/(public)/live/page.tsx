@@ -1,0 +1,354 @@
+"use client";
+
+/**
+ * The live mode of the demo, the page of task T034.
+ *
+ * Why this file exists: the live half of the demo asks the backend of the demo for a run, with the
+ * key of the visitor, and it has to be honest about what it is doing. The page never starts a run
+ * on its own: the visitor types a key, ticks the consent and presses the run. Every refusal of the
+ * server is rendered where the action was, with the code and the message of the server, and a
+ * refusal is never dressed up as a run.
+ *
+ * The page makes no request to the backend before the visitor acts: the routes that hold or spend a
+ * credential are the routes that refuse, so a probe would create a credential. The first live act
+ * of the visitor reveals the state of the server.
+ *
+ * The one refusal that closes the live mode is `LIVE_MODE_OFFLINE`: while the product runs offline
+ * the backend takes no credential and starts no run, so the controls of the live mode stay disabled
+ * for the rest of the session (ADR-040, question 7). Every other refusal leaves the controls
+ * usable, because the visitor may type another key or start the backend and try again.
+ */
+
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+import { Badge } from "@/components/ui/Badge";
+import { Button, buttonClasses } from "@/components/ui/Button";
+import { CardSection } from "@/components/ui/Card";
+import { ConsentSummary } from "@/features/consent/ConsentNotice";
+import { DEMO_CASES } from "@/features/live/cases";
+import { RunTimeline } from "@/features/live/RunTimeline";
+import { useLiveRun } from "@/features/live/useLiveRun";
+import { ApiKeyDialog } from "@/features/models/ApiKeyDialog";
+import { BudgetForm } from "@/features/models/BudgetForm";
+import { CostReport } from "@/features/models/CostReport";
+import { ModelSelector } from "@/features/models/ModelSelector";
+import { ApiError, createApiClient } from "@/lib/api/client";
+import { DEFAULT_RUN_LIMITS, type DisclosureHeaders, type ModelProfile, type Provider, type RunLimits } from "@/lib/api/live";
+
+/**
+ * The code the backend answers with while the product runs offline.
+ *
+ * Why this code and no other one: it is the only refusal that says that the live mode is off for
+ * good in this session. A refusal with any other code (a key the server did not accept, for
+ * instance) is about the act of the visitor, and the visitor may act again.
+ */
+const LIVE_MODE_OFFLINE = "LIVE_MODE_OFFLINE";
+
+/**
+ * Turns whatever the backend refused with into words a visitor can read.
+ *
+ * Why the code comes first: the code is what the runbook of the deployment talks about, and the
+ * message of the server is the sentence the visitor reads.
+ */
+function describeFailure(caught: unknown, origin: string): string {
+  if (caught instanceof ApiError) {
+    return `${caught.code}: ${caught.message}`;
+  }
+  return `the origin ${origin} did not answer the request`;
+}
+
+/**
+ * The page of the live mode.
+ *
+ * The page is a client component because the live mode is an interaction: the catalogue of the
+ * models, the key of the visitor and the stream of the run all happen in the browser.
+ */
+export default function LivePage() {
+  const client = useMemo(() => createApiClient(), []);
+  const run = useLiveRun(client);
+
+  const [models, setModels] = useState<ModelProfile[]>([]);
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+  const [priceNote, setPriceNote] = useState<string | null>(null);
+  const [priceKnown, setPriceKnown] = useState<boolean | null>(null);
+  const [limits, setLimits] = useState<RunLimits>(DEFAULT_RUN_LIMITS);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [credentialHandle, setCredentialHandle] = useState<string | null>(null);
+  const [disclosure, setDisclosure] = useState<DisclosureHeaders | null>(null);
+  const [credentialError, setCredentialError] = useState<string | null>(null);
+  const [credentialBusy, setCredentialBusy] = useState(false);
+  const [catalogueError, setCatalogueError] = useState<string | null>(null);
+  const [liveRefusal, setLiveRefusal] = useState<{ code: string; message: string } | null>(null);
+
+  // The session of the visitor is opened once, and the catalogue of the models comes with it.
+  useEffect(() => {
+    let alive = true;
+
+    async function load(): Promise<void> {
+      try {
+        await client.startSession();
+        const catalogue = await client.models();
+        if (!alive) {
+          return;
+        }
+        setModels(catalogue.models);
+        setCatalogueError(null);
+      } catch (caught) {
+        if (!alive) {
+          return;
+        }
+        setCatalogueError(describeFailure(caught, client.baseUrl));
+      }
+    }
+
+    void load();
+    return () => {
+      alive = false;
+    };
+  }, [client]);
+
+  // The price of the chosen profile is read before the first call, so the visitor knows where the
+  // price comes from before the run and not after it.
+  useEffect(() => {
+    if (!selectedProfileId) {
+      setPriceNote(null);
+      setPriceKnown(null);
+      return;
+    }
+
+    let alive = true;
+    void client
+      .priceOfModel(selectedProfileId)
+      .then((price) => {
+        if (!alive) {
+          return;
+        }
+        setPriceNote(price.price_note);
+        setPriceKnown(price.price_known);
+      })
+      .catch(() => {
+        if (!alive) {
+          return;
+        }
+        setPriceNote(null);
+        setPriceKnown(null);
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [client, selectedProfileId]);
+
+  /** Accepts the key of the visitor and keeps the handle, which is all the page ever keeps. */
+  const handleCredential = useCallback(
+    async (input: { provider: string; apiKey: string }): Promise<void> => {
+      setCredentialBusy(true);
+      setCredentialError(null);
+      try {
+        const accepted = await client.acceptCredential(input);
+        setCredentialHandle(accepted.handle.handle);
+        setDisclosure(accepted.disclosure);
+        setDialogOpen(false);
+      } catch (caught) {
+        setCredentialError(describeFailure(caught, client.baseUrl));
+        // Only the offline refusal closes the live mode for the rest of the session. Any other
+        // refusal is about the key of this attempt, and the visitor may type another one.
+        if (caught instanceof ApiError && caught.code === LIVE_MODE_OFFLINE) {
+          setLiveRefusal({ code: caught.code, message: caught.message });
+        }
+      } finally {
+        setCredentialBusy(false);
+      }
+    },
+    [client],
+  );
+
+  /** Starts the run of the case of the demo. */
+  const handleRun = useCallback((): void => {
+    const profile = models.find((candidate) => candidate.profile_id === selectedProfileId);
+    const demoCase = DEMO_CASES[0];
+    if (!profile || !demoCase || !credentialHandle) {
+      return;
+    }
+    void run.start({ profile, credentialHandle, limits, demoCase });
+  }, [credentialHandle, limits, models, run, selectedProfileId]);
+
+  const providers = useMemo<Provider[]>(() => {
+    const found = Array.from(new Set(models.map((model) => model.provider)));
+    return found.length > 0 ? found : ["openai"];
+  }, [models]);
+
+  const isRunning = run.status === "starting" || run.status === "running";
+  const isRefused = run.status === "refused";
+  // The offline refusal is the only one that disables the controls of the live mode for the rest
+  // of the session: the backend will take no credential and start no run while the product runs
+  // offline, so a control that stayed usable would only offer the visitor a refusal.
+  const liveControlsDisabled = liveRefusal !== null;
+  const demoCase = DEMO_CASES[0];
+
+  return (
+    <div className="mx-auto flex w-full max-w-content flex-col gap-8 px-6 py-12">
+      <header className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge>mode: live_agent</Badge>
+          <Badge>origin: {client.baseUrl}</Badge>
+        </div>
+        <h1 className="text-3xl font-semibold">Live mode</h1>
+        <p className="max-w-2xl text-text-muted">
+          You type the key of your provider and the run happens on the backend of the demo. The key is
+          read once, from the field you typed, and it never reaches a URL, a header or a log. The
+          caps of the run bound the calls of the run, not the bill of your provider.
+        </p>
+        <p className="text-sm text-text-subtle">
+          The recorded demo needs no key and no network:{" "}
+          <Link className={buttonClasses("ghost", "sm")} href="/replay">
+            Open the recorded demo
+          </Link>
+        </p>
+      </header>
+
+      {catalogueError ? (
+        <div role="alert" className="rounded-lg border border-danger/40 bg-danger-light p-4">
+          <h2 className="text-base font-semibold text-danger-dark">The catalogue is not available</h2>
+          <p className="text-sm text-danger-dark">{catalogueError}</p>
+        </div>
+      ) : null}
+
+      {liveRefusal ? (
+        <div className="relative z-[60] flex flex-col gap-2">
+          <div role="alert" className="rounded-lg border border-danger/40 bg-danger-light p-4">
+            <h2 className="text-base font-semibold text-danger-dark">
+              The live mode is off: {liveRefusal.code}
+            </h2>
+            <p className="text-sm text-danger-dark">{liveRefusal.message}</p>
+            <p className="mt-2 text-sm text-text-muted">
+              The live controls stay disabled for the rest of this session, because the backend
+              refuses the live mode while the product runs offline. The recorded demo keeps working
+              exactly as before, and it needs no key.
+            </p>
+          </div>
+          {dialogOpen ? (
+            <div>
+              <Button variant="secondary" onClick={() => setDialogOpen(false)}>
+                Close the dialog
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {isRefused && run.error ? (
+        <div role="alert" className="rounded-lg border border-danger/40 bg-danger-light p-4">
+          <h2 className="text-base font-semibold text-danger-dark">
+            The backend refused: {run.error.code}
+          </h2>
+          <p className="text-sm text-danger-dark">{run.error.message}</p>
+          <p className="mt-2 text-sm text-text-muted">
+            The recorded demo keeps working exactly as before, and it needs no key.
+          </p>
+        </div>
+      ) : null}
+
+      <CardSection
+        title="The model of the run"
+        description="Only the models the catalogue of the server enables for the public demo are offered."
+      >
+        <ModelSelector
+          profiles={models}
+          selectedProfileId={selectedProfileId}
+          onSelect={setSelectedProfileId}
+          priceNote={priceNote}
+          priceKnown={priceKnown}
+        />
+      </CardSection>
+
+      <CardSection title="The caps of the run" description="The caps bound the calls of the run.">
+        <BudgetForm limits={limits} onChange={setLimits} disabled={isRunning || liveControlsDisabled} />
+      </CardSection>
+
+      <CardSection title="Your key" description="The key is read once and it dies with the session.">
+        <div className="flex flex-col gap-3">
+          {credentialHandle ? (
+            <p className="text-sm text-text-muted">
+              The server accepted the key of your provider and holds it in its vault. The page keeps
+              the handle and nothing else.
+            </p>
+          ) : (
+            <div>
+              <Button onClick={() => setDialogOpen(true)} disabled={isRefused || liveControlsDisabled}>
+                Use your own key
+              </Button>
+            </div>
+          )}
+
+          {credentialError && !liveRefusal ? (
+            <p role="alert" className="text-sm text-danger-dark">
+              {credentialError}
+            </p>
+          ) : null}
+
+          {credentialHandle ? <ConsentSummary disclosure={disclosure} /> : null}
+        </div>
+      </CardSection>
+
+      <CardSection
+        title="The case"
+        description="The case of the demo is the same for every visitor."
+      >
+        <div className="flex flex-col gap-3">
+          {demoCase ? (
+            <p className="text-sm text-text-muted">
+              Scenario {demoCase.scenarioId}, account {demoCase.accountId}, variant{" "}
+              {demoCase.variant}. The question is: {demoCase.question}
+            </p>
+          ) : null}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              onClick={handleRun}
+              disabled={
+                isRefused ||
+                liveControlsDisabled ||
+                isRunning ||
+                !selectedProfileId ||
+                !credentialHandle ||
+                !demoCase
+              }
+            >
+              Run the case
+            </Button>
+            {isRunning ? (
+              <Button variant="secondary" onClick={() => void run.cancel()}>
+                Stop the run
+              </Button>
+            ) : null}
+          </div>
+          <p className="text-sm text-text-subtle">
+            The page never starts a run on its own, and a refusal of the server is shown with its
+            code and its message.
+          </p>
+        </div>
+      </CardSection>
+
+      {run.runId ? (
+        <div className="flex flex-col gap-4">
+          <h2 className="text-lg font-semibold">The run</h2>
+          <p className="font-mono text-xs text-text-subtle">{run.runId}</p>
+          <RunTimeline counters={run.counters} events={run.events} />
+          <CostReport report={run.cost} running={isRunning} />
+        </div>
+      ) : null}
+
+      <ApiKeyDialog
+        open={dialogOpen}
+        providers={providers}
+        // The busy of the dialog is the one lever that disables its send, so the offline refusal
+        // uses it: the send of a key is impossible while the backend refuses the live mode.
+        busy={credentialBusy || liveControlsDisabled}
+        error={credentialError}
+        onSubmit={(input) => void handleCredential(input)}
+        onClose={() => setDialogOpen(false)}
+      />
+    </div>
+  );
+}

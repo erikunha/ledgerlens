@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "LedgerLens live mode",
+    "subtitle": "The static export on the origin of the site, the wired application on the origin of the API",
+    "output": "live-mode.architecture.html",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    { "id": "visitor", "type": "external", "label": "Visitor", "sublabel": "the browser", "pos": [30, 260], "size": [110, 50] },
+    { "id": "site", "type": "frontend", "label": "Static export of the site", "sublabel": "plain files", "pos": [210, 250], "size": [190, 60], "tag": "the recorded demo calls nobody" },
+    { "id": "demo", "type": "backend", "label": "ledgerlens-demo", "sublabel": "the wired application", "pos": [480, 250], "size": [170, 60], "tag": "the origin of the API" },
+    { "id": "branch", "type": "backend", "label": "Branch layer", "sublabel": "the sandbox", "pos": [760, 250], "size": [160, 60] },
+    { "id": "provider", "type": "cloud", "label": "Provider of the model", "sublabel": "the key of the visitor", "pos": [1030, 250], "size": [170, 60] },
+    { "id": "vault", "type": "security", "label": "Credential vault", "sublabel": "the memory of the process", "pos": [480, 440], "size": [170, 56], "tag": "the trust boundary of the key" },
+    { "id": "store", "type": "database", "label": "Branch store", "sublabel": "the branches of the visitor", "pos": [760, 440], "size": [160, 56] },
+    { "id": "ledger", "type": "database", "label": "Ledger of the run", "sublabel": "materialized for the run", "pos": [1030, 440], "size": [170, 56], "tag": "the file of the run" }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Origin of the site", "wraps": ["visitor", "site"] },
+    { "kind": "region", "label": "Origin of the API", "wraps": ["demo", "vault", "branch", "store"] },
+    { "kind": "security-group", "label": "Memory of the server", "wraps": ["vault"] },
+    { "kind": "region", "label": "The file of the run", "wraps": ["ledger"] }
+  ],
+  "connections": [
+    { "id": "visitor-loads-site", "from": "visitor", "to": "site", "label": "loads the site", "labelAt": [175, 330] },
+    { "id": "visitor-posts-the-key", "from": "visitor", "to": "demo", "label": "POST /v1/credentials, the key in the body", "variant": "security", "fromSide": "bottom", "toSide": "left", "via": [[85, 370], [455, 370], [455, 280]], "labelAt": [300, 350] },
+    { "id": "visitor-runs-the-case", "from": "visitor", "to": "demo", "label": "POST /v1/live-runs, the events, the cost", "variant": "emphasis", "fromSide": "bottom", "toSide": "bottom", "via": [[85, 400], [565, 400]], "labelAt": [300, 392] },
+    { "id": "demo-keeps-the-key", "from": "demo", "to": "vault", "label": "the key, in the body of the request", "variant": "security", "fromSide": "bottom", "toSide": "top", "labelAt": [675, 375] },
+    { "id": "demo-resolves-the-branch", "from": "demo", "to": "branch", "label": "resolves the branch of the visitor", "labelAt": [705, 335] },
+    { "id": "branch-reads-the-store", "from": "branch", "to": "store", "label": "reads the branches", "fromSide": "bottom", "toSide": "top", "labelAt": [840, 375] },
+    { "id": "branch-materializes-the-ledger", "from": "branch", "to": "ledger", "label": "materializes the ledger", "fromSide": "right", "toSide": "left", "via": [[975, 280], [975, 468]], "labelAt": [975, 400] },
+    { "id": "demo-calls-the-provider", "from": "demo", "to": "provider", "label": "calls the model, inside the budget", "fromSide": "top", "toSide": "top", "via": [[565, 200], [1115, 200]], "labelAt": [840, 190] }
+  ],
+  "cards": [
+    { "dot": "emerald", "title": "The origin of the site", "items": ["The site is a static export: a folder of plain files", "The recorded demo reads the published artifacts and calls nobody", "The browser loads the site from this origin"] },
+    { "dot": "cyan", "title": "The origin of the API", "items": ["The browser calls the wired application with credentials: include", "The branch of the visitor is resolved before the first call of the provider", "The store of the branches and the ledger of the run live here"] },
+    { "dot": "rose", "title": "The trust boundary of the key", "items": ["The key travels only in the body of POST /v1/credentials", "The vault holds it in the memory of the server process and nowhere else", "The handle that the server answers is not a secret and travels in a body"] }
+  ]
+}

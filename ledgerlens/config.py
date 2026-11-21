@@ -68,6 +68,10 @@ class Settings(BaseModel):
     # The url of the database of the sandbox store. Empty means the file backed store, which is the one the fast
     # unit tests use. The url points at the container of `docker-compose.yml`.
     sandbox_database_url: str | None = None
+    # The origins of the browser that may call the backend from another origin, with the cookie of the session. The
+    # list is empty by default: a deployment that declares no origin installs no CORS at all, and the backend
+    # answers exactly as it answers today (ADR-040).
+    cors_origins: tuple[str, ...] = ()
 
     def secrets(self) -> list[str]:
         """The key values held, for redaction. Never log this list."""
@@ -87,6 +91,21 @@ def _text(value: str | None) -> str | None:
 def _secret(value: str | None) -> SecretStr | None:
     value = _text(value)
     return SecretStr(value) if value else None
+
+
+def _origins(value: str | None) -> tuple[str, ...]:
+    """The origins of the CORS, read from a comma separated list of exact origins.
+
+    Why the wildcard is refused: a wildcard with credentials is illegal in the Fetch specification, and it would let
+    any site of the internet drive the API with the session of the visitor (ADR-040).
+    """
+    origins = tuple(part.strip() for part in (value or "").split(",") if part.strip())
+    if any("*" in origin for origin in origins):
+        raise ConfigError(
+            "LEDGERLENS_CORS_ORIGINS must name the exact origins of the browser, and never the wildcard, because a "
+            "wildcard with credentials is illegal and would let any site drive the API with the session of the visitor"
+        )
+    return origins
 
 
 def _redact(text: str, settings: Settings) -> str:
@@ -116,6 +135,7 @@ def get_settings(env: Mapping[str, str] | None = None) -> Settings:
     idle_ttl = _text(values.get("LEDGERLENS_SANDBOX_BRANCH_IDLE_TTL_SECONDS"))
     absolute_ttl = _text(values.get("LEDGERLENS_SANDBOX_BRANCH_ABSOLUTE_TTL_SECONDS"))
     sandbox_database_url = _text(values.get("LEDGERLENS_SANDBOX_DATABASE_URL"))
+    cors_origins = _text(values.get("LEDGERLENS_CORS_ORIGINS"))
     settings = Settings(
         offline=_flag(values.get("LEDGERLENS_OFFLINE")),
         model=_text(values.get("LEDGERLENS_MODEL")),
@@ -132,6 +152,7 @@ def get_settings(env: Mapping[str, str] | None = None) -> Settings:
         **({"sandbox_branch_idle_ttl_seconds": int(idle_ttl)} if idle_ttl else {}),
         **({"sandbox_branch_absolute_ttl_seconds": int(absolute_ttl)} if absolute_ttl else {}),
         **({"sandbox_database_url": sandbox_database_url} if sandbox_database_url else {}),
+        **({"cors_origins": _origins(cors_origins)} if cors_origins else {}),
     )
     log.debug("settings loaded: %r", settings)
     return settings

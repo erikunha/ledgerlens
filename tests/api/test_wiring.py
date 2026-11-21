@@ -50,6 +50,7 @@ from ledgerlens.api.sandbox import SESSION_COOKIE  # noqa: E402
 from ledgerlens.api.wiring import build_wired_app, main  # noqa: E402
 from ledgerlens.byok.adapter import FakeProviderAdapter  # noqa: E402
 from ledgerlens.byok.vault import CredentialVault  # noqa: E402
+from ledgerlens.config import get_settings  # noqa: E402
 from ledgerlens.sandbox.memory import session_memory_dir  # noqa: E402
 from ledgerlens.sandbox.session import SessionIssuer  # noqa: E402
 from ledgerlens.sandbox.snapshot import BaseResolver  # noqa: E402
@@ -92,6 +93,9 @@ PROFILE_ID = "openai-gpt-4.1-mini"
 # scenario, and the account of the request has to be the account of the branch (ADR-038).
 SCENARIO_ID = "S01"
 ACCOUNT_ID = "C-0412"
+
+# The origin of the site of the demo, the one the deployment of the live mode declares (ADR-040).
+CORS_ORIGIN = "http://localhost:3000"
 
 # The resource `Error` of the contract, field for field.
 ERROR_KEYS = {"code", "message", "retryable", "request_id"}
@@ -812,3 +816,68 @@ def test_the_command_serves_the_two_facades_over_one_issuer(monkeypatch: pytest.
     scripts = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["scripts"]
     assert scripts["ledgerlens-demo"] == "ledgerlens.api.wiring:main"
     assert scripts["ledgerlens-api"] == "ledgerlens.api.ledger_service:main"
+
+
+# --- the CORS of the deployment --------------------------------------------------------------------------
+
+
+@pytest.fixture
+def cors_app(
+    store: FileBranchStore,
+    issuer: SessionIssuer,
+    vault: CredentialVault,
+    adapter: FakeProviderAdapter,
+    runtime: Path,
+) -> FastAPI:
+    """The wired application of a deployment that declares the origin of the site.
+
+    Why the setting is given and not read from the environment: a test that changes the environment of the machine is
+    a test that depends on the machine (ADR-040).
+    """
+    settings = get_settings().model_copy(update={"cors_origins": (CORS_ORIGIN,)})
+    return build_wired_app(
+        settings=settings,
+        issuer=issuer,
+        store=store,
+        vault=vault,
+        adapter_factory=lambda _provider, _key: adapter,
+        runtime_dir=runtime,
+    )
+
+
+def _the_pairs_of_the_schema(app: FastAPI) -> set[tuple[str, str]]:
+    """The pairs of path and method of the application, read from the schema of the OpenAPI.
+
+    Why the schema and not the list of the routes: fastapi keeps an included router as one entry of the list of the
+    routes, so the list does not carry the paths of the contract and the schema is what carries them.
+    """
+    pairs: set[tuple[str, str]] = set()
+    for path, item in app.openapi()["paths"].items():
+        for method in item:
+            if method in {"parameters", "summary", "description", "servers", "tags"}:
+                continue
+            pairs.add((path, method))
+    return pairs
+
+
+def test_the_wired_application_answers_the_browser_with_the_cors_headers(cors_app: FastAPI) -> None:
+    """ADR-040: the wired application answers the browser of the visitor with the headers of the CORS.
+
+    Why the session route is the one that is called: it is a route of the live mode, it needs no body and it answers
+    in the process, so the test reads the headers of the answer of the application and not of a mock.
+    """
+    with TestClient(cors_app) as client:
+        response = client.post("/v1/sessions", headers={"Origin": CORS_ORIGIN})
+
+    assert response.status_code == 201, response.text
+    assert response.headers["access-control-allow-origin"] == CORS_ORIGIN
+    assert response.headers["access-control-allow-credentials"] == "true"
+
+
+def test_the_list_of_the_routes_does_not_change_when_the_cors_is_installed(app: FastAPI, cors_app: FastAPI) -> None:
+    """ADR-040: the CORS is a middleware and adds no route, so the list of the routes is the same list.
+
+    Why it matters: ADR-039 pins the list of the routes of the wired application, and a CORS that added a route would
+    change the contract of the deployment without anybody deciding it.
+    """
+    assert _the_pairs_of_the_schema(cors_app) == _the_pairs_of_the_schema(app)
