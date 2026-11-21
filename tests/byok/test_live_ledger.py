@@ -23,6 +23,7 @@ from __future__ import annotations
 import json
 import shutil
 import sqlite3
+import threading
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -33,14 +34,17 @@ import pytest
 
 pytest.importorskip("fastapi")
 
+from fastapi import FastAPI  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
 from ledgerlens import embeddings as emb  # noqa: E402
+from ledgerlens.api import byok as byok_api  # noqa: E402
 from ledgerlens.api import live_case  # noqa: E402
 from ledgerlens.api.accounts import scoped_ledger  # noqa: E402
-from ledgerlens.api.byok import RUNS_FOLDER_NAME, create_app  # noqa: E402
+from ledgerlens.api.byok import RUNS_FOLDER_NAME, build_router, create_app  # noqa: E402
 from ledgerlens.api.live_case import DemoCase  # noqa: E402
 from ledgerlens.api.live_run import LiveRunCoordinator, LiveRunPlan  # noqa: E402
+from ledgerlens.api.sandbox import ContractError  # noqa: E402
 from ledgerlens.byok.adapter import FakeProviderAdapter  # noqa: E402
 from ledgerlens.byok.errors import ByokError  # noqa: E402
 from ledgerlens.byok.registry import ProviderRegistry  # noqa: E402
@@ -73,6 +77,8 @@ CANONICAL_HASH = "canonical-hash-of-the-branch"
 RUN_ID = "run-ledger"
 # The identifier of the mutation of the visitor: it is in the file of the run and in no other ledger.
 MUTATION_ID = "TX-9999"
+# How many runs the test of the maps of the case runs, so that a map that grows with every run is visible.
+RUNS_OF_THE_TEST = 6
 
 # The SQL of the row of the account of the visitor, and the SQL that asks for the rows of another customer.
 SQL_OF_THE_ACCOUNT = "SELECT id, status, amount_minor, currency FROM transactions WHERE id = 'TX-9999'"
@@ -685,6 +691,24 @@ def test_the_route_reads_the_branch_of_the_visitor_with_the_layer_of_the_sandbox
     assert payload["canonical_hash"] == branch.current_canonical_hash
 
 
+class _Case_that_reads_the_context_while_the_run_lives(DemoCase):
+    """The case of the demo that reads the context of the run while the run is still running.
+
+    Why the context is read during the run: the case forgets the run when the run ends, so the context of a run
+    that is over is gone, and a reader that wants it has to read it while the run lives (ADR-038).
+    """
+
+    def __init__(self, **options: Any) -> None:
+        super().__init__(**options)
+        self.contexts: list[Any] = []
+
+    def __call__(self, caller: Any, plan: LiveRunPlan) -> str:
+        """The answer of the case of the demo, with the context of the run read before the run ends."""
+        answer = super().__call__(caller, plan)
+        self.contexts.append(self.context_of(plan.run_id))
+        return answer
+
+
 def test_the_case_memory_of_the_run_lives_in_the_folder_of_the_session(
     ledger_db: Path,
     index_root: Path,
@@ -695,7 +719,12 @@ def test_the_case_memory_of_the_run_lives_in_the_folder_of_the_session(
     the_ledger = _scoped_ledger_of_the_run(ledger_db, tmp_path / "ledger-of-the-run.db")
     adapter = _scripted_adapter(SQL_OF_THE_ACCOUNT)
     vault = CredentialVault()
-    case = _case(index_root, embeddings, tmp_path)
+    case = _Case_that_reads_the_context_while_the_run_lives(
+        index_root=index_root,
+        embeddings=embeddings,
+        verifier=harness.refusing_verifier(),
+        runtime_dir=tmp_path,
+    )
     coordinator = _coordinator(adapter, vault, executor=case)
     handle = vault.accept(harness.MARKER, "openai", session_id=SESSION)
 
@@ -704,7 +733,8 @@ def test_the_case_memory_of_the_run_lives_in_the_folder_of_the_session(
 
     assert result is not None
     assert result.status == "completed", result.error
-    context = case.context_of(RUN_ID)
+    assert case.contexts, "the case never read the context of the run"
+    context = case.contexts[0]
     assert context is not None
     # The memory of the case lives in the folder of the session of the visitor, and two sessions never share it.
     assert context.memory_dir == tmp_path / "sessions" / SESSION
@@ -867,3 +897,222 @@ def test_a_refused_run_leaves_no_folder_behind(tmp_path: Path) -> None:
 
     runs = tmp_path / "runtime" / RUNS_FOLDER_NAME
     assert not runs.exists() or not any(runs.iterdir()), "the refused run left a folder behind"
+
+
+# --- the owner of the removal of the file of the ledger -----------------------------------------------
+
+
+class _BrokenCoordinator(LiveRunCoordinator):
+    """A coordinator whose start breaks in a way the route does not know (ADR-038).
+
+    Why a double and not the coordinator of the domain: the coordinator of the domain refuses a run with a refusal
+    of its own family, and this double breaks with an error of nobody, so the route has to clean up after it
+    (ADR-038).
+    """
+
+    def start(self, plan: LiveRunPlan, *, case: Any = None) -> Any:
+        """Breaks the way a coordinator breaks when it meets something it does not expect."""
+        raise RuntimeError("the coordinator of the test breaks in a way the route does not know")
+
+
+def test_the_file_of_the_ledger_does_not_outlive_a_request_that_the_coordinator_refuses_with_an_error_it_does_not_know(
+    tmp_path: Path,
+    ledger_db: Path,
+) -> None:
+    """ADR-038: the route owns the removal of the file of the ledger, whatever the refusal of the coordinator is.
+
+    Why a refusal the route does not know: the route cannot know every way a coordinator may refuse, and the rows
+    of a visitor may not stay on the disk of the server for a run that never happened (ADR-038).
+    """
+    the_ledger = _scoped_ledger_of_the_run(ledger_db, tmp_path / "ledger-of-the-run.db")
+    layer = FakeBranchLayer(source=the_ledger)
+    vault = CredentialVault()
+    adapter = FakeProviderAdapter(provider="openai", api_key=harness.MARKER)
+    coordinator = _BrokenCoordinator(
+        registry=harness.registry(),
+        vault=vault,
+        adapter_factory=lambda _provider, _key: adapter,
+    )
+
+    with _live_app(
+        tmp_path,
+        branch_layer=layer,
+        coordinator=coordinator,
+        vault=vault,
+        adapter=adapter,
+    ) as (client, _vault, _adapter):
+        handle = _credential(client)
+        with pytest.raises(RuntimeError):
+            client.post("/v1/live-runs", json=_run_body(handle))
+        assert layer.written, "the layer of the branch never wrote the file of the run"
+        target = layer.targets[0]
+
+    assert not target.exists(), "the file of the ledger outlived the request"
+    assert not target.parent.exists(), "the folder of the run outlived the request"
+
+
+def test_the_file_of_the_ledger_of_a_run_that_started_is_not_removed_by_the_route(
+    tmp_path: Path,
+    ledger_db: Path,
+) -> None:
+    """ADR-038: the route leaves the file of the ledger of a run that started, and the run removes it at its end.
+
+    Why the case waits: the file of the ledger belongs to the run while the run runs, and the only proof that the
+    route did not take it is that the file is there while the run is still running (ADR-038).
+    """
+    the_ledger = _scoped_ledger_of_the_run(ledger_db, tmp_path / "ledger-of-the-run.db")
+    layer = FakeBranchLayer(source=the_ledger)
+    vault = CredentialVault()
+    adapter = FakeProviderAdapter(provider="openai", api_key=harness.MARKER)
+    release = threading.Event()
+
+    def case(caller: Any, plan: LiveRunPlan) -> str:
+        """The case of the run, which waits until the test lets the run end."""
+        release.wait(timeout=20.0)
+        return "the answer of the run"
+
+    coordinator = LiveRunCoordinator(
+        registry=harness.registry(),
+        vault=vault,
+        adapter_factory=lambda _provider, _key: adapter,
+        executor=case,
+    )
+
+    with _live_app(
+        tmp_path,
+        branch_layer=layer,
+        coordinator=coordinator,
+        vault=vault,
+        adapter=adapter,
+        executor=case,
+    ) as (client, _vault, _adapter):
+        handle = _credential(client)
+        response = client.post("/v1/live-runs", json=_run_body(handle))
+        assert response.status_code == 201, response.text
+        run_id = response.json()["run_id"]
+        target = layer.targets[0]
+        # The run is running, so the file of the ledger is its own until the run ends.
+        assert target.exists(), "the route removed the file of the ledger of a run that started"
+        release.set()
+        state = _wait_for_the_end(client, run_id)
+
+    assert state["status"] == "completed", state
+    assert not target.exists(), "the run did not remove the file of the ledger of its own run"
+
+
+# --- the case forgets the run when the run ends -------------------------------------------------------
+
+
+def test_the_case_forgets_the_run_when_the_run_ends(
+    ledger_db: Path,
+    index_root: Path,
+    embeddings: Any,
+    tmp_path: Path,
+) -> None:
+    """ADR-038: the case forgets the run when it ends, so it holds no context and no bridges of that run.
+
+    Why the run is forgotten at its end: a case that keeps every run it ever served grows without end in a long
+    lived process, one context and four bridges per run (ADR-038).
+    """
+    the_ledger = _scoped_ledger_of_the_run(ledger_db, tmp_path / "ledger-of-the-run.db")
+    adapter = _scripted_adapter(SQL_OF_THE_ACCOUNT)
+    vault = CredentialVault()
+    case = _case(index_root, embeddings, tmp_path)
+    coordinator = _coordinator(adapter, vault, executor=case)
+    handle = vault.accept(harness.MARKER, "openai", session_id=SESSION)
+
+    coordinator.start(_plan(handle.handle, ledger=_ledger_of_the_run(the_ledger)), case=case)
+    result = coordinator.wait(RUN_ID, timeout=20.0)
+
+    assert result is not None
+    assert result.status == "completed", result.error
+    # The run is over, so the case holds no context of it and no bridges of it.
+    assert case.context_of(RUN_ID) is None
+    assert case.bridges_of(RUN_ID) == {}
+
+
+def test_the_maps_of_the_case_do_not_grow_with_the_runs(
+    ledger_db: Path,
+    index_root: Path,
+    embeddings: Any,
+    tmp_path: Path,
+) -> None:
+    """ADR-038: the maps of the case do not grow with the runs: every run that ended is forgotten.
+
+    Why many runs: a map that grows with every run looks the same as a map that is empty after one run, and only
+    the many runs tell the two apart (ADR-038).
+    """
+    vault = CredentialVault()
+    case = _case(index_root, embeddings, tmp_path)
+    coordinator = LiveRunCoordinator(
+        registry=harness.registry(),
+        vault=vault,
+        adapter_factory=lambda _provider, _key: _scripted_adapter(SQL_OF_THE_ACCOUNT),
+    )
+    handle = vault.accept(harness.MARKER, "openai", session_id=SESSION)
+
+    for index in range(RUNS_OF_THE_TEST):
+        run_id = f"run-{index}"
+        the_ledger = _scoped_ledger_of_the_run(ledger_db, tmp_path / f"ledger-of-the-run-{index}.db")
+        coordinator.start(_plan(handle.handle, run_id=run_id, ledger=_ledger_of_the_run(the_ledger)), case=case)
+        result = coordinator.wait(run_id, timeout=20.0)
+
+        assert result is not None
+        assert result.status == "completed", result.error
+
+    # No run of the six is left in the case, so the two maps of the case are empty and do not grow.
+    for index in range(RUNS_OF_THE_TEST):
+        run_id = f"run-{index}"
+        assert case.context_of(run_id) is None
+        assert case.bridges_of(run_id) == {}
+
+
+# --- a router without a case refuses the run ----------------------------------------------------------
+
+
+def test_a_run_without_a_case_is_refused_with_a_readable_reason(
+    tmp_path: Path,
+    ledger_db: Path,
+) -> None:
+    """ADR-038: a router built without a case refuses the run, with a code and a readable reason.
+
+    Why the refusal and not the case of the coordinator: the coordinator may carry the default case, which asks the
+    model once with the question of the request, and a run that answers with it never reads the ledger of the
+    visitor (ADR-038).
+
+    Why no provider is called: the refusal happens before the branch of the visitor is read, so no money of the
+    visitor is spent (ADR-038).
+    """
+    the_ledger = _scoped_ledger_of_the_run(ledger_db, tmp_path / "ledger-of-the-run.db")
+    layer = FakeBranchLayer(source=the_ledger)
+    vault = CredentialVault()
+    adapter = FakeProviderAdapter(provider="openai", api_key=harness.MARKER)
+    coordinator = LiveRunCoordinator(
+        registry=harness.registry(),
+        vault=vault,
+        adapter_factory=lambda _provider, _key: adapter,
+    )
+    app = FastAPI()
+    app.include_router(
+        build_router(
+            vault=vault,
+            registry=harness.registry(),
+            issuer=SessionIssuer(tmp_path / "demo-session.key"),
+            coordinator=coordinator,
+            branch_layer=layer,
+            runtime_dir=tmp_path / "runtime",
+        )
+    )
+
+    with TestClient(app) as client:
+        client.post("/v1/sessions")
+        handle = _credential(client)
+        with pytest.raises(ContractError) as refusal:
+            client.post("/v1/live-runs", json=_run_body(handle))
+
+    assert refusal.value.code == byok_api.CODE_CASE_MISSING
+    assert refusal.value.status_code == 503
+    assert "case" in refusal.value.message.lower()
+    # The refusal happened before the branch was read and before the provider was called.
+    assert layer.calls == [], "the route read the branch of the visitor for a run it refuses"
+    assert adapter.calls == []

@@ -347,6 +347,23 @@ def case(ledger_db: Path, index_root: Path, embeddings: FastEmbedEmbeddings) -> 
     )
 
 
+def _the_case_that_remembers_the_bridges(case: DemoCase) -> tuple[Any, list[dict[str, BridgeChatModel]]]:
+    """The case of the demo with a spy that keeps the bridges of the run while the run is still running.
+
+    Why the bridges are read during the run: the case forgets the run when the run ends, so the evidence of a run
+    that is over is gone, and a reader that wants it has to read it while the run lives (ADR-038).
+    """
+    kept: list[dict[str, BridgeChatModel]] = []
+
+    def spy(caller: Any, plan: LiveRunPlan) -> str:
+        """The case of the demo, which keeps the bridges of the run before the run ends."""
+        answer = case(caller, plan)
+        kept.append(dict(case.bridges_of(plan.run_id)))
+        return answer
+
+    return spy, kept
+
+
 # --- the case on the bridge over the caller of the run ----------------------------------------------
 
 
@@ -376,7 +393,8 @@ def test_the_triage_model_and_the_generator_of_the_sql_are_counted(case: DemoCas
     """FR-012: the four model slots of the agent of the demo are the model of the run, and their calls count."""
     adapter = scripted_adapter()
     vault = CredentialVault()
-    coordinator = _coordinator(adapter, vault, executor=case)
+    the_case, kept = _the_case_that_remembers_the_bridges(case)
+    coordinator = _coordinator(adapter, vault, executor=the_case)
     handle = vault.accept(MARKER, "openai", session_id=SESSION)
 
     coordinator.start(_plan(handle.handle))
@@ -384,7 +402,8 @@ def test_the_triage_model_and_the_generator_of_the_sql_are_counted(case: DemoCas
 
     assert result is not None
     assert result.status == "completed"
-    bridges = case.bridges_of("run-case")
+    assert kept, "the case never kept the bridges of the run"
+    bridges = kept[0]
     assert set(bridges) == {SLOT_AGENT, SLOT_TRIAGE, SLOT_SQL, SLOT_POLICY}
     # Every slot speaks through the model of the run, and the four of them spoke.
     for slot, bridge in bridges.items():
@@ -864,8 +883,10 @@ def test_two_concurrent_runs_of_the_same_case_do_not_see_each_other(case: DemoCa
     first = scripted_adapter()
     second = scripted_adapter()
     vault = CredentialVault()
-    first_coordinator = _coordinator(first, vault, executor=case)
-    second_coordinator = _coordinator(second, vault, executor=case)
+    first_case, first_kept = _the_case_that_remembers_the_bridges(case)
+    second_case, second_kept = _the_case_that_remembers_the_bridges(case)
+    first_coordinator = _coordinator(first, vault, executor=first_case)
+    second_coordinator = _coordinator(second, vault, executor=second_case)
     handle = vault.accept(MARKER, "openai", session_id=SESSION)
 
     first_coordinator.start(_plan(handle.handle, run_id="run-first"))
@@ -877,8 +898,10 @@ def test_two_concurrent_runs_of_the_same_case_do_not_see_each_other(case: DemoCa
     assert first_result.status == "completed"
     assert second_result is not None
     assert second_result.status == "completed"
-    first_bridges = case.bridges_of("run-first")
-    second_bridges = case.bridges_of("run-second")
+    assert first_kept, "the case never kept the bridges of the first run"
+    assert second_kept, "the case never kept the bridges of the second run"
+    first_bridges = first_kept[0]
+    second_bridges = second_kept[0]
     assert set(first_bridges) == {SLOT_AGENT, SLOT_TRIAGE, SLOT_SQL, SLOT_POLICY}
     assert set(second_bridges) == {SLOT_AGENT, SLOT_TRIAGE, SLOT_SQL, SLOT_POLICY}
     # The bridges of one run are not the bridges of the other, and the calls of one are not in the other.

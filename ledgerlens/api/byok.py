@@ -21,6 +21,11 @@ What the routes promise:
   session, a branch that expired, a branch that cannot prove its own state, an account that is not the account of
   the branch and a revision that moved, with the codes of the contract of the sandbox and without calling any
   provider (ADR-038);
+* the route of the run owns the removal of the file of the ledger of a run that never started, whatever the refusal
+  of the coordinator was, and it leaves the file of a run that is running alone, because that run removes it when it
+  ends (ADR-038);
+* a router without a case refuses the run with a readable reason, because a run that answered with the default case
+  would never read the ledger of the visitor (ADR-038);
 * the cost report shows the observed cost and the estimated cost apart, and no amount when the price is unknown
   (FR-010, FR-011).
 
@@ -117,6 +122,7 @@ __all__ = [
     "CODE_BRANCH_HASH_MISMATCH",
     "CODE_BRANCH_LAYER_MISSING",
     "CODE_CAPABILITY_MISSING",
+    "CODE_CASE_MISSING",
     "CODE_CONTRACT_UNAVAILABLE",
     "CODE_CREDENTIAL_REFUSED",
     "CODE_INVALID_REQUEST",
@@ -170,6 +176,9 @@ CODE_BRANCH_EXPIRED = "BRANCH_EXPIRED"
 CODE_BRANCH_HASH_MISMATCH = "HASH_MISMATCH"
 CODE_ACCOUNT_MISMATCH = "ACCOUNT_MISMATCH"
 CODE_REVISION_MOVED = "REVISION_MOVED"
+# The refusal of a deployment that has no case of its own. It is not the fault of the body of the visitor, so it is
+# not the code of a bad request.
+CODE_CASE_MISSING = "CASE_MISSING"
 # The refusal of a deployment that cannot check the contract of the request. It is not the fault of the body of the
 # visitor, so it is not the code of a bad request.
 CODE_CONTRACT_UNAVAILABLE = "CONTRACT_UNAVAILABLE"
@@ -519,7 +528,7 @@ def build_router(
     registry: ProviderRegistry,
     issuer: SessionIssuer,
     coordinator: LiveRunCoordinator,
-    case: CaseExecutor,
+    case: CaseExecutor | None = None,
     capabilities: SessionCapabilities | None = None,
     branch_layer: BranchLayer | None = None,
     runtime_dir: Path | None = None,
@@ -534,6 +543,9 @@ def build_router(
 
     Why the case is given to the router and not read from the coordinator: the case of a run travels with the run,
     and the coordinator of the caller is never rewritten (ADR-038).
+
+    Why the case is optional: a deployment that builds the router by hand may not have a case yet, and a router
+    that cannot be built is worse than a router that refuses a run with a readable reason (ADR-038).
     """
     router = APIRouter()
     the_capabilities = capabilities if capabilities is not None else SessionCapabilities()
@@ -675,6 +687,13 @@ def build_router(
 
         The run carries the case of the application, and the coordinator of the caller keeps the case it was built
         with: a coordinator is never rewritten by the facade (ADR-038).
+
+        The file of the ledger of the run goes away when the run does not start, whatever the refusal of the
+        coordinator was: the route owns that removal, and a run that started removes the file of its own ledger when
+        it ends (ADR-038).
+
+        A router without a case refuses the run with a readable reason, before the branch of the visitor is read
+        (ADR-038).
         """
         _refuse_when_offline()
         session = _session_of(cookie, issuer)
@@ -687,6 +706,7 @@ def build_router(
             ) from None
         _refuse_a_session_that_may_not_run_the_live_mode(session, the_capabilities)
         _refuse_a_model_the_allowlist_does_not_hold(registry, payload)
+        _refuse_a_run_without_a_case(case)
         run_id = f"{RUN_ID_PREFIX}{secrets.token_hex(8)}"
         # The ledger of the visitor, materialized in the file of the run. The run never starts without it (ADR-038).
         ledger = _the_ledger_of_the_run(branch_layer, session, payload, the_runtime, run_id)
@@ -705,14 +725,10 @@ def build_router(
             ledger=ledger,
         )
         try:
-            coordinator.start(plan, case=case)
+            _start_the_run_that_never_leaves_the_ledger_behind(coordinator, plan, case, ledger)
         except LiveModeOffline as refusal:
-            # The run never started, so the file of the ledger of the run goes away with it (ADR-038).
-            remove_the_ledger_of_the_run(ledger)
             raise ContractError(503, CODE_LIVE_MODE_OFFLINE, str(refusal)) from None
         except ByokError as refusal:
-            # The run never started, so the file of the ledger of the run goes away with it (ADR-038).
-            remove_the_ledger_of_the_run(ledger)
             code = CODE_CAPABILITY_MISSING if isinstance(refusal, CapabilityMissing) else CODE_MODEL_NOT_ALLOWED
             raise ContractError(422, code, str(refusal)) from None
         body = {
@@ -925,6 +941,55 @@ def _refuse_a_model_the_allowlist_does_not_hold(registry: ProviderRegistry, payl
         raise ContractError(422, CODE_CAPABILITY_MISSING, str(refusal)) from None
     except ByokError as refusal:
         raise ContractError(422, CODE_MODEL_NOT_ALLOWED, str(refusal)) from None
+
+
+def _refuse_a_run_without_a_case(case: CaseExecutor | None) -> None:
+    """Refuses a run of a deployment that has no case, before the branch of the visitor is read (ADR-038).
+
+    Why the refusal and not the case of the coordinator: the coordinator may carry the default case, which asks the
+    model once with the question of the request, and a run that answers with it never reads the ledger of the
+    visitor. The live route runs the case of the application, and a router that has no case cannot serve a run
+    (ADR-038).
+
+    Why the message never carries a value of the visitor: the reason is a property of the deployment, and the body
+    of the request may hold the key of the provider of the visitor (FR-018, SC-001).
+    """
+    if case is not None:
+        return
+    raise ContractError(
+        503,
+        CODE_CASE_MISSING,
+        "this deployment has no case of its own, so the live route cannot run a run: "
+        "the run would answer without reading the ledger of the visitor",
+    ) from None
+
+
+def _start_the_run_that_never_leaves_the_ledger_behind(
+    coordinator: LiveRunCoordinator,
+    plan: LiveRunPlan,
+    case: CaseExecutor | None,
+    ledger: LedgerView | None,
+) -> None:
+    """Starts the run, and the file of the ledger goes away when the run does not start (ADR-038).
+
+    Why the route owns the removal: a refusal that the route does not know is a run that never started, and the rows
+    of a visitor may not stay on the disk of the server for a run that never happened. The route cannot know every
+    way a coordinator may refuse, so the removal belongs to the one place that sees them all (ADR-038).
+
+    Why the flag and not the clause of the refusal: the file goes away on every path where the run did not start,
+    and the path of the success is the only one that leaves the file alone, because a run that started removes the
+    file of its own ledger when it ends (ADR-038).
+
+    Why the removal never raises: the file is already gone or already unreadable, and the run has answered.
+    """
+    started = False
+    try:
+        coordinator.start(plan, case=case)
+        # The run started, so the file of the ledger belongs to the run until the run ends.
+        started = True
+    finally:
+        if not started:
+            remove_the_ledger_of_the_run(ledger)
 
 
 def _the_ledger_of_the_run(

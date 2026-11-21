@@ -368,6 +368,10 @@ class DemoCase:
 
     Why the ledger of the run is the ledger of the plan: the branch of the visitor is the only truth of the visitor,
     and the tools of the agent read the file of that branch and never the ledger of the configuration (ADR-038).
+
+    Why the case forgets a run that ended: the case holds a context and four bridges for every run it ever served,
+    and a case that lives in a long lived process would grow without end. The coordinator knows when a run ends and
+    tells the case, and the case drops the run from its two maps (ADR-038).
     """
 
     def __init__(
@@ -405,6 +409,9 @@ class DemoCase:
 
         Why the bridges are asked by the identifier of the run: the bridges belong to the run, and a reader that
         wants the calls of a run has to name it (FR-012).
+
+        Why a reader of a run that ended finds nothing: the case forgets the run when it ends, and the run is over
+        (ADR-038).
         """
         return self._bridges.get(run_id, {})
 
@@ -415,6 +422,19 @@ class DemoCase:
         session, and a reader that wants to know where the memory of a run went has to name the run (ADR-038).
         """
         return self._contexts.get(run_id)
+
+    def forget(self, run_id: str) -> None:
+        """The case forgets the run: the context and the bridges of the run go away (ADR-038).
+
+        Why the case forgets and not the coordinator: the coordinator knows when a run ends, and the case owns the
+        context and the bridges of the runs it served. A case that is not the case of the demo has nothing to
+        forget, and the coordinator only asks the case that knows how to forget (ADR-038).
+
+        Why the run is forgotten at its end and not later: a case that keeps every run it ever served grows without
+        end in a long lived process, one context and four bridges for every run (ADR-038).
+        """
+        self._contexts.pop(run_id, None)
+        self._bridges.pop(run_id, None)
 
     def __call__(self, caller: ModelCaller, plan: LiveRunPlan) -> str:
         """The answer of the agent of the demo, on the bridge over the caller of the run."""

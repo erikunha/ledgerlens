@@ -34,7 +34,9 @@ What it guarantees:
 * the trace of the run names the branch, the revision and the canonical hash of the ledger that was read, and the
   file of that ledger goes away when the run ends, on every path, and also when the run never starts at all (ADR-038);
 * the case of a run travels with the run: a run that is started with a case runs that case, and the coordinator of the
-  caller is never rewritten, so it keeps the case it was built with (ADR-038).
+  caller is never rewritten, so it keeps the case it was built with (ADR-038);
+* the case of a run is told that the run is over, so a case that lives in a long lived process does not keep the
+  context and the four bridges of every run it ever served (ADR-038).
 
 Why the coordinator holds the secret of the run: the vault does not keep the secret of a credential that is gone, on
 purpose (ADR-033), and a credential can die in the middle of a run (the visitor presses "forget key", the session
@@ -994,6 +996,9 @@ class LiveRunCoordinator:
             # The file of the ledger of the run goes away with the run, on every path: a file that outlives its run
             # holds the rows of a visitor on the disk of the server longer than the run needs it (ADR-038).
             remove_the_ledger_of_the_run(plan.ledger)
+            # The case forgets the run when the run ends: the case holds a context and four bridges for every run
+            # it ever served, and a long lived process would grow without end (ADR-038).
+            _forget_the_run(run.case, plan.run_id)
 
     def _record_the_failure_of_the_credential(self, run: _Run, error: BaseException) -> None:
         """Counts a failure of the credential of the run, so a key that does not work dies sooner (FR-023).
@@ -1159,6 +1164,24 @@ def remove_the_ledger_of_the_run(ledger: LedgerView | None) -> None:
     if ledger is None:
         return
     remove_the_ledger_file(ledger.path)
+
+
+def _forget_the_run(case: CaseExecutor, run_id: str) -> None:
+    """Tells the case of the run that the run is over, when the case knows how to forget a run (ADR-038).
+
+    Why the check and not a change of the protocol: a case that is not the case of the demo has nothing to forget,
+    and the seam of `CaseExecutor` has to keep working with every case (ADR-038).
+
+    Why a failure is only logged: a case that cannot forget keeps a little more memory, and it must never fail a
+    run that is already over (FR-020).
+    """
+    forget = getattr(case, "forget", None)
+    if forget is None:
+        return
+    try:
+        forget(run_id)
+    except Exception as failure:  # noqa: BLE001 - a case that cannot forget never fails the run
+        log.warning("the case of the live run %s could not forget the run: %s", run_id, failure)
 
 
 def remove_the_ledger_file(path: Path | str) -> None:

@@ -8,6 +8,8 @@ branch is the only truth of the visitor. The promises of that decision are easy 
 * the file holds the state of the branch and not the state of the base, so the mutations of the visitor are in it;
 * a branch of another session, a branch that cannot prove its own state, an account that is not the account of the
   branch and a revision that moved are all refused, and a refused branch leaves no file behind;
+* a branch that cannot prove its own state is not even touched: the row of the branch is the same before and after
+  the refusal, because the refresh of the idle deadline comes after the proof of the state;
 * the base is only ever read, so its canonical hash and its bytes are the same before and after the view;
 * the view names the branch, the revision and the canonical hash of the state the run read;
 * a view of the branch is an activity of the visitor on it, so the idle deadline of the branch moves.
@@ -192,10 +194,24 @@ def test_a_branch_that_cannot_prove_its_state_has_no_ledger(
     base_snapshot: BaseSnapshot,
     store: BranchStore,
     owner_session: str,
+    clock: FakeClock,
     tmp_path: Path,
 ) -> None:
-    """A branch whose log was tampered with cannot prove its own state, so it has no ledger (ADR-021, ADR-038)."""
+    """A branch whose log was tampered with cannot prove its own state, so it has no ledger (ADR-021, ADR-038).
+
+    Why the row of the branch is read and not the status: the status moves the idle deadline by itself, so reading
+    it would measure the status and not the view.
+
+    Why the clock of the test moves before the view: the refresh of the deadline writes nothing when the deadline is
+    already where it is, so a clock that stood still would hide the order of the refresh and of the proof of the
+    state, and the promise of ADR-038 would stay untested.
+
+    Why the row has to be the same after the refusal: the promise of ADR-038 is that the refresh of the idle deadline
+    comes after the proof of the state, so a branch that cannot prove its own state is never touched.
+    """
     store.append_events(forked_branch.branch_id, owner_session, [_unknown_event(forked_branch.branch_id)])
+    clock.advance(timedelta(seconds=30))
+    before = store.get_branch(forked_branch.branch_id, owner_session)
     target = tmp_path / "ledger.db"
 
     with pytest.raises(BranchHashMismatch):
@@ -207,6 +223,9 @@ def test_a_branch_that_cannot_prove_its_state_has_no_ledger(
         )
 
     assert not target.exists()
+    after = store.get_branch(forked_branch.branch_id, owner_session)
+    assert after.last_activity_at == before.last_activity_at
+    assert after.expires_at == before.expires_at
 
 
 def test_the_account_of_another_one_is_refused_and_writes_no_file(
