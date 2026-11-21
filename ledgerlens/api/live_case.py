@@ -73,7 +73,8 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from pathlib import Path
 from typing import Any
 
 from langchain.agents import create_agent
@@ -87,7 +88,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from pydantic import Field
 
 from ledgerlens.agents.integrator import Integrator, build_integrator, investigate
-from ledgerlens.api.live_run import LiveRunPlan, ModelCaller, RunCancelled
+from ledgerlens.api.live_run import LIVE_MODE, LiveRunPlan, ModelCaller, RunCancelled
 from ledgerlens.byok import arguments_text
 from ledgerlens.byok.adapter import ProviderMessage, ProviderRequest, ProviderResponse, ToolCall, ToolSchema
 from ledgerlens.byok.errors import ByokError
@@ -104,6 +105,7 @@ __all__ = [
     "BridgeChatModel",
     "DemoAgent",
     "DemoCase",
+    "LedgerMissing",
     "UnknownToolRequested",
     "build_demo_agent",
     "demo_executor",
@@ -138,6 +140,21 @@ class UnknownToolRequested(ByokError):
     """
 
     reason = "the provider asked for a tool the case does not have"
+
+
+class LedgerMissing(ByokError):
+    """The run has no ledger of the visitor, so the case of the demo refuses to run (ADR-038).
+
+    Why the refusal and not the fallback: the fallback of the configuration is the whole published ledger of the
+    repository, with the rows of every account of it, and a model that writes SQL would read the rows of another
+    customer. A run that answers about records the visitor does not own is a run that spends the money of the visitor
+    to say something that is not true (ADR-038).
+
+    Why it is a refusal of the family of the domain: the coordinator ends the run with the reason of the refusal and
+    the report of what was not spent, and a visitor reads a reason instead of a stack of a library (FR-018).
+    """
+
+    reason = "the run has no ledger of the visitor"
 
 
 class BridgeChatModel(BaseChatModel):
@@ -348,6 +365,9 @@ class DemoCase:
     Why the history of the session comes from the plan of the run: the plan carries the messages of the request, and
     the case of the demo has no memory of its own. A run whose plan carries the history of the session starts where
     the session left, and a run whose plan carries none starts from scratch (FR-012).
+
+    Why the ledger of the run is the ledger of the plan: the branch of the visitor is the only truth of the visitor,
+    and the tools of the agent read the file of that branch and never the ledger of the configuration (ADR-038).
     """
 
     def __init__(
@@ -360,6 +380,7 @@ class DemoCase:
         embeddings: Embeddings | None = None,
         case_memory: CaseMemory | None = None,
         run_context: RunContext | None = None,
+        runtime_dir: Path | str | None = None,
     ) -> None:
         """The case with the ledger, the index and the verifier of the environment it runs in."""
         self._options: dict[str, Any] = {
@@ -371,8 +392,13 @@ class DemoCase:
             "case_memory": case_memory,
             "run_context": run_context,
         }
+        # The folder of the runtime that holds the memory of the session of the visitor. It is the folder of the
+        # facade when the facade gave one, and the folder of the configuration otherwise (ADR-038).
+        self._runtime_dir = runtime_dir
         # The bridges of each run, by the identifier of the run. A run writes its own key and reads nobody else one.
         self._bridges: dict[str, Mapping[str, BridgeChatModel]] = {}
+        # The context of each run, by the identifier of the run: the identity of the run and the folder of its memory.
+        self._contexts: dict[str, RunContext] = {}
 
     def bridges_of(self, run_id: str) -> Mapping[str, BridgeChatModel]:
         """The four bridges of the run with that identifier, empty when the run never happened.
@@ -382,10 +408,20 @@ class DemoCase:
         """
         return self._bridges.get(run_id, {})
 
+    def context_of(self, run_id: str) -> RunContext | None:
+        """The context of the run with that identifier, or None when the run never happened.
+
+        Why the context is kept: the context carries the identity of the run and the folder of the memory of its
+        session, and a reader that wants to know where the memory of a run went has to name the run (ADR-038).
+        """
+        return self._contexts.get(run_id)
+
     def __call__(self, caller: ModelCaller, plan: LiveRunPlan) -> str:
         """The answer of the agent of the demo, on the bridge over the caller of the run."""
-        demo = build_demo_agent(caller, **self._options)
+        options = self._options_of_the_run(plan)
+        demo = build_demo_agent(caller, **options)
         self._bridges[plan.run_id] = demo.bridges
+        self._contexts[plan.run_id] = options["run_context"]
         thread = plan.session_id or plan.run_id
         _remember_the_history(demo.agent, thread, plan.messages)
         try:
@@ -400,6 +436,50 @@ class DemoCase:
             raise RunCancelled("the run was cancelled while the case was running")
         return result.answer
 
+    def _options_of_the_run(self, plan: LiveRunPlan) -> dict[str, Any]:
+        """The options of the agent of this run: the ledger of the plan and the memory of the session.
+
+        Why the ledger of the plan wins over the ledger of the case: the ledger of the plan is the ledger of the run,
+        and a case that answered with a ledger of its own would answer about records the visitor does not own
+        (ADR-038).
+
+        Why a run without a ledger is a refusal and not a fallback: the fallback of the configuration is the whole
+        published ledger of the repository, with the rows of every account of it, and a model that writes SQL reads
+        whatever it is given (ADR-038).
+
+        Why the file of the ledger has to be there: the file is written before the run starts and removed when it
+        ends, and a case that reads a file that is gone would answer with a database that cannot be opened (ADR-038).
+        """
+        ledger = plan.ledger
+        path = ledger.path if ledger is not None else self._options.get("db_path")
+        if path is None:
+            raise LedgerMissing(
+                "the run names no branch and the case has no ledger of its own, so there is nothing to read"
+            )
+        if ledger is not None and not Path(ledger.path).exists():
+            raise LedgerMissing("the file of the ledger of the run is not there: the branch of the visitor is gone")
+        options = dict(self._options)
+        options["db_path"] = path
+        options["run_context"] = self._options.get("run_context") or self._context_of_the_run(plan)
+        return options
+
+    def _context_of_the_run(self, plan: LiveRunPlan) -> RunContext:
+        """The context of the run: the identity of the visitor and the folder of the memory of its session.
+
+        Why the memory lives in the folder of the session: the case memory of one visitor must never show up in the
+        answer of another one, and the folder of the configuration is shared by the whole machine (ADR-038).
+        """
+        context = RunContext(
+            run_id=plan.run_id,
+            session_id=plan.session_id,
+            mode=LIVE_MODE,
+            account_id=plan.account_id,
+            branch_id=plan.sandbox_id,
+            branch_revision=plan.expected_revision,
+            model_profile_id=plan.model_profile_id,
+        )
+        return replace(context, memory_dir=context.resolve_memory_dir(self._runtime_dir))
+
 
 def demo_executor(caller: ModelCaller, plan: LiveRunPlan) -> str:
     """The case of the demo with the configuration of the product.
@@ -412,6 +492,10 @@ def demo_executor(caller: ModelCaller, plan: LiveRunPlan) -> str:
     Why the case is built per run: the history of the conversation is the one the plan of the run carries, and the
     checkpointer of the case is built per run, so the history of one run never crosses into another one. The
     milestone has no memory of the visitor across runs.
+
+    Why the configuration never brings the ledger: the ledger of a run is the ledger of the plan, and a plan without
+    one is a refusal, because the fallback of the configuration would hand the model the rows of every account of the
+    repository (ADR-038).
     """
     return DemoCase()(caller, plan)
 

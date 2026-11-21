@@ -14,10 +14,17 @@ cost and the estimated cost apart (FR-010); (i) the end of a session drops the c
 live mode and from the sandbox (FR-022); (j) the caps of the request are the caps of the run, cap by cap (FR-025);
 (k) the cap of the calls of the models stops the run at the attempt that would break it, for every cap the contract
 allows (FR-009); (l) a run that is over is never told that it was cancelled (FR-019); (m) a session that may not run
-the live mode never runs it (FR-024).
+the live mode never runs it (FR-024); (n) the route of the run resolves the branch of the visitor before the run
+starts, and it refuses a branch of another session, an expired branch, a branch that cannot prove its own state, an
+account that is not the account of the branch and a revision that moved, with a readable reason and without
+calling any provider (ADR-038); (o) the trace of the run names the branch, the revision and the hash of the state
+that was read, and the run reads the ledger of that branch and not the ledger of the configuration (ADR-038);
+(p) the run carries the case of the application and the coordinator of the caller is never rewritten, so a
+coordinator keeps the case it was built with (ADR-038).
 
 Everything offline, with no key and no network: the provider is the fake adapter of the domain and the tests never
-open a socket.
+open a socket. The application of the tests is wired the way a deployment wires it: one session issuer over one key
+file, one store of the branches and one branch layer over the resolver of the base (ADR-038).
 """
 
 from __future__ import annotations
@@ -31,7 +38,7 @@ from collections.abc import Callable
 from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
@@ -43,13 +50,17 @@ from pydantic import ValidationError  # noqa: E402
 
 from ledgerlens.api import byok as byok_api  # noqa: E402
 from ledgerlens.api.byok import LiveRunRequest, RunLimits, create_app  # noqa: E402
-from ledgerlens.api.live_run import LiveRunCoordinator  # noqa: E402
+from ledgerlens.api.live_run import LiveRunCoordinator, LiveRunPlan, ModelCaller  # noqa: E402
 from ledgerlens.api.sandbox import SESSION_COOKIE  # noqa: E402
 from ledgerlens.byok.adapter import FakeProviderAdapter, ProviderRequest  # noqa: E402
 from ledgerlens.byok.registry import ModelNotAllowed, ModelProfile, Pricing, ProviderRegistry  # noqa: E402
 from ledgerlens.byok.vault import DEFAULT_TTL_SECONDS, CredentialHandle, CredentialVault  # noqa: E402
+from ledgerlens.config import Settings  # noqa: E402
 from ledgerlens.run_context import RunBudget  # noqa: E402
+from ledgerlens.sandbox.branch import BranchLayer  # noqa: E402
+from ledgerlens.sandbox.factory import build_branch_store  # noqa: E402
 from ledgerlens.sandbox.session import SessionIssuer  # noqa: E402
+from ledgerlens.sandbox.snapshot import BaseResolver  # noqa: E402
 
 # The marker of the credential of the visitor: a shape that no known pattern of the repository matches, so only the
 # vault and the adapter of the run can scrub it.
@@ -62,9 +73,35 @@ UNKNOWN_MARKER = "ledgerlens-unknown-" + "9b2c4e7a1f30"
 # A marker with the shape of a key of a provider, so the generic redaction of the repository matches it.
 SHAPED_MARKER = "sk-" + "test-marker-0123456789abcdef"
 
+# The answer of the triage of the agent of the demo: a plan with the only tool the run needs, so the agent is not
+# asked for a second time.
+TRIAGE_ANSWER = json.dumps(
+    {
+        "intent": "status_lookup",
+        "entities": {"transaction_ids": ["TX-2048"]},
+        "urgency": "normal",
+        "plan": [{"id": "S1", "goal": "read the ledger", "tool": "query_ledger", "depends_on": []}],
+        "needs_clarification": False,
+        "clarification_question": None,
+    }
+)
+# The SQL of the ledger: one read-only statement over an allowed table, about the transaction of the account of the
+# branch of the visitor.
+SQL_ANSWER = "SELECT id, status, amount_minor, currency FROM transactions WHERE id = 'TX-2048'"
+# The answer of the agent of the demo, the last thing the provider says.
+FINAL_ANSWER = "The payment of TX-2048 was captured and the refund is on its way."
+
 PROFILE_ID = "openai-gpt-4.1-mini"
 MODEL_ID = "gpt-4.1-mini"
 UNPRICED_ID = "openai-mystery"
+
+# The scenario of the visitor and the account of that scenario. The branch of the visitor is a branch of that
+# scenario, and the account of the request has to be the account of the branch (ADR-038).
+SCENARIO_ID = "S01"
+ACCOUNT_ID = "C-0412"
+# The account of another customer of the same published ledger. A request that names it is refused, because the rows
+# of that customer are not the rows of the visitor.
+ANOTHER_ACCOUNT_ID = "C-0001"
 
 PRICED = ModelProfile(
     profile_id=PROFILE_ID,
@@ -142,18 +179,80 @@ def issuer(tmp_path: Path) -> SessionIssuer:
     return SessionIssuer(tmp_path / "demo-session.key")
 
 
+@pytest.fixture(scope="module")
+def branch_layer(tmp_path_factory: pytest.TempPathFactory) -> BranchLayer:
+    """The branch layer of the sandbox, wired the way a deployment wires it.
+
+    Why one store and one layer for the module: the deployment gives the two facades the same layer, and the layer
+    holds the resolver of the base, which builds the base of a scenario once and keeps it. A layer per test would
+    build the same base again and again for nothing (ADR-038).
+
+    Why the store comes from the factory: the factory is what turns the configuration into a store, and the tests
+    use the file backed one, in a temporary folder, so the suite never touches the database of the machine (ADR-020).
+    """
+    root = tmp_path_factory.mktemp("sandbox")
+    settings = Settings(runtime_dir=root / "runtime")
+    return BranchLayer(build_branch_store(settings), BaseResolver(root / "bases"))
+
+
+def _the_branch_of(layer: BranchLayer, session_id: str) -> str:
+    """The branch of the visitor for the scenario, forked for the session of that visitor.
+
+    Why the branch is forked and not made up: the run reads the ledger of the branch of the visitor, and the layer
+    refuses a branch that belongs to nobody, so a body that names an invented identifier never starts a run
+    (ADR-038).
+    """
+    return layer.fork(session_id, SCENARIO_ID).branch.branch_id
+
+
+def _branch_of(client: TestClient) -> str:
+    """The identifier of the branch of the visitor of this client.
+
+    Why the client carries it: the fixture forks the branch once the session of the visitor exists, and the body of
+    the run has to name that branch (ADR-038).
+    """
+    return str(cast(Any, client).branch_id)
+
+
+def _the_light_case(caller: ModelCaller, plan: LiveRunPlan) -> str:
+    """The case of the tests of the facade: one call of the model of the run and the answer of the provider.
+
+    Why the case is light and not the case of the demo: the tests of this file are about the facade, and the agent of
+    the demo has a file of its own. The route resolves the branch of the visitor either way, so the ledger of the
+    visitor is read by the run whatever the case does with it (ADR-038).
+    """
+    response = caller.complete(
+        ProviderRequest(model_id=MODEL_ID, messages=({"role": "user", "content": plan.question},))
+    )
+    return str(response.content)
+
+
 @pytest.fixture
-def client(online: None, vault: CredentialVault, issuer: SessionIssuer) -> TestClient:
-    """The client of the live mode, over the fake provider and with a session of the visitor."""
+def client(
+    online: None, vault: CredentialVault, issuer: SessionIssuer, branch_layer: BranchLayer, tmp_path: Path
+) -> TestClient:
+    """The client of the live mode, over the fake provider and with a session and a branch of the visitor.
+
+    Why the application is given the branch layer and the issuer of the deployment: the live run reads the ledger of
+    the branch of the visitor, and the two facades are the same visitor when they are given the same issuer
+    (ADR-035, ADR-038).
+
+    Why the runtime folder is a temporary one: the file of the ledger of a run lives in it, and the run removes it
+    when it ends (ADR-038).
+    """
     adapter = _adapter()
     app = create_app(
         vault=vault,
         registry=_registry(),
         session_issuer=issuer,
         adapter_factory=lambda _provider, _key: adapter,
+        branch_layer=branch_layer,
+        executor=_the_light_case,
+        runtime_dir=tmp_path / "runtime",
     )
     with TestClient(app) as the_client:
-        the_client.post("/v1/sessions")
+        session = the_client.post("/v1/sessions").json()
+        cast(Any, the_client).branch_id = _the_branch_of(branch_layer, str(session["id"]))
         yield the_client
 
 
@@ -164,14 +263,18 @@ def _credential(client: TestClient, provider: str = "openai") -> str:
     return str(response.json()["handle"])
 
 
-def _run_body(handle: str, **overrides: object) -> dict[str, object]:
-    """The body of the route of the live run, as the contract of the request."""
+def _run_body(client: TestClient, handle: str, **overrides: object) -> dict[str, object]:
+    """The body of the route of the live run, as the contract of the request.
+
+    Why the body names the branch of the visitor: the run reads the ledger of the branch the visitor forked, and a
+    body that names a branch of nobody is refused before the run starts (ADR-038).
+    """
     body: dict[str, object] = {
         "mode": "live_agent",
-        "scenario_id": "S01",
-        "sandbox_id": "br_0123456789abcdef01234567",
+        "scenario_id": SCENARIO_ID,
+        "sandbox_id": _branch_of(client),
         "expected_revision": 0,
-        "account_id": "C-0412",
+        "account_id": ACCOUNT_ID,
         "question": "What happened to the refund of TX-2048?",
         "variant": "B",
         "model_profile_id": PROFILE_ID,
@@ -375,7 +478,7 @@ def test_the_run_route_refuses_a_model_outside_the_allowlist(client: TestClient)
     """FR-027: the server refuses the model of a run that is not in the allowlist."""
     handle = _credential(client)
 
-    response = client.post("/v1/live-runs", json=_run_body(handle, model_profile_id="gpt-9-turbo"))
+    response = client.post("/v1/live-runs", json=_run_body(client, handle, model_profile_id="gpt-9-turbo"))
 
     assert response.status_code == 422
     assert response.json()["code"] == byok_api.CODE_MODEL_NOT_ALLOWED
@@ -385,7 +488,7 @@ def test_the_run_route_refuses_a_model_without_the_capability_of_the_variant(cli
     """FR-015: the refusal names the capability that is missing."""
     handle = _credential(client)
 
-    response = client.post("/v1/live-runs", json=_run_body(handle, model_profile_id=WITHOUT_TOOLS.profile_id))
+    response = client.post("/v1/live-runs", json=_run_body(client, handle, model_profile_id=WITHOUT_TOOLS.profile_id))
 
     assert response.status_code == 422
     assert response.json()["code"] == byok_api.CODE_CAPABILITY_MISSING
@@ -395,7 +498,7 @@ def test_the_run_route_refuses_a_model_without_the_capability_of_the_variant(cli
 def test_the_run_route_never_accepts_a_raw_key(client: TestClient) -> None:
     """FR-007: the body of the route of the run accepts no field that the contract does not have."""
     handle = _credential(client)
-    body = _run_body(handle)
+    body = _run_body(client, handle)
     body["api_key"] = MARKER
 
     response = client.post("/v1/live-runs", json=body)
@@ -408,7 +511,7 @@ def test_the_run_answers_with_the_run_and_never_with_the_key(client: TestClient)
     """FR-004, FR-024: the answer of the run carries the identifier of the run and no key."""
     handle = _credential(client)
 
-    response = client.post("/v1/live-runs", json=_run_body(handle))
+    response = client.post("/v1/live-runs", json=_run_body(client, handle))
 
     assert response.status_code == 201
     body = response.json()
@@ -421,7 +524,7 @@ def test_the_run_answers_with_the_run_and_never_with_the_key(client: TestClient)
 def test_the_run_ends_with_a_terminal_event_and_the_mode_live_agent(client: TestClient) -> None:
     """FR-020, FR-024: the trace of the run ends with a terminal event and every event is live."""
     handle = _credential(client)
-    run_id = client.post("/v1/live-runs", json=_run_body(handle)).json()["run_id"]
+    run_id = client.post("/v1/live-runs", json=_run_body(client, handle)).json()["run_id"]
 
     state = _wait_for_the_end(client, run_id)
     assert state["status"] == "completed"
@@ -435,7 +538,7 @@ def test_the_run_ends_with_a_terminal_event_and_the_mode_live_agent(client: Test
 def test_the_cost_route_shows_the_observed_and_the_estimated_apart(client: TestClient) -> None:
     """FR-010: the observed cost and the estimated cost are two numbers and never one."""
     handle = _credential(client)
-    run_id = client.post("/v1/live-runs", json=_run_body(handle)).json()["run_id"]
+    run_id = client.post("/v1/live-runs", json=_run_body(client, handle)).json()["run_id"]
     _wait_for_the_end(client, run_id)
 
     response = client.get(f"/v1/live-runs/{run_id}/cost")
@@ -454,7 +557,7 @@ def test_the_cost_route_shows_the_observed_and_the_estimated_apart(client: TestC
 def test_the_cost_route_shows_no_amount_when_the_price_is_unknown(client: TestClient) -> None:
     """FR-011: a run whose model has no verified price shows no dollar amount at all."""
     handle = _credential(client)
-    body = _run_body(handle, model_profile_id=UNPRICED_ID)
+    body = _run_body(client, handle, model_profile_id=UNPRICED_ID)
     run_id = client.post("/v1/live-runs", json=body).json()["run_id"]
     _wait_for_the_end(client, run_id)
 
@@ -471,7 +574,7 @@ def test_the_cost_route_shows_no_amount_when_the_price_is_unknown(client: TestCl
 def test_a_run_of_another_session_is_not_readable(client: TestClient) -> None:
     """FR-006, SC-002: the run of a visitor is invisible to another one."""
     handle = _credential(client)
-    run_id = client.post("/v1/live-runs", json=_run_body(handle)).json()["run_id"]
+    run_id = client.post("/v1/live-runs", json=_run_body(client, handle)).json()["run_id"]
 
     with TestClient(client.app) as other:
         other.post("/v1/sessions")
@@ -480,15 +583,21 @@ def test_a_run_of_another_session_is_not_readable(client: TestClient) -> None:
     assert response.status_code == 404
 
 
-def test_a_handle_of_another_session_never_runs(client: TestClient) -> None:
-    """FR-006, SC-002: the handle of another session is refused and the run calls no provider."""
+def test_a_handle_of_another_session_never_runs(client: TestClient, branch_layer: BranchLayer) -> None:
+    """FR-006, SC-002: the handle of another session is refused and the run calls no provider.
+
+    Why the other visitor forks a branch of its own: a branch belongs to exactly one session, so the other visitor
+    cannot run with the branch of the first one, and the refusal of the branch would hide the refusal of the handle
+    that this test is about (ADR-038).
+    """
     handle = _credential(client)
-    run_id = client.post("/v1/live-runs", json=_run_body(handle)).json()["run_id"]
+    run_id = client.post("/v1/live-runs", json=_run_body(client, handle)).json()["run_id"]
     _wait_for_the_end(client, run_id)
 
     with TestClient(client.app) as other:
-        other.post("/v1/sessions")
-        response = other.post("/v1/live-runs", json=_run_body(handle))
+        session = other.post("/v1/sessions").json()
+        cast(Any, other).branch_id = _the_branch_of(branch_layer, str(session["id"]))
+        response = other.post("/v1/live-runs", json=_run_body(other, handle))
         assert response.status_code == 201
         other_run = response.json()["run_id"]
         state = _wait_for_the_end(other, other_run)
@@ -498,7 +607,7 @@ def test_a_handle_of_another_session_never_runs(client: TestClient) -> None:
 
 
 def test_the_cancel_route_ends_the_run_and_says_that_the_cancellation_is_a_best_effort(
-    online: None, vault: CredentialVault
+    online: None, vault: CredentialVault, issuer: SessionIssuer, branch_layer: BranchLayer, tmp_path: Path
 ) -> None:
     """FR-019: the cancellation stops the run and says that a call in flight is a best effort."""
     entered = threading.Event()
@@ -514,12 +623,17 @@ def test_the_cancel_route_ends_the_run_and_says_that_the_cancellation_is_a_best_
     app = create_app(
         vault=vault,
         registry=_registry(),
+        session_issuer=issuer,
         adapter_factory=lambda _provider, _key: adapter,
+        branch_layer=branch_layer,
+        executor=_the_light_case,
+        runtime_dir=tmp_path / "runtime",
     )
     with TestClient(app) as client:
-        client.post("/v1/sessions")
+        session = client.post("/v1/sessions").json()
+        cast(Any, client).branch_id = _the_branch_of(branch_layer, str(session["id"]))
         handle = _credential(client)
-        run_id = client.post("/v1/live-runs", json=_run_body(handle)).json()["run_id"]
+        run_id = client.post("/v1/live-runs", json=_run_body(client, handle)).json()["run_id"]
         assert entered.wait(5.0)
 
         answer = client.post(f"/v1/live-runs/{run_id}/cancel").json()
@@ -531,6 +645,163 @@ def test_the_cancel_route_ends_the_run_and_says_that_the_cancellation_is_a_best_
         # The provider answers and the run stops: the run ends as cancelled and the trace stays visible.
         release.set()
         assert _wait_for_the_end(client, run_id)["status"] == "cancelled"
+
+
+# --- the branch of the visitor ------------------------------------------------------------------------
+
+
+def test_the_run_route_refuses_a_branch_of_another_session(client: TestClient, branch_layer: BranchLayer) -> None:
+    """ADR-038: a branch of another session is refused with the generic answer, and no run starts.
+
+    Why the branch of the other visitor is used: the branch of the visitor of the test belongs to its own session, and
+    the other branch belongs to another one, so the layer refuses it exactly like a branch that does not exist.
+    """
+    handle = _credential(client)
+    other = TestClient(client.app)
+    other_session = other.post("/v1/sessions").json()
+    other_branch = _the_branch_of(branch_layer, str(other_session["id"]))
+    body = _run_body(client, handle, sandbox_id=other_branch)
+
+    response = client.post("/v1/live-runs", json=body)
+
+    assert response.status_code == 404
+    assert response.json()["code"] == byok_api.CODE_NOT_FOUND
+    assert other_branch not in response.text
+
+
+def test_the_run_route_refuses_an_account_that_is_not_the_account_of_the_branch(client: TestClient) -> None:
+    """ADR-038: the account of the request has to be the account of the branch, and a mismatch is refused.
+
+    Why the refusal is a 422 and not a 404: the body of the visitor is the wrong one, and a status that blames it
+    sends the visitor to look in the wrong place.
+    """
+    handle = _credential(client)
+
+    response = client.post("/v1/live-runs", json=_run_body(client, handle, account_id=ANOTHER_ACCOUNT_ID))
+
+    assert response.status_code == 422
+    assert response.json()["code"] == byok_api.CODE_ACCOUNT_MISMATCH
+    # The refusal names the reason and never the account that the visitor sent (FR-018, SC-001).
+    assert ANOTHER_ACCOUNT_ID not in response.text
+
+
+def test_the_run_route_refuses_a_revision_that_moved(client: TestClient) -> None:
+    """ADR-038: the revision the request expected has to be the revision the branch is at.
+
+    Why the revision matters: a run that answers about a state the visitor never saw answers a question nobody
+    asked.
+    """
+    handle = _credential(client)
+
+    response = client.post("/v1/live-runs", json=_run_body(client, handle, expected_revision=7))
+
+    assert response.status_code == 409
+    assert response.json()["code"] == byok_api.CODE_REVISION_MOVED
+
+
+def test_a_live_application_without_a_branch_layer_refuses_the_run(
+    online: None, vault: CredentialVault, issuer: SessionIssuer, branch_layer: BranchLayer, tmp_path: Path
+) -> None:
+    """ADR-038: an application without a branch layer refuses the run instead of reading the ledger of the
+    configuration.
+
+    Why the refusal is a 503 and not a 422: the body of the visitor is fine, and the deployment is what is missing.
+
+    Why the visitor still forks a branch: the body of the run names the branch of the visitor, and the deployment
+    that cannot resolve it is the one that is broken, not the body (ADR-038).
+    """
+    app = create_app(
+        vault=vault,
+        registry=_registry(),
+        session_issuer=issuer,
+        adapter_factory=lambda _provider, _key: _adapter(),
+        executor=_the_light_case,
+        runtime_dir=tmp_path / "runtime",
+    )
+    with TestClient(app) as client:
+        session = client.post("/v1/sessions").json()
+        cast(Any, client).branch_id = _the_branch_of(branch_layer, str(session["id"]))
+        handle = _credential(client)
+        body = _run_body(client, handle)
+
+        response = client.post("/v1/live-runs", json=body)
+
+    assert response.status_code == 503
+    assert response.json()["code"] == byok_api.CODE_BRANCH_LAYER_MISSING
+
+
+def test_the_trace_of_the_run_names_the_branch_that_was_read(client: TestClient) -> None:
+    """ADR-038: the trace says which ledger the run read, with the branch, the revision and the hash of the state.
+
+    Why the trace says it: a reader of a run has to know which state answered the question.
+    """
+    handle = _credential(client)
+    run_id = client.post("/v1/live-runs", json=_run_body(client, handle)).json()["run_id"]
+    _wait_for_the_end(client, run_id)
+
+    stream = client.get(f"/v1/live-runs/{run_id}/events")
+
+    assert stream.status_code == 200
+    started = _the_event_of_the_stream(stream.text, "run.started")
+    assert started["payload"]["branch_id"] == _branch_of(client)
+    assert started["payload"]["branch_revision"] == 0
+    assert started["payload"]["canonical_hash"]
+
+
+def _the_event_of_the_stream(text: str, event_type: str) -> dict[str, Any]:
+    """The event of the given type of the stream of the trace of a run."""
+    for line in text.splitlines():
+        if not line.startswith("data: "):
+            continue
+        event = json.loads(line[len("data: ") :])
+        if event.get("event_type") == event_type:
+            return dict(event)
+    raise AssertionError(f"the stream of the run carries no event of the type {event_type}")
+
+
+def test_the_run_of_the_demo_answers_about_the_ledger_of_the_branch_of_the_visitor(
+    online: None, vault: CredentialVault, issuer: SessionIssuer, branch_layer: BranchLayer, tmp_path: Path
+) -> None:
+    """ADR-038: the agent of the demo reads the ledger of the branch of the visitor, and not the ledger of the
+    configuration.
+
+    Why the case of the demo is used here and not the light one: this is the test that says which ledger the tools of
+    the agent read, and only the agent of the demo reads a ledger at all (ADR-038).
+
+    Why the row of the transaction of the account of the branch is the proof: the ledger of the branch holds the rows
+    of that account and of no other one, and the ledger of the configuration holds the rows of every account of the
+    repository. A row that came back is a row of the ledger of the branch (ADR-038).
+    """
+    adapter = FakeProviderAdapter(provider="openai", api_key=MARKER)
+    adapter.script_answer(TRIAGE_ANSWER)
+    adapter.script_tool_call("query_ledger", json.dumps({"question": "the status of TX-2048"}), call_id="call_sql")
+    adapter.script_answer(SQL_ANSWER)
+    adapter.script_answer(FINAL_ANSWER)
+    app = create_app(
+        vault=vault,
+        registry=_registry(),
+        session_issuer=issuer,
+        adapter_factory=lambda _provider, _key: adapter,
+        branch_layer=branch_layer,
+        runtime_dir=tmp_path / "runtime",
+    )
+    # The case of the demo asks the model four times, so the caps of the request have to allow them.
+    limits = {"max_model_calls": 8, "max_tool_calls": 4, "max_wall_seconds": 30, "max_output_tokens": 512}
+    with TestClient(app) as client:
+        session = client.post("/v1/sessions").json()
+        cast(Any, client).branch_id = _the_branch_of(branch_layer, str(session["id"]))
+        handle = _credential(client)
+        run_id = client.post("/v1/live-runs", json=_run_body(client, handle, limits=limits)).json()["run_id"]
+        state = _wait_for_the_end(client, run_id)
+
+    assert state["status"] == "completed", state
+    assert state["answer"] == FINAL_ANSWER
+    # The tool of the agent read the ledger of the branch: the row of the transaction of the account came back.
+    answers_of_the_tools = [
+        message.content for call in adapter.calls for message in call.messages if message.role == "tool"
+    ]
+    assert answers_of_the_tools
+    assert "TX-2048" in answers_of_the_tools[0]
 
 
 # --- the end of the session ------------------------------------------------------------------------
@@ -608,7 +879,7 @@ def test_the_sandbox_refuses_the_cookie_of_a_live_mode_with_a_issuer_of_its_own(
 def test_the_run_route_refuses_the_mode_of_the_sandbox(client: TestClient) -> None:
     """FR-024: this route runs the live mode, and the deterministic sandbox has its own route."""
     handle = _credential(client)
-    body = _run_body(handle)
+    body = _run_body(client, handle)
     body["mode"] = "deterministic_sandbox"
 
     response = client.post("/v1/live-runs", json=body)
@@ -625,11 +896,11 @@ def test_the_run_route_refuses_a_body_that_the_published_contract_forbids(client
     """
     handle = _credential(client)
 
-    negative_money = _run_body(handle)
+    negative_money = _run_body(client, handle)
     negative_money["limits"] = {**negative_money["limits"], "max_estimated_usd": -1}
     money = client.post("/v1/live-runs", json=negative_money)
 
-    text_cap = _run_body(handle)
+    text_cap = _run_body(client, handle)
     text_cap["limits"] = {**text_cap["limits"], "max_model_calls": "4"}
     calls = client.post("/v1/live-runs", json=text_cap)
 
@@ -743,12 +1014,11 @@ def _valid_body() -> dict[str, object]:
     }
 
 
-
 # --- the caps of the request -------------------------------------------------------------------------
 
 
 def test_the_caps_of_the_request_are_the_caps_of_the_run(
-    online: None, vault: CredentialVault, issuer: SessionIssuer
+    online: None, vault: CredentialVault, issuer: SessionIssuer, branch_layer: BranchLayer, tmp_path: Path
 ) -> None:
     """FR-025: every cap of the request is the cap of the budget of the run, and none of them is swapped.
 
@@ -766,6 +1036,9 @@ def test_the_caps_of_the_request_are_the_caps_of_the_run(
         session_issuer=issuer,
         coordinator=coordinator,
         adapter_factory=lambda _provider, _key: _adapter(),
+        branch_layer=branch_layer,
+        executor=_the_light_case,
+        runtime_dir=tmp_path / "runtime",
     )
     limits = {
         "max_model_calls": 3,
@@ -776,9 +1049,10 @@ def test_the_caps_of_the_request_are_the_caps_of_the_run(
         "max_estimated_usd": "0.25",
     }
     with TestClient(app) as client:
-        client.post("/v1/sessions")
+        session = client.post("/v1/sessions").json()
+        cast(Any, client).branch_id = _the_branch_of(branch_layer, str(session["id"]))
         handle = _credential(client)
-        run_id = client.post("/v1/live-runs", json=_run_body(handle, limits=limits)).json()["run_id"]
+        run_id = client.post("/v1/live-runs", json=_run_body(client, handle, limits=limits)).json()["run_id"]
         _wait_for_the_end(client, run_id)
         result = coordinator.result(run_id)
 
@@ -794,7 +1068,7 @@ def test_the_caps_of_the_request_are_the_caps_of_the_run(
 
 
 def test_the_run_stops_at_the_attempt_that_would_break_the_cap_of_the_model_calls(
-    online: None, vault: CredentialVault, issuer: SessionIssuer
+    online: None, vault: CredentialVault, issuer: SessionIssuer, branch_layer: BranchLayer, tmp_path: Path
 ) -> None:
     """FR-009, FR-025: the cap of the calls of the models stops the run, for every cap of the contract.
 
@@ -818,6 +1092,9 @@ def test_the_run_stops_at_the_attempt_that_would_break_the_cap_of_the_model_call
             session_issuer=issuer,
             coordinator=coordinator,
             adapter_factory=lambda _provider, _key, the_adapter=adapter: the_adapter,
+            branch_layer=branch_layer,
+            executor=_five_calls,
+            runtime_dir=tmp_path / "runtime",
         )
         limits = {
             "max_model_calls": 4,
@@ -826,9 +1103,10 @@ def test_the_run_stops_at_the_attempt_that_would_break_the_cap_of_the_model_call
             "max_output_tokens": output_cap,
         }
         with TestClient(app) as client:
-            client.post("/v1/sessions")
+            session = client.post("/v1/sessions").json()
+            cast(Any, client).branch_id = _the_branch_of(branch_layer, str(session["id"]))
             handle = _credential(client)
-            run_id = client.post("/v1/live-runs", json=_run_body(handle, limits=limits)).json()["run_id"]
+            run_id = client.post("/v1/live-runs", json=_run_body(client, handle, limits=limits)).json()["run_id"]
             state = _wait_for_the_end(client, run_id)
             cost = client.get(f"/v1/live-runs/{run_id}/cost").json()
 
@@ -847,7 +1125,7 @@ def _five_calls(caller: object, plan: object) -> str:
 
 
 def test_the_cap_of_the_tools_stops_the_run_and_names_the_cap(
-    online: None, vault: CredentialVault, issuer: SessionIssuer
+    online: None, vault: CredentialVault, issuer: SessionIssuer, branch_layer: BranchLayer, tmp_path: Path
 ) -> None:
     """FR-009, FR-012: every call of a tool reserves one, and the cap of the tools stops the run.
 
@@ -879,6 +1157,9 @@ def test_the_cap_of_the_tools_stops_the_run_and_names_the_cap(
         session_issuer=issuer,
         coordinator=coordinator,
         adapter_factory=lambda _provider, _key: _adapter(),
+        branch_layer=branch_layer,
+        executor=the_case,
+        runtime_dir=tmp_path / "runtime",
     )
     limits = {
         "max_model_calls": 2,
@@ -887,9 +1168,10 @@ def test_the_cap_of_the_tools_stops_the_run_and_names_the_cap(
         "max_output_tokens": 512,
     }
     with TestClient(app) as client:
-        client.post("/v1/sessions")
+        session = client.post("/v1/sessions").json()
+        cast(Any, client).branch_id = _the_branch_of(branch_layer, str(session["id"]))
         handle = _credential(client)
-        run_id = client.post("/v1/live-runs", json=_run_body(handle, limits=limits)).json()["run_id"]
+        run_id = client.post("/v1/live-runs", json=_run_body(client, handle, limits=limits)).json()["run_id"]
         state = _wait_for_the_end(client, run_id)
         cost = client.get(f"/v1/live-runs/{run_id}/cost").json()
 
@@ -906,7 +1188,7 @@ def test_the_cap_of_the_tools_stops_the_run_and_names_the_cap(
 def test_the_cancel_route_does_not_say_that_a_finished_run_was_cancelled(client: TestClient) -> None:
     """FR-019: a run that is over was not cancelled, and the answer says what really happened."""
     handle = _credential(client)
-    run_id = client.post("/v1/live-runs", json=_run_body(handle)).json()["run_id"]
+    run_id = client.post("/v1/live-runs", json=_run_body(client, handle)).json()["run_id"]
     assert _wait_for_the_end(client, run_id)["status"] == "completed"
 
     answer = client.post(f"/v1/live-runs/{run_id}/cancel").json()
@@ -917,29 +1199,34 @@ def test_the_cancel_route_does_not_say_that_a_finished_run_was_cancelled(client:
 
 
 def test_a_session_that_may_not_run_the_live_mode_never_runs_it(
-    online: None, vault: CredentialVault, tmp_path: Path
+    online: None, vault: CredentialVault, branch_layer: BranchLayer, tmp_path: Path
 ) -> None:
     """FR-024: a session of the sandbox may not run the live mode, and it never does.
 
     Why the rule is proved with a session the live mode did not issue: the modes of a session are declared when the
     session is issued, and the session of the sandbox is a session of the sandbox (ADR-035).
+
+    Why the application is given the branch layer: the refusal of the mode happens before the branch of the visitor is
+    resolved, and a body that names no branch at all would prove nothing about the order of the two (ADR-038).
     """
     app = create_app(
         vault=vault,
         registry=_registry(),
         session_issuer=SessionIssuer(tmp_path / "session.key"),
         adapter_factory=lambda _provider, _key: _adapter(),
+        branch_layer=branch_layer,
     )
     with TestClient(app) as client:
         # A session that the live mode did not issue: the cookie of the sandbox, signed with the same key.
         session = client.post("/v1/sessions").json()
         assert "live_agent" in session["mode_capabilities"]
+        cast(Any, client).branch_id = _the_branch_of(branch_layer, str(session["id"]))
         handle = _credential(client)
         # The jar of the client holds the cookie of the live session, and the cookie of the sandbox replaces it.
         client.cookies.clear()
         client.cookies.set(SESSION_COOKIE, _the_cookie_of_a_session_of_the_sandbox(tmp_path))
 
-        response = client.post("/v1/live-runs", json=_run_body(handle))
+        response = client.post("/v1/live-runs", json=_run_body(client, handle))
 
     assert response.status_code == 403
     assert response.json()["code"] == byok_api.CODE_MODE_NOT_ALLOWED
@@ -966,7 +1253,7 @@ def test_the_refusal_of_the_facade_never_carries_a_key(client: TestClient) -> No
     Why the answer is checked as a whole: the key must never travel in any part of the answer, and a body that says
     that the value was redacted still says where the value was (SC-001).
     """
-    body = _run_body("a-handle-of-a-credential")
+    body = _run_body(client, "a-handle-of-a-credential")
     body["limits"] = {**body["limits"], "max_model_calls": SHAPED_MARKER}
 
     response = client.post("/v1/live-runs", json=body)
@@ -983,7 +1270,7 @@ def test_the_refusal_of_the_facade_never_carries_the_key_of_a_credential(client:
     never matches, and only the vault knows the exact text of the key it holds (FR-018).
     """
     handle = _credential(client)
-    body = _run_body(handle)
+    body = _run_body(client, handle)
     body["limits"] = {**body["limits"], "max_model_calls": MARKER}
 
     response = client.post("/v1/live-runs", json=body)
@@ -1014,7 +1301,7 @@ def test_the_refusal_of_the_contract_never_quotes_the_value_of_the_visitor(
     shapes the repository knows, so a value it never saw is the value that a refusal has to refuse to quote. The
     message of the validator of the contract quotes that value, and the answer of the facade must not.
     """
-    body = _run_body("a-handle-of-a-credential")
+    body = _run_body(client, "a-handle-of-a-credential")
     if field.startswith("limits."):
         body["limits"] = {**body["limits"], "max_model_calls": value}
     else:
@@ -1058,9 +1345,9 @@ def test_the_refusal_of_the_other_routes_never_carries_the_value_of_the_visitor(
     assert UNKNOWN_MARKER not in answer.text
 
 
-def _a_body_with_the_marker(field: str, marker: str) -> dict[str, object]:
+def _a_body_with_the_marker(client: TestClient, field: str, marker: str) -> dict[str, object]:
     """The body of a live run with the marker in one field and a valid body in every other field."""
-    body = _run_body("a-handle-of-a-credential")
+    body = _run_body(client, "a-handle-of-a-credential")
     if field.startswith("limits."):
         body["limits"] = {**body["limits"], field.split(".", 1)[1]: marker}
     else:
@@ -1090,15 +1377,13 @@ _THE_FIELDS_OF_THE_REQUEST = (
 
 
 @pytest.mark.parametrize("field", _THE_FIELDS_OF_THE_REQUEST)
-def test_no_field_of_the_request_of_a_run_carries_the_value_of_the_visitor_back(
-    client: TestClient, field: str
-) -> None:
+def test_no_field_of_the_request_of_a_run_carries_the_value_of_the_visitor_back(client: TestClient, field: str) -> None:
     """FR-018, SC-001: the answer of the route of the run carries no value that the visitor sent.
 
     Why the marker was never accepted by the vault: the scrub knows the credentials it holds and the shapes the
     repository knows, so a value it never saw is the value that an answer has to refuse to quote.
     """
-    response = client.post("/v1/live-runs", json=_a_body_with_the_marker(field, UNKNOWN_MARKER))
+    response = client.post("/v1/live-runs", json=_a_body_with_the_marker(client, field, UNKNOWN_MARKER))
 
     assert UNKNOWN_MARKER not in response.text, response.text
 
@@ -1151,25 +1436,30 @@ class _AnAllowlistThatRefusesWithAValue(ProviderRegistry):
 
 
 def test_the_handler_of_the_refusals_scrubs_what_it_writes(
-    online: None, vault: CredentialVault, issuer: SessionIssuer
+    online: None, vault: CredentialVault, issuer: SessionIssuer, branch_layer: BranchLayer
 ) -> None:
     """FR-018, SC-001: the handler scrubs the refusal it writes, whatever the refusal says.
 
     Why the allowlist of the test quotes a value: the refusal that the facade writes is not the refusal that the
     domain built, and the handler cannot trust the domain to leave the value out. The marker is the key that the
     vault holds, and only the vault knows its text: the generic redaction of the repository never matches it.
+
+    Why the application is given the branch layer: the refusal of the model happens before the branch of the visitor
+    is resolved, and the body of the run has to name a real branch for the refusal to be about the model (ADR-038).
     """
     app = create_app(
         vault=vault,
         registry=_AnAllowlistThatRefusesWithAValue(),
         session_issuer=issuer,
         adapter_factory=lambda _provider, _key: _adapter(),
+        branch_layer=branch_layer,
     )
     with TestClient(app) as client:
-        client.post("/v1/sessions")
+        session = client.post("/v1/sessions").json()
+        cast(Any, client).branch_id = _the_branch_of(branch_layer, str(session["id"]))
         client.post("/v1/credentials", json={"provider": "openai", "api_key": MARKER})
 
-        response = client.post("/v1/live-runs", json=_run_body("a-handle-of-a-credential"))
+        response = client.post("/v1/live-runs", json=_run_body(client, "a-handle-of-a-credential"))
 
     assert response.status_code == 422
     assert MARKER not in response.text
@@ -1215,9 +1505,7 @@ def _widen_the_acceptance(vault: CredentialVault) -> None:
     """
     original = vault.accept
 
-    def slow_accept(
-        secret: str, provider: str, *, session_id: str, ttl_seconds: int | None = None
-    ) -> CredentialHandle:
+    def slow_accept(secret: str, provider: str, *, session_id: str, ttl_seconds: int | None = None) -> CredentialHandle:
         time.sleep(0.2)
         if ttl_seconds is None:
             return original(secret, provider, session_id=session_id)
@@ -1391,7 +1679,7 @@ def test_a_body_with_errors_of_different_path_types_never_answers_500(
     ]
     monkeypatch.setattr(byok_api, "_validator_of_the_request", lambda: _AValidatorWithPathsOfAnotherType(errors))
 
-    response = client.post("/v1/live-runs", json=_run_body("a-handle-of-a-credential"))
+    response = client.post("/v1/live-runs", json=_run_body(client, "a-handle-of-a-credential"))
 
     assert response.status_code == 422
     assert UNKNOWN_MARKER not in response.text
@@ -1409,7 +1697,7 @@ def test_the_answer_of_the_run_carries_the_disclaimer_of_the_erasure(client: Tes
     """FR-021: the answer of the run says that the memory of the machine cannot be guaranteed to be erased."""
     handle = _credential(client)
 
-    response = client.post("/v1/live-runs", json=_run_body(handle))
+    response = client.post("/v1/live-runs", json=_run_body(client, handle))
 
     assert response.status_code == 201, response.text
     assert "cannot be guaranteed to be erased" in response.headers[byok_api.KEY_ERASURE_HEADER]
@@ -1418,7 +1706,7 @@ def test_the_answer_of_the_run_carries_the_disclaimer_of_the_erasure(client: Tes
 def test_the_state_of_a_run_carries_the_disclaimer_of_the_erasure(client: TestClient) -> None:
     """FR-021: the answer that describes a run carries the disclaimer of the erasure."""
     handle = _credential(client)
-    run_id = client.post("/v1/live-runs", json=_run_body(handle)).json()["run_id"]
+    run_id = client.post("/v1/live-runs", json=_run_body(client, handle)).json()["run_id"]
     _wait_for_the_end(client, run_id)
 
     response = client.get(f"/v1/live-runs/{run_id}")
@@ -1430,7 +1718,7 @@ def test_the_state_of_a_run_carries_the_disclaimer_of_the_erasure(client: TestCl
 def test_the_events_of_a_run_carry_the_disclaimer_of_the_erasure(client: TestClient) -> None:
     """FR-021: the stream of the trace of a run carries the disclaimer of the erasure."""
     handle = _credential(client)
-    run_id = client.post("/v1/live-runs", json=_run_body(handle)).json()["run_id"]
+    run_id = client.post("/v1/live-runs", json=_run_body(client, handle)).json()["run_id"]
     _wait_for_the_end(client, run_id)
 
     response = client.get(f"/v1/live-runs/{run_id}/events")
@@ -1442,7 +1730,7 @@ def test_the_events_of_a_run_carry_the_disclaimer_of_the_erasure(client: TestCli
 def test_the_cancel_route_carries_the_disclaimer_of_the_erasure(client: TestClient) -> None:
     """FR-021: the answer of the cancellation carries the disclaimer of the erasure."""
     handle = _credential(client)
-    run_id = client.post("/v1/live-runs", json=_run_body(handle)).json()["run_id"]
+    run_id = client.post("/v1/live-runs", json=_run_body(client, handle)).json()["run_id"]
     _wait_for_the_end(client, run_id)
 
     response = client.post(f"/v1/live-runs/{run_id}/cancel")
@@ -1454,7 +1742,7 @@ def test_the_cancel_route_carries_the_disclaimer_of_the_erasure(client: TestClie
 def test_the_cost_route_carries_the_disclaimer_of_the_erasure(client: TestClient) -> None:
     """FR-021: the answer of the cost of a run carries the disclaimer of the erasure."""
     handle = _credential(client)
-    run_id = client.post("/v1/live-runs", json=_run_body(handle)).json()["run_id"]
+    run_id = client.post("/v1/live-runs", json=_run_body(client, handle)).json()["run_id"]
     _wait_for_the_end(client, run_id)
 
     response = client.get(f"/v1/live-runs/{run_id}/cost")
@@ -1495,7 +1783,7 @@ def test_the_refusal_when_jsonschema_is_absent_names_the_api_extra(
     handle = _credential(client)
     monkeypatch.setitem(sys.modules, "jsonschema", None)
 
-    response = client.post("/v1/live-runs", json=_run_body(handle))
+    response = client.post("/v1/live-runs", json=_run_body(client, handle))
 
     assert response.status_code == 503
     assert response.json()["code"] == byok_api.CODE_CONTRACT_UNAVAILABLE

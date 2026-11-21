@@ -17,6 +17,10 @@ What the routes promise:
 * the price of a model comes with its provenance and the day it was verified, and a model whose price was never
   verified shows no amount at all (FR-011, FR-031);
 * the route of the run never accepts a raw key: it takes the handle of a credential and nothing else (FR-007);
+* the route of the run resolves the branch of the visitor before the run starts, and it refuses a branch of another
+  session, a branch that expired, a branch that cannot prove its own state, an account that is not the account of
+  the branch and a revision that moved, with the codes of the contract of the sandbox and without calling any
+  provider (ADR-038);
 * the cost report shows the observed cost and the estimated cost apart, and no amount when the price is unknown
   (FR-010, FR-011).
 
@@ -42,7 +46,10 @@ What the facade is given and never goes looking for:
   global that holds the keys of the visitors is a global that a test cannot own. A deployment that runs the sandbox
   facade and the live mode facade gives them the same vault on purpose (ADR-035);
 * the session issuer is a dependency of the application too. The two facades are the same visitor when they are
-  given the same issuer, and they are two visitors when they are not.
+  given the same issuer, and they are two visitors when they are not;
+* the branch layer of the sandbox is a dependency of the application too: it holds the ledger of the visitor, and an
+  application without one refuses every run that names a branch instead of answering with the ledger of the
+  configuration (ADR-038).
 
 Why the live mode has its own application and not a route of the sandbox: the sandbox is the R2 contract of the
 design package and its paths are fixed. The live mode brings paths of its own, and by default it has a cookie of its
@@ -70,14 +77,24 @@ from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.security import APIKeyCookie
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, ValidationError, model_validator
 
+from ledgerlens.api.live_case import DemoCase
 from ledgerlens.api.live_run import (
     LIVE_MODE,
     CaseExecutor,
     LiveModeOffline,
     LiveRunCoordinator,
     LiveRunPlan,
+    remove_the_ledger_file,
+    remove_the_ledger_of_the_run,
+    resolve_profile,
 )
-from ledgerlens.api.sandbox import SCHEMA_VERSION, SCHEMA_VERSION_HEADER, SESSION_COOKIE, ContractError
+from ledgerlens.api.sandbox import (
+    GENERIC_NOT_FOUND,
+    SCHEMA_VERSION,
+    SCHEMA_VERSION_HEADER,
+    SESSION_COOKIE,
+    ContractError,
+)
 from ledgerlens.byok.adapter import ProviderAdapter
 from ledgerlens.byok.budget import CostReport
 from ledgerlens.byok.errors import ByokError, CapabilityMissing, CredentialRefused, UnknownProvider
@@ -85,13 +102,20 @@ from ledgerlens.byok.registry import PROVIDERS, Pricing, ProviderRegistry
 from ledgerlens.byok.vault import CredentialHandle, CredentialVault
 from ledgerlens.config import get_settings, offline
 from ledgerlens.run_context import RunBudget
+from ledgerlens.sandbox.branch import BranchExpired, BranchHashMismatch, BranchLayer
+from ledgerlens.sandbox.ledger_view import LedgerAccountMismatch, LedgerRevisionMoved, LedgerView
 from ledgerlens.sandbox.session import MODE_CAPABILITIES, DemoSession, InvalidSession, SessionIssuer
+from ledgerlens.sandbox.store import BranchNotFound
 
 log = logging.getLogger(__name__)
 
 __all__ = [
     "BILLING_DISCLOSURE_HEADER",
     "BILLING_DISCLOSURE_TEXT",
+    "CODE_ACCOUNT_MISMATCH",
+    "CODE_BRANCH_EXPIRED",
+    "CODE_BRANCH_HASH_MISMATCH",
+    "CODE_BRANCH_LAYER_MISSING",
     "CODE_CAPABILITY_MISSING",
     "CODE_CONTRACT_UNAVAILABLE",
     "CODE_CREDENTIAL_REFUSED",
@@ -100,6 +124,7 @@ __all__ = [
     "CODE_MODE_NOT_ALLOWED",
     "CODE_MODEL_NOT_ALLOWED",
     "CODE_NOT_FOUND",
+    "CODE_REVISION_MOVED",
     "CODE_RUN_RUNNING",
     "CODE_SESSION_REQUIRED",
     "CODE_UNKNOWN_PROVIDER",
@@ -108,9 +133,11 @@ __all__ = [
     "KEY_ERASURE_TEXT",
     "KEY_STORAGE_HEADER",
     "KEY_STORAGE_TEXT",
+    "LEDGER_FILE_NAME",
     "NO_STORE_HEADERS",
     "RUN_ID_PREFIX",
     "RUN_REQUEST_SCHEMA_PATH",
+    "RUNS_FOLDER_NAME",
     "SESSION_KEY_FILENAME",
     "SESSION_SCHEME",
     "STREAM_TIMEOUT_SECONDS",
@@ -136,6 +163,13 @@ CODE_RUN_RUNNING = "RUN_RUNNING"
 CODE_SESSION_REQUIRED = "SESSION_REQUIRED"
 CODE_INVALID_REQUEST = "INVALID_REQUEST"
 CODE_MODE_NOT_ALLOWED = "MODE_NOT_ALLOWED"
+# The refusals of the branch of the visitor. They carry the codes of the contract of the sandbox, so the two facades
+# cannot disagree about what a branch holds, and they never carry a value that the visitor sent (ADR-038).
+CODE_BRANCH_LAYER_MISSING = "BRANCH_LAYER_MISSING"
+CODE_BRANCH_EXPIRED = "BRANCH_EXPIRED"
+CODE_BRANCH_HASH_MISMATCH = "HASH_MISMATCH"
+CODE_ACCOUNT_MISMATCH = "ACCOUNT_MISMATCH"
+CODE_REVISION_MOVED = "REVISION_MOVED"
 # The refusal of a deployment that cannot check the contract of the request. It is not the fault of the body of the
 # visitor, so it is not the code of a bad request.
 CODE_CONTRACT_UNAVAILABLE = "CONTRACT_UNAVAILABLE"
@@ -224,6 +258,11 @@ RUN_REQUEST_SCHEMA_PATH = (
 
 # The prefix of the identifier of a run. The identifier is opaque and it says nothing about the visitor.
 RUN_ID_PREFIX = "run_"
+# The folder of the runtime that holds the file of the ledger of each run, and the name of that file. The file is
+# written before the run starts and removed when the run ends, so the rows of a visitor do not stay on the disk of the
+# server longer than the run needs them (ADR-038).
+RUNS_FOLDER_NAME = "runs"
+LEDGER_FILE_NAME = "ledger.db"
 # The time the route of the stream waits for the end of a run before it closes the stream.
 STREAM_TIMEOUT_SECONDS = 120.0
 # The terminal events of a run. The stream of a run ends with one of them (FR-020).
@@ -371,6 +410,7 @@ def create_app(
     coordinator: LiveRunCoordinator | None = None,
     adapter_factory: Callable[[str, str], ProviderAdapter] | None = None,
     executor: CaseExecutor | None = None,
+    branch_layer: BranchLayer | None = None,
     clock: Callable[[], float] = time.monotonic,
     call_timeout: float | None = None,
 ) -> FastAPI:
@@ -384,6 +424,14 @@ def create_app(
 
     The sweeper of the vault starts with the application and stops with it, so a credential that nobody touches
     still dies (FR-022, SC-011).
+
+    The branch layer is the layer of the sandbox, and it is what holds the ledger of the visitor: the run reads the
+    branch of the visitor and never the ledger of the configuration (ADR-038). Without it the application refuses
+    every run that names a branch, with a readable reason.
+
+    The case of the runs is the case of the application: the case the caller gave, or the case of the demo when the
+    caller gave none. The case travels with the run, so the coordinator of the caller is never rewritten and keeps
+    the case it was built with (ADR-038).
     """
     settings = get_settings()
     runtime = Path(runtime_dir) if runtime_dir is not None else settings.runtime_dir
@@ -393,11 +441,14 @@ def create_app(
         runtime / SESSION_KEY_FILENAME,
         ttl_seconds=settings.sandbox_branch_absolute_ttl_seconds,
     )
+    # The case of the demo, with the runtime folder of the facade: the memory of the case lives in the folder of the
+    # session of the visitor and not in the folder of the configuration (ADR-038).
+    the_case: CaseExecutor = executor if executor is not None else DemoCase(runtime_dir=runtime)
     the_coordinator = coordinator or LiveRunCoordinator(
         registry=the_registry,
         vault=the_vault,
         adapter_factory=adapter_factory,
-        executor=executor,
+        executor=the_case,
         clock=clock,
         call_timeout=call_timeout,
     )
@@ -453,7 +504,10 @@ def create_app(
             registry=the_registry,
             issuer=issuer,
             coordinator=the_coordinator,
+            case=the_case,
             capabilities=capabilities,
+            branch_layer=branch_layer,
+            runtime_dir=runtime,
         )
     )
     return app
@@ -465,15 +519,25 @@ def build_router(
     registry: ProviderRegistry,
     issuer: SessionIssuer,
     coordinator: LiveRunCoordinator,
+    case: CaseExecutor,
     capabilities: SessionCapabilities | None = None,
+    branch_layer: BranchLayer | None = None,
+    runtime_dir: Path | None = None,
 ) -> APIRouter:
     """The router of the live mode, over the vault, the allowlist, the session and the coordinator.
 
     Why the router takes what it needs and reads no global: the live mode is a branch of the demo, and the branch
     is only as good as the pieces it is given. A test builds the router over a vault and a fake provider of its own.
+
+    The branch layer is the layer of the sandbox, and it is what holds the ledger of the visitor: without it the
+    route of the run refuses every run that names a branch (ADR-038).
+
+    Why the case is given to the router and not read from the coordinator: the case of a run travels with the run,
+    and the coordinator of the caller is never rewritten (ADR-038).
     """
     router = APIRouter()
     the_capabilities = capabilities if capabilities is not None else SessionCapabilities()
+    the_runtime = Path(runtime_dir) if runtime_dir is not None else get_settings().runtime_dir
 
     @router.post("/v1/sessions", status_code=201)
     def issue_session() -> JSONResponse:
@@ -605,6 +669,12 @@ def build_router(
         handle of another session (FR-006, FR-007). The body is checked against the published contract before
         anything else, so a body that the contract forbids never starts a run (FR-025). The answer carries the
         disclosure of the billing, because the visitor reads it before the first call of the provider (FR-008).
+
+        The branch of the visitor is resolved before the run starts: every refusal of the layer happens before the
+        first call of the provider, so a refused run spends no money of the visitor (ADR-038).
+
+        The run carries the case of the application, and the coordinator of the caller keeps the case it was built
+        with: a coordinator is never rewritten by the facade (ADR-038).
         """
         _refuse_when_offline()
         session = _session_of(cookie, issuer)
@@ -616,8 +686,12 @@ def build_router(
                 "this route runs the live mode only, and the deterministic sandbox has its own route",
             ) from None
         _refuse_a_session_that_may_not_run_the_live_mode(session, the_capabilities)
+        _refuse_a_model_the_allowlist_does_not_hold(registry, payload)
+        run_id = f"{RUN_ID_PREFIX}{secrets.token_hex(8)}"
+        # The ledger of the visitor, materialized in the file of the run. The run never starts without it (ADR-038).
+        ledger = _the_ledger_of_the_run(branch_layer, session, payload, the_runtime, run_id)
         plan = LiveRunPlan(
-            run_id=f"{RUN_ID_PREFIX}{secrets.token_hex(8)}",
+            run_id=run_id,
             session_id=session,
             model_profile_id=payload.model_profile_id or "",
             credential_handle=payload.credential_handle or "",
@@ -628,12 +702,17 @@ def build_router(
             sandbox_id=payload.sandbox_id,
             expected_revision=payload.expected_revision,
             variant=payload.variant,
+            ledger=ledger,
         )
         try:
-            coordinator.start(plan)
+            coordinator.start(plan, case=case)
         except LiveModeOffline as refusal:
+            # The run never started, so the file of the ledger of the run goes away with it (ADR-038).
+            remove_the_ledger_of_the_run(ledger)
             raise ContractError(503, CODE_LIVE_MODE_OFFLINE, str(refusal)) from None
         except ByokError as refusal:
+            # The run never started, so the file of the ledger of the run goes away with it (ADR-038).
+            remove_the_ledger_of_the_run(ledger)
             code = CODE_CAPABILITY_MISSING if isinstance(refusal, CapabilityMissing) else CODE_MODEL_NOT_ALLOWED
             raise ContractError(422, code, str(refusal)) from None
         body = {
@@ -802,9 +881,7 @@ def _accept_a_credential(
     return vault.accept(secret, provider, session_id=session, ttl_seconds=ttl)
 
 
-def _the_time_to_live_of_a_credential(
-    vault: CredentialVault, cookie_value: str | None, issuer: SessionIssuer
-) -> int:
+def _the_time_to_live_of_a_credential(vault: CredentialVault, cookie_value: str | None, issuer: SessionIssuer) -> int:
     """The time to live of a credential: the smaller of the life of the vault and the life left in the session.
 
     Why the life that is left and not the whole life of the session: the session of the visitor was issued some time
@@ -831,6 +908,115 @@ def _the_seconds_left_of_the_session(cookie_value: str | None, issuer: SessionIs
             except ValueError:
                 pass
     return float(issuer.ttl_seconds)
+
+
+def _refuse_a_model_the_allowlist_does_not_hold(registry: ProviderRegistry, payload: LiveRunRequest) -> None:
+    """Refuses a model that the server may not run, before the branch of the visitor is even asked (FR-027, FR-015).
+
+    Why the model comes first: the model is a property of the request itself, and a request that names a model the
+    server may not run is refused whatever the branch of the visitor says. The coordinator checks the model again
+    when the run starts, and this check is here so that the answer comes before the branch of the visitor is read.
+
+    Why the refusal never names the identifier: the identifier is a value the visitor sent (FR-018, SC-001).
+    """
+    try:
+        resolve_profile(registry, payload.model_profile_id or "", variant=payload.variant)
+    except CapabilityMissing as refusal:
+        raise ContractError(422, CODE_CAPABILITY_MISSING, str(refusal)) from None
+    except ByokError as refusal:
+        raise ContractError(422, CODE_MODEL_NOT_ALLOWED, str(refusal)) from None
+
+
+def _the_ledger_of_the_run(
+    branch_layer: BranchLayer | None,
+    session: str,
+    payload: LiveRunRequest,
+    runtime: Path,
+    run_id: str,
+) -> LedgerView:
+    """The ledger of the visitor, materialized in the file of the run (ADR-038).
+
+    Why the branch is resolved before the run starts: every refusal of the layer happens before the first call of the
+    provider, so a refused run spends no money of the visitor (ADR-038).
+
+    Why an application without a branch layer refuses the run: the fallback of the configuration is the whole
+    published ledger of the repository, with the rows of every account of it, and the run of a visitor may never read
+    it (ADR-038).
+
+    Why the refusals keep the codes of the contract of the sandbox: the two facades cannot disagree about what a
+    branch holds, and the visitor reads the same answers in the sandbox and in the live mode (ADR-038).
+
+    Why the messages never carry a value of the visitor: the refusal names the reason and nothing else, and the
+    values of the request may hold the key of the provider of the visitor (FR-018, SC-001).
+
+    Why the route does not create the folder of the run: the materialization creates it, and a folder that a
+    refused run leaves behind is a folder of nothing that nobody asked for (ADR-038).
+
+    Why the file goes away when the layer refuses: a file that a refused run leaves behind holds the rows of a
+    visitor on the disk of the server for a run that never happened (ADR-038).
+    """
+    if branch_layer is None:
+        raise ContractError(
+            503,
+            CODE_BRANCH_LAYER_MISSING,
+            "this deployment has no branch layer, so there is no ledger of the visitor to read: "
+            "the run is refused instead of reading the ledger of the configuration",
+        ) from None
+    target = runtime / RUNS_FOLDER_NAME / run_id / LEDGER_FILE_NAME
+    try:
+        return branch_layer.ledger_view(
+            session,
+            payload.sandbox_id,
+            account_id=payload.account_id,
+            expected_revision=payload.expected_revision,
+            target=target,
+        )
+    except (
+        BranchNotFound,
+        BranchExpired,
+        BranchHashMismatch,
+        LedgerAccountMismatch,
+        LedgerRevisionMoved,
+    ) as refusal:
+        # The layer refused, so no run starts, and the file of the ledger goes away with it (ADR-038).
+        remove_the_ledger_file(target)
+        raise _the_contract_error_of_the_ledger(refusal) from None
+
+
+def _the_contract_error_of_the_ledger(refusal: Exception) -> ContractError:
+    """The refusal of the layer of the branch, as the refusal of the facade.
+
+    Why the refusals keep the codes of the contract of the sandbox: the two facades cannot disagree about what a
+    branch holds, and the visitor reads the same answers in the sandbox and in the live mode (ADR-038).
+
+    Why the messages never carry a value of the visitor: the refusal names the reason and nothing else, and the
+    values of the request may hold the key of the provider of the visitor (FR-018, SC-001).
+    """
+    if isinstance(refusal, BranchNotFound):
+        return ContractError(404, CODE_NOT_FOUND, GENERIC_NOT_FOUND)
+    if isinstance(refusal, BranchExpired):
+        return ContractError(409, CODE_BRANCH_EXPIRED, "the branch expired: fork the scenario again")
+    if isinstance(refusal, BranchHashMismatch):
+        return ContractError(
+            409,
+            CODE_BRANCH_HASH_MISMATCH,
+            "the branch cannot prove its own state: fork the scenario again",
+        )
+    if isinstance(refusal, LedgerAccountMismatch):
+        return ContractError(
+            422,
+            CODE_ACCOUNT_MISMATCH,
+            "the account of the request is not the account of the branch",
+        )
+    if isinstance(refusal, LedgerRevisionMoved):
+        return ContractError(
+            409,
+            CODE_REVISION_MOVED,
+            "the branch moved to another revision: read it again and try once more",
+        )
+    # The layer refused with something the facade does not know: the refusal travels as it is, because a facade
+    # that answered with the code of another refusal would lie about the branch (ADR-038).
+    raise refusal
 
 
 def _refuse_a_session_that_may_not_run_the_live_mode(session: str, capabilities: SessionCapabilities) -> None:

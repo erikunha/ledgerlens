@@ -44,10 +44,17 @@ import secrets
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from ledgerlens.run_context import SESSION_ID_PATTERN, canonical_session_id
 from ledgerlens.sandbox.invariants import evaluate
+from ledgerlens.sandbox.ledger_view import (
+    LedgerAccountMismatch,
+    LedgerRevisionMoved,
+    LedgerView,
+    materialize,
+)
 from ledgerlens.sandbox.mutation import (
     CODE_HASH_MISMATCH,
     CODE_IDEMPOTENCY_MISMATCH,
@@ -920,7 +927,8 @@ class BranchLayer:
         branch = self._view(row)
         base = self.base_resolver(branch.scenario_id)
         if account_id != base.account_id:
-            # The branch holds the rows of one account, and the account of the request is not that one.
+            # The branch holds the rows of one account and the counterparties of its transactions, and the account of
+            # the request is not that one.
             raise BranchNotFound()
         events = self.store.read_events(branch_id, owner)
         state = self._verified(row, owner, events)
@@ -936,6 +944,76 @@ class BranchLayer:
         if page and start + len(page) < len(items):
             following = f"{page[-1]['kind']}:{page[-1]['id']}"
         return LedgerPage(items=tuple(page), next_cursor=following)
+
+    # -- the ledger of the visitor ---------------------------------------------------------------------
+
+    def ledger_view(
+        self,
+        session_id: str,
+        branch_id: str,
+        *,
+        account_id: str,
+        expected_revision: int | None = None,
+        target: Path | str,
+    ) -> LedgerView:
+        """The ledger of the visitor, materialized in the file of the target.
+
+        The order of the checks is the order of the promises of ADR-038, and the file is written only when every one
+        of them passed, so a refused branch leaves no file behind:
+
+        * a branch of another session is refused with the same generic answer as a branch that does not exist, so
+          nothing about the existence of the branch leaks;
+        * a branch that outlived its time to live is refused with `BranchExpired`;
+        * the account of the request has to be the account of the branch, the account of the branch being the account
+          of the base it was forked from, and a mismatch is refused with `LedgerAccountMismatch`;
+        * the revision the request expected has to be the revision the branch is at, or the run would answer about a
+          state the visitor never saw, and a revision that moved is refused with `LedgerRevisionMoved`;
+        * the branch proves its own state before anything is written, so a branch that cannot prove it has no ledger.
+
+        Why the state of the branch and not the state of the base: the branch is the only truth of the visitor, and
+        the mutations of the visitor are in it (ADR-038).
+
+        Why the idle deadline of the branch moves: a live run is an activity of the visitor on the branch, exactly
+        like a read of the status is, so the branch of a visitor who is looking at it does not expire under the
+        feet of the visitor. The file of the run is a copy of the state, so the run itself is safe even when the
+        cleanup job deletes the branch.
+
+        Why the refresh comes after the verification: a branch that cannot prove its own state is never touched, so
+        a refusal leaves the row of the branch exactly where it was.
+        """
+        owner = self._owner(session_id)
+        row = self.store.get_branch(branch_id, owner)
+        if row.owner_session != owner:
+            # The store already refuses this, but the layer does not rely on that alone.
+            raise BranchNotFound()
+        if self._expired(row):
+            raise BranchExpired(f"the branch {branch_id} expired; fork the scenario again")
+        base = self.base_resolver(row.scenario_id)
+        if account_id != base.account_id:
+            # The branch holds the rows of one account and the counterparties of its transactions, and the account of
+            # the request is not that one.
+            raise LedgerAccountMismatch(f"the account {account_id} is not the account of the branch {branch_id}")
+        if expected_revision is not None and expected_revision != row.revision:
+            raise LedgerRevisionMoved(
+                f"the branch {branch_id} is at revision {row.revision}, not at the revision {expected_revision}"
+                " the request expected"
+            )
+        events = self.store.read_events(branch_id, owner)
+        state = self._verified(row, owner, events)
+        # The refresh is after the verification: a branch that cannot prove its own state is never touched.
+        row = self._refresh(row)
+        try:
+            path = materialize(state, target)
+        finally:
+            # The projection holds a connection of its own, and the run keeps no reference to it.
+            state.close()
+        return LedgerView(
+            path=path,
+            account_id=base.account_id,
+            branch_id=row.branch_id,
+            revision=row.revision,
+            canonical_hash=state.canonical_hash,
+        )
 
     # -- the internals -----------------------------------------------------------------------------
 
@@ -1012,10 +1090,12 @@ __all__ = [
     "BRANCH_ID_PREFIX",
     "BranchDiff",
     "BranchExpired",
+    "BranchHashMismatch",
     "BranchHistory",
     "BranchLayer",
     "ForkOutcome",
     "InvalidSessionId",
+    "LedgerPage",
     "RecordedAnswer",
     "SandboxBranch",
     "STATE_ACTIVE",

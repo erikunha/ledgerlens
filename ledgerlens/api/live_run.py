@@ -30,7 +30,11 @@ What it guarantees:
   does not drop it either (FR-023);
 * nothing the run writes carries the key: the adapter scrubs the error of the provider at its own boundary and the
   coordinator scrubs everything it writes with the secret of the run, which it holds while the run lives, at every
-  depth of a payload (FR-018, SC-001).
+  depth of a payload (FR-018, SC-001);
+* the trace of the run names the branch, the revision and the canonical hash of the ledger that was read, and the
+  file of that ledger goes away when the run ends, on every path, and also when the run never starts at all (ADR-038);
+* the case of a run travels with the run: a run that is started with a case runs that case, and the coordinator of the
+  caller is never rewritten, so it keeps the case it was built with (ADR-038).
 
 Why the coordinator holds the secret of the run: the vault does not keep the secret of a credential that is gone, on
 purpose (ADR-033), and a credential can die in the middle of a run (the visitor presses "forget key", the session
@@ -55,10 +59,12 @@ from __future__ import annotations
 
 import logging
 import re
+import shutil
 import threading
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
+from pathlib import Path
 from typing import Any, Protocol
 
 from ledgerlens.byok.adapter import ProviderAdapter, ProviderRequest, ProviderResponse, build_adapter
@@ -74,6 +80,7 @@ from ledgerlens.observability.trace_event import (
     TraceEventStream,
 )
 from ledgerlens.run_context import RunBudget, RunContext
+from ledgerlens.sandbox.ledger_view import LedgerView
 
 log = logging.getLogger(__name__)
 
@@ -96,6 +103,8 @@ __all__ = [
     "ProviderTimeout",
     "RunCancelled",
     "default_executor",
+    "remove_the_ledger_file",
+    "remove_the_ledger_of_the_run",
     "resolve_profile",
 ]
 
@@ -275,6 +284,11 @@ class LiveRunPlan:
     The plan carries the identifier of the model and not the model itself: the coordinator resolves the identifier
     against the allowlist of the registry, so a request that skips the interface is refused exactly like one that
     goes through it (FR-016, FR-027).
+
+    The plan carries the ledger of the visitor: the file the tools of the agent read, with the branch, the revision
+    and the canonical hash of the state it holds. A plan without a ledger is a plan of a run that has no ledger of the
+    visitor, and the case of that run refuses it, because the fallback would hand the model the rows of every account
+    of the repository (ADR-038).
     """
 
     run_id: str
@@ -289,6 +303,7 @@ class LiveRunPlan:
     expected_revision: int | None = None
     variant: str | None = None
     messages: tuple[Mapping[str, str], ...] = ()
+    ledger: LedgerView | None = None
 
 
 @dataclass(frozen=True)
@@ -629,6 +644,9 @@ class _Run:
 
     plan: LiveRunPlan
     profile: ModelProfile
+    # The case of this run. It travels with the run, because a run that answered with another case would answer a
+    # question that nobody asked (ADR-038).
+    case: CaseExecutor
     status: str = RUNNING
     cancel: threading.Event = field(default_factory=threading.Event)
     done: threading.Event = field(default_factory=threading.Event)
@@ -655,6 +673,9 @@ class LiveRunCoordinator:
     Why the coordinator holds the secret of a run while the run lives: the vault does not keep the secret of a
     credential that is gone, and a run whose credential dies in the middle of it still has to write nothing that
     carries the key (FR-018, SC-001).
+
+    Why the coordinator never changes its own case: the case of a run travels with the run, and a coordinator that
+    the facade rewrote would change the case of every other caller of that coordinator as well (ADR-038).
     """
 
     def __init__(
@@ -683,29 +704,46 @@ class LiveRunCoordinator:
         """The sink of the trace of the runs, where the events are read from."""
         return self._sink
 
-    def start(self, plan: LiveRunPlan) -> LiveRunResult | None:
+    def start(self, plan: LiveRunPlan, *, case: CaseExecutor | None = None) -> LiveRunResult | None:
         """Starts a run and answers what is known about it right now.
 
         The model of the run is resolved before the thread starts, so a model that is not in the allowlist is
         refused before anything happens (FR-027). The answer is None while the run is running: the run itself
         answers when it is over.
+
+        The case of the run travels with the run: a caller that gives a case gets that case, and a caller that
+        gives none gets the case this coordinator was built with. The coordinator is never rewritten, so the
+        coordinator of the caller keeps the case it was built with (ADR-038).
+
+        Why the file of the ledger goes away when the run never starts: a run that never starts has no thread and
+        no end, and the rows of a visitor may not stay on the disk of the server for a run that never happened
+        (ADR-038).
         """
         if offline():
+            # The run never starts, so the file of the ledger of the run goes away with it (ADR-038).
+            remove_the_ledger_of_the_run(plan.ledger)
             raise LiveModeOffline(
                 "the live mode is off because the product runs offline (LEDGERLENS_OFFLINE=1); "
                 "the replay and the sandbox keep working exactly as before"
             )
-        profile = resolve_profile(self._registry, plan.model_profile_id, variant=plan.variant)
+        try:
+            profile = resolve_profile(self._registry, plan.model_profile_id, variant=plan.variant)
+        except ByokError:
+            # The run never starts, so the file of the ledger of the run goes away with it (ADR-038).
+            remove_the_ledger_of_the_run(plan.ledger)
+            raise
         with self._lock:
             existing = self._runs.get(plan.run_id)
             if existing is not None:
                 if existing.profile.profile_id != profile.profile_id:
+                    # This run never starts, and the file of the ledger of the request goes away with it (ADR-038).
+                    remove_the_ledger_of_the_run(plan.ledger)
                     raise ModelChanged(
                         f"the run '{plan.run_id}' runs the model '{existing.profile.profile_id}', and the model of a "
                         "run may not change: start a new run with a new run identifier"
                     )
                 return existing.result
-            run = _Run(plan=plan, profile=profile)
+            run = _Run(plan=plan, profile=profile, case=case if case is not None else self._executor)
             self._runs[plan.run_id] = run
         thread = threading.Thread(target=self._execute, args=(run,), name="ledgerlens-live-run", daemon=True)
         run.thread = thread
@@ -828,6 +866,7 @@ class LiveRunCoordinator:
                 budget=plan.budget,
             )
             budget = BudgetCoordinator(plan.budget, self._registry, clock=self._clock)
+            ledger = plan.ledger
             trace.emit(
                 TraceEventDraft(
                     "run.started",
@@ -839,6 +878,11 @@ class LiveRunCoordinator:
                             "account_id": plan.account_id,
                             "scenario_id": plan.scenario_id,
                             "variant": plan.variant,
+                            # The ledger that the run reads, with the branch, the revision and the hash of the state
+                            # it holds: a reader of the trace knows which ledger answered the question (ADR-038).
+                            "branch_id": None if ledger is None else ledger.branch_id,
+                            "branch_revision": None if ledger is None else ledger.revision,
+                            "canonical_hash": None if ledger is None else ledger.canonical_hash,
                             "budget": {
                                 "max_model_calls": plan.budget.max_model_calls,
                                 "max_tool_calls": plan.budget.max_tool_calls,
@@ -878,7 +922,7 @@ class LiveRunCoordinator:
                 ),
             )
             run.caller = caller
-            answer = self._executor(caller, plan)
+            answer = run.case(caller, plan)
             if run.cancel.is_set():
                 # The visitor asked for the end of the run while the last call was at the provider. The run stops
                 # and it says so, because the answer of a run that the visitor stopped is not the answer of a run
@@ -947,6 +991,9 @@ class LiveRunCoordinator:
             if run.secret is not None:
                 run.secret.wipe()
             run.secret = None
+            # The file of the ledger of the run goes away with the run, on every path: a file that outlives its run
+            # holds the rows of a visitor on the disk of the server longer than the run needs it (ADR-038).
+            remove_the_ledger_of_the_run(plan.ledger)
 
     def _record_the_failure_of_the_credential(self, run: _Run, error: BaseException) -> None:
         """Counts a failure of the credential of the run, so a key that does not work dies sooner (FR-023).
@@ -1096,6 +1143,47 @@ class LiveRunCoordinator:
 def _real_adapter(provider: str, api_key: str) -> ProviderAdapter:
     """The client of a real provider, built for the run, with the credential in its constructor (FR-007)."""
     return build_adapter(provider, api_key)
+
+
+def remove_the_ledger_of_the_run(ledger: LedgerView | None) -> None:
+    """The file of the ledger of the run goes away when the run ends, on every path (ADR-038).
+
+    Why the run removes it and not the facade: the facade does not wait for the end of the run, and a file that
+    outlives its run holds the rows of a visitor on the disk of the server for longer than the run needs them.
+
+    Why the removal never raises: the file is already gone or already unreadable, and the run has answered.
+
+    Why this is public: the facade removes the file too when the coordinator refuses to start the run, and a run
+    that never started has no thread of its own to remove it (ADR-038).
+    """
+    if ledger is None:
+        return
+    remove_the_ledger_file(ledger.path)
+
+
+def remove_the_ledger_file(path: Path | str) -> None:
+    """The file of the ledger of a run goes away, and the folder that held it goes with it (ADR-038).
+
+    Why the folder goes with it: the file is the only thing the folder holds, and a folder of nothing is left over
+    from a run that nobody reads again.
+
+    Why the temporary file goes too: the materialization writes the file under a temporary name, and that temporary
+    file holds the rows of a visitor for as long as the file itself would hold them.
+
+    Why a failure never fails the run: the file is already gone or already unreadable, and the run has answered.
+    """
+    target = Path(path)
+    try:
+        if target.is_dir():
+            shutil.rmtree(target, ignore_errors=True)
+        else:
+            target.unlink(missing_ok=True)
+        target.with_name(target.name + ".tmp").unlink(missing_ok=True)
+        folder = target.parent
+        if folder.is_dir() and not any(folder.iterdir()):
+            folder.rmdir()
+    except OSError as failure:
+        log.warning("the ledger file of the live run could not be removed: %s", failure)
 
 
 def _is_a_refusal_of_the_key(error: BaseException) -> bool:

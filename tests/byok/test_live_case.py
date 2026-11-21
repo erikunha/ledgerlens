@@ -15,7 +15,8 @@ and the agent does not swallow it (FR-019); (h) the arguments of a call travel a
 byte, and a text that is not a JSON text travels as it is (FR-012); (i) a provider that asks for a tool the case does
 not have ends the run with a refusal of the family of the product, and never with the error of a library (FR-018);
 (j) the history of the session is the one the plan of the run carries, and the bridges belong to the run, so two runs
-of the same case never see each other (FR-012).
+of the same case never see each other (FR-012); (k) the case reads the ledger of the plan of the run, and never the
+ledger of its own, so the tools of the agent cannot read the rows of another customer (ADR-038).
 
 Everything offline, with no key and no network: the provider is the fake adapter of the domain, the model of the demo
 is the bridge over the caller of the run, and the ledger and the policy index are built in a temporary folder.
@@ -37,6 +38,7 @@ from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, ConfigDict, Field
 
 from ledgerlens import embeddings as emb
+from ledgerlens.api.accounts import scoped_ledger
 from ledgerlens.api.live_case import (
     MAX_BRIDGE_REQUESTS,
     SLOT_AGENT,
@@ -58,6 +60,7 @@ from ledgerlens.embeddings import FastEmbedEmbeddings
 from ledgerlens.observability.trace_event import InMemoryTraceSink, TraceEventStream
 from ledgerlens.retrieval import build_policy_index, index_dir_for, load_policy_documents
 from ledgerlens.run_context import RunBudget
+from ledgerlens.sandbox.ledger_view import LedgerView
 from ledgerlens.sim.config import SimConfig
 from ledgerlens.sim.pipeline import build_ledger
 from tests.tools import test_policies as base
@@ -70,6 +73,16 @@ SESSION = "sess-case"
 PROFILE_ID = "openai-gpt-4.1-mini"
 MODEL_ID = "gpt-4.1-mini"
 QUESTION = "What happened to the refund of TX-0001?"
+
+# The account of the scenario of the tests. The ledger of the visitor holds the rows of that account and of no other
+# one, and the transaction that the query of the tests asks for belongs to another customer of the same published
+# ledger (ADR-038).
+ACCOUNT = "C-0412"
+# The name of the branch of the visitor and the revision it is at. The case reads the file of the view and never the
+# identifiers, but the view has to name the state it holds (ADR-038).
+BRANCH_ID = "sb_0123456789abcdef01234567"
+REVISION = 0
+CANONICAL_HASH = "canonical-hash-of-the-branch-of-the-visitor"
 
 PRICED = ModelProfile(
     profile_id=PROFILE_ID,
@@ -131,7 +144,11 @@ def registry() -> ProviderRegistry:
 
 
 def _plan(handle: str, **overrides: Any) -> LiveRunPlan:
-    """A plan of a run: the question of the case and the caps of the visitor."""
+    """A plan of a run: the question of the case and the caps of the visitor.
+
+    Why the plan carries no ledger by default: the case of the demo refuses a run without the ledger of the visitor,
+    and the tests that need the case of the demo give their plan one (ADR-038).
+    """
     values: dict[str, Any] = {
         "run_id": "run-case",
         "session_id": SESSION,
@@ -139,7 +156,7 @@ def _plan(handle: str, **overrides: Any) -> LiveRunPlan:
         "credential_handle": handle,
         "question": QUESTION,
         "budget": RunBudget(max_model_calls=8, max_tool_calls=8, max_wall_seconds=30, max_output_tokens=512),
-        "account_id": "C-0412",
+        "account_id": ACCOUNT,
         "scenario_id": "S01",
         "variant": "B",
     }
@@ -282,6 +299,26 @@ def ledger_db(tmp_path_factory: pytest.TempPathFactory) -> Path:
     path = tmp_path_factory.mktemp("ledger") / "ledger.db"
     build_ledger(SimConfig(source="sample"), path).conn.close()
     return path
+
+
+@pytest.fixture
+def ledger_of_the_visitor(ledger_db: Path, tmp_path: Path) -> LedgerView:
+    """The ledger of the visitor: the rows of the account of the scenario, in a file the tools of the agent read.
+
+    Why the rows of one account: the ledger of the visitor holds the records of that visitor and of nobody else, and
+    the file is what the tools of the agent read (ADR-038).
+
+    Why the account is scoped here and not in the branch layer: the layer belongs to the sandbox, and the file of the
+    view is the artifact the run reads (ADR-038).
+    """
+    path = scoped_ledger(ledger_db, ACCOUNT, tmp_path / "ledger-of-the-visitor.db")
+    return LedgerView(
+        path=path,
+        account_id=ACCOUNT,
+        branch_id=BRANCH_ID,
+        revision=REVISION,
+        canonical_hash=CANONICAL_HASH,
+    )
 
 
 @pytest.fixture
@@ -527,8 +564,15 @@ def test_the_cancellation_of_the_run_stops_the_next_call_of_the_case(case: DemoC
     assert len(adapter.calls) == 1
 
 
-def test_the_executor_of_the_demo_answers_with_the_answer_of_the_agent(embeddings: FastEmbedEmbeddings) -> None:
-    """The case of the demo is a case of the run: it answers with what the agent answered."""
+def test_the_executor_of_the_demo_answers_with_the_answer_of_the_agent(
+    embeddings: FastEmbedEmbeddings, ledger_of_the_visitor: LedgerView
+) -> None:
+    """The case of the demo is a case of the run: it answers with what the agent answered.
+
+    Why the plan carries the ledger of the visitor: the case of the demo has no ledger of its own, and a run without
+    the ledger of the visitor is a refusal, because the fallback would hand the model the rows of every account of the
+    repository (ADR-038).
+    """
     adapter = FakeProviderAdapter(provider="openai", api_key=MARKER)
     adapter.script_answer(SIMPLE_TRIAGE_ANSWER)
     adapter.script_tool_call("query_ledger", json.dumps({"question": "the status of TX-0001"}), call_id="call_sql")
@@ -538,13 +582,55 @@ def test_the_executor_of_the_demo_answers_with_the_answer_of_the_agent(embedding
     coordinator = _coordinator(adapter, vault, executor=demo_executor)
     handle = vault.accept(MARKER, "openai", session_id=SESSION)
 
-    coordinator.start(_plan(handle.handle))
+    coordinator.start(_plan(handle.handle, ledger=ledger_of_the_visitor))
     result = coordinator.wait("run-case", timeout=20.0)
 
     assert result is not None
     assert result.status == "completed"
     assert result.answer == FINAL_ANSWER
     assert len(adapter.calls) == 4
+
+
+def test_the_case_reads_the_ledger_of_the_plan_and_never_the_ledger_of_the_case(
+    case: DemoCase, ledger_of_the_visitor: LedgerView
+) -> None:
+    """ADR-038: the tools of the agent read the ledger of the plan, and never the ledger of the case.
+
+    Why the case keeps the ledger of the repository: the case of the test is built with the whole published ledger,
+    and a case that preferred its own ledger would answer about the rows of every account of it. The query of the
+    test asks for the transaction of another customer, so the tool of the run finds nothing in the ledger of the
+    visitor, and it would find the row in the ledger of the configuration (ADR-038).
+    """
+    adapter = FakeProviderAdapter(provider="openai", api_key=MARKER)
+    adapter.script_answer(SIMPLE_TRIAGE_ANSWER)
+    adapter.script_tool_call("query_ledger", json.dumps({"question": "the status of TX-0001"}), call_id="call_sql")
+    adapter.script_answer(SQL_ANSWER)
+    adapter.script_answer(FINAL_ANSWER)
+    vault = CredentialVault()
+    coordinator = _coordinator(adapter, vault, executor=case)
+    handle = vault.accept(MARKER, "openai", session_id=SESSION)
+
+    coordinator.start(_plan(handle.handle, ledger=ledger_of_the_visitor))
+    result = coordinator.wait("run-case", timeout=20.0)
+
+    assert result is not None
+    assert result.status == "completed"
+    # The tool of the agent read the ledger of the visitor: the transaction of the other customer is not in it.
+    answers_of_the_tools = [
+        message.content for call in adapter.calls for message in call.messages if message.role == "tool"
+    ]
+    assert answers_of_the_tools
+    assert _the_rows_of_the_tool(answers_of_the_tools[0]) == []
+
+
+def _the_rows_of_the_tool(content: str) -> list[Any]:
+    """The rows the tool of the agent returned, read from the text the agent received.
+
+    Why the text is read and not the tool: the run never holds the tool, and the text the agent got is the evidence
+    of what the tool read (ADR-038).
+    """
+    answer = json.loads(content)
+    return list(answer["data"]["rows"])
 
 
 def test_the_bridge_and_the_tools_of_the_case_are_built_over_the_caller_of_the_run() -> None:

@@ -302,7 +302,7 @@ Time and cost were not measured: the model is scripted. The debugging argument (
 
 The demo runs with no key at all: the model is scripted, the data comes from the sample and the replay works offline. The live mode is the opt-in branch of it, where a visitor runs a real case with a key of their own provider. In this milestone the branch is server side: the facade and the coordinator exist, and the pages that consume them do not ([ADR-035](decisions/ADR-035-the-facade-of-the-live-mode.md)).
 
-Two things hold that branch together: the lifecycle of the credential and the enforcement of the budget. The vault holds the secret, the coordinator holds the run, and neither of them reads a global setting.
+Three things hold that branch together: the lifecycle of the credential, the enforcement of the budget and the ledger of the visitor. The vault holds the secret, the coordinator holds the run, the branch layer holds the ledger, and none of them reads a global setting.
 
 ### 7.1 The routes
 
@@ -410,6 +410,49 @@ A call whose model differs from the model of the run is refused before anything 
 
 Every run carries the mode `live_agent`, and a replay is never labelled live. Whatever happens, the run ends with exactly one terminal event, `run.completed`, `run.failed` or `run.cancelled`, and the trace of the run lives in the memory of the process: no file, no log, no telemetry, and therefore no place where the key could land.
 
+### 7.4 The ledger of the visitor
+
+The run reads the ledger of the visitor and never the ledger of the configuration. The branch is forked in the sandbox, the branch layer materializes its state in a file of the run, and the tools of the agent read that file. The file holds the rows of the account of the visitor and the counterparties of the transactions of that account, and no row of another account, so the name of a third party is on the disk of the server for the length of the run and the file goes away when the run ends. The ledger of the configuration, which holds the rows of every account of the repository, is never read by the live path ([ADR-038](decisions/ADR-038-the-live-run-reads-the-ledger-of-the-branch-of-the-visitor.md)).
+
+| Step | What happens | Where it is held |
+|---|---|---|
+| The request names the branch | The body carries the id of the branch, the revision it is at and the account of the branch, and the route reads them before the run starts | `LiveRunRequest` in `ledgerlens/api/byok.py` |
+| The branch layer resolves it | The ownership of the branch, its expiry, the account, the revision and the proof of its own state, in that order. No provider is called before every one of them passed, so a refused run spends no money of the visitor | `BranchLayer.ledger_view` in `ledgerlens/sandbox/branch.py` |
+| The state is materialized | A copy of the projected connection of the branch, in a file of the run. The file holds the rows of the account of the branch and the counterparties of the transactions of that account, and no row of another account. The file is written only when every check passed, so a refused branch leaves no file behind | `materialize` in `ledgerlens/sandbox/ledger_view.py` |
+| The agent reads that file | The case of the demo takes the path of the view of the plan and gives it to the tools of the agent. A run with no ledger of the visitor is a refusal and never a fallback | `DemoCase._options_of_the_run` in `ledgerlens/api/live_case.py` |
+| The file goes away | The run removes the file of the ledger and the folder that holds it when it ends, on every path | `_remove_the_ledger_of_the_run` in `ledgerlens/api/live_run.py` |
+| The trace names the ledger | The first event of the run carries the branch, the revision and the canonical hash of the state that was read | the payload of `run.started` in `ledgerlens/api/live_run.py` |
+
+```mermaid
+sequenceDiagram
+  participant Vi as Visitor
+  participant Fa as Live facade
+  participant Br as Branch layer
+  participant Ca as Case of the demo
+  participant To as Tools of the agent
+  Vi->>Fa: POST /v1/live-runs with the branch, the revision and the account
+  Fa->>Br: ledger_view(session, branch, account, revision)
+  Br-->>Fa: the view (the path, the revision, the hash)
+  Fa->>Ca: the run, with the view in the plan
+  Ca->>To: the tools read the file of the branch
+  To-->>Ca: the rows of the account and its counterparties
+```
+
+The refusals of the branch keep the codes of the contract of the sandbox, so the two facades cannot disagree about what a branch holds, and the visitor reads the same answers in the sandbox and in the live mode. None of them repeats a value the visitor sent.
+
+| Refusal | Status | Code |
+|---|---|---|
+| The deployment has no branch layer | 503 | `BRANCH_LAYER_MISSING` |
+| The id is not a branch of this session, and a branch of another session is the same answer | 404 | `NOT_FOUND` |
+| The branch outlived its time to live | 409 | `BRANCH_EXPIRED` |
+| The branch cannot prove its own state | 409 | `HASH_MISMATCH` |
+| The account of the request is not the account of the branch | 422 | `ACCOUNT_MISMATCH` |
+| The branch is at another revision than the one the request expected | 409 | `REVISION_MOVED` |
+
+The live facade takes the branch layer as a dependency, exactly like the vault and the session issuer, and it never goes looking for one. An application built without a branch layer refuses every run that names a branch with the code `BRANCH_LAYER_MISSING`, and it never answers with the ledger of the configuration, because that fallback would hand the model the rows of every account of the repository.
+
+The deployment wires one session issuer, one store of branches and one branch layer for the two facades, so the branch that the sandbox forks is the branch that the live run reads. ADR-035 is not changed by that: the two facades keep their own issuer by default and the wiring stays a decision of the deployment. [The quickstart of the live mode](../specs/003-r3-bring-your-own-key/quickstart.md) carries the program of that wiring, with the two facades served over one issuer, one store and one layer.
+
 ## Terms used
 
 - **Agent**: a language model in a loop that picks actions, runs tools and observes the results.
@@ -429,3 +472,5 @@ Every run carries the mode `live_agent`, and a replay is never labelled live. Wh
 - **Credential handle**: the opaque and random token that stands for a key in the vault; it carries the provider and the expiry and never the secret.
 - **Credential vault**: the in-process memory that maps a handle to a secret; bounded, expiring, and bound to the session that owns the handle.
 - **Budget of a run**: the caps a run carries: the calls of the models, the calls of the tools, the tokens, the wall clock and the money. A run that would break one of them stops at once and names the cap that stopped it.
+- **Branch of the visitor**: a private copy of a published case, owned by one session, that holds the rows of one account, the counterparties of the transactions of that account and the mutations of that visitor. It is the only truth of the visitor, and the live run reads it and never the ledger of the configuration.
+- **View of the ledger**: the state of one branch materialized in a file the tools of the agent can read, with the branch, the revision and the canonical hash of that state. The file holds the rows of the account of the visitor and the counterparties of the transactions of that account. It lives in the plan of the run and the file goes away when the run ends.
