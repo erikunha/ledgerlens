@@ -56,6 +56,9 @@ dev = [
 [project.scripts]
 ledgerlens-sim = "ledgerlens.sim.cli:main"
 ledgerlens-api = "ledgerlens.api.ledger_service:main"
+# The demo of the visitor: the sandbox of the branch and the live mode as one visitor, over one issuer, one store
+# and one vault (ADR-039). The name is not the one of `ledgerlens-api`, which serves the internal ledger API.
+ledgerlens-demo = "ledgerlens.api.wiring:main"
 
 [build-system]
 requires = ["hatchling"]

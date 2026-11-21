@@ -306,7 +306,7 @@ Three things hold that branch together: the lifecycle of the credential, the enf
 
 ### 7.1 The routes
 
-The live mode is an application of its own (`ledgerlens/api/byok.py`, `create_app`), with a router of its own and a session issuer of its own, and it answers eleven routes:
+The live mode is a facade of its own (`ledgerlens/api/byok.py`, `create_app`), with a router of its own and a session issuer of its own, and it answers eleven routes:
 
 | Route | What it answers |
 |---|---|
@@ -323,6 +323,8 @@ The live mode is an application of its own (`ledgerlens/api/byok.py`, `create_ap
 | `GET /v1/live-runs/{run_id}/cost` | what the run consumed, with the two costs apart |
 
 The route of the run never accepts a raw key: its body carries the handle of a credential and nothing else, and it is checked against the published contract `specs/003-r3-bring-your-own-key/contracts/live-run-request.schema.json` before the route reads anything. A run of another session is refused with the answer of a run that does not exist (`_own_run`), and a handle of another session is refused with the answer of a handle that never existed.
+
+The repository serves the demo with the wired application of the demo (`ledgerlens/api/wiring.py`, `build_wired_app`) and the console script `ledgerlens-demo`, and the command is one: `uv run ledgerlens-demo --port 8010`. The wired application mounts the two routers of the demo in one application over one session issuer, one store of branches, one base resolver, one branch layer, one vault of the credentials and one runtime folder, so the visitor is one visitor over the two facades (the section [the wired application](#75-the-wired-application-of-the-demo) says how).
 
 ### 7.2 The lifecycle of the credential
 
@@ -451,7 +453,32 @@ The refusals of the branch keep the codes of the contract of the sandbox, so the
 
 The live facade takes the branch layer as a dependency, exactly like the vault and the session issuer, and it never goes looking for one. An application built without a branch layer refuses every run that names a branch with the code `BRANCH_LAYER_MISSING`, and it never answers with the ledger of the configuration, because that fallback would hand the model the rows of every account of the repository.
 
-The deployment wires one session issuer, one store of branches and one branch layer for the two facades, so the branch that the sandbox forks is the branch that the live run reads. ADR-035 is not changed by that: the two facades keep their own issuer by default and the wiring stays a decision of the deployment. [The quickstart of the live mode](../specs/003-r3-bring-your-own-key/quickstart.md) carries the program of that wiring, with the two facades served over one issuer, one store and one layer.
+The deployment wires one session issuer, one store of branches and one branch layer for the two facades, so the branch that the sandbox forks is the branch that the live run reads. ADR-035 is not changed by that: the two facades keep their own issuer by default and the wiring stays a decision of the deployment. The repository writes that deployment down, and [the quickstart of the live mode](../specs/003-r3-bring-your-own-key/quickstart.md) shows the one command that serves it.
+
+### 7.5 The wired application of the demo
+
+The demo has two facades: the sandbox of the visitor (`ledgerlens/api/sandbox.py`) and the live mode (`ledgerlens/api/byok.py`). A live run reads the ledger of the branch of the visitor, so the two facades have to be the same visitor for a live case to mean anything (ADR-038). The repository wires them in one application, and the wiring is a deployment written down in the code, not a program the reader of the quickstart has to copy (ADR-039).
+
+| Piece | What it is |
+|---|---|
+| The factory | `build_wired_app` in `ledgerlens/api/wiring.py`: it builds one issuer, one store of branches, one base resolver, one branch layer, one vault of the credentials and one runtime folder, and it mounts the two routers of the demo in one application |
+| The command | `ledgerlens-demo` in `pyproject.toml`, and it is `uv run ledgerlens-demo --port 8010`. It takes `--host` and `--port`, the way `ledgerlens-api` takes them |
+| The session | `POST /v1/sessions` is the route of the live mode, because that answer is the superset: the same three fields, the capability of the live mode, the disclosure of the storage, the disclosure of the erasure and the no-store headers |
+| The end of the session | `DELETE /v1/sessions/current` is the route of the sandbox, because that one is complete: it deletes the branches of the session, it purges the memory of the case and it drops the credentials of the session, the sandbox being given the shared vault |
+| The refusals | The wired application installs the handlers of the refusals on itself, because an included router brings its routes and its lifespan and nothing else. A refusal is the resource `Error` of the contract and never a `500`, and the message is scrubbed with the vault |
+
+```mermaid
+flowchart TB
+  V["Visitor<br/>one cookie jar"] -->|"POST /v1/sessions"| W["Wired application<br/>ledgerlens-demo, port 8010"]
+  V -->|"POST /v1/sandboxes"| W
+  V -->|"POST /v1/live-runs"| W
+  ISS["Session issuer<br/>one key file"] --> W
+  W --> L["Branch layer<br/>one store, one base resolver"]
+  W --> VLT["Vault of the credentials<br/>one vault"]
+  L -->|"the state of the branch"| W
+```
+
+The two facades alone are still two visitors, each one with its own issuer, and the plain factory of uvicorn is not touched either: it still serves a live mode without a branch layer and it still refuses every run with `503 BRANCH_LAYER_MISSING` and a readable reason. The wired application is one visitor because the factory gives the two facades the same issuer, and that is a decision of the deployment that ADR-035 allows.
 
 ## Terms used
 

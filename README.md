@@ -135,6 +135,14 @@ Copy `.env.example` to `.env`, fill in the keys (`OPENAI_API_KEY` and, for trace
 
 The demo runs with no key at all. The live mode is the opt-in branch of it: the visitor runs a real case with a key of their own provider, inside a hard budget, and everything else keeps working exactly as before. In this milestone the branch is server side: the routes exist and the pages that consume them do not ([ADR-035](docs/decisions/ADR-035-the-facade-of-the-live-mode.md)).
 
+The demo of the visitor is served by one command:
+
+```bash
+uv run ledgerlens-demo --port 8010
+```
+
+That command serves the wired application of the demo: the live mode and the sandbox of the visitor in one application, over one session issuer, one store of branches, one branch layer and one vault of the credentials, so the branch that the sandbox forks is the branch that the live run reads ([ADR-039](docs/decisions/ADR-039-the-wired-application-of-the-demo.md)). The visitor sees one cookie and one session over the two facades. The two facades alone are two visitors with an issuer each, and the plain factory of `uvicorn` still serves a live mode without a branch layer, which refuses every run with `503 BRANCH_LAYER_MISSING`. [The quickstart of the live mode](specs/003-r3-bring-your-own-key/quickstart.md) shows the whole flow, with the real answers.
+
 What it does:
 
 - the key arrives once, in `POST /v1/credentials`, and it lives in the memory of the server process and nowhere else: no file, no database, no log, no trace, no URL. The answer carries an opaque handle, the provider and the expiry, and never the key itself;

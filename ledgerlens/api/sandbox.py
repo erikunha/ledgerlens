@@ -34,6 +34,11 @@ No route accepts a file path, a SQL statement or a URL, and no route writes to t
 
 The runtime folder of the facade holds the key of the sessions, the memory of the sessions and the base of the
 scenarios, so a folder that is injected keeps the whole material of the sandbox inside itself.
+
+The facade has a router of its own, the way the live facade has one, so that a deployment may mount the two facades
+in one application (ADR-039). The router carries the routes and nothing else: the handlers of the refusals live on the
+application, because an included router brings its routes and its lifespan and nothing else. The routes of the
+application are the routes of the router, written once, so that the two answer the same thing.
 """
 
 from __future__ import annotations
@@ -46,7 +51,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import FastAPI, Header, Query, Request, Security
+from fastapi import APIRouter, FastAPI, Header, Query, Request, Security
 from fastapi import Path as PathParam
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
@@ -158,6 +163,10 @@ def create_app(
     The vault of the credentials is given to the application and never read from a global: the end of a session drops
     the credentials of that session from the vault the application was given, and not from a vault of the process
     that may belong to another application (FR-022, ADR-035).
+
+    The routes of the facade are registered on the application itself and the router of the sandbox carries the same
+    routes for the deployment that mounts the two facades in one application, so the sandbox application alone answers
+    exactly as it answered before (ADR-039).
     """
     settings = get_settings()
     runtime = Path(runtime_dir) if runtime_dir is not None else settings.runtime_dir
@@ -202,11 +211,45 @@ def create_app(
         lifespan=lifespan,
     )
 
+    # The handlers of the refusals live on the application and not on the router: an included router brings its routes
+    # and its lifespan and nothing else, so a refusal raised inside a route of an included router would be a `500`
+    # where the contract asks for the resource `Error` (ADR-039).
+    install_refusal_handlers(app, credential_vault=credential_vault)
+
+    # The routes of the facade are registered on the application itself, exactly as they were before the router
+    # existed: an application that includes a router does not list the routes of the router in `app.routes`, and the
+    # guard of the paths of the facade reads that list (ADR-023, ADR-039).
+    _the_routes_of_the_sandbox(
+        app,
+        store=branch_store,
+        layer=layer,
+        session_issuer=issuer,
+        credential_vault=credential_vault,
+        runtime_dir=runtime,
+    )
+    return app
+
+
+def install_refusal_handlers(app: FastAPI, *, credential_vault: CredentialVault | None = None) -> None:
+    """Installs the handlers of the refusals on an application.
+
+    Why they live on the application and not on the router: an included router brings its routes and its lifespan and
+    nothing else, so a composed application that forgets one handler answers `500` where the contract asks for the
+    resource `Error` (ADR-039).
+
+    Why the message of a refusal is scrubbed with the vault when the vault was given: a refusal never carries a value
+    of the visitor, and the vault is the only one that knows the exact text of the key it holds (FR-018, SC-001). The
+    live facade scrubs its refusals the same way.
+    """
+
     @app.exception_handler(ContractError)
     async def contract_error(_request: Request, error: ContractError) -> JSONResponse:
+        body = error.body()
+        if credential_vault is not None:
+            body["message"] = credential_vault.scrub(str(body["message"]))
         return JSONResponse(
             status_code=error.status_code,
-            content=error.body(),
+            content=body,
             headers={SCHEMA_VERSION_HEADER: SCHEMA_VERSION},
         )
 
@@ -220,7 +263,67 @@ def create_app(
             headers={SCHEMA_VERSION_HEADER: SCHEMA_VERSION},
         )
 
-    @app.post("/v1/sessions", status_code=201)
+
+def build_router(
+    *,
+    store: BranchStore,
+    layer: BranchLayer,
+    session_issuer: SessionIssuer,
+    credential_vault: CredentialVault | None = None,
+    runtime_dir: Path | str | None = None,
+) -> APIRouter:
+    """The routes of the sandbox, over the store, the layer and the issuer.
+
+    Why the router exists: ADR-039 mounts the sandbox and the live mode in one application, and a router is what an
+    application mounts. The routes are the ones the contract of the design package fixes, and no route of them changes
+    its behavior because of the router.
+
+    Why the router takes what it needs and reads no global: the router of the sandbox is mounted by a deployment, and
+    that deployment gives the two facades the same issuer, the same store and the same vault on purpose, because the
+    two facades are one visitor only when a deployment wires them that way (ADR-035, ADR-039).
+
+    Why the handlers of the refusals are not here: an included router brings its routes and nothing else, so a
+    composed application installs the handlers on itself (ADR-039).
+    """
+    router = APIRouter()
+    _the_routes_of_the_sandbox(
+        router,
+        store=store,
+        layer=layer,
+        session_issuer=session_issuer,
+        credential_vault=credential_vault,
+        runtime_dir=runtime_dir,
+    )
+    return router
+
+
+def _the_routes_of_the_sandbox(
+    target: FastAPI | APIRouter,
+    *,
+    store: BranchStore,
+    layer: BranchLayer,
+    session_issuer: SessionIssuer,
+    credential_vault: CredentialVault | None = None,
+    runtime_dir: Path | str | None = None,
+) -> None:
+    """The eleven routes of the contract of the sandbox, registered on the target.
+
+    Why the routes are written once and not twice: the application of the sandbox and the router of the sandbox have to
+    answer the same thing, and two copies of the same route drift apart.
+
+    Why the application registers the routes on itself and does not include the router: an application that includes a
+    router does not list the routes of the router in `app.routes`, and the guard of the paths of the facade reads that
+    list (ADR-023). The router exists for the deployment that mounts the two facades in one application (ADR-039).
+
+    Why the target is an application or a router: the decorator of a route is the same on both, so the routes of the
+    facade are the routes of the contract in either case.
+    """
+    settings = get_settings()
+    runtime = Path(runtime_dir) if runtime_dir is not None else settings.runtime_dir
+    branch_store = store
+    issuer = session_issuer
+
+    @target.post("/v1/sessions", status_code=201)
     def issue_session() -> JSONResponse:
         """Issues the session of the visitor and sets the cookie of the contract."""
         session = issuer.issue()
@@ -240,7 +343,7 @@ def create_app(
         )
         return response
 
-    @app.delete("/v1/sessions/current", status_code=204)
+    @target.delete("/v1/sessions/current", status_code=204)
     def end_session(cookie: Annotated[str | None, Security(SESSION_SCHEME)]) -> Response:
         """Ends the session of the visitor, purges its branches and purges its case memory.
 
@@ -270,7 +373,7 @@ def create_app(
         response.delete_cookie(SESSION_COOKIE, path="/")
         return response
 
-    @app.post("/v1/sandboxes")
+    @target.post("/v1/sandboxes")
     def fork(
         payload: SandboxRequest,
         cookie: Annotated[str | None, Security(SESSION_SCHEME)],
@@ -289,7 +392,7 @@ def create_app(
             raise ContractError(401, "SESSION_REQUIRED", "no valid session") from None
         return _sandbox_response(outcome.branch, 201 if outcome.created else 200)
 
-    @app.get("/v1/sandboxes/{sandbox_id}")
+    @target.get("/v1/sandboxes/{sandbox_id}")
     def read_sandbox(
         sandbox_id: Annotated[str, PathParam(pattern=BRANCH_ID_PATTERN)],
         cookie: Annotated[str | None, Security(SESSION_SCHEME)],
@@ -308,7 +411,7 @@ def create_app(
             raise ContractError(409, mismatch.code, mismatch.message) from None
         return _sandbox_response(branch, 200)
 
-    @app.post("/v1/sandboxes/{sandbox_id}/mutations/preview")
+    @target.post("/v1/sandboxes/{sandbox_id}/mutations/preview")
     def preview_mutation(
         sandbox_id: Annotated[str, PathParam(pattern=BRANCH_ID_PATTERN)],
         body: dict[str, Any],
@@ -335,7 +438,7 @@ def create_app(
             raise ContractError(409, mismatch.code, mismatch.message) from None
         return _answer(preview.to_dict())
 
-    @app.post("/v1/sandboxes/{sandbox_id}/mutations")
+    @target.post("/v1/sandboxes/{sandbox_id}/mutations")
     def commit_mutation(
         sandbox_id: Annotated[str, PathParam(pattern=BRANCH_ID_PATTERN)],
         body: dict[str, Any],
@@ -364,7 +467,7 @@ def create_app(
             raise ContractError(409, mismatch.code, mismatch.message) from None
         return _answer(result.to_dict())
 
-    @app.post("/v1/sandboxes/{sandbox_id}/reset")
+    @target.post("/v1/sandboxes/{sandbox_id}/reset")
     def reset_sandbox(
         sandbox_id: Annotated[str, PathParam(pattern=BRANCH_ID_PATTERN)],
         cookie: Annotated[str | None, Security(SESSION_SCHEME)],
@@ -388,7 +491,7 @@ def create_app(
             raise ContractError(409, mismatch.code, mismatch.message) from None
         return _sandbox_response(branch, 200)
 
-    @app.post("/v1/sandboxes/{sandbox_id}/undo")
+    @target.post("/v1/sandboxes/{sandbox_id}/undo")
     def undo_sandbox(
         sandbox_id: Annotated[str, PathParam(pattern=BRANCH_ID_PATTERN)],
         cookie: Annotated[str | None, Security(SESSION_SCHEME)],
@@ -427,7 +530,7 @@ def create_app(
             raise ContractError(409, mismatch.code, mismatch.message) from None
         return _answer(result.to_dict())
 
-    @app.get("/v1/sandboxes/{sandbox_id}/diff")
+    @target.get("/v1/sandboxes/{sandbox_id}/diff")
     def read_diff(
         sandbox_id: Annotated[str, PathParam(pattern=BRANCH_ID_PATTERN)],
         cookie: Annotated[str | None, Security(SESSION_SCHEME)],
@@ -455,7 +558,7 @@ def create_app(
             raise ContractError(409, mismatch.code, mismatch.message) from None
         return _answer(diff.to_dict())
 
-    @app.get("/v1/sandboxes/{sandbox_id}/history")
+    @target.get("/v1/sandboxes/{sandbox_id}/history")
     def read_history(
         sandbox_id: Annotated[str, PathParam(pattern=BRANCH_ID_PATTERN)],
         cookie: Annotated[str | None, Security(SESSION_SCHEME)],
@@ -482,7 +585,7 @@ def create_app(
             raise ContractError(409, mismatch.code, mismatch.message) from None
         return _answer(history.to_dict())
 
-    @app.get("/v1/sandboxes/{sandbox_id}/ledger")
+    @target.get("/v1/sandboxes/{sandbox_id}/ledger")
     def read_ledger(
         sandbox_id: Annotated[str, PathParam(pattern=BRANCH_ID_PATTERN)],
         account_id: Annotated[str, Query(min_length=1)],
@@ -507,8 +610,6 @@ def create_app(
         except BranchHashMismatch as mismatch:
             raise ContractError(409, mismatch.code, mismatch.message) from None
         return _answer({"items": list(page.items), "next_cursor": page.next_cursor})
-
-    return app
 
 
 def _session(cookie_value: str | None, issuer: SessionIssuer) -> str:
@@ -595,5 +696,7 @@ __all__ = [
     "SCHEMA_VERSION_HEADER",
     "SESSION_COOKIE",
     "SandboxRequest",
+    "build_router",
     "create_app",
+    "install_refusal_handlers",
 ]
