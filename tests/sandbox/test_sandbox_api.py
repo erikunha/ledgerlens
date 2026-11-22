@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import threading
 import time
+from collections.abc import Iterator
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
@@ -654,6 +655,35 @@ def _events_of(text: str) -> list[dict[str, Any]]:
     return parsed
 
 
+def _read_until(frames: Iterator[str], wanted: str, limit: int = 60) -> list[str]:
+    """Reads the frames of a stream until the event of the name arrives, and returns the names it read.
+
+    Why the reader exists: the stream of the branch carries the events of the lifecycle AND the heartbeat, and a case
+    that read the NEXT frame and expected the event of the lifecycle in it was a case that failed on a machine that
+    was slow enough for a heartbeat to arrive first. The case reads until the event it wants arrives, and it keeps
+    the names it read on the way, so that it can still say that the close did NOT arrive.
+
+    Why the buffer exists: the chunk of the stream is not an event. A chunk may hold a half of an event, and a chunk
+    may hold two events, so the reader joins the chunks until it holds a whole block.
+
+    Why the limit exists: a stream that never gives the event would hang the suite for ever, and a case that hangs
+    proves nothing.
+    """
+    buffer = ""
+    names: list[str] = []
+    while len(names) < limit:
+        chunk = next(frames)
+        buffer += chunk
+        while "\n\n" in buffer:
+            block, _, buffer = buffer.partition("\n\n")
+            for event in _events_of(f"{block}\n\n"):
+                name = str(event.get("event", ""))
+                names.append(name)
+                if name == wanted:
+                    return names
+    raise AssertionError(f"the event {wanted} never arrived, the stream gave {names}")
+
+
 def _wait_for_the_subscribers(hub: EventHub, branch_id: str, count: int, timeout: float = 5.0) -> None:
     """Waits until the branch of the hub has exactly the number of subscribers the test needs.
 
@@ -983,9 +1013,13 @@ def test_the_close_belongs_to_its_connection_and_the_disconnect_publishes_nothin
 
             # The second connection is alive: it receives the event of the commit and no close.
             assert _commit(stream_client, branch_id, adjustment_payload).status_code == 200
-            received = _events_of(next(second_frames))
+            names = _read_until(second_frames, EVENT_MUTATION_COMMITTED)
 
-    assert [event["event"] for event in received] == [EVENT_MUTATION_COMMITTED]
+    # The event of the commit arrived, and the close of the first connection did NOT arrive. The heartbeat of the
+    # stream may have arrived before the commit, because the case lowered the interval of the heartbeat to fifty
+    # milliseconds to make the case quick, and the heartbeat belongs to the connection and not to the branch.
+    assert EVENT_MUTATION_COMMITTED in names
+    assert EVENT_STREAM_CLOSED not in names
 
     # The row of the branch disappears, and the server ends the connections of the branch. Every connection ends with
     # its OWN close, and the close of one connection is not given to the other one: the counter of the branch does not
