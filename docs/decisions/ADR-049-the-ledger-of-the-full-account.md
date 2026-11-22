@@ -234,6 +234,14 @@ because the table and the selectors are ONE implementation.
   fraction digit by digit. The comparator never calls `Number`, never calls `parseFloat` and never
   builds a `BigInt` out of an amount (the same rule as `formatMoney` of ADR-043). A text that does
   not match the decimal grammar keeps the place of the artifact and is never sorted by a guess.
+
+  **The zeros in front of the integer part are removed before the comparison.** The comparison by the
+  length of the integer part is the comparison that keeps the digits a float does not hold, and the
+  zeros in front of a decimal text carry no value: "010.00" and "10.00" are the same amount, and a
+  comparator that put the first after the second would put two equal amounts in an order that the
+  amount does not have. The sign of a zero is not a sign either: "-0" and "0" are the same amount.
+  The removal of the zeros is a READING of the text and never a calculation of it, and the comparator
+  still never calls `Number`, never calls `parseFloat` and never builds a `BigInt`.
 - **A total, and a row that disappears without a word.** There is no total row, no total in the
   caption and no total in the detail, before a sort and after a sort, because a sort by the amount
   does not produce a sum; and the table says how many rows the filter kept and how many the
@@ -463,15 +471,18 @@ the states come from the closed lists of the ledger.
 2. the sort by the amount compares the decimal TEXT: `9.90` comes before `10.00`, and `100.00` comes
    after `99.99`;
 3. the sort never calls `Number` on an amount: the case goes red when the comparator is replaced by
-   one that parses the amount as a float, because the order of two rows that differ only by a
-   leading zero changes;
+   one that parses the amount as a float, because the order of two rows whose amounts differ only past
+   the digits that a float holds changes, and because the comparator keeps the digits of an amount
+   that a float cannot hold;
 4. the sort is stable: two rows with the same value of the field keep the order of the artifact;
-5. the filter by the text keeps the rows whose identifier, kind, state or currency carries the text,
+5. the sort compares the VALUE of the amount and not the shape of its text: "010.00" and "10.00" are
+   the same amount and keep the order of the artifact, and "-0" and "0" are the same amount;
+6. the filter by the text keeps the rows whose identifier, kind, state or currency carries the text,
    the filter by the kind and by the state keeps the rows that carry them, and no row is ever
    dropped silently: the panel says how many rows it kept;
-6. the sort and the filter compose: the filter first, then the sort, and the result is the same as
+7. the sort and the filter compose: the filter first, then the sort, and the result is the same as
    the sort of the filtered rows;
-7. **the budget of SC-010**: the sort of a thousand rows finishes under 200 ms, the filter of a
+8. **the budget of SC-010**: the sort of a thousand rows finishes under 200 ms, the filter of a
    thousand rows finishes under 200 ms, and the render of the panel with the thousand rows finishes
    under 1 s, each measured with `performance.now()` and each failing the test when the budget is
    broken.
