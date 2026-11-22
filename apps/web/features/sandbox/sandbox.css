@@ -1,0 +1,50 @@
+/**
+ * The styles of the sandbox of the visitor.
+ *
+ * Why this file exists: the sandbox is the third room of the site and it has a few surfaces of
+ * its own, the panel of the branch, the form of the mutation and the view of the difference. The
+ * rules below are the ones that a class of the design system cannot express, and every colour of
+ * them is a token of `app/globals.css`: the file never declares a colour of its own.
+ *
+ * Why the values of the money use the monospace typeface: the value of the difference is the
+ * decimal text of the server and it is read as a value and not as a sentence, so the digits of it
+ * line up in a column.
+ *
+ * Why the rules are NOT inside an `@layer components`: this file is a stylesheet of its own and it
+ * is processed by the CSS pipeline on its own, and a layer of the components of Tailwind is only
+ * allowed in a file that declares the matching `@tailwind components`. The rules below are plain
+ * rules of the sheet and the order of the sheet of the site keeps them after the utilities of the
+ * design system.
+ */
+
+/* the panel of the branch sits on the surface of the page and separates itself with a border */
+.ll-sandbox-panel {
+  border-radius: var(--ll-radius-lg);
+  border: 1px solid var(--ll-color-border);
+  background-color: var(--ll-color-background);
+  padding: var(--ll-space-4);
+}
+
+/* the form of the mutation keeps its fields in one column on a narrow screen */
+.ll-sandbox-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ll-space-3);
+}
+
+/* the difference of the branch is a table that scrolls sideways and nothing else */
+.ll-sandbox-diff table {
+  font-variant-numeric: tabular-nums;
+}
+
+/* the values of the difference are read as values and not as sentences */
+.ll-sandbox-diff .font-mono {
+  font-family: var(--ll-font-mono);
+}
+
+/* the empty state of the difference says that nothing was read yet */
+.ll-sandbox-empty {
+  color: var(--ll-color-text-muted);
+  font-size: var(--ll-text-sm);
+  line-height: var(--ll-leading-sm);
+}

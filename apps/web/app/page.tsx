@@ -7,11 +7,12 @@ import { CardSection } from "@/components/ui/Card";
 /**
  * The home page of the public site.
  *
- * Why this file exists: the demo has two halves and a visitor has to be able to tell them apart
- * before anything happens. The recorded demo reads the published artifacts and calls nobody, and
- * the live mode asks the backend of the demo and asks for the key of the visitor. Both are
- * offered here, each one with the mode it runs in written down, because a recorded run is never
- * labelled live and a live run is never labelled recorded (ADR-040).
+ * Why this file exists: the demo has three ways to be seen and a visitor has to be able to tell them
+ * apart before anything happens. The recorded demo reads the published artifacts and calls nobody,
+ * the sandbox forks a published case into a branch of the visitor, and the live mode asks the backend
+ * of the demo and asks for the key of the visitor. All three are offered here, each one with the
+ * mode it runs in written down, because a recorded run is never labelled live and a live run is
+ * never labelled recorded (ADR-040, ADR-044).
  */
 
 export default function HomePage() {
@@ -31,7 +32,7 @@ export default function HomePage() {
         </p>
       </header>
 
-      <section className="grid gap-4 md:grid-cols-2" aria-label="The two ways to see the demo">
+      <section className="grid gap-4 lg:grid-cols-3" aria-label="The three ways to see the demo">
         <CardSection
           title="Recorded demo"
           description="The published artifacts of a capture, played in the browser."
@@ -49,6 +50,29 @@ export default function HomePage() {
             <div>
               <Link className={buttonClasses("primary", "md")} href="/replay">
                 Open the recorded demo
+              </Link>
+            </div>
+          </div>
+        </CardSection>
+
+        <CardSection
+          title="Sandbox"
+          description="A published case, forked into a branch of your own session."
+        >
+          <div className="flex flex-col gap-3">
+            <Badge tone="neutral">mode: visitor_sandbox</Badge>
+            <p className="text-sm text-text-muted">
+              The sandbox forks a published case into a branch of your own session and lets you build a typed
+              mutation on it, read what the mutation would do and commit it. It asks no provider and it spends no
+              money of your own.
+            </p>
+            <p className="text-sm text-text-subtle">
+              The branch lives on the origin of the backend, in your own session, and the state of the branch stays
+              in the memory of the page: it never travels in the address of the browser.
+            </p>
+            <div>
+              <Link className={buttonClasses("secondary", "md")} href="/sandbox">
+                Open the sandbox
               </Link>
             </div>
           </div>

@@ -1,6 +1,6 @@
 # The frontend of LedgerLens
 
-The site of the demo has two halves, and they live on two origins.
+The site of the demo has three rooms, and they live on two origins.
 
 The **recorded demo** is a static export: a folder of plain files, published on the origin of the site, that any content
 delivery network can serve. It reads the published artifacts of the replay and makes no request to anybody. The artifacts
@@ -14,20 +14,27 @@ of the API, with the cookie of the session, and the backend answers with the cat
 stream of the events and the cost. The two origins are different, so the backend answers the browser with the CORS
 headers.
 
-The decision that fixed this shape is
+The **sandbox of the visitor** is the third room. Its route is `/sandbox`, it calls the same origin of the API with the
+same cookie of the session, and it costs the visitor nothing: it forks a published case into a private branch of the
+session, previews a typed mutation, commits it, reads the difference and the log of the branch, undoes the last
+mutation and puts the branch back at the published base. The decision that fixed this front is
+[ADR-044](decisions/ADR-044-the-interface-of-the-sandbox-in-the-frontend.md).
+
+The decision that fixed the shape of the two rooms that call the backend is
 [ADR-040](decisions/ADR-040-the-live-mode-on-the-origin-of-the-backend.md), and the architecture of the live mode is
 drawn below.
 
-## The two modes
+## The three modes
 
 | mode | label | what it calls | what it costs |
 | --- | --- | --- | --- |
 | the recorded demo | `deterministic_sandbox` | nothing, the artifacts are on the origin of the site | nothing |
+| the sandbox of the visitor | `visitor_sandbox` | the backend, and nobody else | nothing |
 | the live mode | `live_agent` | the backend, and the provider of the visitor | the money of the visitor, inside the caps of the run |
 
-The two are separate sections of the page, and each one carries its own label. A recorded run is never labelled live,
-and a live run is never labelled recorded. The recorded demo keeps working when the backend is down, when the product
-runs offline and when no key exists.
+The three are separate sections of the page, and each one carries its own label. A recorded run is never labelled live,
+a sandbox is never labelled live and a live run is never labelled recorded. The recorded demo keeps working when the
+backend is down, when the product runs offline and when no key exists.
 
 ## How to run the site
 
@@ -72,7 +79,11 @@ could read a variable at runtime.
 - The default is `http://localhost:8010`, the port of `ledgerlens-demo`.
 - The value is an origin without a trailing slash and without a path. The paths are joined as `${base}/v1/sessions`,
   `${base}/v1/models`, `${base}/v1/credentials`, `${base}/v1/live-runs`, `${base}/v1/live-runs/{runId}/events`,
-  `${base}/v1/live-runs/{runId}/cost` and `${base}/v1/credentials/forget`.
+  `${base}/v1/live-runs/{runId}/cost` and `${base}/v1/credentials/forget`. The sandbox joins the same origin with
+  `${base}/v1/sandboxes`, `${base}/v1/sandboxes/{branchId}`, `${base}/v1/sandboxes/{branchId}/mutations`,
+  `${base}/v1/sandboxes/{branchId}/mutations/preview`, `${base}/v1/sandboxes/{branchId}/undo`,
+  `${base}/v1/sandboxes/{branchId}/reset`, `${base}/v1/sandboxes/{branchId}/diff` and
+  `${base}/v1/sandboxes/{branchId}/history`. There is no second origin and no second rule.
 - The default is `localhost` and not `127.0.0.1` on purpose: the site of `localhost` is `localhost`, so the cookie of
   the session travels between `http://localhost:3000` and `http://localhost:8010`. `127.0.0.1` is another host, and the
   browser would not send the cookie of one to the other.
@@ -316,6 +327,164 @@ The typed source of the interactive version of this diagram is
 [`docs/diagrams/live-mode.architecture.json`](diagrams/live-mode.architecture.json), and the decision that keeps the
 rendered HTML out of the repository is
 [ADR-041](decisions/ADR-041-the-interactive-diagrams-are-rendered-outside-the-repository.md).
+
+## The sandbox of the visitor
+
+The sandbox of the visitor is the third room of the site. It opens a private branch of a published case, previews a
+typed mutation, commits it, reads the difference and the log of the branch, undoes the last mutation and puts the
+branch back at the published base. It needs no key and no provider, and it costs the visitor nothing.
+
+### The route of the sandbox
+
+**The route of the sandbox is `/sandbox`.** The decision is
+[ADR-044](decisions/ADR-044-the-interface-of-the-sandbox-in-the-frontend.md), and the reasons are these.
+
+- The sandbox is a THIRD mode of the demo and not a part of one of the two. The recorded demo reads the published
+  artifacts of the site and calls nobody, and the sandbox calls the origin of the backend. A route under `/replay`
+  would say that the sandbox belongs to the recorded demo, and the prefix `/replay` is both the page of the catalog of
+  the export (`out/replay.html`) and the folder of the published artifacts (`out/replay/`).
+- The route is not under `/live` either. The live mode calls a provider with the key of the visitor and spends the
+  money of the visitor, and the sandbox spends nothing.
+- The route carries NO identifier of a scenario in the path. The catalog of the scenarios is read at run time from the
+  published catalog of the site, and the visitor picks the case from a list of buttons on the page.
+- The page is a client component, so the export writes one file, `out/sandbox.html`, and the file needs no parameter.
+
+The route is linked from the home page `/`, which carries a third card next to the ones of the recorded demo and of the
+live mode, and from the sandbox page itself, which links back to `/replay` and to `/live` in its header. The header of
+the shell does NOT gain a link: it carries the name of the site and the indicator of the mode and nothing else.
+
+### The origin of the calls
+
+**The calls of the sandbox go to the origin of the backend, with the credentials of the visitor, exactly like the live
+mode.**
+
+- The origin is the one of the live mode and of the section about the URL contract above: the public build variable
+  `NEXT_PUBLIC_LEDGERLENS_API_BASE_URL`, read by `apps/web/lib/api/config.ts` through `apiBaseUrl()`, with the default
+  `http://localhost:8010`. There is NO second variable, NO second origin and NO second rule.
+- Every call carries `credentials: "include"`, so the browser sends the cookie `ledgerlens_session` of the origin of
+  the backend. The cookie is `HttpOnly`, `SameSite=Lax` and `Path=/`, and the rule of the same site holds: the origin of
+  the API is published on the SAME SITE as the site of the interface, with the same scheme.
+- **There is NO second copy of the branch in the repository.** The static export holds nothing of the branch of the
+  visitor: no snapshot of the branch, no cache of the difference and no fixture of the log in `apps/web/public/`. The
+  branch lives on the origin of the backend, in the store of the deployment, and the browser holds the identifier of the
+  branch and nothing else.
+- **When the origin does not answer, the interface says so in words, with the origin it tried, and it does not guess
+  and does not fall back.** The transport raises the error of the transport of the repository, with the status `0` and
+  the code `NETWORK_ERROR`, and the message names the origin, the method and the path. The recorded demo keeps working
+  exactly as before, because it calls nobody.
+- **The session is issued ONLY when the server says there is none.** A call that is refused with `401 SESSION_REQUIRED`
+  triggers exactly one `POST /v1/sessions` and the call is retried exactly once. THE HOOK OF THE STATE OWNS THAT: the
+  client of the branch (`apps/web/features/sandbox/api/sandboxClient.ts`) NEVER retries a call and NEVER asks for a
+  session, and the hook (`apps/web/features/sandbox/useBranch.ts`) is the only place of the frontend of the sandbox that
+  may issue one. Two places that retry would give two sessions to one visit, and `POST /v1/sessions` always issues a
+  NEW session.
+
+### The state of the branch
+
+**The state of the branch lives in the memory of the page of the visitor and nowhere else.** It is never written to the
+URL, to the `localStorage`, to the `sessionStorage` and to no cookie. The state holds the phase of the machine, the
+identifier of the branch, the revision, the expiry, the state of the branch, the canonical hash, the preview that waits
+for a commit, the difference, the log and the refusal.
+
+**The phases are `idle`, `opening`, `ready` and `refused`.**
+
+- `idle`: there is no branch in the state. The page shows the list of the published scenarios and the visitor opens the
+  branch of the one they pick.
+- `opening`: the fork is in flight.
+- `ready`: the branch is there. The panel, the form and the view of the difference read the state.
+- `refused`: the branch is gone or the server refused the last act and the branch cannot be shown. The state carries
+  the refusal and nothing else of the branch.
+
+**How the end of the session is known.** There are three ways, and all three clear the state.
+
+1. The visitor asks for it. The panel carries the action "End the session", which calls `DELETE /v1/sessions/current`.
+   Whatever the server answers, the state is cleared and the phase goes back to `idle`.
+2. The server refuses with `401 SESSION_REQUIRED`. The cookie is gone, expired or was never issued: the hook issues the
+   session once and retries the call once, and the state is cleared the same way when the retry fails with `401` again.
+3. The server refuses with `410 BRANCH_EXPIRED`. The branch is gone and the session may still be alive: the branch of the
+   state is cleared, the refusal is kept, and the panel offers to open the scenario again.
+
+**What happens when the page is reloaded.** The state of the browser is LOST, and the branch of the visitor is NOT lost:
+it lives on the origin, with the cookie of the session, and it is RECOVERED by the fork. The reuse rule of the fork
+returns the branch that already exists, with its current revision, and the answer is `200` instead of `201`. The front
+says the branch was FOUND and not CREATED, so that a visitor who reloaded the page understands that the work of the
+branch is still there.
+
+### The flow of the front of the sandbox
+
+```mermaid
+flowchart TD
+  subgraph BROWSER["The browser of the visitor, the origin of the site"]
+    V["Visitor"]
+    CAT["The catalog of the published scenarios<br/>/replay/index.json"]
+    PAGE["The route of the sandbox<br/>app/(public)/sandbox/page.tsx"]
+    FORM["The form of the mutation<br/>features/sandbox/MutationForm.tsx"]
+    HOOK["The state of the branch<br/>features/sandbox/useBranch.ts<br/>idle, opening, ready, refused"]
+    PANEL["The panel of the branch<br/>features/sandbox/BranchPanel.tsx"]
+    DIFF["The view of the difference<br/>features/sandbox/DiffView.tsx"]
+    CLIENT["The client of the branch<br/>features/sandbox/api/sandboxClient.ts"]
+  end
+
+  subgraph API["The origin of the API"]
+    FACADE["The facade of the sandbox<br/>ledgerlens/api/sandbox.py"]
+    LAYER["The branch layer and the store<br/>ledgerlens/sandbox/"]
+  end
+
+  V -->|"opens the route"| PAGE
+  PAGE -->|"reads the catalog at run time"| CAT
+  V -->|"1 picks a scenario of the catalog"| PAGE
+  V -->|"2 previews a command of one of the five kinds"| FORM
+  FORM -->|"the command"| PAGE
+  PAGE -->|"the preview of the command"| HOOK
+  V -->|"3 commits the command that was previewed"| FORM
+  FORM -->|"the commit"| PAGE
+  PAGE -->|"the commit of the previewed command"| HOOK
+  V -->|"4 reads the difference and the log"| PAGE
+  PAGE -->|"the reads of the difference and of the log"| HOOK
+
+  HOOK -->|"the state of the branch, with the revision"| PANEL
+  HOOK -->|"the state, the preview and the reason of the commit"| FORM
+  HOOK -->|"the answer of the diff"| DIFF
+
+  HOOK -->|"the call of the act:<br/>the fork, the preview, the commit, the reads"| CLIENT
+  HOOK -->|"POST /v1/sessions,<br/>only after a 401"| CLIENT
+  CLIENT -->|"credentials: include"| FACADE
+  FACADE -->|"the branch"| LAYER
+  LAYER -->|"the branch, the revision and the expiry"| FACADE
+  FACADE -->|"the answer of the server"| CLIENT
+  CLIENT -->|"the answer: the branch, the preview,<br/>the result, the difference and the log"| HOOK
+
+  NOTE["The state of the branch lives in the memory of the page.<br/>The URL carries nothing and the repository holds no copy of the branch"]
+  HOOK -.-> NOTE
+
+  style NOTE stroke-dasharray: 5 5
+```
+
+The diagram follows the code that is on the disk: the route of the sandbox is the file
+`apps/web/app/(public)/sandbox/page.tsx`, the other five modules of the browser are the files of
+`apps/web/features/sandbox/`, the route holds the state of the branch through the hook, the form of the mutation asks
+the hook for the preview and for the commit, the panel of the branch and the view of the difference read the state, and
+the client of the branch is the only module of `apps/web/features/` that reads the origin of the backend. The API of
+the sandbox, with its eleven paths and the codes of its refusals, is in
+[the document of the API of the sandbox](api/sandbox.md).
+
+### The rules of the browser of the sandbox
+
+- **The browser NEVER calculates a value.** The values before and after of the difference are the decimal texts of the
+  server, rendered as they were sent, and the currency is a code that the same entry carries. The verdict is the label
+  of the server (`within_expected_range`, `below_expected_range`, `above_expected_range` and `not_available`), and the
+  front never decides a verdict. The revision is the integer of the server and the expiry is the ISO 8601 text of the
+  server.
+- **A mutation is COMMITTED only after a valid preview, and the preview that was shown is the preview that is
+  committed.** The commit sends the command that was previewed, byte for byte, with the key of the preview and with the
+  revision the preview was made at. The control of the commit is never `disabled`: it carries `aria-disabled` and the
+  reason it points at, and the reason is a sentence of the interface ("preview the command first", "the preview is out
+  of date, preview the command again", "the command would break a rule of the domain").
+- **The refusal of the server is shown with the reason of the server and never with a guess.** A refusal that is about
+  an act keeps the branch, and a refusal that means the branch is GONE clears the branch of the state.
+- **The identity of the session never travels in the URL, in a header and in a path.** The URL of the sandbox is
+  `/sandbox` and it carries NOTHING: no identifier of a branch, no identifier of a session, no revision and no text of a
+  command.
 
 ## The two gates
 

@@ -6,6 +6,11 @@ origin unless the server says which origins may call it, and the backend had no 
 that answer, and they pin the two refusals that matter: an origin that is not in the list gets no answer of the
 origin, and a wildcard is never built (ADR-040).
 
+They pin one list more, the list of the headers the browser may send, because the commit and the undo of a branch of
+the sandbox travel with the headers `Idempotency-Key` and `If-Match` (ADR-044). The browser sends both of them in
+the preflight of the call, and a list of the headers that loses one of them makes the browser refuse the preflight of
+the two calls, so the two calls never reach the facade.
+
 Everything offline, with no key and no network: the tests call the wired application in the process, and no test of
 this file opens a socket. The setting is always given to the application explicitly, and the environment of the
 machine is never changed.
@@ -43,6 +48,15 @@ from ledgerlens.sandbox.store import FileBranchStore  # noqa: E402
 ORIGIN = "http://localhost:3000"
 # The origin of a site that the deployment did not declare.
 OTHER_ORIGIN = "http://not-declared.example"
+
+# The two headers of the commit and of the undo of a branch (ADR-044). The names are written here and not read from
+# the module of the CORS, so that a rename in the module breaks this file loudly instead of hiding behind it.
+IDEMPOTENCY_HEADER = "Idempotency-Key"
+IF_MATCH_HEADER = "If-Match"
+
+# The request headers that the browser sends without a preflight of their own, the ones of the Fetch specification.
+# The middleware of the CORS always allows them, and the guard below leaves them out of its comparison.
+SAFELISTED_REQUEST_HEADERS = frozenset({"accept", "accept-language", "content-language", "content-type"})
 
 
 @pytest.fixture
@@ -140,6 +154,55 @@ def test_the_preflight_of_a_post_with_a_json_body_is_answered(app: FastAPI) -> N
     assert response.headers["access-control-max-age"] == "600"
 
 
+# --- the headers the browser may send ---------------------------------------------------------------------
+
+
+def test_the_list_of_the_headers_the_browser_may_send_loses_none_of_them() -> None:
+    """ADR-044: the list of the headers the browser may send is exact, and it holds the two of the commit.
+
+    Why the list is exact and not a subset: the commit and the undo of a branch travel with the headers
+    `Idempotency-Key` and `If-Match`, and the browser sends both of them in the preflight of the call. A list that
+    loses one of them makes the browser refuse the preflight of the two calls, and the two calls never reach the
+    facade. A subset would let the list lose one of the two headers without a single case of the repository
+    noticing, so this case compares the whole list, outside of the headers the browser sends anyway.
+    """
+    middleware = build_cors_middleware(allowed_origins=(ORIGIN,))
+
+    allowed = {header.strip().lower() for header in middleware.allow_headers}
+    named_by_the_deployment = allowed - SAFELISTED_REQUEST_HEADERS
+
+    assert named_by_the_deployment == {
+        SCHEMA_VERSION_HEADER.lower(),
+        IDEMPOTENCY_HEADER.lower(),
+        IF_MATCH_HEADER.lower(),
+    }
+
+
+def test_the_preflight_of_the_commit_is_answered_with_the_two_headers_of_the_commit(app: FastAPI) -> None:
+    """ADR-044: the preflight of the commit and of the undo is answered, with the two headers they carry.
+
+    Why the preflight is the thing to answer: the browser sends the headers of the request in the preflight and not
+    in the call itself, and it refuses the call when the answer of the preflight does not name them. The middleware
+    answers the preflight with `400` and with the reason when one of the headers is missing from the list, so this
+    case fails the moment the list loses one of the two.
+    """
+    requested = ", ".join(("content-type", IDEMPOTENCY_HEADER.lower(), IF_MATCH_HEADER.lower()))
+    with TestClient(app) as client:
+        response = client.options(
+            "/v1/sandboxes/sb_000000000000000000000000/mutations",
+            headers={
+                "Origin": ORIGIN,
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": requested,
+            },
+        )
+
+    assert response.status_code == 200, response.text
+    allowed = {name.strip().lower() for name in response.headers["access-control-allow-headers"].split(",")}
+    assert IDEMPOTENCY_HEADER.lower() in allowed
+    assert IF_MATCH_HEADER.lower() in allowed
+
+
 # --- the refusals --------------------------------------------------------------------------------------
 
 
@@ -202,7 +265,13 @@ def test_the_middleware_is_built_with_the_parameters_of_the_decision() -> None:
     assert list(middleware.allow_origins) == [ORIGIN]
     assert middleware.allow_credentials is True
     assert set(middleware.allow_methods) == {"GET", "POST", "DELETE", "OPTIONS"}
-    assert {"content-type", "accept", SCHEMA_VERSION_HEADER.lower()} <= set(middleware.allow_headers)
+    assert {
+        "content-type",
+        "accept",
+        SCHEMA_VERSION_HEADER.lower(),
+        IDEMPOTENCY_HEADER.lower(),
+        IF_MATCH_HEADER.lower(),
+    } <= set(middleware.allow_headers)
 
 
 def test_the_installation_of_an_empty_list_of_origins_adds_nothing(tmp_path: Path) -> None:

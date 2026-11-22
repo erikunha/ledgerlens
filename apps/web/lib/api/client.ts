@@ -142,8 +142,17 @@ interface RawAnswer {
   headers: Headers;
 }
 
-/** Reads the body of a refusal, when it is the resource `Error` of the contract. */
-function asErrorBody(value: unknown): ApiErrorBody | null {
+/**
+ * Reads the body of a refusal, when it is the resource `Error` of the contract.
+ *
+ * Why the reader is public: the envelope of the refusal has one reader in the repository and not
+ * two, so the client of the sandbox of the visitor reads the envelope of a refusal with this very
+ * reader and cannot disagree with the live mode about what a refusal is (ADR-044).
+ *
+ * Why it answers null for a body that is not the resource `Error`: a body that carries no code and
+ * no message is not a refusal of the contract, and the caller decides what to do with it.
+ */
+export function readErrorBody(value: unknown): ApiErrorBody | null {
   if (typeof value !== "object" || value === null) {
     return null;
   }
@@ -207,7 +216,7 @@ export function createApiClient(options: ApiClientOptions = {}): ApiClient {
     }
 
     if (!response.ok) {
-      const refusal = asErrorBody(parsed);
+      const refusal = readErrorBody(parsed);
       throw new ApiError(refusal?.message ?? `the server answered ${response.status}`, {
         status: response.status,
         code: refusal?.code ?? "HTTP_ERROR",
