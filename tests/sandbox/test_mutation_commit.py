@@ -15,6 +15,9 @@ import pytest
 
 from ledgerlens.sandbox.branch import MAX_COMMITTED_MUTATIONS, BranchLayer, SandboxBranch
 from ledgerlens.sandbox.mutation import MutationCommand, MutationRejected, status_for_code
+from ledgerlens.sandbox.snapshot import BaseResolver
+from ledgerlens.sandbox.store import BranchStore
+from tests.sandbox.conftest import FakeClock
 
 
 def _command(payload: dict[str, object], key: str, revision: int = 0) -> MutationCommand:
@@ -259,6 +262,74 @@ def test_the_commit_refuses_the_twenty_first_mutation(
         )
     assert refusal.value.code == "RESOURCE_LIMIT_EXCEEDED"
     assert layer.status(session_id, forked_branch.branch_id).revision == MAX_COMMITTED_MUTATIONS
+
+
+def test_the_commit_moves_the_counters_of_the_resources_of_the_branch(
+    layer: BranchLayer, session_id: str, forked_branch: SandboxBranch, adjustment: MutationCommand
+) -> None:
+    """The counters of the resources of a branch are fields of the branch, and a commit moves both of them.
+
+    Why the case exists: the number of the committed mutations and the number of the events of the log are the
+    counters of the limits of the branch, so they have to move with the branch and not be recomputed on the spot
+    (FR-025).
+    """
+    before = layer.status(session_id, forked_branch.branch_id)
+    assert (before.committed_mutations, before.event_count) == (0, 0)
+
+    layer.commit_mutation(session_id, forked_branch.branch_id, adjustment)
+
+    after = layer.status(session_id, forked_branch.branch_id)
+    assert after.committed_mutations == 1
+    assert after.event_count == 1
+
+
+def test_the_limit_of_the_committed_mutations_refuses_the_branch(
+    store: BranchStore,
+    base_resolver: BaseResolver,
+    clock: FakeClock,
+    session_id: str,
+    scenario_id: str,
+    adjustment_payload: dict[str, object],
+) -> None:
+    """The limit of the mutations is the limit the deployment declared, and the branch is refused when it reaches it.
+
+    Why the case exists: the limit is a setting of the configuration and the layer takes it as an argument, so a
+    deployment that declares one mutation refuses the second one (FR-025).
+    """
+    layer = BranchLayer(store, base_resolver, max_committed_mutations=1, clock=clock)
+    branch = layer.fork(session_id, scenario_id).branch
+    layer.commit_mutation(session_id, branch.branch_id, _command(adjustment_payload, "cmd-0001"))
+
+    with pytest.raises(MutationRejected) as refusal:
+        layer.commit_mutation(session_id, branch.branch_id, _command(adjustment_payload, "cmd-0002", 1))
+
+    assert refusal.value.code == "RESOURCE_LIMIT_EXCEEDED"
+    assert "committed mutations" in refusal.value.message
+
+
+def test_the_limit_of_the_events_refuses_the_branch(
+    store: BranchStore,
+    base_resolver: BaseResolver,
+    clock: FakeClock,
+    session_id: str,
+    scenario_id: str,
+    adjustment_payload: dict[str, object],
+) -> None:
+    """The limit of the events is counted against the log of the branch, and the log of the branch holds the marker
+    of an undo as well as the mutations.
+
+    Why the case exists: the events are counted in the log of the branch and not in the revision, so a deployment
+    that declares one event refuses the commit that would append the second one (FR-025, ADR-024).
+    """
+    layer = BranchLayer(store, base_resolver, max_events=1, clock=clock)
+    branch = layer.fork(session_id, scenario_id).branch
+    layer.commit_mutation(session_id, branch.branch_id, _command(adjustment_payload, "cmd-0001"))
+
+    with pytest.raises(MutationRejected) as refusal:
+        layer.commit_mutation(session_id, branch.branch_id, _command(adjustment_payload, "cmd-0002", 1))
+
+    assert refusal.value.code == "RESOURCE_LIMIT_EXCEEDED"
+    assert "events" in refusal.value.message
 
 
 @pytest.mark.parametrize(

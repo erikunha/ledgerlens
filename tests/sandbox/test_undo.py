@@ -123,6 +123,28 @@ def test_the_undo_gives_the_branch_the_hash_of_the_revision_zero_and_the_revisio
     assert after.current_canonical_hash == before.current_canonical_hash
 
 
+def test_the_undo_moves_the_revision_back_and_leaves_the_counters_of_the_resources(
+    layer: BranchLayer,
+    session_id: str,
+    forked_branch: SandboxBranch,
+    adjustment: MutationCommand,
+) -> None:
+    """The revision goes back on an undo and the number of the committed mutations does not (FR-025).
+
+    Why the case exists: the revision cannot stand for the number of the committed mutations, because an undo takes
+    the mutation back and the mutation was committed all the same. The counter of the events moves too, because the
+    marker of the undo is an event of the log of the branch (ADR-024).
+    """
+    layer.commit_mutation(session_id, forked_branch.branch_id, adjustment)
+    layer.undo(session_id, forked_branch.branch_id, _undo(revision=1))
+
+    after = layer.status(session_id, forked_branch.branch_id)
+
+    assert after.revision == 0
+    assert after.committed_mutations == 1
+    assert after.event_count == 2
+
+
 def test_the_undo_of_the_second_mutation_gives_the_state_the_branch_had_after_the_first_one(
     layer: BranchLayer,
     session_id: str,

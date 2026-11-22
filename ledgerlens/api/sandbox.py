@@ -252,6 +252,10 @@ def create_app(
         base_resolver if base_resolver is not None else BaseResolver(runtime / "sandbox-bases"),
         idle_ttl_seconds=settings.sandbox_branch_idle_ttl_seconds,
         absolute_ttl_seconds=settings.sandbox_branch_absolute_ttl_seconds,
+        # The limits of the resources of one branch come from the settings of the configuration, so that a
+        # deployment can change them without touching the code of the domain (ADR-047).
+        max_committed_mutations=settings.sandbox_max_committed_mutations,
+        max_events=settings.sandbox_max_events,
         clock=server_clock,
     )
 

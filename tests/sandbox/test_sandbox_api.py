@@ -72,6 +72,9 @@ VERDICT_KEYS = {"label", "measure", "value", "low", "high", "detail"}
 # The contract of the design package, which the facade follows.
 CONTRACT_PATH = Path(__file__).resolve().parents[2] / "docs" / "v3" / "contracts" / "openapi.yaml"
 
+# The name of the setting of the limit of the committed mutations of one branch, as the configuration names it.
+MUTATIONS_LIMIT_ENV = "LEDGERLENS_SANDBOX_MAX_COMMITTED_MUTATIONS"
+
 
 def _contract() -> dict:
     """The contract of the design package, read from the repository."""
@@ -318,6 +321,43 @@ def _undo(client: TestClient, branch_id: str, key: str = "undo-0001", revision: 
         f"/v1/sandboxes/{branch_id}/undo",
         headers={"Idempotency-Key": key, "If-Match": str(revision)},
     )
+
+
+# --- the limits of the resources of the branch ---------------------------------------------------------
+
+
+def test_the_limit_of_the_resources_of_a_branch_comes_from_the_environment(
+    monkeypatch: pytest.MonkeyPatch,
+    store: FileBranchStore,
+    base_resolver: BaseResolver,
+    clock,
+    scenario_id: str,
+    adjustment_payload: dict[str, object],
+) -> None:
+    """The limit of the committed mutations of a branch is the setting of the configuration, and the facade reads it.
+
+    Why the case exists at the level of the facade and not only at the level of the layer: the setting reaches the
+    layer through the constructor of the layer, and the constructor is built by the facade. A facade that builds the
+    layer without the setting keeps the limits of today whatever the configuration says, and a case that only proves
+    the layer would not see it.
+
+    Why the application is built inside the case: the settings are read when the application is built, and a fixture
+    that built it before the case set the environment would prove the limits of today and not the ones of the case.
+    """
+    monkeypatch.setenv(MUTATIONS_LIMIT_ENV, "1")
+    application = create_app(store=store, base_resolver=base_resolver, clock=clock)
+    client = TestClient(application)
+    assert client.post("/v1/sessions").status_code == 201
+    created = _fork(client, scenario_id).json()
+
+    first = _commit(client, created["id"], adjustment_payload, key="cmd-0001", revision=0)
+    assert first.status_code == 200
+
+    second = _commit(client, created["id"], adjustment_payload, key="cmd-0002", revision=1)
+    assert second.status_code == 429
+    body = second.json()
+    assert set(body) == ERROR_KEYS
+    assert body["code"] == "RESOURCE_LIMIT_EXCEEDED"
 
 
 def test_the_route_of_the_diff_answers_the_shape_of_ADR_028(

@@ -74,9 +74,13 @@ handler writes no header but the version of the schema today.
 
 **The third is the branch layer.** `ledgerlens/sandbox/branch.py` holds the dataclass `SandboxBranch` at line 194
 and the layer `BranchLayer` at line 356. The dataclass carries the identifier, the owner, the scenario, the base
-snapshot, the two hashes, the revision, the three moments and the state. The file holds the limits of one branch at
-its lines 104 and 105: `MAX_COMMITTED_MUTATIONS = 20` and `MAX_EVENTS = 200`. The file of the task of the plan
-that names the dataclass exists, and the dataclass is there.
+snapshot, the two hashes, the revision, the three moments, the state and the two counters of the resources of the
+branch. The file holds the DEFAULTS of the limits of one branch at its lines 107 and 108:
+`MAX_COMMITTED_MUTATIONS = 20` and `MAX_EVENTS = 200`. Those two numbers are the defaults of the settings
+`sandbox_max_committed_mutations` and `sandbox_max_events` of `ledgerlens/config.py`, and the layer receives them
+as arguments, so a deployment changes the limits of the resources of a branch with the settings of the
+configuration and not with a change of the code. The file of the task of the plan that names the dataclass exists,
+and the dataclass is there.
 
 **The fourth is the rule of the time to live.** `ledgerlens/sandbox/ttl.py` holds the two deadlines, the idle one
 of sixty minutes and the absolute one of four hours, the computation of the expiry, the check `is_expired` and the

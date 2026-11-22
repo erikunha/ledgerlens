@@ -19,6 +19,10 @@ an empty url means the file backed store.
 The limits of the sandbox: `LEDGERLENS_SANDBOX_SESSION_BRANCH_CAP` is the number of live branches one session may
 hold, `LEDGERLENS_SANDBOX_RATE_LIMIT_REQUESTS` is the number of requests one session may make in the window, and
 `LEDGERLENS_SANDBOX_RATE_LIMIT_WINDOW_SECONDS` is the length of that window (ADR-047).
+
+The limits of one branch: `LEDGERLENS_SANDBOX_MAX_COMMITTED_MUTATIONS` is the number of the mutations a branch may
+commit and `LEDGERLENS_SANDBOX_MAX_EVENTS` is the number of the events its log may hold. Their defaults are the limits
+of the branch layer, so a deployment that declares nothing keeps the limits of today.
 """
 
 from __future__ import annotations
@@ -79,6 +83,12 @@ class Settings(BaseModel):
     # than one worker allows that many times the quota (ADR-047).
     sandbox_rate_limit_requests: int = 120
     sandbox_rate_limit_window_seconds: int = 60
+    # The resources of one branch (FR-025). The mutations of a branch are the ones that were committed, and an undone
+    # mutation stays counted, because the revision goes back and the count of the committed mutations does not. The
+    # events of a branch are counted against its log, and the marker of an undo is an event of that log.
+    # The two defaults are the limits of the branch layer, so a deployment that declares nothing keeps them.
+    sandbox_max_committed_mutations: int = 20
+    sandbox_max_events: int = 200
     # The origins of the browser that may call the backend from another origin, with the cookie of the session. The
     # list is empty by default: a deployment that declares no origin installs no CORS at all, and the backend
     # answers exactly as it answers today (ADR-040).
@@ -149,6 +159,8 @@ def get_settings(env: Mapping[str, str] | None = None) -> Settings:
     session_branch_cap = _text(values.get("LEDGERLENS_SANDBOX_SESSION_BRANCH_CAP"))
     rate_limit_requests = _text(values.get("LEDGERLENS_SANDBOX_RATE_LIMIT_REQUESTS"))
     rate_limit_window = _text(values.get("LEDGERLENS_SANDBOX_RATE_LIMIT_WINDOW_SECONDS"))
+    max_committed_mutations = _text(values.get("LEDGERLENS_SANDBOX_MAX_COMMITTED_MUTATIONS"))
+    max_events = _text(values.get("LEDGERLENS_SANDBOX_MAX_EVENTS"))
     cors_origins = _text(values.get("LEDGERLENS_CORS_ORIGINS"))
     settings = Settings(
         offline=_flag(values.get("LEDGERLENS_OFFLINE")),
@@ -169,6 +181,8 @@ def get_settings(env: Mapping[str, str] | None = None) -> Settings:
         **({"sandbox_session_branch_cap": int(session_branch_cap)} if session_branch_cap else {}),
         **({"sandbox_rate_limit_requests": int(rate_limit_requests)} if rate_limit_requests else {}),
         **({"sandbox_rate_limit_window_seconds": int(rate_limit_window)} if rate_limit_window else {}),
+        **({"sandbox_max_committed_mutations": int(max_committed_mutations)} if max_committed_mutations else {}),
+        **({"sandbox_max_events": int(max_events)} if max_events else {}),
         **({"cors_origins": _origins(cors_origins)} if cors_origins else {}),
     )
     log.debug("settings loaded: %r", settings)

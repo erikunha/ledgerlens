@@ -30,6 +30,14 @@ revision of the branch goes back to the previous value, and the event that was u
 mark that it was undone (ADR-024). The undo is a request with a key and with an expected revision, exactly like a
 mutation, so a request that is delivered twice undoes one mutation and not two.
 
+A seventh rule keeps the resources of a branch honest: the branch carries the two counters of its resources, the
+number of the mutations it committed and the number of the events of its log, and the checks of the limits read those
+fields and not a number recomputed on the spot (FR-025). The revision cannot stand for the first counter, because
+the revision goes back on an undo and the number of the committed mutations does not, and the number of the events is
+in no field of the row of the branch. Both counters are read from the log of the branch, which is the truth of the
+branch, so they cannot drift away from it. The two limits are the settings of the configuration, and the layer takes
+them as arguments of its constructor, the way it takes the two lives of a branch.
+
 Two reads of the branch follow from those rules (ADR-028). The diff of the branch is the difference between the
 published base and the state the branch holds now, and not the diff of the last mutation: a branch that was mutated
 and then undone answers an empty diff and the hash of the base, because the state of the branch after the undo IS the
@@ -101,6 +109,9 @@ STATE_EXPIRED = "expired"
 LEDGER_PAGE_SIZE = 50
 # The resources of one branch (FR-025). A branch that reaches one of them is refused, and the branch is not
 # bigger than the resources of the server that holds it.
+# The two numbers are the DEFAULTS of the layer: the deployment that declares nothing keeps the limits of today, and
+# the deployment that declares something hands the limits to the constructor of the layer, the way it hands the two
+# lives of a branch. The settings of the configuration carry the same defaults.
 MAX_COMMITTED_MUTATIONS = 20
 MAX_EVENTS = 200
 
@@ -200,6 +211,12 @@ class SandboxBranch:
 
     `generation` counts the resets the branch went through, and it is what tells an answer of the past from the
     current result of the branch (ADR-022).
+
+    `committed_mutations` and `event_count` are the counters of the resources of the branch (FR-025). They are fields
+    of the branch and not numbers recomputed on the spot, because the revision cannot stand for the first one: the
+    revision goes back on an undo and the number of the committed mutations does not, and the number of the events of
+    the log is in no field of the row of the branch. Both counters are read from the log of the branch, which is the
+    truth of the branch, so they cannot drift away from it.
     """
 
     branch_id: str
@@ -214,6 +231,10 @@ class SandboxBranch:
     expires_at: datetime
     state: str = STATE_ACTIVE
     generation: int = 0
+    # The number of the mutations the branch committed, and the number of the events of its log. The marker of an undo
+    # is an event of the log and is not a mutation.
+    committed_mutations: int = 0
+    event_count: int = 0
 
 
 @dataclass(frozen=True)
@@ -357,6 +378,10 @@ class BranchLayer:
 
     Why the clock is injected: the expiry is decided by the server, and a test needs to move it without waiting an
     hour.
+
+    Why the limits of the resources are injected: the limits of a deployment are settings of the configuration, and
+    the layer reads them the way it reads the two lives of a branch, as arguments of its constructor. The layer never
+    reads the environment and never imports the configuration.
     """
 
     def __init__(
@@ -366,12 +391,18 @@ class BranchLayer:
         *,
         idle_ttl_seconds: int = 3600,
         absolute_ttl_seconds: int = 14400,
+        max_committed_mutations: int = MAX_COMMITTED_MUTATIONS,
+        max_events: int = MAX_EVENTS,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
         self.store = store
         self.base_resolver = base_resolver
         self.idle_ttl_seconds = idle_ttl_seconds
         self.absolute_ttl_seconds = absolute_ttl_seconds
+        # The limits of the resources of a branch. They are the defaults of the layer, and a deployment that declares
+        # nothing keeps the limits of today.
+        self.max_committed_mutations = max_committed_mutations
+        self.max_events = max_events
         self._clock = clock or (lambda: datetime.now(UTC))
 
     # -- the fork ----------------------------------------------------------------------------------
@@ -402,7 +433,7 @@ class BranchLayer:
             expires_at=self._expiry(now, now),
             state=STATE_ACTIVE,
         )
-        return ForkOutcome(branch=self._view(self.store.create_branch(row)), created=True)
+        return ForkOutcome(branch=self._view(self.store.create_branch(row), []), created=True)
 
     # -- the status --------------------------------------------------------------------------------
 
@@ -415,6 +446,9 @@ class BranchLayer:
 
         The branch is verified before it is served: the hash of the projection of its events has to be the hash the
         row declares, or the branch cannot prove its own state and is refused (ADR-021).
+
+        The branch carries the counters of its resources, and they are read from the log of the branch, so the status
+        of a branch tells how many mutations it committed and how many events its log holds (FR-025).
         """
         owner = self._owner(session_id)
         row = self.store.get_branch(branch_id, owner)
@@ -423,8 +457,9 @@ class BranchLayer:
             raise BranchNotFound()
         if self._expired(row):
             raise BranchExpired(f"the branch {branch_id} expired; fork the scenario again")
-        self._verified(row, owner)
-        return self._view(self._refresh(row))
+        events = self.store.read_events(branch_id, owner)
+        self._verified(row, owner, events)
+        return self._view(self._refresh(row), events)
 
     # -- the mutation loop ---------------------------------------------------------------------------
 
@@ -439,9 +474,9 @@ class BranchLayer:
         row = self.store.get_branch(branch_id, owner)
         if self._expired(row):
             raise BranchExpired(f"the branch {branch_id} expired; fork the scenario again")
-        branch = self._view(row)
-        base = self.base_resolver(branch.scenario_id)
         events = self.store.read_events(branch_id, owner)
+        branch = self._view(row, events)
+        base = self.base_resolver(branch.scenario_id)
         state = self._verified(row, owner, events)
         plan = plan_mutation(
             base,
@@ -471,9 +506,9 @@ class BranchLayer:
         row = self.store.get_branch(branch_id, owner)
         if self._expired(row):
             raise BranchExpired(f"the branch {branch_id} expired; fork the scenario again")
-        branch = self._view(row)
-        base = self.base_resolver(branch.scenario_id)
         events = self.store.read_events(branch_id, owner)
+        branch = self._view(row, events)
+        base = self.base_resolver(branch.scenario_id)
         # Every read of the branch is verified: a branch that cannot prove its own state is never served (ADR-021).
         state = self._verified(row, owner, events)
         if not command.idempotency_key:
@@ -489,7 +524,7 @@ class BranchLayer:
                 CODE_REVISION_CONFLICT,
                 f"the branch is at revision {branch.revision} and the request expected {command.expected_revision}",
             )
-        self._check_the_resources(branch, events)
+        self._check_the_resources(branch)
         now = self._clock()
         plan = plan_mutation(
             base, branch.branch_id, branch.scenario_id, branch.revision, events, command, now, before=state
@@ -550,9 +585,9 @@ class BranchLayer:
             raise BranchNotFound()
         if self._expired(row):
             raise BranchExpired(f"the branch {branch_id} expired; fork the scenario again")
-        branch = self._view(row)
-        base = self.base_resolver(branch.scenario_id)
         events = self.store.read_events(branch_id, owner)
+        branch = self._view(row, events)
+        base = self.base_resolver(branch.scenario_id)
         # Every read of the branch is verified: a branch that cannot prove its own state is never served (ADR-021).
         state = self._verified(row, owner, events)
         if not command.idempotency_key:
@@ -568,7 +603,7 @@ class BranchLayer:
                 CODE_REVISION_CONFLICT,
                 f"the branch is at revision {branch.revision} and the request expected {command.expected_revision}",
             )
-        self._check_the_events(events)
+        self._check_the_events(branch)
         now = self._clock()
         plan = plan_undo(
             base, branch.branch_id, branch.scenario_id, branch.revision, events, command, now, before=state
@@ -605,29 +640,33 @@ class BranchLayer:
             ) from None
         return plan.to_result()
 
-    def _check_the_resources(self, branch: SandboxBranch, events: list[Any]) -> None:
+    def _check_the_resources(self, branch: SandboxBranch) -> None:
         """The resources of the branch: the number of its mutations and the number of its events.
 
         Why the refusal comes before the work: a branch that reached its limit is refused without a projection,
         so the server never spends the resources of a request it will refuse anyway (FR-025).
+
+        Why the counters of the branch and not the revision: the revision goes back on an undo and the number of the
+        committed mutations does not, so the revision is not the number of the mutations the branch committed.
         """
-        if branch.revision >= MAX_COMMITTED_MUTATIONS:
+        if branch.committed_mutations >= self.max_committed_mutations:
             raise MutationRejected(
                 CODE_RESOURCE_LIMIT,
-                f"the branch already holds {branch.revision} mutations, and the limit is {MAX_COMMITTED_MUTATIONS}",
+                f"the branch already holds {branch.committed_mutations} committed mutations, and the limit is"
+                f" {self.max_committed_mutations}",
             )
-        self._check_the_events(events)
+        self._check_the_events(branch)
 
-    def _check_the_events(self, events: list[Any]) -> None:
+    def _check_the_events(self, branch: SandboxBranch) -> None:
         """The number of events of the branch.
 
         Why the undo is measured against this limit and not against the limit of the mutations: an undo frees a
         mutation and appends an event, so what grows is the number of the events of the log (ADR-024).
         """
-        if len(events) >= MAX_EVENTS:
+        if branch.event_count >= self.max_events:
             raise MutationRejected(
                 CODE_RESOURCE_LIMIT,
-                f"the branch already holds {len(events)} events, and the limit is {MAX_EVENTS}",
+                f"the branch already holds {branch.event_count} events, and the limit is {self.max_events}",
             )
 
     def _replay(
@@ -1034,7 +1073,20 @@ class BranchLayer:
                 return self._view(row)
         return None
 
-    def _view(self, row: SandboxBranchRow) -> SandboxBranch:
+    def _view(self, row: SandboxBranchRow, events: list[Any] | None = None) -> SandboxBranch:
+        """The branch as the domain sees it, with the counters of its resources.
+
+        Why the counters come from the log: the log is the truth of the branch, the number of its events is in no
+        other place, and the number of the committed mutations is the number of the events that are not the marker of
+        an undo, because an undo is not a mutation. An undone mutation stays counted: the revision of the branch goes
+        back and the count of the committed mutations does not (FR-025).
+
+        Why the events are an argument: the callers that already read the log hand it over, so the log is read once,
+        and the branch and the check of its limits always see the same log.
+        """
+        if events is None:
+            events = self.store.read_events(row.branch_id, row.owner_session)
+        committed = sum(1 for event in events if not is_undo_marker(event))
         return SandboxBranch(
             branch_id=row.branch_id,
             owner_session=row.owner_session,
@@ -1048,6 +1100,8 @@ class BranchLayer:
             expires_at=row.expires_at,
             state=STATE_EXPIRED if self._expired(row) else row.state,
             generation=row.generation,
+            committed_mutations=committed,
+            event_count=len(events),
         )
 
     def _refresh(self, row: SandboxBranchRow) -> SandboxBranchRow:

@@ -128,6 +128,10 @@ def build_wired_app(
         BaseResolver(runtime / BASES_FOLDER_NAME),
         idle_ttl_seconds=the_settings.sandbox_branch_idle_ttl_seconds,
         absolute_ttl_seconds=the_settings.sandbox_branch_absolute_ttl_seconds,
+        # The limits of the resources of one branch come from the settings of the configuration, so that a
+        # deployment can change them without touching the code of the domain (ADR-047).
+        max_committed_mutations=the_settings.sandbox_max_committed_mutations,
+        max_events=the_settings.sandbox_max_events,
         clock=_server_clock,
     )
     registry = ProviderRegistry()
