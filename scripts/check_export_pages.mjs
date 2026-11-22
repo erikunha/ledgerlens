@@ -106,6 +106,95 @@ function findCatalogPage(folder, replayFolder) {
 }
 
 /**
+ * The six labels of the nodes of the picture of the architecture.
+ *
+ * Why the labels are written here: the page of the architecture shows six subsystems and the gate has to prove that
+ * the build wrote the page with them. The labels are the words the visitor reads, and they are the words the typed
+ * source of the nodes carries.
+ */
+const LABELS_OF_THE_NODES = [
+  "Query guard",
+  "Scoped ledger copy",
+  "Decimal calculator",
+  "Deterministic simulator",
+  "Verifier",
+  "Trace recorder",
+];
+
+/**
+ * Finds the page of the architecture in the export.
+ *
+ * Why the two candidates: the caller can name the export itself, where the page of the architecture is
+ * `engineering.html` at the root of the export, or the recorded demo, where the page of the architecture is one folder
+ * above.
+ */
+function findEngineeringPage(folder, replayFolder) {
+  const candidates = [join(folder, "engineering.html")];
+  candidates.push(join(dirname(replayFolder), "engineering.html"));
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return candidates[0];
+}
+
+/**
+ * Checks the page of the architecture and returns the problems it found.
+ *
+ * Why the page has to carry a heading: a page that carries no heading is not the page of the tour, whatever the file
+ * is called.
+ *
+ * Why the page has to carry the six labels: the page is the tour of the six subsystems of the run, and a build that
+ * writes the page without them writes a page that shows nothing the visitor came for.
+ */
+function checkEngineeringPage(folder, replayFolder) {
+  const problems = [];
+  const page = findEngineeringPage(folder, replayFolder);
+
+  if (!existsSync(page)) {
+    problems.push(`the export does not hold the page of the architecture: ${page} is missing`);
+    return problems;
+  }
+
+  let html = null;
+  try {
+    html = readFileSync(page, "utf8");
+  } catch (error) {
+    problems.push(`the page of the architecture could not be read as text: ${page} (${error.message})`);
+    return problems;
+  }
+
+  const visible = visibleMarkup(html);
+
+  const markInHtml = NOT_FOUND_MARKS_IN_THE_HTML.find((candidate) => html.includes(candidate));
+  if (markInHtml !== undefined) {
+    problems.push(
+      `the page of the architecture is the page of 404: ${page} carries the document of error of Next.js ('${markInHtml}')`,
+    );
+  }
+
+  const markInMarkup = NOT_FOUND_MARKS_IN_THE_MARKUP.find((candidate) => visible.includes(candidate));
+  if (markInMarkup !== undefined) {
+    problems.push(
+      `the page of the architecture is the page of 404: ${page} carries the body of the page of 404 ('${markInMarkup}')`,
+    );
+  }
+
+  if (!/<h1\b/i.test(visible)) {
+    problems.push(`the page of the architecture carries no heading: ${page}`);
+  }
+
+  for (const label of LABELS_OF_THE_NODES) {
+    if (!visible.includes(label)) {
+      problems.push(`the page of the architecture does not carry the label of the node "${label}": ${page}`);
+    }
+  }
+
+  return problems;
+}
+
+/**
  * Checks the page of the catalog of the scenarios and returns the problems it found.
  *
  * Why the page has to carry a heading: a page that carries no heading is not the page of the catalog of the site,
@@ -164,6 +253,10 @@ export function checkExportPages(folder) {
   let scenarioCount = 0;
 
   const replayFolder = resolveReplayFolder(folder);
+
+  // The page of the architecture is checked first and it is checked on its own: the tour of the subsystems does not
+  // depend on the recorded demo, and a build that loses the page of the tour has to fail whatever the catalog holds.
+  problems.push(...checkEngineeringPage(folder, replayFolder));
 
   if (!existsSync(replayFolder)) {
     problems.push(`the export does not hold the recorded demo: ${replayFolder} does not exist`);
@@ -304,7 +397,7 @@ function main(argv) {
   }
 
   console.log(
-    `the build wrote the catalog of ${scenarioCount} scenario(s), the bundle of every one of them and the page of every one of them, with the content of the scenario`,
+    `the build wrote the catalog of ${scenarioCount} scenario(s), the bundle of every one of them, the page of every one of them and the page of the architecture, with the six labels of its nodes`,
   );
 }
 

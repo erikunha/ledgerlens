@@ -459,6 +459,161 @@ is the file `apps/web/features/ledger/LedgerPanel.tsx`, drawn by the tab of the 
 - **The search of the ledger, the full ledger and the ledger of the branch** are the three debts named in the section
   above.
 
+## The tour of the architecture
+
+The replay shows a run that already happened. The tour of the architecture shows **why the run is
+allowed to happen at all**: the page `/engineering` draws the six subsystems of the system, every
+node of the picture opens the exact module of the repository and the decision record that explains
+why the module exists, and the engineering drawer explains the guard, the arithmetic and the
+verification in plain language for the visitor who does not read code. The decision is
+[ADR-046](decisions/ADR-046-the-architecture-tour-of-the-public-site.md).
+
+### The page
+
+The page is `/engineering`, it is static and it is public, and it belongs to the recorded demo, so
+it calls nobody. It reads its content at build time and it asks the visitor for nothing: no key,
+no account, no login, no cookie and no query string.
+
+**The page shows the six subsystems of the run, in the order of the run.** The guard reads the
+ledger, the copy of the ledger decides what the guard may read, the simulator builds the ledger,
+the calculator does the arithmetic on what was read, the verifier checks what the answer said and
+the recorder writes down what happened:
+
+| node | module | record |
+| --- | --- | --- |
+| Query guard | `ledgerlens/tools/sql_guard.py` | ADR-005 |
+| Scoped ledger copy | `ledgerlens/api/accounts.py` | ADR-038, ADR-045 |
+| Decimal calculator | `ledgerlens/tools/calculator.py` | ADR-001, ADR-007 |
+| Deterministic simulator | `ledgerlens/sim/pipeline.py` | ADR-009 |
+| Verifier | `ledgerlens/verify/checks.py` | ADR-007 |
+| Trace recorder | `ledgerlens/observability/trace.py` | ADR-013 |
+
+### The typed source of the nodes
+
+**The typed source of the nodes is `apps/web/features/architecture/nodes.ts`, and it is the ONE
+source of the content of the page.** It holds a readonly array of six nodes, and every word the
+page shows about a subsystem is a word of that array. There is no second file with the content of a
+node and there is no text of the page that a model wrote.
+
+The picture is an inline SVG drawn by the frontend, with fixed coordinates, and it is built by a
+pure function of the array. It measures nothing, it reads no clock, it draws no random number, it
+has no transition and no animation, and it adds no dependency to the frontend. The rule of
+[ADR-041](decisions/ADR-041-the-interactive-diagrams-are-rendered-outside-the-repository.md) is
+respected and not revised: the repository commits the typed source of a diagram and never the
+rendered file of it, and the file `docs/diagrams/live-mode.architecture.json` is the source of the
+diagram of the live mode, not the source of this page.
+
+### The commit of the checkout
+
+**The base of every link to the code is
+`https://github.com/erikunha/ledgerlens/blob/<ref>/<path>`, and `<ref>` is the full commit of the
+checkout the site was built from.** The commit is read at build time by `readRepositoryMeta` of
+`apps/web/lib/repository.ts`, which runs `git rev-parse HEAD` in the root of the repository. Nobody
+writes the commit by hand, and the build fails with a readable reason when the answer is not a
+commit of forty lowercase hexadecimal characters.
+
+A commit never ages and it survives the branch. A link to a branch shows the code of today, and
+the sentence of the node was written for the code of the day the page was built. The footer of the
+page carries the commit in full, so a reader who follows a link and sees a file knows which tree
+the sentence was written for, and the page says out loud when the tree was not clean.
+
+### The twin of the picture
+
+**The accessible list is the twin of the picture, not a second copy of it.** It is rendered from
+the same array, by the same component, it is always present in the page and it is never behind a
+toggle. The two cannot disagree about a subsystem, because there is only one array.
+
+The price of the twin is paid on purpose: the picture and the list carry the same six subsystems,
+so a reader of a screen reader hears them twice. The price is worth it because the specification
+asks for a clickable diagram and for an accessible list, and the two are wanted by the plan.
+
+**The picture never animates.** It has no transition, no animation and no layout that depends on a
+measurement, so the preference for reduced motion has nothing to switch off in it and the picture
+is legible as a static picture in every case. The rule of `apps/web/app/globals.css`, which turns
+every transition off under the preference, keeps its place and covers the rest of the site.
+
+### The drawer of the engineering
+
+**The drawer lives in `apps/web/features/architecture/EngineeringDrawer.tsx` and it is built on the
+`Sheet` primitive of the design system.** The primitive is a Radix dialog, so the drawer carries
+`role="dialog"`, the focus is trapped while it is open, the Escape key closes it and the focus
+returns to the control that opened it.
+
+**Two controls open it, and both open the same drawer.**
+
+- The page of the architecture opens it with the node the visitor chose, so the drawer starts with
+  the summary of that node.
+- The replay opens it from the section of the calls of the tools, in the tab of the execution. The
+  drawer explains the guard, the arithmetic and the verification and links to the module of each
+  one, which is what the user story 5 asks for.
+
+The drawer takes the context it was opened with and it says what that context is. Opened from the
+replay with no call chosen, it says in words that it is not tied to one call, because a drawer
+that pretends to be about a call it does not name is a drawer that lies.
+
+### The flow of the tour
+
+```mermaid
+flowchart TD
+  subgraph REPO["The repository"]
+    SRC["The typed source of the nodes<br/>apps/web/features/architecture/nodes.ts<br/>the six subsystems of the run"]
+    META["The commit of the checkout<br/>apps/web/lib/repository.ts<br/>git rev-parse HEAD, at build time"]
+    FILES["The module and the record<br/>ledgerlens/... and docs/decisions/..."]
+  end
+
+  subgraph EXPORT["The static export, the origin of the site"]
+    PAGE["The page of the tour<br/>/engineering"]
+    PICTURE["The picture<br/>an inline SVG with fixed coordinates"]
+    LIST["The accessible list<br/>the twin of the picture"]
+    DRAWER["The engineering drawer<br/>the guard, the arithmetic, the verification"]
+    LINKS["The links of the nodes<br/>the blob of the commit, the path of the file"]
+  end
+
+  SRC -->|"the six subsystems of the run"| PAGE
+  META -->|"the commit in full"| PAGE
+  PAGE -->|"the picture of the subsystems"| PICTURE
+  PAGE -->|"the list of the subsystems"| LIST
+  PICTURE -->|"a node the visitor chose"| DRAWER
+  LIST -->|"a node the visitor chose"| DRAWER
+  PICTURE -->|"the module and the record"| LINKS
+  LIST -->|"the module and the record"| LINKS
+  DRAWER -->|"the module of each subsystem"| LINKS
+  LINKS -->|"the file of the tree of the commit"| FILES
+
+  NOTE["The page calls nobody:<br/>the links are read by the visitor"]
+  PAGE -.-> NOTE
+
+  style NOTE stroke-dasharray: 5 5
+```
+
+The diagram follows the code that is on the disk: the typed source of the nodes is the file
+`apps/web/features/architecture/nodes.ts`, the picture and the list are drawn by
+`apps/web/features/architecture/ArchitectureDiagram.tsx`, the drawer is the file
+`apps/web/features/architecture/EngineeringDrawer.tsx`, the commit is read by
+`apps/web/lib/repository.ts`, and the route is the file
+`apps/web/app/(public)/engineering/page.tsx`.
+
+### What the milestone does not deliver
+
+- **No copy of a record and no copy of a module on the site.** The page links to the repository and
+  it does not mirror it. A copy is a second source that drifts.
+- **No rendered file of the diagram in the repository.** The picture is drawn by the frontend at run
+  time from the typed source, and the tool of ADR-041 is not a dependency of the frontend.
+- **No drawer of a tool call.** The drawer of the engineering tour explains three subsystems and it
+  is a component of its own. The drawer of one call of the recording is the task T048 and it stays
+  open with the work it names.
+- **No request at run time.** The page reads nothing of the network and it computes no value.
+
+### The debt of the milestone
+
+- **The commit of the page is a promise.** Every link the page serves keeps opening the tree it
+  describes, and a tree that is renamed leaves the links of the page pointing at a name that is
+  gone.
+- **The duplication of the picture and of the list is a cost that is paid on purpose.** The scan of
+  the accessibility of the milestone has the last word on it.
+- **The drawer of a tool call may open the drawer of the tour later.** The two meet at the context
+  of the call, and the meeting is not a reason to wait.
+
 ## The rule of the same site
 
 The session cookie is `ledgerlens_session`, it is `HttpOnly`, it is `SameSite=Lax` and it is `Path=/`. The cookie of a

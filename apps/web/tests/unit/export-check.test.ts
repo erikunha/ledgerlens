@@ -26,6 +26,21 @@ import { afterEach, describe, expect, it } from "vitest";
 const QUESTION = "Why was the BRL refund for TX-2048 lower than the EUR payment?";
 
 /**
+ * The six labels of the nodes of the picture of the architecture.
+ *
+ * Why the labels are written here: the gate has to prove that the build wrote the page of the architecture with the
+ * six subsystems of the run, and the case has to build a page that carries them.
+ */
+const LABELS_OF_THE_NODES = [
+  "Query guard",
+  "Scoped ledger copy",
+  "Decimal calculator",
+  "Deterministic simulator",
+  "Verifier",
+  "Trace recorder",
+];
+
+/**
  * Finds the root of the repository, walking up from the folder of the test.
  *
  * Why the root is looked up: the script of the check and the gate of the frontend live at the root of the repository,
@@ -66,6 +81,7 @@ const temporaryFolders: string[] = [];
 function buildExport(options: {
   readonly page?: "good" | "not_found" | "missing";
   readonly catalogPage?: "good" | "not_found" | "missing";
+  readonly engineeringPage?: "good" | "not_found" | "missing";
 }): string {
   const root = mkdtempSync(join(tmpdir(), "ledgerlens-export-check-"));
   temporaryFolders.push(root);
@@ -92,6 +108,12 @@ function buildExport(options: {
   const catalogPage = options.catalogPage ?? "good";
   if (catalogPage !== "missing") {
     writeFileSync(join(root, "replay.html"), pageOfTheCatalog(catalogPage), "utf8");
+  }
+
+  // The page of the architecture lives at the root of the export too, beside the page of the catalog.
+  const engineeringPage = options.engineeringPage ?? "good";
+  if (engineeringPage !== "missing") {
+    writeFileSync(join(root, "engineering.html"), pageOfTheArchitecture(engineeringPage), "utf8");
   }
 
   return root;
@@ -139,6 +161,33 @@ function pageOfTheScenario(page: "good" | "not_found"): string {
     "    <main>",
     `      <h1>${QUESTION}</h1>`,
     "      <p>S01</p>",
+    "    </main>",
+    "  </body>",
+    "</html>",
+    "",
+  ].join("\n");
+}
+
+/**
+ * The page of the architecture, as the export of the site writes it.
+ *
+ * Why the page carries the six labels of the nodes: the gate proves that the build wrote the tour of the six
+ * subsystems of the run, and the case has to build a page that a build with the tour would write.
+ */
+function pageOfTheArchitecture(page: "good" | "not_found"): string {
+  const head = page === "not_found" ? '<html id="__next_error__" lang="en">' : '<html lang="en">';
+  return [
+    "<!DOCTYPE html>",
+    head,
+    "  <head>",
+    "    <title>The tour of the architecture</title>",
+    "  </head>",
+    "  <body>",
+    "    <main>",
+    "      <h1>The tour of the architecture</h1>",
+    "      <ul>",
+    ...LABELS_OF_THE_NODES.map((label) => `        <li>${label}</li>`),
+    "      </ul>",
     "    </main>",
     "  </body>",
     "</html>",
@@ -241,6 +290,52 @@ describe("the check of the export of the site", () => {
 
     expect(status).toBe(1);
     expect(output).toContain("the page of the catalog of the scenarios is the page of 404");
+  });
+
+  it("fails when the export holds no page of the architecture", () => {
+    // It proves that a build that leaves the tour of the architecture out is a failure of the gate: the page is the
+    // only place where the visitor follows a link to the code of the repository.
+    const root = buildExport({ page: "good", engineeringPage: "missing" });
+
+    const { status, output } = runCheck(root);
+
+    expect(status).toBe(1);
+    expect(output).toContain("does not hold the page of the architecture");
+  });
+
+  it("fails when the page of the architecture is the page of 404", () => {
+    // It proves that a route of the architecture that answered 404 during the export is refused, even though the
+    // file of the page exists.
+    const root = buildExport({ page: "good", engineeringPage: "not_found" });
+
+    const { status, output } = runCheck(root);
+
+    expect(status).toBe(1);
+    expect(output).toContain("the page of the architecture is the page of 404");
+  });
+
+  it("fails when the page of the architecture does not carry the six labels of the nodes", () => {
+    // It proves that a page of the architecture without the six subsystems is a failure of the gate, and that the
+    // message names the label that is missing.
+    const root = buildExport({ page: "good" });
+    const page = join(root, "engineering.html");
+    const html = readFileSync(page, "utf8").replace("Query guard", "A node without a name");
+    writeFileSync(page, html, "utf8");
+
+    const { status, output } = runCheck(root);
+
+    expect(status).toBe(1);
+    expect(output).toContain('does not carry the label of the node "Query guard"');
+  });
+
+  it("reads the folder of the recorded demo and finds the page of the architecture beside it", () => {
+    // It proves that the gate can name the folder that holds the catalog, which is the folder the gate of the
+    // frontend passes to the check, and that the page of the architecture is found next to it.
+    const root = buildExport({ page: "good" });
+
+    const { status } = runCheck(join(root, "replay"));
+
+    expect(status).toBe(0);
   });
 
   it("is called by the gate of the frontend", () => {

@@ -194,16 +194,16 @@ description: "Task list for the R1 public replay feature"
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T071 [P] [US5] Write the end to end test of the architecture links and of the engineering drawer in apps/web/tests/e2e/architecture.spec.ts
+- [x] T071 [P] [US5] Write the end to end test of the architecture links and of the engineering drawer in apps/web/tests/e2e/architecture.spec.ts - **DELIVERED**: 24 cases in chromium and webkit, at 390 and at 1440, covering the four acceptance scenarios of the user story.
 
 ### Implementation for User Story 5
 
-- [ ] T072 [US5] Create the architecture nodes data with the module and the decision record references in apps/web/features/architecture/nodes.ts
-- [ ] T073 [US5] Create the diagram in apps/web/features/architecture/ArchitectureDiagram.tsx with the accessible list fallback
-- [ ] T074 [US5] Create the node card in apps/web/features/architecture/ArchitectureNodeCard.tsx
-- [ ] T075 [P] [US5] Create the link components in apps/web/features/architecture/AdrLink.tsx and apps/web/features/architecture/SourceLink.tsx
-- [ ] T076 [US5] Build the architecture page in apps/web/app/(public)/engineering/page.tsx
-- [ ] T077 [US5] Add the engineering drawer to the replay route in apps/web/app/(public)/demo/[scenario]/page.tsx
+- [x] T072 [US5] Create the architecture nodes data with the module and the decision record references in apps/web/features/architecture/nodes.ts - **DELIVERED**: the typed source of the six subsystems, and a test that checks every module and every record against the tree of the repository (ADR-046).
+- [x] T073 [US5] Create the diagram in apps/web/features/architecture/ArchitectureDiagram.tsx with the accessible list fallback - **DELIVERED**: an inline SVG with fixed coordinates and the accessible list as its twin, rendered from the same array. The anchors of the SVG carry a `tabindex`, because WebKit does not put an anchor of an SVG in the order of the keyboard without it (ADR-046).
+- [x] T074 [US5] Create the node card in apps/web/features/architecture/ArchitectureNodeCard.tsx
+- [x] T075 [P] [US5] Create the link components in apps/web/features/architecture/AdrLink.tsx and apps/web/features/architecture/SourceLink.tsx - **DELIVERED**: the base of the links and the commit live in apps/web/lib/repository.ts and in no other place.
+- [x] T076 [US5] Build the architecture page in apps/web/app/(public)/engineering/page.tsx - **DELIVERED**: the URL of the page is /engineering, it is static, it reads the commit of the checkout while the site is built and it calls nobody (ADR-046).
+- [x] T077 [US5] Add the engineering drawer to the replay route in apps/web/app/(public)/demo/[scenario]/page.tsx - **DELIVERED with the path corrected**: the route of a scenario is apps/web/app/(public)/replay/scenario/[scenario]/page.tsx and the old path of the task does not exist. The drawer itself lives in apps/web/features/architecture/EngineeringDrawer.tsx, it is born independent of T048, and the replay opens it from the section of the calls of the tools (ADR-046).
 
 **Checkpoint**: At this point, User Stories 1 to 5 should all work independently
 
@@ -220,15 +220,15 @@ description: "Task list for the R1 public replay feature"
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
 - [x] T078 [P] [US6] Write the mobile journey suite in apps/web/tests/e2e/mobile.spec.ts with the overflow assertion at 390 and 1440 pixels
-- [ ] T079 [P] [US6] Write the accessibility suite with the axe scan in apps/web/tests/e2e/a11y.spec.ts
+- [x] T079 [P] [US6] Write the accessibility suite with the axe scan in apps/web/tests/e2e/a11y.spec.ts - **DELIVERED**: 36 cases in chromium and webkit, at 390 and at 1440, over the nine pages of the site, with no rule disabled. The scan found a real violation of `heading-order` on the landing page, and the primitive of the card was corrected so that the level of its title is the choice of the caller.
 
 ### Implementation for User Story 6
 
 - [x] T080 [US6] Add the reduced motion rules in apps/web/app/globals.css and the no animation fallback in apps/web/features/replay/usePlaybackClock.ts
 - [x] T081 [US6] Make the layout a single column under 768 pixels in apps/web/features/shell/AppShell.tsx
-- [ ] T082 [US6] Add the accessible tabs for the execution, the evidence, the decision and the ledger in apps/web/app/(public)/demo/[scenario]/page.tsx
+- [x] T082 [US6] Add the accessible tabs for the execution, the evidence, the decision and the ledger in apps/web/app/(public)/demo/[scenario]/page.tsx - **DELIVERED with the path corrected**: the route of a scenario is apps/web/app/(public)/replay/scenario/[scenario]/page.tsx. The tabs are the primitive of the design system, they carry the name of their group, the arrow keys move the focus and the panel of the chosen tab is the only one in the page. The ledger is the fifth tab, between the execution and the evidence (ADR-045, ADR-046).
 - [x] T083 [US6] Add the skip link and the landmark structure in apps/web/features/shell/SkipLink.tsx and apps/web/app/layout.tsx
-- [ ] T084 [US6] Manage the focus on the drawer and on the status region in apps/web/features/agent-trace/ToolCallDrawer.tsx and apps/web/features/replay/ReplayControls.tsx
+- [ ] T084 [US6] Manage the focus on the drawer and on the status region in apps/web/features/agent-trace/ToolCallDrawer.tsx and apps/web/features/replay/ReplayControls.tsx - **PARTIALLY DELIVERED, the task stays open**: the engineering drawer of the tour returns the focus to the control that opened it, because it is built on the primitive of the sheet (ADR-046). The drawer of a tool call of T048 was never built, and the status region of the controls of the replay still has to be proved. The task stays open with the work it names.
 - [x] T085 [US6] Keep the code panes as the only horizontally scrollable area in apps/web/app/globals.css
 
 **Checkpoint**: All user stories should now be independently functional

@@ -43,11 +43,13 @@ npm run build
 # What the check below reads is the OUTPUT OF THE BUILD that ran just above, not a folder that is on the disk.
 # The build writes the export again every time it runs, so moving a file out of out/ before the gate is not a way
 # to make the gate fail, and the check never sees a stale export. What the check proves is that the build itself
-# wrote one page per scenario of the catalog, and that the page it wrote is the page of the scenario and not the
-# page of 404.
+# wrote one page per scenario of the catalog, that the page it wrote is the page of the scenario and not the
+# page of 404, and that the build wrote the page of the architecture, the tour of the six subsystems, with a
+# heading and with the six labels of the nodes.
 # The check itself lives in a script of its own, so that it can be tested: a check that lives inside this file
 # cannot be proved to fail when it has to fail.
 echo "== the build wrote one page per scenario of the catalog, with the content of the scenario"
+echo "== the build wrote the page of the architecture, with a heading and the six labels of the nodes"
 export LEDGERLENS_REPLAY_OUT="${REPOSITORY_ROOT}/apps/web/out/replay"
 node "${REPOSITORY_ROOT}/scripts/check_export_pages.mjs" "${LEDGERLENS_REPLAY_OUT}"
 
