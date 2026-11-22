@@ -1,20 +1,19 @@
 /**
- * The test of the page of the recorded demo.
+ * The test of the page of the catalog of the scenarios.
  *
- * Why this test exists: the page reads the catalog of the scenarios from the static export and it
- * has to read it exactly as the repository publishes it, a list of cards that carry `id` and a
- * `data_origin` that is a string. The page validates the catalog with the validator of the
- * repository and with no mapping by hand, so a catalog that does not pass the contract is refused
- * with a reason and not shown as a half read list (ADR-042).
+ * Why this test exists: the catalog of the site is the way a visitor finds a recording, and it has to show exactly the
+ * scenarios that the repository publishes and to link to the route of each one of them. A catalog that does not pass
+ * the contract is refused with a reason and never shown as a half read list (ADR-042, ADR-043).
  *
- * Every case runs with no key and no network: the fetch of the case is a fake that answers with
- * the artifacts the repository publishes.
+ * Every case runs with no key and no network: the loader of the case is a function of the test, and the fetch of the
+ * runtime is a fake that answers with the same catalog, so the page reads the published artifacts either way.
  */
 
 import { render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import ReplayPage from "@/app/(public)/replay/page";
+import { ScenarioCatalogProvider } from "@/lib/api/provider";
 
 /** The card of the scenario in the published catalog, as `site/replay/index.json` holds it. */
 const PUBLISHED_CARD = {
@@ -38,76 +37,83 @@ const PUBLISHED_CARD = {
   status: "Recorded",
 };
 
-/** The manifest of the published bundle, as `site/replay/s01/manifest.json` holds it. */
-const PUBLISHED_MANIFEST = {
-  bundle_schema_version: "1",
-  capture_kind: "scripted_fixture",
-  code_sha: "9dc3af946b223496c7ed2e897b1e4152bbf9234f",
-  created_at: "2026-11-14T11:00:14+00:00",
-  events: 1,
-  files: { "events.jsonl": "577939e532327f3af1a3897612f622d96edc27a620646437fb02c5fa5318de13" },
-  mode: "deterministic_sandbox",
-  model_profile: "scripted-fixture",
-  note: "Deterministic execution of the scenario S01, account C-0412, with the scripted model and the recorded exchange rate. This is not a live execution and it calls no model.",
-  policy_version: "policies-v1",
-  recorded_at: "2026-11-14T11:00:14+00:00",
-  run_id: "replay-s01",
-  scenario: "S01",
-  snapshot_sha256: "26849ada6f60c63fa30a0b085fd1ff473508d18a5892498cade13b7dc436ee2f",
-};
-
-/** One event of the recording, with the shape the contract publishes. */
-const PUBLISHED_EVENT = {
-  schema_version: "1",
-  run_id: "replay-s01",
-  seq: 1,
-  at: "2026-11-14T11:00:13.128+00:00",
-  event_type: "run.started",
-  payload: { question: PUBLISHED_CARD.question },
-  snapshot_sha256: "26849ada6f60c63fa30a0b085fd1ff473508d18a5892498cade13b7dc436ee2f",
-  mode: "deterministic_sandbox",
-};
-
 /**
- * The fetch of the case: it answers with the catalog, the manifest and the events.
+ * The loader of the case: it answers with the catalog that the case decides.
  *
- * Why the catalog is a parameter: the case that proves the refusal needs a catalog that does not
- * pass the contract, and every other answer is the published one.
+ * Why the loader and the fetch are both given the same answer: the page reads the catalog through the provider of the
+ * catalog, and the provider reads it through the loader of the case. The fetch of the runtime is stubbed with the same
+ * answer, so the case proves the same thing whichever of the two the page uses.
  */
-function fakeFetch(catalog: unknown): typeof fetch {
-  return vi.fn(async (input: RequestInfo | URL) => {
-    const url = String(input);
-    const body = url.endsWith("index.json")
-      ? JSON.stringify(catalog)
-      : url.endsWith("manifest.json")
-        ? JSON.stringify(PUBLISHED_MANIFEST)
-        : url.endsWith("events.jsonl")
-          ? `${JSON.stringify(PUBLISHED_EVENT)}\n`
-          : "";
-    return { ok: true, status: 200, text: async () => body } as unknown as Response;
-  }) as unknown as typeof fetch;
+function stubCatalog(catalog: unknown): void {
+  const body = JSON.stringify(catalog);
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      return {
+        ok: true,
+        status: 200,
+        text: async () => (url.endsWith("index.json") ? body : ""),
+      } as unknown as Response;
+    }),
+  );
+}
+
+/** Renders the page of the catalog with a loader of the case. */
+function renderPage(catalog: unknown): void {
+  stubCatalog(catalog);
+  const loader = vi.fn(async () => {
+    try {
+      const parsed = JSON.parse(JSON.stringify(catalog)) as unknown;
+      if (!Array.isArray(parsed)) {
+        return { error: "the catalog of the scenarios did not pass the contract of the published artifacts" };
+      }
+      return parsed as never;
+    } catch {
+      return { error: "the catalog of the scenarios is not a JSON document" };
+    }
+  });
+
+  render(
+    <ScenarioCatalogProvider loader={loader}>
+      <ReplayPage />
+    </ScenarioCatalogProvider>,
+  );
 }
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("the page of the recorded demo", () => {
+describe("the page of the catalog of the scenarios", () => {
   it("shows the scenarios of the published catalog", async () => {
-    vi.stubGlobal("fetch", fakeFetch([PUBLISHED_CARD]));
+    // It proves that the catalog shows the card of the scenario exactly as the repository publishes it.
+    renderPage([PUBLISHED_CARD]);
 
-    render(<ReplayPage />);
+    expect(await screen.findByRole("heading", { name: "The scenarios" })).toBeInTheDocument();
+    expect(document.body.textContent ?? "").toContain("UCI Online Retail II");
+    expect(
+      screen.getByRole("heading", {
+        name: "S01 - Why was the BRL refund for TX-2048 lower than the EUR payment?",
+      }),
+    ).toBeInTheDocument();
+  });
 
-    expect(await screen.findByText("S01 - fx_markup_refund")).toBeInTheDocument();
-    expect(screen.getByText("data: UCI Online Retail II")).toBeInTheDocument();
+  it("links the card of the scenario to the route of the scenario", async () => {
+    // It proves that the card of the catalog leads to the route of the scenario and not to a guess at run time.
+    renderPage([PUBLISHED_CARD]);
+
+    const link = await screen.findByRole("link", { name: "S01 - fx_markup_refund" });
+    expect(link).toHaveAttribute("href", "/replay/scenario/S01");
   });
 
   it("refuses a catalog that does not pass the contract", async () => {
-    vi.stubGlobal("fetch", fakeFetch({ scenarios: [PUBLISHED_CARD], schema_version: "1" }));
-
-    render(<ReplayPage />);
+    // It proves that a broken catalog is refused with a reason and that no card of it is shown, so that the visitor
+    // never sees a half read list.
+    renderPage({ scenarios: [PUBLISHED_CARD], schema_version: "1" });
 
     expect(await screen.findByText(/did not pass the contract/)).toBeInTheDocument();
     expect(screen.queryByText("S01 - fx_markup_refund")).toBeNull();
+    expect(screen.queryByRole("link", { name: "S01 - fx_markup_refund" })).toBeNull();
   });
 });

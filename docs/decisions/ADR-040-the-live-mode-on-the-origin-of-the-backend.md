@@ -621,7 +621,7 @@ live mode, the vault, the budget or the contract of any request.
 | `docs/frontend.md` | create | how to run the site, the two modes, the URL contract, the rules of the deployment |
 | `docs/demo.md` | change | the pointer to the new document and the two commands of the local run |
 | `specs/003-r3-bring-your-own-key/tasks.md` | change | the tasks the milestone lands are ticked, and T035 is marked as superseded by ADR-040 |
-| `apps/web/playwright.config.ts` | change | only if the end to end run needs it; the export served on the port 3100 stays |
+| `apps/web/playwright.config.ts` | change | only if the end to end run needs it; the export is served on the port 3215, the port the suite declared today (see the amendment at the end of this ADR) |
 | `apps/web/tests/e2e/recorded-demo.spec.ts` | create | the test of the browser, on the export |
 
 The set does not create a Portuguese translation: `docs/pt-BR/` holds only the roadmap today, and a new document does
@@ -778,3 +778,21 @@ instead of pretending, and the recorded demo keeps working.
 The price of the decision is the one that ADR-039 accepted before: the identity of the visitor is decided by a cookie
 of the origin of the backend, and a deployment that separates the two origins across sites has to solve the cookie of
 the session before it serves the live mode. The ADR says where the answer is: same site, or another ADR.
+
+## Amendment of the milestone of the public replay site
+
+The decision of this ADR stands as it was taken: the live mode of the browser lives on the origin of the backend, with
+the credentials of the visitor, and the recorded demo stays a static export. One detail of the plan of the milestone
+changed later, and this ADR is amended in that detail alone.
+
+The port of the end to end suite of the frontend is no longer 3100. The milestone of the public replay site, the one
+that ADR-043 describes, moved the suite to the port 3215, so that a copy of this repository that runs beside another
+one does not fight for a port of a generic project. The port is declared today in one place,
+`apps/web/tests/e2e/site-origin.ts:26` (`DEFAULT_E2E_PORT`), and the variable that moves it is beside it,
+`apps/web/tests/e2e/site-origin.ts:34` (`LEDGERLENS_E2E_PORT`). The configuration of Playwright and the specs of the
+network guard read that one module, so the origin the suite serves and the origin the specs assert are the same by
+construction.
+
+ADR-043 describes that milestone and does not record the change of the port, so the change is written down here. The
+rest of this ADR is untouched: the static export stays, the live mode still talks to the backend directly and the
+recorded demo still calls nobody.

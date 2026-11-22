@@ -1,85 +1,63 @@
 "use client";
 
 /**
- * The recorded demo, the page that plays the published artifacts.
+ * The catalog of the scenarios of the recorded demo.
  *
  * Why this file exists: the recorded demo is the half of the demo that works with no key and no
- * network. The page reads the catalog of the scenarios from the static export of the site and then
- * reads the bundle of the scenario the visitor picked, and it makes no request to the backend of
- * the demo at all: no provider, no exchange rate service and no write endpoint.
+ * network. The page shows the catalog of the scenarios from the static export of the site and it
+ * links to the route of every scenario, so that a visitor picks a scenario and reads its
+ * recording, and it makes no request to the backend of the demo at all: no provider, no exchange
+ * rate service and no write endpoint.
  *
- * The mode of what is shown is a property of what is shown: the reader shows the mode of the
- * manifest it read, and a recorded run is never presented as a live one (ADR-040).
+ * Why the page reads the catalog through the provider and not by itself: `lib/api/replay.ts` is
+ * the ONE place that reads the static artifacts of the site, and the provider of the catalog is
+ * the client of that client. The page calls no `fetch` of its own, so the rule that the recorded
+ * demo calls nobody can be checked by reading the library alone (ADR-043).
  *
  * The catalog is read with the validator of the repository and with no mapping by hand, because
  * the catalog the repository publishes is a list of cards that carry `id` and a `data_origin` that
- * is a string. The artifacts of the site are the ones the repository publishes (ADR-042).
+ * is a string. A catalog that does not pass the contract is refused with its reasons and shown
+ * as no card at all, because a half read catalog is a catalog a reader cannot trust (ADR-042).
+ *
+ * The mode of what is shown is a property of what is shown: the reader of a recording shows the
+ * mode of the manifest it read, and a recorded run is never presented as a live one (ADR-040).
  */
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/Badge";
-import { Button, buttonClasses } from "@/components/ui/Button";
-import { CardSection } from "@/components/ui/Card";
-import { ReplayViewer } from "@/features/replay/ReplayViewer";
-import type { ScenarioIndexEntry } from "@/lib/api/schemas";
-import { validateScenarioIndex } from "@/lib/replay/validate";
-
-/**
- * The catalog of the scenarios, as the static export of the site publishes it.
- *
- * Why the path is fixed: the artifacts are part of the export, under `public/replay`, and the site
- * is served from the root of that export.
- */
-const CATALOG_URL = "/replay/index.json";
+import { buttonClasses } from "@/components/ui/Button";
+import { Card, CardContent, CardHeader } from "@/components/ui/Card";
+import { loadScenarioCatalog } from "@/lib/api/replay";
+import { ScenarioCatalogProvider, useScenarioCatalog } from "@/lib/api/provider";
+import { scenarioPath } from "@/lib/state/urlState";
 
 /**
  * The page of the recorded demo.
  *
  * The page is a client component because the artifacts are read in the browser: the site is a
  * static export and the files of the recording are served next to it.
+ *
+ * Why the provider is here and not in the layout: the catalog is the only thing this page needs,
+ * and the provider reads it once, through the client of the artifacts.
  */
 export default function ReplayPage() {
-  const [scenarios, setScenarios] = useState<ScenarioIndexEntry[]>([]);
-  const [selected, setSelected] = useState<ScenarioIndexEntry | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  return (
+    <ScenarioCatalogProvider loader={loadScenarioCatalog}>
+      <ReplayCatalog />
+    </ScenarioCatalogProvider>
+  );
+}
 
-  useEffect(() => {
-    let alive = true;
-
-    async function load(): Promise<void> {
-      try {
-        const response = await fetch(CATALOG_URL);
-        if (!response.ok) {
-          throw new Error(`the site answered ${response.status}`);
-        }
-        const catalog = validateScenarioIndex(JSON.parse(await response.text()));
-        if (!alive) {
-          return;
-        }
-        if (!catalog.ok) {
-          setError(
-            `The catalog of the scenarios did not pass the contract of the published artifacts: ${catalog.reasons.join("; ")}`,
-          );
-          return;
-        }
-        setScenarios(catalog.value);
-        setSelected(catalog.value[0] ?? null);
-        setError(null);
-      } catch {
-        if (!alive) {
-          return;
-        }
-        setError("The catalog of the scenarios could not be read from the site.");
-      }
-    }
-
-    void load();
-    return () => {
-      alive = false;
-    };
-  }, []);
+/**
+ * The catalog of the scenarios, as the provider of the catalog read it.
+ *
+ * Why the page shows the reason of a refusal and no card: a catalog that does not pass the
+ * contract is a catalog a reader cannot trust, and a card of a broken catalog is a card that
+ * points to a route that may not exist.
+ */
+function ReplayCatalog() {
+  const { scenarios, error } = useScenarioCatalog();
 
   return (
     <div className="mx-auto flex w-full max-w-content flex-col gap-8 px-6 py-12">
@@ -107,31 +85,38 @@ export default function ReplayPage() {
       ) : null}
 
       {scenarios.length > 0 ? (
-        <CardSection title="The scenarios" description="The cases the site published.">
-          <ul className="flex flex-col gap-2">
+        <section className="flex flex-col gap-4" aria-labelledby="the-scenarios">
+          <h2 id="the-scenarios" className="text-lg font-semibold">
+            The scenarios
+          </h2>
+          <p className="text-sm text-text-muted">The cases the site published.</p>
+          <ul className="flex flex-col gap-3">
             {scenarios.map((scenario) => (
-              <li key={scenario.id} className="flex flex-wrap items-center gap-2">
-                <Button
-                  variant={selected?.id === scenario.id ? "primary" : "secondary"}
-                  onClick={() => setSelected(scenario)}
-                >
-                  {scenario.id} - {scenario.name}
-                </Button>
-                {scenario.data_origin ? (
-                  <span className="text-xs text-text-subtle">data: {scenario.data_origin}</span>
-                ) : null}
+              <li key={scenario.id}>
+                <Card>
+                  <CardHeader>
+                    <h2 className="text-base font-semibold text-foreground">
+                      {scenario.id} - {scenario.question}
+                    </h2>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Link
+                        className={buttonClasses("primary", "md")}
+                        href={scenarioPath(scenario.id)}
+                      >
+                        {scenario.id} - {scenario.name}
+                      </Link>
+                      {scenario.data_origin ? (
+                        <span className="text-xs text-text-subtle">data: {scenario.data_origin}</span>
+                      ) : null}
+                      {scenario.status ? <Badge>{scenario.status}</Badge> : null}
+                    </div>
+                  </CardContent>
+                </Card>
               </li>
             ))}
           </ul>
-        </CardSection>
-      ) : null}
-
-      {selected ? (
-        <section className="flex flex-col gap-4" aria-label="The recorded run">
-          <h2 className="text-lg font-semibold">
-            {selected.id} - {selected.question}
-          </h2>
-          <ReplayViewer scenario={selected} />
         </section>
       ) : null}
     </div>

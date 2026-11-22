@@ -188,6 +188,17 @@ def test_no_secrets_in_tracked_files():
     assert not _offenders(SECRET)
 
 
+# ---- The dashes ------------------------------------------------------------------------------------
+# The rule of the repository is a zero tolerance one: no em dash and no en dash in any file of the repository.
+# The two characters are built from escapes, so this file does not match its own rule.
+DASHES = re.compile("[\u2013\u2014]")
+
+
+def test_no_dashes_in_tracked_files():
+    """No em dash and no en dash anywhere. The rule is a zero tolerance one."""
+    assert not _offenders(DASHES)
+
+
 def test_course_directories_are_absent():
     """The course material stays out. The spec-kit folders are part of the work and do stay in."""
     for name in ("note" + "books", "docs/report", "docs/evidence"):

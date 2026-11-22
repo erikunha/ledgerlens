@@ -16,6 +16,11 @@ data/raw/
 data/ledger.db
 
 .plans/
+# the handoff of the cycle is local material: it names the paths of the machine of the author, so it is
+# never committed and never staged
+docs/handoff-v3.md
+# the index of the editor is the state of one machine and it is rebuilt at run time, so it stays out of git
+.serena/
 # the specification toolkit and the specs it writes are part of the work and do stay in.
 # the negations come after, because a broader ignore rule higher up would otherwise win.
 !/.specify/

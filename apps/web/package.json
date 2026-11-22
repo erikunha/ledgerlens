@@ -4,7 +4,7 @@
   "private": true,
   "description": "Public site of LedgerLens: the recorded replay of a payment investigation, exported as static files.",
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=24.0.0"
   },
   "scripts": {
     "predev": "node scripts/sync-replay-artifacts.mjs",

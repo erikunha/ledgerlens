@@ -24,6 +24,11 @@ import { cn } from "@/lib/design/cn";
  *
  * The sorting is controlled by the caller. The table never reorders the data on its own, so the
  * order the visitor sees is always the order the published artifact declares.
+ *
+ * Why a row can carry an attribute: the place the visitor stands at is a property of the row and
+ * not of the cell that happens to hold the name of the thing. A table that marks the row the
+ * reader is at with `aria-current` gives a reader of a screen reader that place, and the caller
+ * of the table is the one that knows which row it is.
  */
 
 export type SortDirection = "ascending" | "descending";
@@ -43,6 +48,17 @@ export interface TableColumn<T> {
   align?: "left" | "right";
 }
 
+/**
+ * The attributes the table gives to one row of its body.
+ *
+ * Why the list is short: the table draws the data and the keyboard of the table, and the only
+ * thing a caller has to say about a row is whether the row marks the place the reader stands at.
+ */
+export interface TableRowAttributes {
+  /** The value of `aria-current` of the row, when the row marks the place the visitor stands at. */
+  "aria-current"?: "true" | "false";
+}
+
 export interface TableProps<T> {
   /** The caption of the table. It is its accessible name. */
   caption: string;
@@ -52,6 +68,14 @@ export interface TableProps<T> {
   columns: Array<TableColumn<T>>;
   /** The rows of the table. */
   rows: Array<T>;
+  /**
+   * The attributes of the row of the data.
+   *
+   * Why it is a function and not a value: the caller is the one that knows which row marks a
+   * place, and the table never decides that for anybody. A table that is used without it is a
+   * table whose rows carry no attribute, exactly as before.
+   */
+  rowAttributes?: (row: T, index: number) => TableRowAttributes;
   /** The key of the sorted column, when the table is sorted. */
   sortKey?: string;
   /** The direction of the sort, when the table is sorted. */
@@ -69,6 +93,7 @@ export function Table<T>({
   hideCaption = false,
   columns,
   rows,
+  rowAttributes,
   sortKey,
   sortDirection,
   onSortChange,
@@ -196,7 +221,13 @@ export function Table<T>({
             </tr>
           ) : (
             rows.map((row, rowIndex) => (
-              <tr key={rowIndex} className="border-b border-line last:border-b-0 hover:bg-surface">
+              // the caller says what the row says about itself, and a table used without the prop
+              // gives its rows no attribute at all
+              <tr
+                key={rowIndex}
+                {...rowAttributes?.(row, rowIndex)}
+                className="border-b border-line last:border-b-0 hover:bg-surface"
+              >
                 {columns.map((column, columnIndex) => {
                   const isRowHeader = column.rowHeader ?? columnIndex === 0;
                   const cellContent = column.render(row, rowIndex);

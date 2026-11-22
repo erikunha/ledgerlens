@@ -16,8 +16,10 @@ cd "${REPOSITORY_ROOT}/apps/web"
 export NEXT_TELEMETRY_DISABLED=1
 
 # The lock file decides the versions, so the install is reproducible and a broken lock fails the gate.
+# The engine of Node is a hard failure here and not a warning: the frontend declares the major it supports in its
+# engines, and a machine with another major has to say so at the install instead of in the middle of the build.
 echo "== npm ci (locked dependencies)"
-npm ci
+npm ci --engine-strict
 
 # The type check proves that the types of the contracts and the types of the page agree.
 echo "== npm run typecheck"
@@ -37,57 +39,16 @@ npm run build
 
 # The recorded demo has to be in the export: the site has to serve the artifacts the repository publishes,
 # and a build that leaves the recording out is a build that serves nothing.
-echo "== the recorded demo is in the export"
+#
+# What the check below reads is the OUTPUT OF THE BUILD that ran just above, not a folder that is on the disk.
+# The build writes the export again every time it runs, so moving a file out of out/ before the gate is not a way
+# to make the gate fail, and the check never sees a stale export. What the check proves is that the build itself
+# wrote one page per scenario of the catalog, and that the page it wrote is the page of the scenario and not the
+# page of 404.
+# The check itself lives in a script of its own, so that it can be tested: a check that lives inside this file
+# cannot be proved to fail when it has to fail.
+echo "== the build wrote one page per scenario of the catalog, with the content of the scenario"
 export LEDGERLENS_REPLAY_OUT="${REPOSITORY_ROOT}/apps/web/out/replay"
-node <<'NODE'
-const fs = require("node:fs");
-const path = require("node:path");
-
-const folder = process.env.LEDGERLENS_REPLAY_OUT;
-const problems = [];
-
-if (!fs.existsSync(folder)) {
-  problems.push(`the export does not hold the recorded demo: ${folder} does not exist`);
-} else {
-  const catalogPath = path.join(folder, "index.json");
-  if (!fs.existsSync(catalogPath)) {
-    problems.push(`the export does not hold the catalog of the scenarios: ${catalogPath} is missing`);
-  } else {
-    let catalog = null;
-    try {
-      catalog = JSON.parse(fs.readFileSync(catalogPath, "utf8"));
-    } catch (error) {
-      problems.push(`the catalog of the scenarios is not a JSON document: ${error.message}`);
-    }
-    if (catalog !== null) {
-      if (!Array.isArray(catalog)) {
-        problems.push(`the catalog of the scenarios is not a list: ${catalogPath}`);
-      } else if (catalog.length === 0) {
-        problems.push(`the catalog of the scenarios is empty: ${catalogPath}`);
-      } else {
-        for (const card of catalog) {
-          const directory = card.bundle_path || String(card.id || "").toLowerCase();
-          for (const file of ["manifest.json", "events.jsonl"]) {
-            const artifact = path.join(folder, directory, file);
-            if (!fs.existsSync(artifact)) {
-              problems.push(`the export does not hold the artifact ${artifact}`);
-            }
-          }
-        }
-        if (problems.length === 0) {
-          console.log(`the export holds the catalog of ${catalog.length} scenario(s) and the bundle of every one of them`);
-        }
-      }
-    }
-  }
-}
-
-if (problems.length > 0) {
-  for (const problem of problems) {
-    console.error(`gate_web: ${problem}`);
-  }
-  process.exit(1);
-}
-NODE
+node "${REPOSITORY_ROOT}/scripts/check_export_pages.mjs" "${LEDGERLENS_REPLAY_OUT}"
 
 echo "gate_web: ok"

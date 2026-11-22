@@ -1,38 +1,42 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
+// The origin of the site comes from the module of the suite, so the origin this file asserts is the
+// origin the configuration really serves, and the checks of the network cannot become vacuous.
+import { SITE_ORIGIN } from "./site-origin";
+
 /**
  * The end to end test of the recorded demo.
  *
- * Why this file exists: the recorded demo is the half of the demo that a visitor can use with no
- * key, no provider and no network. The only proof that this is true is a browser that opens the
- * exported site and behaves like a visitor, so the test runs against the static export served as
- * plain files, exactly as the files arrive in a browser.
+ * Why this file exists: the recorded demo is the half of the demo that a visitor can use with no key, no provider and
+ * no network. The only proof that this is true is a browser that opens the exported site and behaves like a visitor,
+ * so the test runs against the static export served as plain files, exactly as the files arrive in a browser.
  *
- * The three promises the test proves are written down in the names of the cases: the recorded
- * run plays on the exported site, the mode the visitor reads is the sandbox and never a live
- * one, and no request of the page leaves the origin of the site for the origin of the backend.
+ * The three promises the test proves are written down in the names of the cases: the recorded run plays on the exported
+ * site, the mode the visitor reads is the sandbox and never a live one, and no request of the page leaves the origin of
+ * the site for the origin of the backend.
  *
- * Every assertion is about what the visitor sees, on the text that is on the screen. The queries
- * use the roles and the accessible names wherever the interface carries them, because the site
- * is built for a reader with a screen reader.
+ * The reader moved to the route of the scenario, so the navigation of the three cases is the route of the scenario and
+ * not the catalog. The three cases stay, with their names and their assertions, because the viewer keeps the accessible
+ * names it always had. The catalog itself has its own suite, in `catalog.spec.ts`.
+ *
+ * Every assertion is about what the visitor sees, on the text that is on the screen. The queries use the roles and the
+ * accessible names wherever the interface carries them, because the site is built for a reader with a screen reader.
  */
-
-const SITE_ORIGIN = "http://127.0.0.1:3100";
 
 /**
  * The origin of the backend of the demo.
  *
- * Why the name is here: the recorded demo must never call it. The default of the site is this
- * origin, and the live mode is the only half of the demo that calls it.
+ * Why the name is here: the recorded demo must never call it. The default of the site is this origin, and the live
+ * mode is the only half of the demo that calls it.
  */
 const BACKEND_ORIGIN = "http://localhost:8010";
 
 /**
  * The requests the page made, and the ones that left the origin of the site.
  *
- * Why they are module state: the listener of the requests is installed before the navigation, so
- * the first request of the page is already watched. Every case ends with the same check, so no
- * case of this file can pass with a request that escaped.
+ * Why they are module state: the listener of the requests is installed before the navigation, so the first request of
+ * the page is already watched. Every case ends with the same check, so no case of this file can pass with a request
+ * that escaped.
  */
 let requestsMade: string[] = [];
 let requestsThatEscaped: string[] = [];
@@ -53,12 +57,12 @@ test.beforeEach(async ({ page }) => {
 /**
  * Opens the recorded demo and waits for the recording to be on the screen.
  *
- * Why the table is the wait: the table of the calls of the tools appears only when the bundle of
- * the scenario was read and accepted, so it is the real sign that the recording is there. There
- * is no sleep and no wait for a network that does not come.
+ * Why the table is the wait: the table of the calls of the tools appears only when the bundle of the scenario was
+ * read and accepted, so it is the real sign that the recording is there. There is no sleep and no wait for a network
+ * that does not come.
  */
 async function openRecordedDemo(page: Page): Promise<void> {
-  await page.goto("/replay");
+  await page.goto("/replay/scenario/S01");
   await expect(page.getByRole("heading", { name: "Recorded demo", level: 1 })).toBeVisible();
   await expect(
     page.getByRole("table", { name: "The calls of the tools of the recorded run" }),
@@ -68,9 +72,8 @@ async function openRecordedDemo(page: Page): Promise<void> {
 /**
  * Moves the slider of the recording to its last position, the way a visitor does.
  *
- * Why the keyboard: the control is a range input, so the visitor moves it with the keys. The
- * End key moves it to the last event, and the arrow key is the fallback for an engine that does
- * not honor the End key on a slider.
+ * Why the keyboard: the control is a range input, so the visitor moves it with the keys. The End key moves it to the
+ * last event, and the arrow key is the fallback for an engine that does not honor the End key on a slider.
  */
 async function seekToTheEnd(position: Locator): Promise<void> {
   const last = await position.getAttribute("max");
@@ -89,8 +92,8 @@ async function seekToTheEnd(position: Locator): Promise<void> {
 /**
  * Fails when any request of the page left the origin of the site.
  *
- * Why the message names the URLs: a failure that only says that something escaped leaves the
- * reader to guess what, and the URL is the whole of the evidence.
+ * Why the message names the URLs: a failure that only says that something escaped leaves the reader to guess what,
+ * and the URL is the whole of the evidence.
  */
 function expectEveryRequestStayedOnTheSite(): void {
   expect(
@@ -103,16 +106,6 @@ function expectEveryRequestStayedOnTheSite(): void {
 
 test("the recorded demo plays the published recording on the exported site", async ({ page }) => {
   await openRecordedDemo(page);
-
-  // The catalog of the scenarios is on the screen, and the scenario of the capture is the one
-  // that is selected.
-  await expect(page.getByRole("heading", { name: "The scenarios" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "S01 - fx_markup_refund" })).toBeVisible();
-  await expect(
-    page.getByRole("heading", {
-      name: "S01 - Why was the BRL refund for TX-2048 lower than the EUR payment?",
-    }),
-  ).toBeVisible();
 
   // The recorded run is a region with an accessible name, and the visitor reads it.
   const recordedRun = page.getByRole("region", { name: "The recorded run" });
@@ -156,8 +149,8 @@ test("the recorded demo shows the sandbox mode and never says that it is live", 
     recordedRun.getByText("This is not a live execution and it calls no model."),
   ).toBeVisible();
 
-  // The recording is never presented as a live run. The page links to the live mode, so the
-  // check is about the labels of the recording and not about the word live.
+  // The recording is never presented as a live run. The page links to the live mode, so the check is about the labels
+  // of the recording and not about the word live.
   await expect(page.getByText("mode: live")).toHaveCount(0);
   await expect(recordedRun.getByText("live run")).toHaveCount(0);
 
@@ -165,10 +158,15 @@ test("the recorded demo shows the sandbox mode and never says that it is live", 
 });
 
 test("the recorded demo never calls the origin of the backend", async ({ page }) => {
+  // The catalog is opened first, because the catalog of the scenarios is the file that the reader of the site reads
+  // before it opens a bundle.
+  await page.goto("/replay");
+  await expect(page.getByRole("heading", { name: "The scenarios" })).toBeVisible();
+
   await openRecordedDemo(page);
 
-  // The artifacts of the published recording are read from the origin of the site itself, so
-  // the check is not vacuous: the requests really happened.
+  // The artifacts of the published recording are read from the origin of the site itself, so the check is not
+  // vacuous: the requests really happened.
   expect(requestsMade.some((url) => url.includes("/replay/index.json"))).toBe(true);
   expect(requestsMade.some((url) => url.includes("/replay/s01/manifest.json"))).toBe(true);
   expect(requestsMade.some((url) => url.includes("/replay/s01/events.jsonl"))).toBe(true);
