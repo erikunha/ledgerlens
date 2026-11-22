@@ -10,11 +10,22 @@
  * fork or FOUND by it. A visitor who reloaded the page has to understand that the work of the
  * branch is still there, and a badge of a colour alone would not say it.
  *
+ * Why the panel opens the stream of the branch: the lifecycle of a branch travels as a stream of
+ * named events, and the browser has to follow it (ADR-047). The panel opens that connection through
+ * the ONE client of the stream, `apps/web/features/sandbox/api/branchStream.ts`, and it reads
+ * nothing of the network by itself. The connection is NOT a phase of the machine of the branch: the
+ * machine keeps its four phases, `idle`, `opening`, `ready` and `refused`, and the connection has a
+ * state of its own, which the hook of the stream holds.
+ *
  * Why the panel never calculates: the identifier, the revision, the expiry and the hash are the
  * texts of the server, and the panel renders them as they were sent (ADR-044). The wait of a
  * refusal of the limits is the text of the header `Retry-After`, and the panel renders it as it
  * was sent too: the panel never counts the seconds, never counts them down and never asks the
  * clock of the browser how long is left (FR-031).
+ *
+ * Why the panel says the state of the connection in words: a visitor has to know whether the page
+ * is following the branch, and a tint of a colour alone says nothing to a reader of a screen
+ * reader.
  *
  * Why the panel never counts the branches of the session: the server names the count and the cap
  * in the message of the refusal, and the panel shows that message as it is. A panel that counted
@@ -37,8 +48,10 @@ import type { ReactElement } from "react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import type { BranchStreamEvent } from "@/features/sandbox/api/branchStream";
 import type { SandboxErrorBody } from "@/features/sandbox/types";
 import type { BranchState } from "@/features/sandbox/useBranch";
+import { useBranchStream, type BranchConnectionPhase } from "@/features/sandbox/useBranchStream";
 
 import "./sandbox.css";
 
@@ -91,6 +104,21 @@ export type BranchPanelState = Omit<BranchState, "refusal"> & {
 };
 
 /**
+ * The word of every state of the connection.
+ *
+ * Why the word and not only a tint: the visitor has to know whether the page is following the
+ * branch, and a colour alone says nothing to anybody (ADR-047).
+ */
+const CONNECTION_LABEL: Record<BranchConnectionPhase, string> = {
+  idle: "Idle",
+  connecting: "Connecting",
+  connected: "Connected",
+  reconnecting: "Reconnecting",
+  closed: "Closed",
+  refused: "Refused",
+};
+
+/**
  * The props of the panel of the branch.
  *
  * Why the panel takes the whole state: every field of the panel is a field of the state of the
@@ -104,17 +132,52 @@ export interface BranchPanelProps {
   readonly onReset: () => void;
   /** Called when the visitor asks to end the session of the visitor. */
   readonly onEndSession: () => void;
+  /**
+   * Called when the stream says that the branch moved.
+   *
+   * Why the panel does not read the branch by itself: the truth of a branch is the answer of the
+   * status of the branch, and the caller of the panel owns that read (ADR-047).
+   */
+  readonly onBranchMoved?: (event: BranchStreamEvent) => void;
+  /**
+   * Called when the stream says that this page missed an event of the branch.
+   *
+   * Why the panel says it and does not hide it: the resume could not be proven, so the page cannot
+   * say that it holds the whole life of the branch (ADR-047).
+   */
+  readonly onBranchResynced?: (event: BranchStreamEvent) => void;
+  /** Called when the stream says that the branch died. */
+  readonly onBranchExpired?: (event: BranchStreamEvent) => void;
 }
 
 /**
  * The panel of the branch of the visitor.
  *
- * The panel draws what the state holds and it gives its acts back as callbacks. It never reads
- * the network and it never calculates a value.
+ * The panel draws what the state holds and it gives its acts back as callbacks. It never reads the
+ * network by itself and it never calculates a value: the connection to the stream of the branch is
+ * opened by the hook of the stream, and that hook reads the network through the one client of the
+ * stream.
  */
-export function BranchPanel({ state, onReset, onEndSession }: BranchPanelProps): ReactElement {
+export function BranchPanel({
+  state,
+  onReset,
+  onEndSession,
+  onBranchMoved,
+  onBranchResynced,
+  onBranchExpired,
+}: BranchPanelProps): ReactElement {
   const hasBranch = state.branchId !== null;
   const refusal = state.refusal;
+
+  // The connection to the stream of the branch. The hook opens it when the branch is ready and closes
+  // it when the branch is gone, when the branch dies and when the page goes away (ADR-047).
+  const stream = useBranchStream({
+    branchId: state.branchId,
+    branchRefused: state.phase === "refused",
+    onLifecycleEvent: onBranchMoved,
+    onResync: onBranchResynced,
+    onExpired: onBranchExpired,
+  });
 
   // The wait is the TEXT of the server, and the panel shows it as it was written. A refusal that
   // carries no wait shows no wait at all.
@@ -194,6 +257,25 @@ export function BranchPanel({ state, onReset, onEndSession }: BranchPanelProps):
           </dd>
         </div>
       </dl>
+
+      <h3 className="mt-4 text-sm font-semibold uppercase tracking-wide text-text-muted">
+        The stream of the branch
+      </h3>
+      <dl className="mt-2 grid gap-2 sm:grid-cols-2">
+        <div>
+          <dt className="text-xs text-text-subtle">State of the connection</dt>
+          <dd className="text-sm">{CONNECTION_LABEL[stream.phase]}</dd>
+        </div>
+        <div>
+          <dt className="text-xs text-text-subtle">Last event of the branch that this page holds</dt>
+          <dd className="ll-sandbox-sequence font-mono text-sm">
+            {stream.lastEventId ?? "No event yet"}
+          </dd>
+        </div>
+      </dl>
+      {stream.message === null ? null : (
+        <p className="mt-2 text-sm text-text-muted">{stream.message}</p>
+      )}
 
       <h3 className="mt-4 text-sm font-semibold uppercase tracking-wide text-text-muted">
         The actions of the branch

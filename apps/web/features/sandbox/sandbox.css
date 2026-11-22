@@ -48,3 +48,9 @@
   font-size: var(--ll-text-sm);
   line-height: var(--ll-leading-sm);
 }
+
+/* the sequence of the last event of the branch is read as a value and not as a sentence */
+.ll-sandbox-sequence {
+  font-family: var(--ll-font-mono);
+  font-variant-numeric: tabular-nums;
+}
