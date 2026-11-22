@@ -35,7 +35,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ReactElement } from "react";
+import type { KeyboardEvent, ReactElement } from "react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -43,6 +43,7 @@ import { Table, type TableColumn } from "@/components/ui/Table";
 import { Tabs, type TabItem } from "@/components/ui/Tabs";
 import { TraceTimeline } from "@/features/agent-trace/TraceTimeline";
 import { TraceTree } from "@/features/agent-trace/TraceTree";
+import { ToolCallDrawer } from "@/features/agent-trace/ToolCallDrawer";
 import { AnswerPanel } from "@/features/evidence/AnswerPanel";
 import { ClaimList } from "@/features/evidence/ClaimList";
 import { EngineeringDrawer } from "@/features/architecture/EngineeringDrawer";
@@ -191,6 +192,15 @@ export function ReplayViewer({ scenario, commit }: ReplayViewerProps): ReactElem
   // drawer closes. The drawer is controlled and it is opened by a control that lives outside of
   // it, so the primitive of the dialog does not know which control opened it (ADR-046).
   const engineeringDrawerTriggerRef = useRef<HTMLButtonElement | null>(null);
+  // The drawer of a call of the recording, and the state of the visit that opens it. The drawer
+  // holds the call it was opened with, so the recording can keep moving while the drawer is open
+  // without changing what the drawer shows (ADR-048, decision 3).
+  const [toolCallOpen, setToolCallOpen] = useState(false);
+  const [toolCall, setToolCall] = useState<ToolCallState | null>(null);
+  // The cell that opened the drawer of a call, so that the focus goes back to it when the drawer
+  // closes. The cell is the stop of the keyboard of the table and not the button inside it, so
+  // that the navigation group of the table survives the window (ADR-048, decision 7).
+  const toolCallTriggerRef = useRef<HTMLElement | null>(null);
 
   // The region that announces the step, and the phase the reader saw the last time it looked.
   const statusRegionRef = useRef<HTMLParagraphElement | null>(null);
@@ -278,6 +288,67 @@ export function ReplayViewer({ scenario, commit }: ReplayViewerProps): ReactElem
   const spans = reduced.state.spans;
   const calls: ToolCallState[] = reduced.state.toolCalls;
 
+  /**
+   * Opens the drawer about one call of the recording.
+   *
+   * Why the cell is kept with the call: the drawer gives the focus back to the cell that opened
+   * it, and the cell is the stop of the keyboard of the table. The reader owns the state of the
+   * visit, and the drawer only reads the call it was given.
+   */
+  const openToolCall = useCallback((call: ToolCallState, cell: HTMLElement | null): void => {
+    setToolCall(call);
+    toolCallTriggerRef.current = cell;
+    setToolCallOpen(true);
+  }, []);
+
+  /**
+   * Opens the drawer with the Enter key on the cell of the name of the tool.
+   *
+   * Why the handler refuses to answer when the target is the button inside the cell: the button
+   * answers on its own, and the cell is the stop of the keyboard of the table. This is the
+   * precedent of the timeline, where the Enter key on the cell of the event number moves the
+   * recording (ADR-048, decision 2).
+   */
+  const handleCallsKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLDivElement>): void => {
+      if (event.key !== "Enter") {
+        return;
+      }
+      const target = event.target as HTMLElement | null;
+      if (!target || typeof target.closest !== "function") {
+        return;
+      }
+      const cell = target.closest<HTMLElement>("[data-cell]");
+      // only the cell itself answers, never the button inside it, which answers on its own
+      if (!cell || cell !== target) {
+        return;
+      }
+      const place = cell.getAttribute("data-cell");
+      if (place === null) {
+        return;
+      }
+      const separator = place.indexOf(":");
+      if (separator < 0) {
+        return;
+      }
+      // only the column of the name of the tool opens the drawer
+      if (place.slice(separator + 1) !== "0") {
+        return;
+      }
+      const row = Number.parseInt(place.slice(0, separator), 10);
+      if (!Number.isFinite(row)) {
+        return;
+      }
+      const call = calls[row];
+      if (call === undefined) {
+        return;
+      }
+      event.preventDefault();
+      openToolCall(call, cell);
+    },
+    [calls, openToolCall],
+  );
+
   const tree = useMemo(() => buildTraceTree(spans), [spans]);
   const timeline = useMemo(() => buildTimeline(state.events), [state.events]);
   const evidence = useMemo(() => collectEvidence(calls), [calls]);
@@ -360,7 +431,36 @@ export function ReplayViewer({ scenario, commit }: ReplayViewerProps): ReactElem
       key: "name",
       header: "Tool",
       rowHeader: true,
-      render: (call) => call.name,
+      render: (call) => (
+        /*
+          The trigger of the drawer of the call. It is a real button, so the pointer and the
+          Enter key on it open the drawer, and it announces the window it opens with
+          `aria-haspopup="dialog"`.
+
+          Why the button is not a stop of the keyboard: the cells of the table are the navigation
+          group of the table, and a second stop inside a cell takes the visitor out of the group.
+          The cell is the stop, and the Enter key on the cell opens the drawer (ADR-048,
+          decision 2).
+
+          Why the number of the event is in a hidden span: the accessible name of the button is
+          the name of the tool followed by the number of the event, and it contains the visible
+          text of the button (WCAG 2.5.3).
+        */
+        <button
+          type="button"
+          aria-haspopup="dialog"
+          tabIndex={-1}
+          onClick={(event) => {
+            const cell = event.currentTarget.closest<HTMLElement>("th");
+            openToolCall(call, cell);
+          }}
+          className="rounded border-l-2 border-transparent px-1 font-medium text-foreground underline-offset-2 hover:underline"
+        >
+          {call.name}
+          {" "}
+          <span className="ll-visually-hidden">Event {call.seq}</span>
+        </button>
+      ),
     },
     {
       key: "status",
@@ -437,12 +537,19 @@ export function ReplayViewer({ scenario, commit }: ReplayViewerProps): ReactElem
               </p>
             </div>
 
-            <Table
-              caption="The calls of the tools of the recorded run"
-              columns={columns}
-              rows={calls}
-              emptyMessage="The recording has no call of a tool yet."
-            />
+            {/*
+              The wrapper of the table carries the Enter key of the cell of the name of the tool,
+              the way the wrapper of the timeline carries the key of the cell of the event number
+              (ADR-048, decision 2).
+            */}
+            <div onKeyDown={handleCallsKeyDown}>
+              <Table
+                caption="The calls of the tools of the recorded run"
+                columns={columns}
+                rows={calls}
+                emptyMessage="The recording has no call of a tool yet."
+              />
+            </div>
           </div>
         </section>
       ),
@@ -586,6 +693,18 @@ export function ReplayViewer({ scenario, commit }: ReplayViewerProps): ReactElem
         commit={commit}
         context={null}
         returnFocusTo={engineeringDrawerTriggerRef}
+      />
+
+      {/*
+        The drawer of a call of the recording. It holds the call it was opened with, so the
+        recording can keep moving while it is open, and it never moves the recording itself
+        (ADR-048, decisions 3 and 10).
+      */}
+      <ToolCallDrawer
+        open={toolCallOpen}
+        onOpenChange={setToolCallOpen}
+        call={toolCall}
+        returnFocusTo={toolCallTriggerRef}
       />
     </section>
   );

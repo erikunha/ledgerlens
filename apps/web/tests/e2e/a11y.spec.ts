@@ -14,7 +14,9 @@ import { expect, test, type Page } from "@playwright/test";
  * Why the pages are the ones of the public site: a visitor only ever sees the landing, the catalog,
  * the replay of a scenario, the sandbox and the live mode, and the replay has five sections that the
  * visitor opens one at a time. A section that is closed is not in the page, so each of the five is
- * scanned on its own.
+ * scanned on its own. The replay is scanned once more with the drawer of a tool call open, because
+ * a window of the page is only a part of the page while it is open, and the drawer is the part that
+ * a visitor of the recording opens (ADR-048).
  *
  * Why the suite never switches a rule off: a rule that is off hides a real problem from the people
  * who read the site. If a rule of the design tokens has to be off, the comment of the call says which
@@ -48,7 +50,13 @@ interface PageUnderTest {
   readonly name: string;
   /** The path of the page in the export, with the query string of the page when it has one. */
   readonly path: string;
-  /** The waits that tell the suite the page has finished drawing what it draws. */
+  /**
+   * The waits that tell the suite the page has finished drawing what it draws.
+   *
+   * Why the wait may open a window: a page that carries a drawer is only the page the visitor
+   * reads when the drawer is open, so the wait of that page opens the drawer of a call before the
+   * scan of the page.
+   */
   readonly settle: (page: Page) => Promise<void>;
 }
 
@@ -152,6 +160,32 @@ async function expectNoViolation(page: Page, name: string): Promise<void> {
 }
 
 /**
+ * Moves the recording of the replay to its last position, the way a visitor does.
+ *
+ * Why the recording has to move: the table of the calls of the tools shows the calls that already
+ * happened, so the visitor has to walk the recording before the calls are on the screen, and the
+ * drawer opens about one of those calls.
+ *
+ * Why the keyboard of the slider: the control is a range input, so the visitor moves it with the
+ * keys. The End key moves it to the last event, and the arrow key is the fallback for an engine
+ * that does not honor the End key on a slider.
+ */
+async function moveTheRecordingToItsEnd(page: Page): Promise<void> {
+  const position = page.getByLabel("Position of the recording");
+  const last = await position.getAttribute("max");
+  expect(last, "the slider of the recording must name the last position").not.toBeNull();
+
+  await position.focus();
+  await position.press("End");
+  if ((await position.inputValue()) !== last) {
+    for (let step = 0; step < 60 && (await position.inputValue()) !== last; step += 1) {
+      await position.press("ArrowRight");
+    }
+  }
+  await expect(position).toHaveValue(last as string);
+}
+
+/**
  * The pages of the public site, and the wait of each one of them.
  *
  * Why the wait of the replay names the manifest of the capture: the manifest arrives with the
@@ -193,6 +227,31 @@ const PAGES_UNDER_TEST: readonly PageUnderTest[] = [
     settle: async (page: Page) => {
       await expect(page.getByRole("heading", { level: 1, name: "Live mode" })).toBeVisible();
       await expect(page.getByRole("heading", { name: "The model of the run" })).toBeVisible();
+    },
+  },
+  {
+    /*
+     * Why this page is scanned with the drawer open: the drawer of a tool call is a window of the
+     * page, and the page that the visitor reads is the page with the window open. The drawer is
+     * built on the primitive of the sheet, so it is a dialog of Radix with its own portal, its own
+     * landmark and its own focus trap, and the scan has to see it (ADR-048, decisions 1 and 8).
+     */
+    name: "the replay of S01 with the drawer of a call open",
+    path: "/replay/scenario/S01?tab=execution",
+    settle: async (page: Page) => {
+      const recordedRun = page.getByRole("region", { name: "The recorded run" });
+      await expect(recordedRun).toBeVisible();
+      await expect(recordedRun.getByText("mode: deterministic_sandbox")).toBeVisible();
+
+      await moveTheRecordingToItsEnd(page);
+
+      const calls = page.getByRole("table", { name: "The calls of the tools of the recorded run" });
+      await expect(calls.getByRole("rowheader", { name: "query_ledger" })).toBeVisible();
+
+      // The trigger of the drawer is the button of the row header of the table of the calls, and
+      // the drawer opens about the call of that row (ADR-048, decision 2).
+      await calls.getByRole("rowheader").first().getByRole("button").click();
+      await expect(page.getByRole("dialog")).toBeVisible();
     },
   },
 ];

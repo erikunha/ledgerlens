@@ -160,6 +160,9 @@
   .ll-code-pane {
     overflow-x: auto;
     overscroll-behavior-x: contain;
+    /* the pane is an item of a flex column, and without this it would stretch the drawer instead
+       of scrolling inside it (ADR-048) */
+    min-width: 0;
   }
 }
 

@@ -262,6 +262,21 @@ async function findLoadedRun(): Promise<HTMLElement> {
   return screen.getByRole("region", { name: "The recorded run" });
 }
 
+/**
+ * Moves the recording to its end, so that the table of the calls shows every call of the capture.
+ *
+ * Why the helper exists: the table of the calls shows the calls that already happened, and a case that opens the
+ * drawer about a call needs that call to be on the screen.
+ */
+async function moveTheRecordingToTheEnd(): Promise<void> {
+  const slider = screen.getByRole("slider", { name: "Position of the recording" });
+  const last = slider.getAttribute("max");
+  fireEvent.change(slider, { target: { value: last ?? String(EVENTS.length - 1) } });
+  await waitFor(() => {
+    expect(screen.getByText(new RegExp(`Event ${EVENTS.length} of ${EVENTS.length}\\.`))).toBeInTheDocument();
+  });
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
   // The address of the case and the preferences of the view are put back where they were, so that a
@@ -311,7 +326,7 @@ describe("the reader of the recorded run", () => {
     fireEvent.change(slider, { target: { value: last ?? String(EVENTS.length - 1) } });
 
     await waitFor(() => {
-      expect(within(calls).getByRole("rowheader", { name: "query_ledger" })).toBeInTheDocument();
+      expect(within(calls).getByRole("rowheader", { name: /query_ledger/ })).toBeInTheDocument();
     });
   });
 
@@ -523,7 +538,7 @@ describe("the reader of the recorded run", () => {
 
     const calls = await screen.findByRole("table", { name: "The calls of the tools of the recorded run" });
     await waitFor(() => {
-      expect(within(calls).getByRole("rowheader", { name: "query_ledger" })).toBeInTheDocument();
+      expect(within(calls).getByRole("rowheader", { name: /query_ledger/ })).toBeInTheDocument();
     });
 
     // the header of the column says what the column holds, the way the timeline says it
@@ -531,7 +546,7 @@ describe("the reader of the recorded run", () => {
       within(calls).getByRole("columnheader", { name: "Duration the capture measured" }),
     ).toBeInTheDocument();
 
-    const row = within(calls).getByRole("rowheader", { name: "query_ledger" }).closest("tr");
+    const row = within(calls).getByRole("rowheader", { name: /query_ledger/ }).closest("tr");
     expect(row).not.toBeNull();
     expect(within(row as HTMLElement).getByText("12 ms")).toBeInTheDocument();
     expect(within(row as HTMLElement).queryByText("12")).toBeNull();
@@ -549,10 +564,10 @@ describe("the reader of the recorded run", () => {
 
     const calls = await screen.findByRole("table", { name: "The calls of the tools of the recorded run" });
     await waitFor(() => {
-      expect(within(calls).getByRole("rowheader", { name: "calculate" })).toBeInTheDocument();
+      expect(within(calls).getByRole("rowheader", { name: /calculate/ })).toBeInTheDocument();
     });
 
-    const row = within(calls).getByRole("rowheader", { name: "calculate" }).closest("tr");
+    const row = within(calls).getByRole("rowheader", { name: /calculate/ }).closest("tr");
     expect(row).not.toBeNull();
     expect(within(row as HTMLElement).getByText("1.2 s")).toBeInTheDocument();
     expect(within(row as HTMLElement).queryByText("1200")).toBeNull();
@@ -577,5 +592,122 @@ describe("the reader of the recorded run", () => {
     if ("error" in loaded) {
       expect(loaded.error).toContain("did not pass the contract");
     }
+  });
+
+  it("opens the drawer of a call about the row, with a real button that announces the window", async () => {
+    // It proves that the trigger of the drawer of a call is a real button in the row header cell of the table of the
+    // calls, that it announces the window it opens and that it is not a stop of the keyboard: the cells of the table
+    // are the navigation group of the table and the cell is the stop (ADR-048, decision 2).
+    renderViewer(LOADED);
+
+    await findLoadedRun();
+    await moveTheRecordingToTheEnd();
+
+    const calls = screen.getByRole("table", { name: "The calls of the tools of the recorded run" });
+    const trigger = await within(calls).findByRole("button", { name: "query_ledger Event 19" });
+
+    expect(trigger).toHaveAttribute("aria-haspopup", "dialog");
+    expect(trigger).toHaveAttribute("tabindex", "-1");
+
+    // the button sits in the row header cell, the cell that holds the name of the tool
+    const cell = trigger.closest("th");
+    expect(cell).not.toBeNull();
+    expect(cell).toHaveAttribute("scope", "row");
+  });
+
+  it("opens the drawer of a call with the Enter key on the cell of the name of the tool", async () => {
+    // It proves that the Enter key on the cell of the name of the tool opens the drawer about the call of that row,
+    // the way the Enter key on the cell of the event number moves the recording in the timeline.
+    const user = userEvent.setup();
+    renderViewer(LOADED);
+
+    await findLoadedRun();
+    await moveTheRecordingToTheEnd();
+
+    const calls = screen.getByRole("table", { name: "The calls of the tools of the recorded run" });
+    const cell = within(calls).getByRole("rowheader", { name: /query_ledger/ });
+    cell.focus();
+
+    await user.keyboard("{Enter}");
+
+    const drawer = await screen.findByRole("dialog");
+    expect(drawer).toHaveAccessibleName("The call of query_ledger");
+    expect(drawer).toHaveTextContent("FX rates applied to TX-2048");
+  });
+
+  it("closes the drawer of a call with the Escape key and gives the focus back to the cell that opened it", async () => {
+    // It proves that the focus comes back to the CELL that opened the drawer and not to the button inside it, so that
+    // the navigation group of the table survives the window (ADR-048, decision 7).
+    const user = userEvent.setup();
+    renderViewer(LOADED);
+
+    await findLoadedRun();
+    await moveTheRecordingToTheEnd();
+
+    const calls = screen.getByRole("table", { name: "The calls of the tools of the recorded run" });
+    const cell = within(calls).getByRole("rowheader", { name: /query_ledger/ });
+    cell.focus();
+
+    await user.keyboard("{Enter}");
+    await screen.findByRole("dialog");
+
+    await user.keyboard("{Escape}");
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(cell).toHaveFocus();
+    });
+  });
+
+  it("holds the call it was opened with when the recording moves to another call", async () => {
+    // It proves that the drawer of a call holds the call it was opened with: a call of the recording is a fact, and a
+    // drawer whose content changes under the eyes of the reader is a drawer that lies (ADR-048, decision 3).
+    const user = userEvent.setup();
+    renderViewer(LOADED);
+
+    await findLoadedRun();
+    const slider = screen.getByRole("slider", { name: "Position of the recording" });
+
+    // the recording stands on the event that closed the call of the ledger
+    const moment = EVENTS.findIndex((event) => event.seq === 19);
+    fireEvent.change(slider, { target: { value: String(moment) } });
+
+    const calls = screen.getByRole("table", { name: "The calls of the tools of the recorded run" });
+    await waitFor(() => {
+      expect(within(calls).getByRole("rowheader", { name: /query_ledger/ })).toBeInTheDocument();
+    });
+
+    const cell = within(calls).getByRole("rowheader", { name: /query_ledger/ });
+    cell.focus();
+    await user.keyboard("{Enter}");
+
+    const drawer = await screen.findByRole("dialog");
+    expect(drawer).toHaveAccessibleName("The call of query_ledger");
+
+    // the recording moves on and the table of the calls grows. The page around the drawer is
+    // hidden while the drawer is open, so the case reads the step of the recording by its text.
+    fireEvent.change(slider, { target: { value: String(EVENTS.length - 1) } });
+    await waitFor(() => {
+      expect(screen.getByText(new RegExp(`Event ${EVENTS.length} of ${EVENTS.length}\\.`))).toBeInTheDocument();
+    });
+
+    // the drawer still shows the call it was opened with
+    expect(screen.getByRole("dialog")).toHaveAccessibleName("The call of query_ledger");
+    expect(screen.getByRole("dialog")).toHaveTextContent("FX rates applied to TX-2048");
+    expect(screen.getByRole("dialog")).not.toHaveTextContent("calculate");
+  });
+
+  it("still opens the drawer of the engineering tour", async () => {
+    // It proves that the drawer of a call of the recording did not take the place of the drawer of the engineering
+    // tour: the two are two windows and the visitor reaches both (ADR-046, ADR-048).
+    renderViewer(LOADED);
+
+    await findLoadedRun();
+    await userEvent.setup().click(screen.getByRole("button", { name: "Open the engineering drawer" }));
+
+    const drawer = await screen.findByRole("dialog");
+    expect(drawer).toHaveTextContent("This drawer is not tied to one call of the recording.");
   });
 });
