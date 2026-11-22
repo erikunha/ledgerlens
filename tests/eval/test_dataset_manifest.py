@@ -12,6 +12,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +26,7 @@ from ledgerlens.eval.manifest import (
     fingerprint_dataset,
     load_manifests,
     render_manifests,
+    safe_text,
     update_fingerprints,
     verify_manifests,
 )
@@ -645,6 +647,152 @@ def test_update_fingerprints_says_nothing_when_nothing_moved(tmp_path: Path) -> 
 
     assert result.messages == ()
     assert result.entries[0].sha256 == digest
+
+
+# --- the files that are not regular files ---------------------------------------------------------------------
+
+
+def test_a_named_pipe_is_refused_and_the_read_does_not_wait(tmp_path: Path) -> None:
+    """A named pipe is refused with a sentence, and the refusal does not wait for a writer that never comes.
+
+    The read of a named pipe waits for a writer, and a gate that waits forever is a gate that is not a gate. The
+    read happens in a thread that is given a deadline, so a regression that waits fails the test instead of
+    hanging the suite.
+    """
+    path = tmp_path / "pipe.jsonl"
+    os.mkfifo(path)
+    sentences: list[str] = []
+
+    def read_it() -> None:
+        try:
+            fingerprint_dataset(path)
+        except ManifestError as error:
+            sentences.append(str(error))
+
+    worker = threading.Thread(target=read_it, daemon=True)
+    worker.start()
+    worker.join(timeout=10)
+
+    assert not worker.is_alive(), "the read of a named pipe waited for a writer"
+    assert len(sentences) == 1
+    assert "named pipe" in sentences[0]
+    assert "pipe.jsonl" in sentences[0]
+
+
+def test_a_dataset_that_is_not_a_regular_file_is_a_problem_and_not_a_crash(tmp_path: Path) -> None:
+    """A declared dataset that is a named pipe is one sentence and not a crash of the check."""
+    root = tmp_path / "repo"
+    (root / "data" / "eval").mkdir(parents=True)
+    os.mkfifo(root / "data" / "eval" / "pipe.jsonl")
+    _write_manifest(root, [_entry(path="data/eval/pipe.jsonl")])
+
+    problems = verify_manifests(root)
+
+    assert len(problems) == 1
+    assert "named pipe" in problems[0]
+    assert "pipe.jsonl" in problems[0]
+
+
+# --- the paths that the operating system cannot name ------------------------------------------------------------
+
+
+def test_a_null_byte_in_a_declared_path_is_refused_by_the_loader(tmp_path: Path) -> None:
+    """A path that holds a null byte is refused when the manifest is read, and never reaches the disk."""
+    path = _write_manifest(tmp_path, [_entry(path="data/eval/ds\x00.jsonl")])
+
+    with pytest.raises(ManifestError) as caught:
+        load_manifests(path)
+
+    message = str(caught.value)
+    assert "null byte" in message
+    assert "eval_cases" in message
+    assert "datasets.json" in message
+
+
+def test_a_dataset_id_that_holds_a_line_break_is_refused(tmp_path: Path) -> None:
+    """A dataset id that holds a line break is refused, because such a name can forge a line of the log."""
+    path = _write_manifest(tmp_path, [_entry(dataset_id="eval\ncases")])
+
+    with pytest.raises(ManifestError) as caught:
+        load_manifests(path)
+
+    message = str(caught.value)
+    assert "not printable" in message
+    assert "eval\\ncases" in message
+
+
+# --- the path of an entry, normalised once ---------------------------------------------------------------------
+
+
+def test_the_path_of_an_entry_is_normalised_when_the_manifest_is_read(tmp_path: Path) -> None:
+    """A path with a trailing slash is the path it names, and it comes back in the normalised form."""
+    path = _write_manifest(tmp_path, [_entry(path="data/eval/eval_cases.jsonl/")])
+
+    manifests = load_manifests(path)
+
+    assert manifests[0].path == "data/eval/eval_cases.jsonl"
+
+
+def test_a_declared_path_with_a_trailing_slash_is_not_reported_as_undeclared(tmp_path: Path) -> None:
+    """The read of a dataset and the scan of the folder speak of the same file and cannot disagree about it."""
+    _dataset(tmp_path, "ds.jsonl", ['{"id": "a"}'])
+    digest, count = fingerprint_dataset(tmp_path / "data" / "eval" / "ds.jsonl")
+    _write_manifest(tmp_path, [_entry(dataset_id="ds", path="data/eval/ds.jsonl/", sha256=digest, records_count=count)])
+
+    assert verify_manifests(tmp_path) == []
+
+
+# --- the values that enter a sentence ---------------------------------------------------------------------------
+
+
+def test_safe_text_leaves_a_normal_path_alone_and_escapes_what_can_lie() -> None:
+    """A readable value stays as it is and a character that can lie is shown as the two characters that name it."""
+    assert safe_text("data/eval/cases.jsonl") == "data/eval/cases.jsonl"
+    assert safe_text("a\nb") == "a\\nb"
+    assert safe_text("a\tb") == "a\\tb"
+    assert safe_text("a\x1b[31mb") == "a\\x1b[31mb"
+    assert safe_text("a\x00b") == "a\\x00b"
+    assert "\n" not in safe_text("a\nb")
+
+
+def test_the_name_of_a_file_that_holds_a_line_break_cannot_forge_a_line(tmp_path: Path) -> None:
+    """A file name that holds a line break is printed on one line, with the break shown as the two characters."""
+    _dataset(tmp_path, "eval_cases.jsonl", ['{"id": "a"}'])
+    digest, count = fingerprint_dataset(tmp_path / "data" / "eval" / "eval_cases.jsonl")
+    _write_manifest(tmp_path, [_entry(sha256=digest, records_count=count)])
+    forged = "a\nis not declared\nevery dataset matches the manifest: 5 dataset(s) checked\n#b.jsonl"
+    (tmp_path / "data" / "eval" / forged).write_text("", encoding="utf-8")
+
+    problems = verify_manifests(tmp_path)
+
+    assert len(problems) == 1
+    # the name is printed on one line: the line breaks it holds are shown as the two characters that name them
+    assert "\n" not in problems[0]
+    assert "\\n" in problems[0]
+    assert "every dataset matches the manifest: 5 dataset(s) checked" not in problems[0].splitlines()
+
+
+# --- the manifest that is not inside the root -------------------------------------------------------------------
+
+
+def test_a_manifest_that_is_a_link_outside_the_root_is_refused_and_not_read(tmp_path: Path) -> None:
+    """A manifest that is a link to a file outside of the root is refused, and that file is never read.
+
+    The file outside the root holds bytes that are not valid JSON: a check that had read it would say that the
+    manifest is not valid JSON, and the sentence of the refusal has to be the one about the root instead.
+    """
+    root = tmp_path / "repo"
+    outside = tmp_path / "outside.json"
+    outside.write_text("{not json", encoding="utf-8")
+    manifest = root / "data" / "eval" / "datasets.json"
+    manifest.parent.mkdir(parents=True, exist_ok=True)
+    manifest.symlink_to(outside)
+
+    problems = verify_manifests(root)
+
+    assert len(problems) == 1
+    assert "outside the root" in problems[0]
+    assert "not valid JSON" not in problems[0]
 
 
 # --- the manifest that ships --------------------------------------------------------------------------------

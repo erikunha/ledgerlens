@@ -16,6 +16,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -26,6 +27,9 @@ REPOSITORY = Path(__file__).resolve().parents[2]
 SCRIPT = REPOSITORY / "scripts" / "check_eval_datasets.py"
 
 CONTAMINATION_POLICY = "the rule of the test fixture, which says what may be done with the dataset"
+
+# The line that says the check passed. No file of the disk may put a line that looks like it in the log.
+SUCCESS_LINE = re.compile(r"^every dataset matches the manifest: \d+ dataset\(s\) checked$")
 
 
 def _sha256(path: Path) -> str:
@@ -80,11 +84,16 @@ def _run(
     root: Path,
     *arguments: str,
     with_manifest: bool = True,
+    timeout: float = 120,
+    cwd: Path | None = None,
 ) -> subprocess.CompletedProcess[str]:
     """The check, called as a subprocess against a temporary root.
 
     The environment stops git from finding a repository above the temporary root, so a temporary root that is not
     a repository of its own has no committed manifest and the tests do not depend on where they run.
+
+    The call has a deadline, so a check that waits for something that never comes fails the test instead of
+    hanging the suite.
     """
     command = [sys.executable, str(SCRIPT), "--root", str(root)]
     if with_manifest:
@@ -95,6 +104,8 @@ def _run(
         capture_output=True,
         text=True,
         check=False,
+        timeout=timeout,
+        cwd=None if cwd is None else str(cwd),
         env={**os.environ, "GIT_CEILING_DIRECTORIES": str(root)},
     )
 
@@ -490,3 +501,169 @@ def test_a_manifest_outside_the_root_is_refused(tmp_path: Path) -> None:
     assert "outside the root" in output
     assert "Traceback" not in output
     assert outside.read_bytes() == before
+
+
+# --- the manifest that is a link outside of the root -------------------------------------------------------------
+
+
+def test_write_refuses_a_manifest_that_is_a_link_outside_the_root(tmp_path: Path) -> None:
+    """The write refuses a manifest of the root that is a link to a file outside of the root.
+
+    The manifest of the root is the default path of the check, and it is resolved and compared with the root
+    exactly like a path that was named. The file outside the root holds a manifest whose sha256 does not match
+    the disk, so a write would have had a reason to happen: the file outside the root has to stay byte identical.
+    """
+    root = tmp_path / "repo"
+    outside = tmp_path / "outside" / "target.json"
+    outside.parent.mkdir(parents=True)
+    dataset = root / "data" / "eval" / "cases.jsonl"
+    _write_jsonl(dataset, 3)
+    _write_manifest(root, [_entry("cases", "data/eval/cases.jsonl", "b" * 64, 3)])
+    manifest = root / "data" / "eval" / "datasets.json"
+    outside.write_text(manifest.read_text(encoding="utf-8"), encoding="utf-8")
+    manifest.unlink()
+    manifest.symlink_to(outside)
+    before = outside.read_bytes()
+
+    done = _run(root, "--write", with_manifest=False)
+
+    assert done.returncode != 0
+    output = done.stdout + done.stderr
+    assert "outside the root" in output
+    assert "the manifest was written" not in output
+    assert outside.read_bytes() == before
+
+
+# --- the file that is not a regular file ------------------------------------------------------------------------
+
+
+def test_a_fifo_declared_in_the_manifest_is_refused_and_the_check_does_not_wait(tmp_path: Path) -> None:
+    """A named pipe inside the root is refused with a sentence, and the check does not wait for a writer.
+
+    The call has a deadline, so a regression that blocks on the pipe fails the test instead of hanging the suite.
+    """
+    root = tmp_path / "repo"
+    dataset = root / "data" / "eval" / "cases.jsonl"
+    _write_jsonl(dataset, 3)
+    _write_manifest(root, [_entry("cases", "data/eval/pipe.jsonl", "a" * 64, 3)])
+    os.mkfifo(root / "data" / "eval" / "pipe.jsonl")
+
+    done = _run(root, timeout=30)
+
+    assert done.returncode != 0
+    output = done.stdout + done.stderr
+    assert "named pipe" in output
+    assert "pipe.jsonl" in output
+
+
+# --- the log that must not be forged ---------------------------------------------------------------------------
+
+
+def test_a_file_name_with_a_line_break_cannot_forge_the_success_line(tmp_path: Path) -> None:
+    """A file whose name holds a line break cannot put a line that says the check passed in the log.
+
+    The name holds the line that says the check passed, between two other lines. A check that prints the name as
+    it is would put that line in the log of a check that failed, and the reader of the log would read it as the
+    verdict of the check.
+    """
+    root, _manifest = _build_root(tmp_path)
+    forged = (
+        "a\nis a JSONL file and it is not declared by any entry of the manifest.\n"
+        "every dataset matches the manifest: 5 dataset(s) checked\n#b.jsonl"
+    )
+    (root / "data" / "eval" / forged).write_text("", encoding="utf-8")
+
+    done = _run(root)
+
+    assert done.returncode != 0
+    assert not [line for line in done.stdout.splitlines() if SUCCESS_LINE.match(line)]
+    # the name is printed on one line, with the line breaks shown as the two characters that name them
+    assert any("\\n" in line for line in done.stdout.splitlines())
+
+
+def test_a_dataset_id_with_a_line_break_cannot_forge_the_success_line(tmp_path: Path) -> None:
+    """A dataset id that holds a line break cannot put a line that says the check passed in the log."""
+    root = tmp_path / "repo"
+    dataset = root / "data" / "eval" / "cases.jsonl"
+    _write_jsonl(dataset, 3)
+    _write_manifest(
+        root,
+        [
+            _entry(
+                "cases\nevery dataset matches the manifest: 5 dataset(s) checked",
+                "data/eval/cases.jsonl",
+                _sha256(dataset),
+                3,
+            )
+        ],
+    )
+
+    done = _run(root)
+
+    assert done.returncode != 0
+    output = done.stdout + done.stderr
+    assert "Traceback" not in output
+    assert not [line for line in output.splitlines() if SUCCESS_LINE.match(line)]
+
+
+# --- the manifest that is named ---------------------------------------------------------------------------------
+
+
+def test_a_relative_manifest_is_resolved_against_the_root(tmp_path: Path) -> None:
+    """A relative --manifest names the file of the root and not the file of the current directory."""
+    root, _manifest = _build_root(tmp_path)
+    subfolder = root / "sub"
+    subfolder.mkdir()
+
+    done = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--root",
+            str(root),
+            "--manifest",
+            "data/eval/datasets.json",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=120,
+        cwd=str(subfolder),
+        env={**os.environ, "GIT_CEILING_DIRECTORIES": str(root)},
+    )
+
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert "every dataset matches the manifest" in done.stdout
+
+
+# --- the path of an entry ---------------------------------------------------------------------------------------
+
+
+def test_a_declared_path_with_a_trailing_slash_is_not_reported_as_undeclared(tmp_path: Path) -> None:
+    """A declared path with a trailing slash is the file it names, so it is not reported as undeclared as well."""
+    root = tmp_path / "repo"
+    dataset = root / "data" / "eval" / "ds.jsonl"
+    _write_jsonl(dataset, 3)
+    _write_manifest(root, [_entry("ds", "data/eval/ds.jsonl/", _sha256(dataset), 3)])
+
+    done = _run(root)
+
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert "not declared" not in done.stdout + done.stderr
+    assert "every dataset matches the manifest" in done.stdout
+
+
+def test_a_null_byte_in_a_declared_path_is_a_refusal_and_not_a_traceback(tmp_path: Path) -> None:
+    """A declared path that holds a null byte is a readable refusal and never a traceback."""
+    root = tmp_path / "repo"
+    dataset = root / "data" / "eval" / "cases.jsonl"
+    _write_jsonl(dataset, 3)
+    _write_manifest(root, [_entry("cases", "data/eval/ds\x00.jsonl", "a" * 64, 3)])
+
+    done = _run(root)
+
+    assert done.returncode != 0
+    output = done.stdout + done.stderr
+    assert "Traceback" not in output
+    assert "null byte" in output
+    assert "cases" in output

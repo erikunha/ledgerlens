@@ -25,13 +25,22 @@ Two modes, and the difference matters:
 
 The manifest that is checked is the one of the root, `<root>/data/eval/datasets.json`, unless `--manifest` names
 another one. A manifest outside the root is refused, because a check of another root that wrote the manifest of
-the repository would pin the files of one root to the manifest of another.
+the repository would pin the files of one root to the manifest of another. The path is resolved before it is
+compared with the root, so the default path is checked exactly like a named one, and a relative `--manifest` is
+resolved against the root and not against the current directory.
+
+The write of the manifest never writes through a link: the canonical text goes to a temporary file of the same
+folder and is moved over the manifest with `os.replace`, which renames a file. A manifest that is a link to a file
+outside of the root is refused before the write, so the write cannot reach outside of the root.
 
 A dataset whose path resolves outside the root is refused as well, and the file it points at is never read: a check
-that read it would be reading a file that is not a dataset of the repository.
+that read it would be reading a file that is not a dataset of the repository. A dataset that is not a regular file,
+a named pipe for example, is refused with a sentence and not with a wait that never ends.
 
 A data problem is never a traceback. Every problem is a line of plain English that names the dataset, the file
-and the two values that disagree, because the reader of the failure is a person and not a stack trace.
+and the two values that disagree, because the reader of the failure is a person and not a stack trace. Every value
+of a file that enters one of those lines is rendered so that it cannot carry a line break or an escape into the
+log, so no file name can forge the line that says the check passed.
 
 Usage:
 
@@ -46,9 +55,13 @@ Exit code 0 when every dataset matches the manifest, 1 when there is a problem.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
+import os
+import stat
 import subprocess
 import sys
+import tempfile
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -62,6 +75,7 @@ from ledgerlens.eval.manifest import (  # noqa: E402  (the path is set up before
     load_manifests,
     manifest_problems,
     render_manifests,
+    safe_text,
     update_fingerprints,
     verify_manifests,
 )
@@ -159,13 +173,14 @@ def _role_comparison(
         expected = roles.get(manifest.dataset_id)
         if expected is None:
             notices.append(
-                f"the role of the dataset '{manifest.dataset_id}' was not compared: the committed manifest does "
-                f"not declare it, so the role was kept as it is"
+                f"the role of the dataset '{safe_text(manifest.dataset_id)}' was not compared: the committed "
+                f"manifest does not declare it, so the role was kept as it is"
             )
         elif expected != manifest.split_role:
             refusals.append(
-                f"{REFUSAL}: the dataset {manifest.dataset_id} has the role {manifest.split_role} and the committed "
-                f"manifest has the role {expected}; changing the role is a hand edit of the manifest"
+                f"{REFUSAL}: the dataset {safe_text(manifest.dataset_id)} has the role "
+                f"{safe_text(manifest.split_role)} and the committed manifest has the role {safe_text(expected)}; "
+                f"changing the role is a hand edit of the manifest"
             )
     return refusals, notices
 
@@ -199,26 +214,65 @@ def _refusals(
 
 
 def _manifest_path(root: Path, declared: str | None) -> Path | None:
-    """The manifest file of the run: the one of the root, or the one that was named inside the root.
+    """The manifest file of the run, resolved, or None when the check refuses to run.
 
     Why it exists: the manifest follows the root, because a check of another root that wrote the manifest of the
     repository would pin the files of one root to the manifest of another. A manifest outside the root is
     refused with a readable reason and no exit code of zero.
-    """
-    if declared is None:
-        return root / MANIFEST_RELATIVE
 
-    candidate = Path(declared).resolve()
+    The path is resolved before it is compared with the root, so the default path of the root is checked exactly
+    like a named one: a `data/eval/datasets.json` that is a link to a file outside of the root is refused and
+    never written. A relative path is resolved against the root and not against the current directory, so the same
+    argument names the same file from anywhere.
+    """
+    candidate = root / MANIFEST_RELATIVE if declared is None else Path(declared)
+    if not candidate.is_absolute():
+        candidate = root / candidate
     try:
-        candidate.relative_to(root)
+        resolved = candidate.resolve()
+    except (OSError, RuntimeError, ValueError) as error:
+        print(
+            f"check_eval_datasets: the manifest {safe_text(candidate)} cannot be resolved: {error}",
+            file=sys.stderr,
+        )
+        return None
+    try:
+        resolved.relative_to(root)
     except ValueError:
         print(
-            f"check_eval_datasets: the manifest {candidate} is outside the root {root}, "
+            f"check_eval_datasets: the manifest {safe_text(resolved)} is outside the root {safe_text(root)}, "
             f"so the check refused to run.",
             file=sys.stderr,
         )
         return None
-    return candidate
+    return resolved
+
+
+def _mode_of(path: Path) -> int:
+    """The mode of the file that is written, so the write does not change the permissions of the manifest."""
+    try:
+        return stat.S_IMODE(path.stat().st_mode)
+    except OSError:
+        return 0o644
+
+
+def _write_manifest(manifest_path: Path, text: str) -> None:
+    """The canonical text written over the manifest, without ever writing through a link.
+
+    Why it exists: the write must not be able to reach a file outside of the root. The text is written to a
+    temporary file of the same folder and moved over the manifest with `os.replace`, which renames a file and
+    never writes through a link. `os.replace` is atomic and behaves the same on macOS and on Linux.
+    """
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(dir=str(manifest_path.parent), prefix=".datasets.json.", suffix=".tmp")
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            handle.write(text)
+        os.chmod(temporary, _mode_of(manifest_path))
+        os.replace(temporary, manifest_path)
+    finally:
+        with contextlib.suppress(OSError):
+            os.unlink(temporary)
 
 
 def _verify(manifests: tuple[EvalDatasetManifest, ...], root: Path, manifest_path: Path) -> int:
@@ -249,15 +303,14 @@ def _write(manifests: tuple[EvalDatasetManifest, ...], root: Path, manifest_path
     text = render_manifests(result.entries)
     previous = manifest_path.read_text(encoding="utf-8") if manifest_path.is_file() else ""
     if previous == text:
-        print(f"the manifest is already canonical: {manifest_path}")
+        print(f"the manifest is already canonical: {safe_text(manifest_path)}")
     else:
-        manifest_path.parent.mkdir(parents=True, exist_ok=True)
         try:
-            manifest_path.write_text(text, encoding="utf-8")
+            _write_manifest(manifest_path, text)
         except OSError as exc:
-            print(f"check_eval_datasets: the manifest cannot be written: {exc}", file=sys.stderr)
+            print(f"check_eval_datasets: the manifest cannot be written: {safe_text(exc)}", file=sys.stderr)
             return 1
-        print(f"the manifest was written: {manifest_path}")
+        print(f"the manifest was written: {safe_text(manifest_path)}")
     for sentence in result.messages:
         print(f"  {sentence}")
     if not result.messages:
@@ -283,7 +336,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    root = Path(args.root).resolve()
+    try:
+        root = Path(args.root).resolve()
+    except (OSError, RuntimeError, ValueError) as exc:
+        print(f"check_eval_datasets: the root {safe_text(args.root)} cannot be resolved: {exc}", file=sys.stderr)
+        return 1
     manifest_path = _manifest_path(root, args.manifest)
     if manifest_path is None:
         return 1
@@ -291,7 +348,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         manifests = load_manifests(manifest_path)
     except (ManifestError, OSError, ValueError) as exc:
-        print(f"check_eval_datasets: the manifest cannot be read: {exc}", file=sys.stderr)
+        print(f"check_eval_datasets: the manifest cannot be read: {safe_text(exc)}", file=sys.stderr)
         return 1
 
     if args.write:
