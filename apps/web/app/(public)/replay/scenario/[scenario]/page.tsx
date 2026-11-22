@@ -13,62 +13,26 @@
  * time.
  */
 
-import { readFileSync } from "node:fs";
-import path from "node:path";
-
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { buttonClasses } from "@/components/ui/Button";
 import { ReplayProvider } from "@/features/replay/ReplayProvider";
 import { ReplayViewer } from "@/features/replay/ReplayViewer";
-import type { ScenarioIndexEntry } from "@/lib/api/schemas";
-import { validateScenarioIndex } from "@/lib/replay/validate";
-
-
-/**
- * The catalog of the scenarios, as the build copies it into the site.
- *
- * Why the path is fixed: the artifacts of the site are copied into `public/replay` before the
- * build, and the page reads the very file the site serves (ADR-042).
- */
-const CATALOG_PATH = path.join(process.cwd(), "public", "replay", "index.json");
-
-/**
- * Reads the catalog of the scenarios from the disk.
- *
- * Why the catalog is validated here and not read as it is: the page hands the card of the
- * scenario to the reader, and a card that does not pass the contract of the published artifacts
- * is a card the reader cannot trust. A catalog that cannot be read at build time produces no
- * route at all, and the site then has no route for a scenario it never published.
- */
-function readCatalog(): ScenarioIndexEntry[] {
-  let raw: string;
-  try {
-    raw = readFileSync(CATALOG_PATH, "utf8");
-  } catch {
-    return [];
-  }
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return [];
-  }
-
-  const catalog = validateScenarioIndex(parsed);
-  return catalog.ok ? catalog.value : [];
-}
+import { readPublishedCatalog } from "@/lib/replay/catalog";
 
 /**
  * The list of the scenarios the export holds a page for.
  *
- * Why the list is read from the disk: the export writes one HTML file per published scenario, so
- * the build has to know the identifiers before it writes them.
+ * Why the list is read from the disk: the export writes one HTML file per published scenario, so the build has to
+ * know the identifiers before it writes them.
+ *
+ * Why the reader is a module of its own: the catalog is the file the site serves, and the reader that finds it knows
+ * both places where it can be, the copy the build makes and the source the repository publishes, and it refuses a
+ * catalog that does not pass the contract of the published artifacts (ADR-042, ADR-043).
  */
 export function generateStaticParams(): Array<{ scenario: string }> {
-  return readCatalog().map((entry) => ({ scenario: entry.id }));
+  return readPublishedCatalog().map((entry) => ({ scenario: entry.id }));
 }
 
 /**

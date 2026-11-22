@@ -103,6 +103,15 @@ parameters at build time. The page reads the catalog of the site from the disk w
 card of the scenario to the reader and to the provider of the replay, it publishes one page per published scenario,
 and a scenario the catalog does not publish is the page of 404, never a guess at run time.
 
+**The reader of the catalog, and the order of the copy.** The reader of the catalog is
+`apps/web/lib/replay/catalog.ts`, and it is the one module of the frontend that reads the disk. It looks for the copy
+that the site serves first (`apps/web/public/replay/index.json`) and falls back to the source the repository publishes
+(`site/replay/index.json`), because the copy is not tracked by git and a checkout that has never built the frontend has
+no copy. A catalog that cannot be read, that is not a JSON document or whose card does not pass the contract of the
+published artifacts stops the build with a reason: an empty catalog would build an export with no page of a scenario.
+The copy is made before the unit tests run as well as before the build, through the hook `pretest` of the manifest of
+the package, so that the suite of a checkout that has never built the frontend reads the same catalog the site serves.
+
 **The URL of the replay.** The URL carries the identifier of the scenario in the path, and in the query string exactly
 two keys, `tab` and `speed`, and nothing else ever. The four tabs are `execution`, `evidence`, `decision` and
 `provenance`, and the three speeds are 1, 2 and 4. The helper that reads them (`apps/web/lib/state/urlState.ts`)

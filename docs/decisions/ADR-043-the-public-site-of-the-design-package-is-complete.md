@@ -614,6 +614,40 @@ and where the way into the demo is, and nothing else.
 of the BROWSER: it catches what happens while the browser draws the site, and no server of the
 repository ever answers a request with an error, because there is no server of the repository.
 
+### The catalog of the scenarios and the order of the copy
+
+The route of a scenario is a server component of a static export, so it reads the catalog of the
+scenarios from the disk WHILE the export is built, and the export writes one page per scenario of
+that catalog. The reader of the catalog is therefore part of the build, and not part of the
+browser.
+
+**The reader lives in `apps/web/lib/replay/catalog.ts`, and it is the ONE module of this milestone
+that reads the disk.** It lives with the pages of Set C and not with the pure library of Set A,
+because Set A is the layer that touches no file system and this module does.
+
+**The reader looks in two places, and the copy comes first.** The copy that the build makes is
+`apps/web/public/replay/index.json`, and it is the file the site serves, so it wins. The published
+source is `site/replay/index.json`, at the root of the repository, and it is the fallback. The
+reason for the fallback is an order of steps, not a convenience: the copy is not in the history of
+the repository, so a checkout that has never built the frontend has no copy, and a reader that
+knows only the copy answers an EMPTY catalog there. An empty catalog builds an export with no page
+of a scenario, and the visitor who follows a card of the catalog lands on nothing.
+
+**A catalog that cannot be read is a FAILURE and never an empty catalog.** The reader throws with a
+reason that names the places where the catalog was expected, and the build stops. The reader does the
+same with a catalog that is not a JSON document and with a card that does not pass the contract of
+the published artifacts. The rule of the milestone is the one of ADR-042: a build that serves no
+recording is worse than a build that fails.
+
+**The copy is made before the unit tests run.** The manifest of the package declares the hook
+`pretest`, next to the hook `prebuild`, and both of them run the same copy. The reason is the same
+order of steps: the unit tests read the catalog that the site serves, so the copy has to be there
+before they run. Without the hook, the continuous integration runs the suite on a checkout that has
+no copy, the route of a scenario finds no scenario, and three cases of the suite fail with a page of
+404 that has nothing to do with the 404. That is a defect of the ORDER of the gate, and it was
+found by the continuous integration of the milestone, after the gate was green on a machine where an
+earlier build had left a copy behind.
+
 ### The length of the recording and the budget of the site
 
 The milestone publishes ONE recording, the scenario `S01`, and it carries 57 events. The promise of
@@ -984,6 +1018,7 @@ The rules of Set B:
 | --- | --- | --- |
 | `apps/web/app/(public)/replay/page.tsx` | changed | the catalog of the scenarios |
 | `apps/web/app/(public)/replay/scenario/[scenario]/page.tsx` | new | the route of the scenario |
+| `apps/web/lib/replay/catalog.ts` | new | `catalogCandidates`, `readPublishedCatalog`, `resolveCatalogPath` |
 | `apps/web/features/replay/ReplayViewer.tsx` | changed | `ReplayViewerProps`, `ReplayViewer` |
 | `apps/web/features/replay/RunOverview.tsx` | new | `RunOverviewProps`, `RunOverview` |
 | `apps/web/features/replay/ReplayEmptyState.tsx` | new | `ReplayEmptyStateProps`, `ReplayEmptyState` |
@@ -1172,6 +1207,8 @@ The rules of Set C:
 | `apps/web/tests/unit/view-preferences.test.ts` | new | the store of the preferences |
 | `apps/web/tests/unit/replay-provider.test.tsx` | new | the state machine |
 | `apps/web/tests/unit/api-replay.test.ts` | new | the client of the static artifacts |
+| `apps/web/tests/unit/replay-catalog.test.ts` | new | the reader of the published catalog of the scenarios |
+| `apps/web/tests/unit/sync-replay-artifacts.test.ts` | changed | the case that pins the copy of the published artifacts before the unit tests |
 | `apps/web/tests/unit/ui-primitives.test.tsx` | new | the four new primitives |
 | `apps/web/README.md` | new | the install, the build, the export, the test and the gate of the frontend |
 | `scripts/gate_web.sh` | changed | the check of the export of the scenarios |
@@ -1208,7 +1245,7 @@ gives:
 
 | File | Status | What changed and why |
 | --- | --- | --- |
-| `apps/web/package.json` | changed | the floor of the Node: the `engines.node` of the manifest went from `>=20.0.0` to `>=24.0.0`, so that the manifest, the lock file, the README of the frontend and the workflow of the repository state one floor and not three |
+| `apps/web/package.json` | changed | the floor of the Node: the `engines.node` of the manifest went from `>=20.0.0` to `>=24.0.0`, so that the manifest, the lock file, the README of the frontend and the workflow of the repository state one floor and not three. The manifest also declares the hook `pretest`, which runs the copy of the published artifacts before the unit tests, so that the suite of a checkout that has never built the frontend reads the catalog of the repository |
 | `apps/web/package-lock.json` | changed | the same floor, in the lock file: EXACTLY ONE line moved, the `engines.node` of the root package. No dependency was added, no dependency was removed and no version of a dependency moved |
 | `apps/web/playwright.config.ts` | changed | it reads the port and the origin of the suite from `apps/web/tests/e2e/site-origin.ts`, so that the origin the suite serves and the origin the specs of the network guard assert are the same by construction, and it never reuses a server that is already answering |
 | `apps/web/components/ui/Badge.tsx` | changed | the component already existed: only its docstring and its `__all__` changed, so that the module carries the convention of the surface of the repository |
@@ -1292,6 +1329,9 @@ Set C owes:
   `apps/web/tests/unit/features/replay-scenario-page.test.tsx`, which Set D writes: the route
   renders the scenario that the catalog publishes, and the URL of the page carries only the
   identifier and the preferences.
+- `replay-catalog.test.ts`: the reader finds the catalog in the copy that the site serves, it
+  falls back to the published source when the copy is not there yet, and it refuses a catalog that
+  is missing, one that is not a JSON document and one whose card does not pass the contract.
 
 Set D owes:
 
@@ -1305,6 +1345,9 @@ Set D owes:
   the backend is never called.
 - The README of the frontend: the install, the build, the export, the test and the gate, with the
   command of each one.
+- The copy of the published artifacts runs before the unit tests: the manifest of the package
+  declares the hook `pretest` beside the hook `prebuild`, and the case that pins it fails when the
+  hook is gone.
 
 ### The checks before the commit
 

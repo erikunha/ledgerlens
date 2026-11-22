@@ -43,6 +43,30 @@ function findScript(): string {
 /** The script under test: the copy the build of the frontend runs. */
 const SCRIPT = findScript();
 
+/**
+ * Finds the manifest of the package of the frontend.
+ *
+ * Why the search goes up from the working folder: the test does not care where it is run from, and the manifest
+ * always lives beside the `scripts` folder of the package.
+ */
+function findManifest(): string {
+  let current = process.cwd();
+  for (;;) {
+    const candidate = join(current, "package.json");
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+    const parent = dirname(current);
+    if (parent === current) {
+      throw new Error("the manifest of the package was not found above the working folder");
+    }
+    current = parent;
+  }
+}
+
+/** The manifest of the package of the frontend. */
+const MANIFEST = findManifest();
+
 /** The folders the test created, so that every case can clean up after itself. */
 const temporaryFolders: string[] = [];
 
@@ -151,5 +175,18 @@ describe("the copy of the published artifacts", () => {
     expect(existsSync(join(destination, "s99", "events.jsonl"))).toBe(false);
     expect(existsSync(join(destination, "s99", "manifest.json"))).toBe(false);
     expect(existsSync(join(destination, "index.json"))).toBe(true);
+  });
+
+  it("runs the copy before the unit tests of the package", () => {
+    // It proves the order of the steps: the unit tests read the catalog that the site serves, so the copy has to be
+    // made before they run. Without this hook the continuous integration runs the tests on a checkout that has no
+    // copy at all, the route of a scenario finds no scenario, and the suite fails with a page of 404 that has nothing
+    // to do with the 404.
+    const manifest = JSON.parse(readFileSync(MANIFEST, "utf8")) as {
+      scripts?: Record<string, string>;
+    };
+
+    expect(manifest.scripts?.["pretest"]).toBe("node scripts/sync-replay-artifacts.mjs");
+    expect(manifest.scripts?.["prebuild"]).toBe("node scripts/sync-replay-artifacts.mjs");
   });
 });
