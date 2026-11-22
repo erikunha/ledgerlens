@@ -2,11 +2,17 @@
 
 The forbidden words are built from fragments, and the Portuguese markers from escapes, so this file does not
 match its own rules.
+
+The shapes of the secrets are the shapes of the scrubber of the repository, read from its own source, so the guard
+of the public repository is never narrower than the scrubber. The fakes that the repository carries on purpose are
+spared by their exact text, so a real credential is refused wherever it is written.
 """
 
+import ast
 import re
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -35,8 +41,92 @@ FORBIDDEN = re.compile("|".join(_WORDS), re.IGNORECASE)
 # a course acronym: upper case only and as a whole word
 FORBIDDEN_CASE = re.compile(r"\b" + "M" + "BA" + r"\b")
 HOME_PATH = re.compile("/" + "Users" + "/|/" + "home" + "/[a-z]")
-SECRET = re.compile("sk-[A-Za-z0-9]{20,}|" + "lsv" + "2_[A-Za-z0-9_]{10,}|api_key\\s*=\\s*['\"][A-Za-z0-9]{16,}")
 SKIP = {"uv.lock", "tests/test_public_clean.py"}
+
+# ---- The secrets -----------------------------------------------------------------------------------
+# The scrubber of the repository is the reference: `ledgerlens/observability/callbacks.py` redacts what it writes to
+# the observability, and a value that the repository would redact is a value that this guard refuses.
+SCRUBBER_SOURCE = ROOT / "ledgerlens" / "observability" / "callbacks.py"
+
+
+def _the_pattern_of_the_scrubber() -> str:
+    """The pattern of the secrets of the scrubber of the repository, read from its own source.
+
+    Why it is read and not written here: a copy of a pattern drifts from the pattern it copies, and the guard of the
+    public repository has to stay wider than the scrubber of the repository for as long as the scrubber lives.
+    """
+    tree = ast.parse(SCRUBBER_SOURCE.read_text(encoding="utf-8"))
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Assign):
+            continue
+        named = any(isinstance(target, ast.Name) and "SECRET" in target.id for target in node.targets)
+        if named and isinstance(node.value, ast.Call) and node.value.args:
+            return str(ast.literal_eval(node.value.args[0]))
+    raise AssertionError("the scrubber of the repository holds no pattern of the secrets")
+
+
+# The shapes that the scrubber of the repository does not know, and that the guard adds. They are the shape of a key
+# of an account of a provider, the shape of a connection string that carries a password and the shape of an
+# assignment of a key in a source or in a configuration.
+EXTRA_SECRET_SHAPES: dict[str, str] = {
+    "account_key": r"(?:sk|rk)_(?:live|test)_[0-9A-Za-z]{20,}",
+    "connection_string": r"(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis|amqp)://[^\s:/@]+:[^\s:/@]{3,}@",
+    "key_assignment": r"api_key\s*=\s*['\"][A-Za-z0-9]{16,}",
+}
+SECRET = re.compile("(" + _the_pattern_of_the_scrubber() + ")|" + "|".join(EXTRA_SECRET_SHAPES.values()))
+
+# The fakes that the repository carries on purpose: the fixtures of the tests of the domain and of the front, the
+# documentation of the design package and the text of the scrubber itself. They are spared by their exact text, so a
+# real credential is refused wherever it is written and only these exact strings pass.
+SECRET_FAKES = frozenset(
+    {
+        "sk-" + "adjusted",
+        "sk-" + "coverage",
+        "sk-" + "fakefake1234",
+        "sk-" + "first-not-real",
+        "sk-" + "from-the-environment",
+        "sk-" + "secret-value",
+        "sk-" + "second-not-real",
+        "sk-" + "sensitive",
+        "sk-" + "test-key",
+        "sk-" + "test-key-not-real",
+        "sk-" + "test-secret-marker",
+        "sk-" + "visitor-key-not-real",
+        "sk-" + "weighted",
+        "sk-" + "weighted-decision-utility",
+        "Bear" + "er ...",
+        "Bear" + "er abc.def-123",
+    }
+)
+# The fakes are matched as a whole word of the alphabet of a secret: a fake that is the prefix of a longer value is
+# not a fake, and the value that carries it is refused.
+_FAKES = re.compile(
+    "|".join(re.escape(fake) + r"(?![A-Za-z0-9_\-])" for fake in sorted(SECRET_FAKES, key=len, reverse=True))
+)
+
+
+def _without_the_fakes(line: str) -> str:
+    """The line without the fakes that the repository carries on purpose.
+
+    Why the fakes are taken out and the lines are not spared: a line of the documentation may carry a fake and a real
+    credential at the same time, and the real credential has to be refused.
+    """
+    return _FAKES.sub(" ", line)
+
+
+# The values that the guard has to refuse, one per shape. They are built from fragments, so this file does not hold
+# the shape of a secret in its own text.
+BAD_VALUES: dict[str, str] = {
+    "provider_key": "sk-" + "proj-abcdefghijklmnopqrstuvwxyz012345",
+    "account_key": "sk_" + "live_abcdefghijklmnopqrstuvwxyz012345",
+    "tracing_token": "lsv" + "2_pt_abcdefghijklmnopqrstuvwxyz",
+    "authorization": "Bear" + "er abcdefghijklmnopqrstuvwx",
+    "repository_token": "ghp_" + "abcdefghijklmnopqrstuvwxyz0123456789",
+    "cloud_key_id": "AKIA" + "ABCDEFGHIJKLMNOP",
+    "search_key": "AIza" + "abcdefghijklmnopqrstuvwxyz0123456789",
+    "connection_string": "postgresql://user:" + "hunter2pass@db:5432/x",
+    "key_assignment": "api_key = '" + "abcdefghijklmnopqrst'",
+}
 
 # ---- Portuguese -----------------------------------------------------------------------------------
 # Letters English never uses, words that only exist in Portuguese, and two function words that English
@@ -92,11 +182,16 @@ def _lines(name: str):
     yield 0, name
 
 
-def _offenders(*patterns: re.Pattern[str]) -> list[str]:
+def _offenders(*patterns: re.Pattern[str], prepare: Callable[[str], str] | None = None) -> list[str]:
+    """The places where a pattern of the rules matches, line by line.
+
+    Why the line may be prepared before it is read: the guard of the secrets spares the fakes that the repository
+    carries on purpose, and it spares them without sparing the rest of the line.
+    """
     found = []
     for name in _files():
         for number, line in _lines(name):
-            if isinstance(line, str) and any(p.search(line) for p in patterns):
+            if isinstance(line, str) and any(p.search(prepare(line) if prepare else line) for p in patterns):
                 found.append(f"{name}:{number}")
     return found
 
@@ -185,7 +280,59 @@ def test_no_machine_paths_in_tracked_files():
 
 
 def test_no_secrets_in_tracked_files():
-    assert not _offenders(SECRET)
+    assert not _offenders(SECRET, prepare=_without_the_fakes)
+
+
+def test_the_guard_of_the_secrets_fires_on_a_value_of_every_shape() -> None:
+    """Every shape that the guard knows refuses a value of that shape.
+
+    Why the values are built from fragments: this file does not hold the shape of a secret in its own text.
+    """
+    for shape, value in BAD_VALUES.items():
+        assert SECRET.search(_without_the_fakes(value)), shape
+
+
+def test_the_guard_of_the_secrets_is_never_narrower_than_the_scrubber_of_the_repository() -> None:
+    """The guard of the public repository holds the pattern of the scrubber of the repository.
+
+    Why it matters: the scrubber decides what the repository writes to the observability, and the guard decides what
+    the repository may hold. A value that the scrubber would redact is a value that the guard has to refuse, and the
+    only way to be sure of it is to hold the very pattern of the scrubber.
+    """
+    assert f"({_the_pattern_of_the_scrubber()})" in SECRET.pattern
+    scrubber = re.compile(_the_pattern_of_the_scrubber())
+    for value in BAD_VALUES.values():
+        if scrubber.search(value):
+            assert SECRET.search(value), value
+
+
+def test_the_guard_of_the_secrets_spares_the_material_of_the_repository() -> None:
+    """The material of the repository that carries a shape on purpose passes the guard.
+
+    Why the values are here and not only in the list of the fakes: a shape that the guard refuses and that the
+    repository needs is a shape that the guard has to know, and the test says which one.
+    """
+    for value in (
+        "sk-weighted",
+        "sk-visitor-key-not-real",
+        "Bearer abc.def-123",
+        "postgresql://ledgerlens@postgres:5432/ledgerlens_sandbox",
+        "postgresql://ledgerlens@127.0.0.1:5433/ledgerlens_sandbox",
+    ):
+        assert not SECRET.search(_without_the_fakes(value)), value
+
+
+def test_the_fakes_that_the_guard_spares_are_in_the_repository() -> None:
+    """Every fake that the guard spares is a fake that the repository really carries.
+
+    Why it matters: a list of exemptions that grows values nobody writes is a list that hides real credentials, and
+    this test keeps the list honest.
+    """
+    material = "\n".join(
+        line for name in _files() for _, line in _lines(name) if isinstance(line, str)
+    )
+    for fake in SECRET_FAKES:
+        assert fake in material, fake
 
 
 # ---- The dashes ------------------------------------------------------------------------------------

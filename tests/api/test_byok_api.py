@@ -22,7 +22,8 @@ that was read, and the run reads the ledger of that branch and not the ledger of
 (p) the run carries the case of the application and the coordinator of the caller is never rewritten, so a
 coordinator keeps the case it was built with (ADR-038); (q) the API never accepts an endpoint, so a
 body that carries one is refused, and a deployment that points the adapter at a link-local endpoint
-is refused before any provider is called, with the code of the rule (FR-017).
+is refused before any provider is called, with the code of the rule (FR-017);
+(r) a refusal of the live mode carries the headers it was given, the way the refusals of the sandbox do (ADR-047).
 
 Everything offline, with no key and no network: the provider is the fake adapter of the domain and the tests never
 open a socket. The application of the tests is wired the way a deployment wires it: one session issuer over one key
@@ -53,7 +54,7 @@ from pydantic import ValidationError  # noqa: E402
 from ledgerlens.api import byok as byok_api  # noqa: E402
 from ledgerlens.api.byok import LiveRunRequest, RunLimits, create_app  # noqa: E402
 from ledgerlens.api.live_run import LiveRunCoordinator, LiveRunPlan, ModelCaller  # noqa: E402
-from ledgerlens.api.sandbox import SESSION_COOKIE  # noqa: E402
+from ledgerlens.api.sandbox import SESSION_COOKIE, ContractError  # noqa: E402
 from ledgerlens.byok.adapter import (  # noqa: E402
     ENDPOINT_LINK_LOCAL,
     EndpointRefused,
@@ -1909,6 +1910,63 @@ def test_the_api_extra_installs_jsonschema() -> None:
 
     assert any(requirement.startswith("jsonschema") for requirement in extras["api"])
     assert any(requirement.startswith("jsonschema") for requirement in extras["dev"])
+
+
+# --- the refusals of the live mode ----------------------------------------------------------------------
+
+
+def test_a_refusal_of_the_live_facade_carries_the_headers_it_was_given(
+    online: None, vault: CredentialVault, issuer: SessionIssuer
+) -> None:
+    """ADR-047: the headers of a refusal of the live mode reach the answer of the facade.
+
+    Why this test exists: the handler of the wired application merges the headers of the refusal into the answer and
+    the handler of the live facade wrote the header of the version of the schema alone, so a refusal of the live mode
+    that carried a header would have lost it on the way out.
+
+    Why the refusal is raised by a route of the test: no refusal of the live mode carries a header today, and the
+    defect is the handler and not a route, so the test raises the refusal that the handler has to answer.
+    """
+    app = create_app(vault=vault, registry=_registry(), session_issuer=issuer)
+
+    @app.get("/v1/a-refusal-that-carries-a-header")
+    def a_refusal() -> None:
+        raise ContractError(
+            429,
+            byok_api.CODE_RUN_RUNNING,
+            "the run is still running",
+            headers={"Retry-After": "7"},
+        )
+
+    with TestClient(app) as client:
+        response = client.get("/v1/a-refusal-that-carries-a-header")
+
+    assert response.status_code == 429
+    assert response.headers["Retry-After"] == "7"
+    # The version of the schema is still there: the header of the refusal is merged into the answer, not over it.
+    assert response.headers[byok_api.SCHEMA_VERSION_HEADER] == byok_api.SCHEMA_VERSION
+
+
+def test_a_refusal_of_the_live_facade_without_headers_carries_only_the_version_of_the_schema(
+    online: None, vault: CredentialVault, issuer: SessionIssuer
+) -> None:
+    """A refusal that carries no header carries no other header than the version of the schema.
+
+    Why this test exists: the merge of the headers of the refusal must not invent one, or every refusal of the live
+    mode would answer with a header that the refusal never asked for.
+    """
+    app = create_app(vault=vault, registry=_registry(), session_issuer=issuer)
+
+    @app.get("/v1/a-refusal-without-a-header")
+    def a_refusal() -> None:
+        raise ContractError(404, byok_api.CODE_NOT_FOUND, "no such model in the allowlist of the server")
+
+    with TestClient(app) as client:
+        response = client.get("/v1/a-refusal-without-a-header")
+
+    assert response.status_code == 404
+    assert "Retry-After" not in response.headers
+    assert response.headers[byok_api.SCHEMA_VERSION_HEADER] == byok_api.SCHEMA_VERSION
 
 
 def test_the_docstring_of_the_facade_does_not_claim_a_cookie_in_common() -> None:

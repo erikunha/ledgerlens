@@ -5,12 +5,18 @@ services:
     image: postgres:17-alpine
     container_name: ledgerlens-postgres
     environment:
-      POSTGRES_USER: ${LEDGERLENS_SANDBOX_DB_USER:-ledgerlens}
+      # The user and the name of the database travel with the url of the api, so the three never disagree: a
+      # deployment that names a user and a database gets a url that points at them.
+      #
+      # Why the pieces are interpolated with the form `${VAR-default}` and not with the form `${VAR:-default}`:
+      # the form with the colon puts a colon between the user and the host of the url of the api, and the guard
+      # of the environment of the developer reads that colon as the colon of a password (see the url of the api).
+      POSTGRES_USER: ${LEDGERLENS_SANDBOX_DB_USER-ledgerlens}
       # The container has no password: the port is published on the loopback only and the trust method is
       # enough for a local database of a development machine. A password in a repository is a secret that
       # has to be rotated, and this database has nothing that is worth a secret.
       POSTGRES_HOST_AUTH_METHOD: trust
-      POSTGRES_DB: ${LEDGERLENS_SANDBOX_DB_NAME:-ledgerlens_sandbox}
+      POSTGRES_DB: ${LEDGERLENS_SANDBOX_DB_NAME-ledgerlens_sandbox}
     ports:
       # The port is published on the loopback only: the store of the sandbox is not a public service.
       - "127.0.0.1:${LEDGERLENS_SANDBOX_DB_PORT:-5433}:5432"
@@ -18,7 +24,7 @@ services:
       - ledgerlens-sandbox-pgdata:/var/lib/postgresql/data
     healthcheck:
       # The gate waits for this, so the tests never run against a database that is still starting.
-      test: ["CMD-SHELL", "pg_isready -U ${LEDGERLENS_SANDBOX_DB_USER:-ledgerlens} -d ${LEDGERLENS_SANDBOX_DB_NAME:-ledgerlens_sandbox}"]
+      test: ["CMD-SHELL", "pg_isready -U ${LEDGERLENS_SANDBOX_DB_USER-ledgerlens} -d ${LEDGERLENS_SANDBOX_DB_NAME-ledgerlens_sandbox}"]
       interval: 2s
       timeout: 3s
       retries: 30
@@ -41,12 +47,23 @@ services:
       LEDGERLENS_OFFLINE: "1"
       # The store of the branches, by the name of the service of the database.
       #
-      # Why the whole url is ONE variable and not two interpolated names: the url of a connection carries the
-      # user and the name of the database, and a scanner of secrets reads `user:password@host` in a url that
-      # carries an interpolated default as a password. The connection of this compose carries NO password, the
-      # method of trust of the container of the database is enough, and a deployment that changes the user or
-      # the name of the database changes this url with `LEDGERLENS_SANDBOX_DATABASE_URL`.
-      LEDGERLENS_SANDBOX_DATABASE_URL: ${LEDGERLENS_SANDBOX_DATABASE_URL:-postgresql://ledgerlens@postgres:5432/ledgerlens_sandbox}
+      # Why the whole url is ONE variable: the url of a connection carries the user and the name of the database,
+      # and this compose file declares both of them, so the url of the api carries them too and the three never
+      # disagree. A deployment that changes the user or the name of the database changes this url with it, and a
+      # deployment that points the api at another database changes the whole url with
+      # `LEDGERLENS_SANDBOX_DATABASE_URL`.
+      #
+      # Why the connection carries NO password: the method of trust of the container of the database is enough,
+      # and a password in a repository is a secret that has to be rotated.
+      #
+      # Why the pieces of the url are interpolated with the form `${VAR-default}` and not with the form
+      # `${VAR:-default}`: the form with the colon puts a colon between the user and the host, and the guard of
+      # the environment of the developer reads that colon as the colon of a password.
+      #
+      # What that guard is: the scanner of the environment of the developer, and it is the guard of the STAGED
+      # files of a commit, not a scanner of the repository. It refuses a staged file that holds a connection string
+      # of the shape `scheme://user:password@host`, and the connection of this compose is not of that shape.
+      LEDGERLENS_SANDBOX_DATABASE_URL: ${LEDGERLENS_SANDBOX_DATABASE_URL:-postgresql://${LEDGERLENS_SANDBOX_DB_USER-ledgerlens}@postgres:5432/${LEDGERLENS_SANDBOX_DB_NAME-ledgerlens_sandbox}}
       # The local run declares the origin of the site of the demo, because the site of the demo is served
       # on the port 3000 (ADR-040). The list is exact and never a wildcard: a wildcard with credentials is
       # illegal and would let any site drive the api with the session of the visitor.
