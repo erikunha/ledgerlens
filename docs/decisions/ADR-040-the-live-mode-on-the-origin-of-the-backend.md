@@ -148,7 +148,7 @@ The parameters of the middleware are exact:
 | `allow_origins` | the exact origins of the setting, never a wildcard | a wildcard with credentials is illegal in the Fetch specification, and it would let any site drive the API with the session of the visitor |
 | `allow_credentials` | `True` | the session cookie has to travel |
 | `allow_methods` | `["GET", "POST", "DELETE", "OPTIONS"]` | the routes of the demo are a GET, a POST and a DELETE, and the preflight is answered by the middleware |
-| `allow_headers` | `["Content-Type", "Accept", "X-LedgerLens-Schema-Version"]` | the bodies are JSON, and the version header is the one the facade publishes |
+| `allow_headers` | `["Content-Type", "Accept", "X-LedgerLens-Schema-Version", "Idempotency-Key", "If-Match"]` | the bodies are JSON, the version header is the one the facade publishes, and the two headers of the commit and of the undo of a branch of the sandbox are the ones the browser sends in the preflight of the call (ADR-044) |
 | `expose_headers` | `["X-LedgerLens-Schema-Version", "X-LedgerLens-Key-Storage", "X-LedgerLens-Key-Erasure", "X-LedgerLens-Billing-Disclosure", "X-LedgerLens-Branch-Hash", "X-LedgerLens-Branch-State", "Cache-Control", "Pragma", "Expires"]` | the browser may only read the headers the server exposes, and the three disclosures live in headers |
 | `max_age` | `600` | the preflight is cached for ten minutes |
 
