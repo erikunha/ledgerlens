@@ -1,8 +1,12 @@
-"""The isolation between two visitors: the store refuses the branch of another session, and so does the domain.
+"""The isolation between two visitors: the store, the domain and the facade refuse the branch of another session.
 
 The rule is proven in the data and not only in the path of the domain layer: a store asked for the branch of another
 visitor returns nothing, whatever the caller does next, and the refusal is the same error as a branch that does not
 exist at all (FR-004, FR-005, FR-027, SC-001).
+
+The rule is proven with a real mutation and not only with a synthetic append: the work of one visitor is invisible to
+the other one, and a write sent against the branch of another session is refused by the facade and leaves nothing
+behind, neither an event nor a moved hash.
 """
 
 from __future__ import annotations
@@ -15,9 +19,11 @@ from ledgerlens.memory.long_term import CaseMemory
 from ledgerlens.run_context import canonical_session_id
 from ledgerlens.sandbox.branch import BranchLayer
 from ledgerlens.sandbox.memory import branch_run_context
-from ledgerlens.sandbox.snapshot import BaseSnapshot
-from ledgerlens.sandbox.store import BranchNotFound, FileBranchStore, SandboxEventRow
+from ledgerlens.sandbox.mutation import MutationCommand
+from ledgerlens.sandbox.snapshot import BaseResolver, BaseSnapshot
+from ledgerlens.sandbox.store import BranchNotFound, BranchStore, FileBranchStore, SandboxEventRow
 from ledgerlens.schemas import Coherence, InvestigationResult, Verdict
+from tests.sandbox.conftest import FakeClock
 
 
 def _event(branch_id: str) -> SandboxEventRow:
@@ -150,6 +156,109 @@ def test_the_domain_refuses_a_branch_that_does_not_exist_with_the_same_message(
     with pytest.raises(BranchNotFound) as of_missing:
         layer.status(other_session_id, "sb_" + "0" * 24)
     assert str(of_other.value) == str(of_missing.value)
+
+
+# --- the work of one visitor never reaches the branch of another ---------------------------------------
+
+
+def test_the_mutation_of_the_first_session_is_not_read_by_the_second_session(
+    store: BranchStore,
+    layer: BranchLayer,
+    session_id: str,
+    other_session_id: str,
+    scenario_id: str,
+    base_snapshot: BaseSnapshot,
+    adjustment: MutationCommand,
+) -> None:
+    """The real mutation of one visitor is invisible to the other one (FR-004, FR-005, SC-001).
+
+    Why the real mutation and not an append to the store: a synthetic append writes an event that no command ever
+    produced, so it proves that the store files the events of two branches apart, and not that the work of one
+    visitor is invisible to another one. This case commits a command through the layer, the way the facade does, and
+    then reads the branch of the second session.
+
+    Why the diff of the branch and not only its revision: the state of the branch of the second session has to be the
+    published case row for row, and the diff is what says that the values of the branch are the values of the base.
+
+    Why the branch of the first session is read as well: a mutation that was refused would leave the first branch
+    where it was, so the case proves that the mutation really happened before it proves that the other visitor does
+    not see it.
+    """
+    mine = layer.fork(session_id, scenario_id).branch
+    theirs = layer.fork(other_session_id, scenario_id).branch
+
+    layer.commit_mutation(session_id, mine.branch_id, adjustment)
+
+    # The mutation of the first visitor is a real one: its branch moved away from the base.
+    served_mine = layer.status(session_id, mine.branch_id)
+    assert served_mine.revision == 1
+    assert served_mine.current_canonical_hash != served_mine.base_canonical_hash
+    assert len(store.read_events(mine.branch_id, canonical_session_id(session_id))) == 1
+
+    # The branch of the second visitor still holds the base, its hash and no event at all.
+    served_theirs = layer.status(other_session_id, theirs.branch_id)
+    assert served_theirs.revision == 0
+    assert served_theirs.current_canonical_hash == served_theirs.base_canonical_hash
+    assert served_theirs.current_canonical_hash == base_snapshot.canonical_hash
+    assert layer.diff(other_session_id, theirs.branch_id).diff == []
+    assert len(store.read_events(theirs.branch_id, canonical_session_id(other_session_id))) == 0
+
+
+# --- the facade refuses the write of a branch of another session ---------------------------------------
+
+
+def test_the_mutation_sent_against_the_branch_of_another_session_is_refused_with_404(
+    store: BranchStore,
+    base_resolver: BaseResolver,
+    clock: FakeClock,
+    scenario_id: str,
+    adjustment_payload: dict[str, object],
+    tmp_path: Path,
+) -> None:
+    """A write sent against the branch of another session is refused, and it leaves nothing behind (FR-004, SC-001).
+
+    Why the facade and not the store: the store refuses the append to the branch of another session, but the promise
+    is about the answer the visitor sees, and the answer is the one of the facade. The case therefore sends a real
+    request, with the headers of the contract, from the session of the second visitor against the branch of the first
+    one.
+
+    Why nothing is written anywhere: the refusal happens before the work, so neither branch of the two visitors holds
+    an event of the refused request, and the hash of the branch of the first visitor is the one it had before the
+    request was sent.
+    """
+    from fastapi.testclient import TestClient
+
+    from ledgerlens.api.sandbox import BRANCH_HASH_HEADER, create_app
+
+    app = create_app(store=store, base_resolver=base_resolver, clock=clock, runtime_dir=tmp_path)
+    first = TestClient(app)
+    second = TestClient(app)
+    mine_session = first.post("/v1/sessions").json()["id"]
+    theirs_session = second.post("/v1/sessions").json()["id"]
+    mine = first.post("/v1/sandboxes", json={"scenario_id": scenario_id}).json()
+    theirs = second.post("/v1/sandboxes", json={"scenario_id": scenario_id}).json()
+
+    before = first.get(f"/v1/sandboxes/{mine['id']}")
+    assert before.status_code == 200
+
+    refused = second.post(
+        f"/v1/sandboxes/{mine['id']}/mutations",
+        json={"kind": "refund.apply_fx_adjustment", "data": adjustment_payload},
+        headers={"Idempotency-Key": "cmd-0002", "If-Match": "0"},
+    )
+
+    assert refused.status_code == 404
+    body = refused.json()
+    assert body["code"] == "NOT_FOUND"
+    assert mine["id"] not in body["message"]
+    # The refused request left no event in the branch of the first visitor and none in the branch of the second one.
+    assert store.read_events(mine["id"], canonical_session_id(mine_session)) == []
+    assert store.read_events(theirs["id"], canonical_session_id(theirs_session)) == []
+    # The branch of the first visitor kept its hash and its revision.
+    after = first.get(f"/v1/sandboxes/{mine['id']}")
+    assert after.status_code == 200
+    assert after.headers[BRANCH_HASH_HEADER] == before.headers[BRANCH_HASH_HEADER]
+    assert after.json()["revision"] == before.json()["revision"] == 0
 
 
 # --- the case memory of one session is not read by another -------------------------------------------

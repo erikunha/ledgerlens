@@ -11,6 +11,8 @@ What the tests hold:
 * the idle deadline moves with the activity of the visitor and the absolute deadline never moves, and the expiry of a
   branch is the earlier of the two;
 * the layer asks the module for the expiry, so there is one rule of the time to live and not two;
+* a read and a mutation of a branch that outlived its time to live answer `410` with the code `BRANCH_EXPIRED`, so a
+  dead branch is never served and never written;
 * the cleanup deletes the row of an expired branch, its events and its answers, and leaves the published artifacts
   of the repository untouched;
 * the cleanup leaves a branch that is not expired alone, and the branch of a visitor that is still there is still
@@ -51,6 +53,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 PUBLISHED_FILES = (PROJECT_ROOT / "data" / "scenarios.json", PROJECT_ROOT / "data" / "ledger.db")
 # The command of the cleanup, the second way of cleaning up (ADR-029).
 CLEANUP_SCRIPT = PROJECT_ROOT / "scripts" / "cleanup_sandbox.py"
+# The idle deadline of the branch of the case of the facade: one minute, so the case proves the rule without waiting
+# an hour for the expiry.
+SHORT_IDLE_TTL_SECONDS = 60
+# The setting that names the idle deadline of a branch in the configuration of the deployment.
+IDLE_TTL_ENV = "LEDGERLENS_SANDBOX_BRANCH_IDLE_TTL_SECONDS"
 
 
 def _digests() -> dict[str, str | None]:
@@ -197,6 +204,62 @@ def test_the_layer_asks_the_module_for_the_expiry(
     assert idle_ttl_seconds == layer.idle_ttl_seconds
     assert absolute_ttl_seconds == layer.absolute_ttl_seconds
     assert forked.expires_at == expiry_of(forked.last_activity_at, forked.created_at)
+
+
+# --- the refusal of the facade for an expired branch ---------------------------------------------------
+
+
+def test_a_read_and_a_mutation_of_an_expired_branch_answer_410(
+    store: BranchStore,
+    base_resolver: BaseResolver,
+    clock: FakeClock,
+    scenario_id: str,
+    adjustment_payload: dict[str, object],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """A branch that outlived its time to live answers `410` with the code of the contract, on a read and on a write.
+
+    Why the facade and not the layer: the promise of the time to live is about the answer the visitor sees, and the
+    answer of the facade is the one that carries a status and a code (FR-023, SC-011). The case therefore forks through
+    the route of the contract and asks for the branch twice: once with a read and once with a mutation.
+
+    Why a mutation and not only a read: a read that is refused proves that the branch is not served, and a mutation
+    that is refused proves that the branch is not written either, so a branch that is dead cannot change anything.
+
+    Why the deadline is short: the branch of this case is given one minute of life, and the case waits for the expiry
+    with the clock of the suite and not for an hour (FR-031).
+
+    Why the client is not a context manager: the job of the cleanup runs in the lifespan of the application, and the
+    sweep would delete the branch that this case wants to see refused. The branch outlives its deadline here, so the
+    answer of the facade is the one of the expiry and not the one of a branch that does not exist any more.
+    """
+    from fastapi.testclient import TestClient
+
+    from ledgerlens.api.sandbox import create_app
+
+    monkeypatch.setenv(IDLE_TTL_ENV, str(SHORT_IDLE_TTL_SECONDS))
+    app = create_app(store=store, base_resolver=base_resolver, clock=clock, runtime_dir=tmp_path)
+    client = TestClient(app)
+    issued = client.post("/v1/sessions")
+    assert issued.status_code == 201
+    created = client.post("/v1/sandboxes", json={"scenario_id": scenario_id}).json()
+
+    clock.advance(timedelta(seconds=SHORT_IDLE_TTL_SECONDS * 2))
+
+    read = client.get(f"/v1/sandboxes/{created['id']}")
+    mutation = client.post(
+        f"/v1/sandboxes/{created['id']}/mutations",
+        json={"kind": "refund.apply_fx_adjustment", "data": adjustment_payload},
+        headers={"Idempotency-Key": "cmd-0001", "If-Match": "0"},
+    )
+
+    assert read.status_code == 410
+    assert read.json()["code"] == "BRANCH_EXPIRED"
+    assert mutation.status_code == 410
+    assert mutation.json()["code"] == "BRANCH_EXPIRED"
+    # The refused mutation wrote nothing: a dead branch holds no event at all.
+    assert store.read_events(created["id"], canonical_session_id(issued.json()["id"])) == []
 
 
 # --- the cleanup of the expired branches -------------------------------------------------------------------
