@@ -27,6 +27,9 @@ The manifest that is checked is the one of the root, `<root>/data/eval/datasets.
 another one. A manifest outside the root is refused, because a check of another root that wrote the manifest of
 the repository would pin the files of one root to the manifest of another.
 
+A dataset whose path resolves outside the root is refused as well, and the file it points at is never read: a check
+that read it would be reading a file that is not a dataset of the repository.
+
 A data problem is never a traceback. Every problem is a line of plain English that names the dataset, the file
 and the two values that disagree, because the reader of the failure is a person and not a stack trace.
 

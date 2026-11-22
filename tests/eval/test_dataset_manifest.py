@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -120,6 +121,72 @@ def test_a_line_that_is_not_a_json_object_is_a_failure(tmp_path: Path) -> None:
         fingerprint_dataset(path)
 
     assert "dataset.jsonl" in str(caught.value)
+
+
+# --- the files that cannot be read ------------------------------------------------------------------------
+
+
+def test_a_dataset_that_is_not_valid_utf8_is_an_error(tmp_path: Path) -> None:
+    """A dataset whose bytes are not valid UTF-8 is a data problem and not a crash of the check."""
+    path = tmp_path / "dataset.jsonl"
+    path.write_bytes(b'{"id": "a"}\n\xff\xfe\n')
+
+    with pytest.raises(ManifestError) as caught:
+        fingerprint_dataset(path)
+
+    message = str(caught.value)
+    assert "dataset.jsonl" in message
+    assert "UTF-8" in message
+
+
+def test_a_manifest_that_is_not_valid_utf8_is_an_error(tmp_path: Path) -> None:
+    """A manifest file whose bytes are not valid UTF-8 is refused with a sentence and not with a crash."""
+    path = tmp_path / "datasets.json"
+    path.write_bytes(b'{"datasets": [\xff]}')
+
+    with pytest.raises(ManifestError) as caught:
+        load_manifests(path)
+
+    message = str(caught.value)
+    assert "datasets.json" in message
+    assert "UTF-8" in message
+
+
+def test_a_file_that_cannot_be_opened_is_an_error(tmp_path: Path) -> None:
+    """A file that the process cannot open is a data problem and not a crash of the check.
+
+    A directory in the place of the file is the portable way to make the open fail: the permission of a file does
+    not stop the process that owns it on some machines.
+    """
+    path = tmp_path / "dataset.jsonl"
+    path.mkdir()
+
+    with pytest.raises(ManifestError) as caught:
+        fingerprint_dataset(path)
+
+    message = str(caught.value)
+    assert "dataset.jsonl" in message
+    assert "could not be read" in message
+
+
+@pytest.mark.skipif(
+    hasattr(os, "geteuid") and os.geteuid() == 0,
+    reason="a process that is root opens a file whatever the permission of the file is",
+)
+def test_a_file_without_the_permission_to_be_read_is_an_error(tmp_path: Path) -> None:
+    """A file the process may not open is a data problem and not a crash of the check."""
+    path = tmp_path / "dataset.jsonl"
+    path.write_text('{"id": "a"}\n', encoding="utf-8")
+    path.chmod(0o000)
+    try:
+        with pytest.raises(ManifestError) as caught:
+            fingerprint_dataset(path)
+    finally:
+        path.chmod(0o644)
+
+    message = str(caught.value)
+    assert "dataset.jsonl" in message
+    assert "could not be read" in message
 
 
 # --- the reading of the manifest file ---------------------------------------------------------------------
@@ -337,6 +404,120 @@ def test_the_problems_come_in_the_order_of_the_contract(tmp_path: Path) -> None:
     assert "d" * 64 in problems[1]
     assert "9" in problems[2]
     assert "hidden.jsonl" in problems[3]
+
+
+# --- the files that cannot be read, seen through the check ----------------------------------------------------
+
+
+def test_a_dataset_that_is_not_valid_utf8_is_a_problem_and_not_a_crash(tmp_path: Path) -> None:
+    """The comparison of the manifest with the disk turns a dataset that is not valid UTF-8 into a sentence."""
+    dataset = tmp_path / "data" / "eval" / "eval_cases.jsonl"
+    dataset.parent.mkdir(parents=True, exist_ok=True)
+    dataset.write_bytes(b'{"id": "a"}\n\xff\xfe\n')
+    _write_manifest(tmp_path, [_entry()])
+
+    problems = verify_manifests(tmp_path)
+
+    assert len(problems) == 1
+    assert "UTF-8" in problems[0]
+    assert "eval_cases" in problems[0]
+
+
+def test_a_manifest_that_is_not_valid_utf8_is_a_problem_and_not_a_crash(tmp_path: Path) -> None:
+    """A manifest file that is not valid UTF-8 is one sentence and not a crash of the check."""
+    manifest = tmp_path / "data" / "eval" / "datasets.json"
+    manifest.parent.mkdir(parents=True, exist_ok=True)
+    manifest.write_bytes(b'{"datasets": [\xff]}')
+
+    problems = verify_manifests(tmp_path)
+
+    assert len(problems) == 1
+    assert "UTF-8" in problems[0]
+    assert "datasets.json" in problems[0]
+
+
+def test_a_manifest_that_cannot_be_opened_is_a_problem_and_not_a_crash(tmp_path: Path) -> None:
+    """A manifest file that cannot be opened is one sentence and not a crash of the check."""
+    manifest = tmp_path / "data" / "eval" / "datasets.json"
+    manifest.mkdir(parents=True)
+
+    problems = verify_manifests(tmp_path)
+
+    assert len(problems) == 1
+    assert "could not be read" in problems[0]
+
+
+def test_a_dataset_that_cannot_be_opened_is_a_problem_and_not_a_crash(tmp_path: Path) -> None:
+    """A declared dataset that cannot be opened is one sentence and not a crash of the check."""
+    dataset = tmp_path / "data" / "eval" / "eval_cases.jsonl"
+    dataset.mkdir(parents=True)
+    _write_manifest(tmp_path, [_entry()])
+
+    problems = verify_manifests(tmp_path)
+
+    assert len(problems) == 1
+    assert "could not be read" in problems[0]
+
+
+# --- the paths that leave the root ---------------------------------------------------------------------------
+
+
+def test_a_symlink_that_points_outside_the_root_is_refused(tmp_path: Path) -> None:
+    """A path that names a link inside the root and points outside of it is refused before the file is read.
+
+    The file outside the root holds bytes that are not valid UTF-8: a check that had read the file would say that
+    the file is not valid UTF-8, and the sentence of the refusal has to be the one about the root instead. The
+    check therefore refused the path and never opened the file.
+    """
+    root = tmp_path / "repo"
+    outside = tmp_path / "outside.jsonl"
+    outside.write_bytes(b"\xff\xfe")
+    link = root / "data" / "eval" / "eval_cases.jsonl"
+    link.parent.mkdir(parents=True, exist_ok=True)
+    link.symlink_to(outside)
+    _write_manifest(root, [_entry(path="data/eval/eval_cases.jsonl")])
+
+    problems = verify_manifests(root)
+
+    assert len(problems) == 1
+    assert "outside the root" in problems[0]
+    assert "UTF-8" not in problems[0]
+
+
+def test_a_symlink_that_points_inside_the_root_is_accepted(tmp_path: Path) -> None:
+    """A link that points at a file inside the root is a dataset of the repository and is checked as one."""
+    root = tmp_path / "repo"
+    target = root / "data" / "target.jsonl"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text('{"id": "a"}\n', encoding="utf-8")
+    digest, count = fingerprint_dataset(target)
+    link = root / "data" / "eval" / "link.jsonl"
+    link.parent.mkdir(parents=True, exist_ok=True)
+    link.symlink_to(target)
+    _write_manifest(root, [_entry(path="data/eval/link.jsonl", sha256=digest, records_count=count)])
+
+    problems = verify_manifests(root)
+
+    assert problems == []
+
+
+def test_the_update_does_not_read_a_file_outside_the_root(tmp_path: Path) -> None:
+    """The update keeps the values of an entry whose path leaves the root and says so in its messages."""
+    root = tmp_path / "repo"
+    outside = tmp_path / "outside.jsonl"
+    outside.write_bytes(b"\xff\xfe")
+    link = root / "data" / "eval" / "eval_cases.jsonl"
+    link.parent.mkdir(parents=True, exist_ok=True)
+    link.symlink_to(outside)
+    manifest = _write_manifest(root, [_entry(path="data/eval/eval_cases.jsonl")])
+    manifests = load_manifests(manifest)
+
+    result = update_fingerprints(manifests, root)
+
+    assert result.entries[0].sha256 == SHA
+    assert result.entries[0].records_count == 2
+    assert len(result.messages) == 1
+    assert "outside the root" in result.messages[0]
 
 
 # --- the canonical text and the update ----------------------------------------------------------------------

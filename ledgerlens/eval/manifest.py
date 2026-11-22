@@ -26,8 +26,14 @@ other artifacts with their own contract: the recording of the scenario `S01` liv
 declares its own files in its own manifest (ADR-014), so it is not a dataset of this manifest.
 
 The path of an entry is relative to the root of the check and may not leave it. A path that is absolute or that
-climbs out of the root with a `..` part is refused when the manifest is read, before the disk is touched, so the
-manifest of a repository can never pin a file that lives outside it.
+climbs out of the root with a `..` part is refused when the manifest is read, before the disk is touched. A path that
+names a symlink inside the root and points outside of it is refused later, where the root is known: the path is
+resolved and compared with the resolved root before the file is read. The two refusals together are the promise that
+the manifest of a repository can never pin a file that lives outside it.
+
+A file that the process cannot open and a file whose bytes are not valid UTF-8 are data problems and not crashes.
+Every read of this module turns one of them into a `ManifestError` that names the file and the reason, so a data
+problem is a sentence and never a traceback.
 
 The rule that decides what is wrong between the manifest and the disk lives in this module and only here.
 `manifest_problems` is that rule, `verify_manifests` gives its sentences and the check of the gate prints them.
@@ -79,6 +85,35 @@ class ManifestError(Exception):
     """
 
 
+def _reason(error: OSError) -> str:
+    """The reason of an OSError in plain words, so a sentence names the reason and not the class."""
+    return error.strerror or str(error) or type(error).__name__
+
+
+def _read_bytes(path: Path) -> bytes:
+    """The bytes of a file, or a `ManifestError` that names the file and the reason.
+
+    Why it exists: every read of this module goes through this door, so a file that the process cannot open is a
+    sentence and never a traceback.
+    """
+    try:
+        return path.read_bytes()
+    except OSError as error:
+        raise ManifestError(f"The file {path} could not be read: {_reason(error)}.") from error
+
+
+def _decode_utf8(raw: bytes, path: Path) -> str:
+    """The text of the bytes of a file, or a `ManifestError` that names the file and the reason.
+
+    Why it exists: a dataset and a manifest are text, and bytes that are not valid UTF-8 are a data problem of the
+    file, not a crash of the check.
+    """
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError as error:
+        raise ManifestError(f"The file {path} is not valid UTF-8: {error}.") from error
+
+
 @dataclass(frozen=True)
 class EvalDatasetManifest:
     """One dataset of `data/eval/`, pinned by the file it names and the role it plays.
@@ -120,30 +155,41 @@ def fingerprint_dataset(path: Path) -> tuple[str, int]:
     nonblank line that parses as a JSON object, and a line that does not parse is a failure and not a record, so a
     file that lost a line or gained a broken one cannot pass as the one the manifest describes.
 
-    Raises `ManifestError` when the file is missing or when a line of it does not parse as a JSON object.
+    Raises `ManifestError` when the file does not exist, when the process cannot open it, when its bytes are not
+    valid UTF-8 or when a line of it does not parse as a JSON object. Every message names the file and the reason.
     """
-    if not path.is_file():
+    if not path.exists():
         raise ManifestError(f"The file {path} does not exist, so it has no fingerprint.")
 
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for block in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(block)
+    try:
+        with path.open("rb") as handle:
+            for block in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(block)
+    except OSError as error:
+        raise ManifestError(f"The file {path} could not be read: {_reason(error)}.") from error
 
     count = 0
-    with path.open(encoding="utf-8") as handle:
-        for number, line in enumerate(handle, start=1):
-            if not line.strip():
-                continue
-            try:
-                record = json.loads(line)
-            except json.JSONDecodeError as error:
-                raise ManifestError(f"The line {number} of the file {path} is not valid JSON: {error.msg}.") from error
-            if not isinstance(record, dict):
-                raise ManifestError(
-                    f"The line {number} of the file {path} is not a JSON object, so it is not a record."
-                )
-            count += 1
+    try:
+        with path.open(encoding="utf-8") as handle:
+            for number, line in enumerate(handle, start=1):
+                if not line.strip():
+                    continue
+                try:
+                    record = json.loads(line)
+                except json.JSONDecodeError as error:
+                    raise ManifestError(
+                        f"The line {number} of the file {path} is not valid JSON: {error.msg}."
+                    ) from error
+                if not isinstance(record, dict):
+                    raise ManifestError(
+                        f"The line {number} of the file {path} is not a JSON object, so it is not a record."
+                    )
+                count += 1
+    except UnicodeDecodeError as error:
+        raise ManifestError(f"The file {path} is not valid UTF-8: {error}.") from error
+    except OSError as error:
+        raise ManifestError(f"The file {path} could not be read: {_reason(error)}.") from error
 
     return digest.hexdigest(), count
 
@@ -208,25 +254,59 @@ def _check_path(dataset_id: str, declared: str, path: Path) -> None:
         )
 
 
+def _resolved_root(base: Path) -> Path:
+    """The root of a check with every symlink of the path resolved, so two paths are compared like for like.
+
+    Why it exists: the refusal of `_outside_the_root` compares a path with the root, and the comparison only means
+    something when both of them are resolved.
+    """
+    try:
+        return base.resolve()
+    except (OSError, RuntimeError):
+        return base.absolute()
+
+
+def _outside_the_root(base: Path, resolved_base: Path, declared: str) -> Path | None:
+    """The file a declared path points at when that file is outside the root, and None when it stays inside.
+
+    Why it exists: the refusal of `_check_path` is lexical and never touches the disk, so it cannot see a symlink.
+    A path that names a file inside the root may be a link that points outside of it, and the check would then read
+    a file that is not a dataset of the repository. The root is known here, so the path is resolved and compared
+    with the resolved root before the file is read.
+
+    A path that cannot be resolved is not refused here: the read that follows fails with its own reason, and that
+    reason is the honest one.
+    """
+    try:
+        resolved = (base / declared).resolve()
+    except (OSError, RuntimeError):
+        return None
+    try:
+        resolved.relative_to(resolved_base)
+    except ValueError:
+        return resolved
+    return None
+
+
 def load_manifests(path: Path = MANIFEST_PATH) -> tuple[EvalDatasetManifest, ...]:
     """The entries of the manifest file, already validated.
 
     Why it exists: the manifest file is hand written and reviewed, so it can carry a mistake. This function refuses
-    a file that is missing or is not JSON, an entry with a missing or an unknown field, a repeated `dataset_id`, a
-    `split_role` outside `SPLIT_ROLES`, a `sha256` that is not 64 lowercase hexadecimal characters, a negative
-    `records_count` and a `path` that is absolute or that leaves the root with a `..` part. Every message names the
-    file and the problem.
+    a file that is missing, that the process cannot open or whose bytes are not valid UTF-8, a file that is not JSON,
+    an entry with a missing or an unknown field, a repeated `dataset_id`, a `split_role` outside `SPLIT_ROLES`, a
+    `sha256` that is not 64 lowercase hexadecimal characters, a negative `records_count` and a `path` that is
+    absolute or that leaves the root with a `..` part. Every message names the file and the problem.
 
     Every field of the record is required in the file, `notes` apart: that one has a default of an empty string in the
     record, so an entry may leave it out. Without the other fields the entry does not say what the dataset is.
 
     Raises `ManifestError` for any of those.
     """
-    if not path.is_file():
+    if not path.exists():
         raise ManifestError(f"The manifest {path} does not exist.")
 
     try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload = json.loads(_decode_utf8(_read_bytes(path), path))
     except json.JSONDecodeError as error:
         raise ManifestError(f"The manifest {path} is not valid JSON: {error.msg}.") from error
 
@@ -306,8 +386,12 @@ def manifest_problems(
     The manifest that is checked is the one of the root, `<root>/data/eval/datasets.json`, unless `manifest_path`
     names another one. An empty list means the manifest agrees with the disk.
 
-    A manifest file that is missing or that is not valid JSON is a problem of its own and comes back as the only
-    problem of the list, so that the caller can print it and fail without a stack trace.
+    A manifest file that is missing, that the process cannot open, that is not valid UTF-8 or that is not valid JSON
+    is a problem of its own and comes back as the only problem of the list, so that the caller can print it and fail
+    without a stack trace.
+
+    A declared path that resolves outside the root is a declared file that cannot be read: it comes back as the
+    problem of the kind `unreadable` and the file it points at is never read.
     """
     base = PROJECT_ROOT if root is None else Path(root)
     manifest_file = base / MANIFEST_RELATIVE if manifest_path is None else Path(manifest_path)
@@ -321,9 +405,23 @@ def manifest_problems(
     wrong_count: list[ManifestProblem] = []
     unreadable: list[ManifestProblem] = []
 
+    resolved_base = _resolved_root(base)
     for manifest in sorted(manifests, key=lambda item: item.dataset_id):
         path = base / manifest.path
-        if not path.is_file():
+        outside = _outside_the_root(base, resolved_base, manifest.path)
+        if outside is not None:
+            unreadable.append(
+                ManifestProblem(
+                    kind="unreadable",
+                    message=(
+                        f"The dataset '{manifest.dataset_id}' declares the file '{manifest.path}' and the file could "
+                        f"not be read: the path '{manifest.path}' resolves to '{outside}', which is outside the root "
+                        f"'{base}'."
+                    ),
+                )
+            )
+            continue
+        if not path.exists():
             missing.append(
                 ManifestProblem(
                     kind="missing",
@@ -391,14 +489,15 @@ def verify_manifests(root: Path | None = None, manifest_path: Path | None = None
 
     Why it exists: the check in the gate calls this and refuses the build when the list is not empty. The order is
     the one of the contract: a declared file that does not exist, a declared file whose sha256 does not match, a
-    declared file whose record count does not match and a JSONL file of `data/eval/` that no entry declares. An empty
-    list means the manifest agrees with the disk.
+    declared file whose record count does not match, a declared file that exists and cannot be read, and a JSONL file
+    of `data/eval/` that no entry declares. An empty list means the manifest agrees with the disk.
 
     The sentences come from `manifest_problems`, which is the one implementation of the rule, so the check of the
     gate and any other caller see the same problems in the same order.
 
-    A manifest file that is missing or that is not valid JSON is a problem of its own and comes back as the only
-    sentence of the list, so that the caller can print it and fail without a stack trace.
+    A manifest file that is missing, that the process cannot open, that is not valid UTF-8 or that is not valid JSON
+    is a problem of its own and comes back as the only sentence of the list, so that the caller can print it and
+    fail without a stack trace.
     """
     return [problem.message for problem in manifest_problems(root=root, manifest_path=manifest_path)]
 
@@ -460,15 +559,26 @@ def update_fingerprints(manifests: Sequence[EvalDatasetManifest], root: Path | N
     sequence the caller passed is never changed, so a caller that keeps the tuple it read from the manifest and
     renders it writes the old values, and the caller that wants the new ones reads `entries`.
 
-    An entry whose file does not exist keeps its values and is reported in the messages.
+    An entry whose file does not exist keeps its values and is reported in the messages. An entry whose path resolves
+    outside the root keeps its values as well and is reported in the messages: the file it points at is not a dataset
+    of the repository and is never read.
     """
     base = PROJECT_ROOT if root is None else Path(root)
     messages: list[str] = []
     entries: list[EvalDatasetManifest] = []
+    resolved_base = _resolved_root(base)
 
     for manifest in manifests:
         path = base / manifest.path
-        if not path.is_file():
+        outside = _outside_the_root(base, resolved_base, manifest.path)
+        if outside is not None:
+            messages.append(
+                f"The dataset '{manifest.dataset_id}' was not updated because its file could not be read: the path "
+                f"'{manifest.path}' resolves to '{outside}', which is outside the root '{base}'."
+            )
+            entries.append(manifest)
+            continue
+        if not path.exists():
             messages.append(
                 f"The dataset '{manifest.dataset_id}' declares the file '{manifest.path}' and the file does not "
                 f"exist, so its sha256 and its record count were not recomputed."

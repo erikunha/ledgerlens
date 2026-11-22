@@ -106,7 +106,10 @@ and an empty note is allowed only when there is genuinely nothing to say.
 The module that reads it is `ledgerlens/eval/manifest.py`, with the record `EvalDatasetManifest` and the functions
 `fingerprint_dataset`, `load_manifests`, `verify_manifests`, `render_manifests` and `update_fingerprints`.
 `update_fingerprints` returns the frozen record `FingerprintUpdate`, with the entries that carry the fingerprints of the
-disk in `entries` and the sentences that say what moved in `messages`.
+disk in `entries` and the sentences that say what moved in `messages`. The rule that decides what is wrong between the
+manifest and the disk lives in `manifest_problems`, which answers with the records `ManifestProblem`: each one carries
+the kind of the problem and the sentence that says it. `verify_manifests` is the sentence view of that same rule, so
+the check and the module can never disagree about what is wrong.
 
 **What "the single source" means, and what it does not.** The manifest is the single source of what the DATASETS are:
 their digest, their count, their origin, their role and the rule that applies to them. It is not the single source of

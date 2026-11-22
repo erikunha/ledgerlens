@@ -231,6 +231,94 @@ def test_a_broken_manifest_is_a_refusal_and_not_a_traceback(tmp_path: Path) -> N
     assert "manifest" in output
 
 
+def test_a_dataset_that_is_not_valid_utf8_is_a_refusal_and_not_a_traceback(tmp_path: Path) -> None:
+    """A dataset whose bytes are not valid UTF-8 is a readable refusal, never a traceback."""
+    root, _manifest = _build_root(tmp_path)
+    dataset = root / "data" / "eval" / "cases.jsonl"
+    dataset.write_bytes(b'{"case_id": "c0"}\n\xff\xfe\n')
+
+    done = _run(root)
+
+    assert done.returncode != 0
+    output = done.stdout + done.stderr
+    assert "Traceback" not in output
+    assert "UTF-8" in output
+    assert "cases" in output
+
+
+def test_a_manifest_that_is_not_valid_utf8_is_a_refusal_and_not_a_traceback(tmp_path: Path) -> None:
+    """A manifest file whose bytes are not valid UTF-8 is a readable refusal, never a traceback."""
+    root = tmp_path / "repo"
+    manifest = root / "data" / "eval" / "datasets.json"
+    manifest.parent.mkdir(parents=True, exist_ok=True)
+    manifest.write_bytes(b'{"datasets": [\xff]}')
+
+    done = _run(root)
+
+    assert done.returncode != 0
+    output = done.stdout + done.stderr
+    assert "Traceback" not in output
+    assert "UTF-8" in output
+
+
+def test_a_dataset_that_cannot_be_opened_is_a_refusal_and_not_a_traceback(tmp_path: Path) -> None:
+    """A declared dataset that cannot be opened is a readable refusal, never a traceback."""
+    root, _manifest = _build_root(tmp_path)
+    dataset = root / "data" / "eval" / "cases.jsonl"
+    dataset.unlink()
+    dataset.mkdir()
+
+    done = _run(root)
+
+    assert done.returncode != 0
+    output = done.stdout + done.stderr
+    assert "Traceback" not in output
+    assert "could not be read" in output
+
+
+def test_a_symlink_that_points_outside_the_root_is_refused(tmp_path: Path) -> None:
+    """A dataset that is a link to a file outside the root is refused and the file outside is never read.
+
+    The manifest declares the sha256 and the record count of the file outside the root, so a check that read the
+    file would find the two of them in agreement and would pass. The refusal is the proof that the file was not
+    read as a dataset of the repository.
+    """
+    root = tmp_path / "repo"
+    outside = tmp_path / "outside.jsonl"
+    _write_jsonl(outside, 2)
+    link = root / "data" / "eval" / "cases.jsonl"
+    link.parent.mkdir(parents=True, exist_ok=True)
+    link.symlink_to(outside)
+    _write_manifest(root, [_entry("cases", "data/eval/cases.jsonl", _sha256(outside), 2)])
+
+    done = _run(root)
+
+    assert done.returncode != 0
+    output = done.stdout + done.stderr
+    assert "Traceback" not in output
+    assert "outside the root" in output
+    assert "cases" in output
+
+
+def test_write_refuses_a_symlink_that_points_outside_the_root(tmp_path: Path) -> None:
+    """The write refuses the entry whose path leaves the root and writes nothing."""
+    root = tmp_path / "repo"
+    outside = tmp_path / "outside.jsonl"
+    _write_jsonl(outside, 2)
+    link = root / "data" / "eval" / "cases.jsonl"
+    link.parent.mkdir(parents=True, exist_ok=True)
+    link.symlink_to(outside)
+    manifest = _write_manifest(root, [_entry("cases", "data/eval/cases.jsonl", _sha256(outside), 2)])
+    before = manifest.read_bytes()
+
+    done = _run(root, "--write")
+
+    assert done.returncode != 0
+    output = done.stdout + done.stderr
+    assert "outside the root" in output
+    assert manifest.read_bytes() == before
+
+
 def test_write_refuses_to_invent_an_entry(tmp_path: Path) -> None:
     """The write refuses to declare a file of the disk that the manifest does not declare."""
     root, manifest = _build_root(tmp_path)
