@@ -146,9 +146,9 @@ Avaliação online: 30 casos, três execuções de cada variante, `gpt-4.1-mini`
 - O agente completo (C) acerta os fatos com muito mais frequência que a chain sem ferramentas (A) e o agente ReAct (B), e é a única variante cujas respostas estão ancoradas em evidência citada.
 - A verificação mantém cerca de dois terços das respostas de C fora da fila de revisão humana. A e B não citam evidência, então toda resposta vai para revisão.
 - A trajetória de ferramentas de C chega a 0.73 com a equivalência declarada (ler um registro por id com `query_ledger` ou `get_ledger_record`), abaixo da meta de 0.80.
-- No seu conjunto de verificação de 43 casos o verificador acerta todos os vereditos: recall de contradição 1.00, sem falsos positivos.
+- No seu conjunto de verificação de 43 casos (`data/eval/verification_set.jsonl`) o verificador acerta todos os vereditos: recall de contradição 1.00, sem falsos positivos. Os 30 casos de texto desse conjunto são o conjunto de ajuste da varredura do [ADR-007](docs/decisions/ADR-007-nli-verification.md), então esta é uma medida sobre os dados em que os limiares foram escolhidos, e não sobre dados nunca vistos: nenhum conjunto deste repositório é reservado ([ADR-052](docs/decisions/ADR-052-the-manifest-of-the-eval-datasets.md)).
 - Um caso de B falhou em uma execução porque o modelo escreveu um passo ReAct malformado; o harness agora pula esses passos em vez de descartar o caso.
-- Trinta casos mostram uma tendência, não significância estatística. A execução custou cerca de US$ 0.59 a preço de tabela.
+- Trinta casos mostram uma tendência, não significância estatística. São os casos de `data/eval/eval_cases.jsonl`, um conjunto de ajuste deste repositório, então a corretude das três variantes é uma medida do ajuste delas e não uma generalização para dados nunca vistos ([ADR-052](docs/decisions/ADR-052-the-manifest-of-the-eval-datasets.md)). A execução custou cerca de US$ 0.59 a preço de tabela.
 
 O relatório completo está em [`data/eval/report_online.md`](data/eval/report_online.md); o relatório offline, com o modelo scriptado, está em [`data/eval/report_offline.md`](data/eval/report_offline.md).
 

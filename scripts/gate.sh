@@ -13,6 +13,13 @@ uv run ruff check
 echo "== pytest -q (offline)"
 uv run pytest -q
 
+# The datasets of the evaluation must stay pinned: a dataset that moves without the manifest moving makes the
+# numbers of the reports describe a file that is not on the disk anymore. The check reads the disk, writes
+# nothing, and refuses with a readable reason and a non zero exit code, so the gate stops on the reason and
+# not on a traceback.
+echo "== eval datasets (offline)"
+uv run python scripts/check_eval_datasets.py
+
 # The published artifacts must match the bundle they claim to show, or the site shows a recording that is not the
 # one that was made. The check writes nothing and fails the gate when it finds a difference.
 echo "== export check (offline)"
