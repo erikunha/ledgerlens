@@ -60,8 +60,8 @@ description: "Task list for the R1 public replay feature"
 - [x] T021 Configure the query provider in apps/web/lib/api/provider.tsx with the static friendly defaults and no retry on a missing artifact
 - [x] T022 [P] Create the primitive components in apps/web/components/ui: Button.tsx, Card.tsx, Tabs.tsx, Dialog.tsx, Sheet.tsx, Skeleton.tsx, Badge.tsx, Table.tsx and LiveRegion.tsx
 - [x] T023 Create the shell components in apps/web/features/shell: AppShell.tsx, Header.tsx, ModeIndicator.tsx, SkipLink.tsx and ProvenancePanel.tsx
-- [ ] T024 Write the unit tests of the reducer in apps/web/tests/unit/reducer.test.ts
-- [ ] T025 Write the unit tests of the validators in apps/web/tests/unit/validate.test.ts
+- [x] T024 Write the unit tests of the reducer in apps/web/tests/unit/reducer.test.ts - **DELIVERED in apps/web/tests/unit/replay-reducer.test.ts**: the unit tests of the replay carry the name of the module they cover.
+- [x] T025 Write the unit tests of the validators in apps/web/tests/unit/validate.test.ts - **DELIVERED in apps/web/tests/unit/replay-validate.test.ts**: the unit tests of the replay carry the name of the module they cover.
 - [x] T026 Implement the export of the static artifacts in ledgerlens/replay/site_export.py and the driver scripts/export_replay_site.py
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
@@ -78,7 +78,7 @@ description: "Task list for the R1 public replay feature"
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T027 [P] [US1] Write the end to end test of the landing and the catalog in apps/web/tests/e2e/catalog.spec.ts
+- [x] T027 [P] [US1] Write the end to end test of the landing and the catalog in apps/web/tests/e2e/catalog.spec.ts - **DELIVERED in two files**: apps/web/tests/e2e/catalog.spec.ts and apps/web/tests/e2e/landing.spec.ts, one suite per journey.
 - [x] T028 [P] [US1] Write the end to end test of the replay route with no credential in apps/web/tests/e2e/replay.spec.ts
 - [x] T029 [P] [US1] Write the network guard test in apps/web/tests/e2e/network.spec.ts that fails on any request outside the static origin
 
@@ -92,7 +92,7 @@ description: "Task list for the R1 public replay feature"
 - [x] T035 [P] [US1] Create the run overview component in apps/web/features/replay/RunOverview.tsx with the scenario, the question, the mode and the capture date
 - [x] T036 [US1] Create the empty and the failure states in apps/web/features/replay/ReplayEmptyState.tsx and apps/web/features/replay/ReplayErrorState.tsx
 - [x] T037 [US1] Keep the URL free of anything but the scenario identifier and the view preferences in apps/web/app/(public)/demo/[scenario]/page.tsx
-- [ ] T038 [US1] Add the page metadata in apps/web/app/layout.tsx and in apps/web/app/(public)/demo/[scenario]/page.tsx
+- [x] T038 [US1] Add the page metadata in apps/web/app/layout.tsx and in apps/web/app/(public)/demo/[scenario]/page.tsx - **DELIVERED in apps/web/app/(public)/replay/scenario/[scenario]/page.tsx**: the route of a scenario is under replay and not under demo, and the metadata of the scenario is a generateMetadata that names the card of the catalog.
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -108,7 +108,7 @@ description: "Task list for the R1 public replay feature"
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T039 [P] [US2] Write the end to end test of the playback, the pause and the reset in apps/web/tests/e2e/playback.spec.ts
+- [x] T039 [P] [US2] Write the end to end test of the playback, the pause and the reset in apps/web/tests/e2e/playback.spec.ts
 - [x] T040 [P] [US2] Write the unit test of the determinism of the seek in apps/web/tests/unit/seek.test.ts
 - [x] T041 [P] [US2] Write the keyboard test of the trace tree in apps/web/tests/e2e/trace-keyboard.spec.ts
 
@@ -168,17 +168,17 @@ description: "Task list for the R1 public replay feature"
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T063 [P] [US4] Write the end to end test of the ledger table and of the detail panel in apps/web/tests/e2e/ledger.spec.ts
+- [x] T063 [P] [US4] Write the end to end test of the ledger table and of the detail panel in apps/web/tests/e2e/ledger.spec.ts
 - [ ] T064 [P] [US4] Write the fixture of 1000 ledger rows in apps/web/tests/fixtures/ledger.ts
 
 ### Implementation for User Story 4
 
-- [ ] T065 [US4] Export the ledger rows that the run read and their identifiers in ledgerlens/replay/site_export.py
+- [x] T065 [US4] Export the ledger rows that the run read and their identifiers in ledgerlens/replay/site_export.py - **DELIVERED as an artifact of its own**: the export publishes site/replay/<scenario>/ledger.json and declares its digest in the provenance and in the card of the catalog (ADR-045).
 - [ ] T066 [US4] Create the payment table in apps/web/features/ledger/PaymentTable.tsx with the controlled sorting and filtering and the bounded rendering
 - [ ] T067 [US4] Create the record detail in apps/web/features/ledger/RecordDetail.tsx with the transaction, the refund, the rate and the policy trigger
-- [ ] T068 [P] [US4] Create the account switcher in apps/web/features/ledger/AccountSwitcher.tsx
-- [ ] T069 [US4] Mark the rows that the run read and write the status in words in apps/web/features/ledger/PaymentTable.tsx
-- [ ] T070 [US4] Add the ledger panel to the replay route in apps/web/app/(public)/demo/[scenario]/page.tsx
+- [x] T068 [P] [US4] Create the account switcher in apps/web/features/ledger/AccountSwitcher.tsx
+- [x] T069 [US4] Mark the rows that the run read and write the status in words in apps/web/features/ledger/PaymentTable.tsx - **DELIVERED in apps/web/features/ledger/LedgerTable.tsx**: the table of the ledger carries the words Read by the run (ADR-045).
+- [x] T070 [US4] Add the ledger panel to the replay route in apps/web/app/(public)/demo/[scenario]/page.tsx - **DELIVERED as the fifth tab of the replay**: the panel is the tab ledger of the reader, between the execution and the evidence, and the route of the scenario did not change (ADR-045).
 
 **Checkpoint**: At this point, User Stories 1 to 4 should all work independently
 
@@ -219,7 +219,7 @@ description: "Task list for the R1 public replay feature"
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T078 [P] [US6] Write the mobile journey suite in apps/web/tests/e2e/mobile.spec.ts with the overflow assertion at 390 and 1440 pixels
+- [x] T078 [P] [US6] Write the mobile journey suite in apps/web/tests/e2e/mobile.spec.ts with the overflow assertion at 390 and 1440 pixels
 - [ ] T079 [P] [US6] Write the accessibility suite with the axe scan in apps/web/tests/e2e/a11y.spec.ts
 
 ### Implementation for User Story 6
@@ -349,3 +349,4 @@ With multiple developers:
 - The browser never decides whether a number or a claim is right: the Python core produces the verdicts and the amounts, and the interface only renders them
 - Every label of the replay stays truthful: the mode is `Recorded Replay`, the caption `Scripted fixture` appears for a scripted bundle, and the word "live" never labels a replay
 - The automated suite must keep proving that loading and playing a replay makes zero requests outside the static origin
+- The ledger of the recorded demo is an artifact of the site, per scenario, and it carries the ledger of the account the recording read (ADR-045): the fixture of a thousand rows (T064), the sorting and the filtering of the table (T066) and the policy trigger of the detail (T067) stay open, and ADR-045 names each of them as the debt of the full ledger
