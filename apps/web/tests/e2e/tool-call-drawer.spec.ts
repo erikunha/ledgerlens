@@ -296,8 +296,15 @@ test("the Escape key closes the drawer and the focus goes back to the cell and n
   // The focus goes back to the CELL that opened the drawer, because the cell is the stop of the
   // keyboard of the table and a focus on the button inside it would take the visitor out of the
   // navigation group (ADR-048, decision 7).
+  //
+  // Why the case WAITS for the focus and does not read it once: the drawer gives the focus back in
+  // the callback that closes it, and that callback runs AFTER the drawer left the page. A case that
+  // reads the focus the moment the drawer is gone reads the body of the page on a machine that is
+  // slow, and it fails for a reason that has nothing to do with the promise. The promise is the
+  // focus that is there WHEN THE VISITOR CARES, and not the focus that is there the instant after
+  // the drawer disappeared.
+  await expect.poll(async () => (await readTheFocus(page))?.tag).toBe("TH");
   const focus = await readTheFocus(page);
-  expect(focus?.tag).toBe("TH");
   expect(focus?.cell).toBe("0:0");
   expect(focus?.isButton).toBe(false);
 });
@@ -360,7 +367,10 @@ test("the focus moves to the status region once when the playback starts and the
   const position = page.getByLabel("Position of the recording");
   const before = await position.inputValue();
   await expect.poll(async () => position.inputValue()).not.toBe(before);
-  expect((await readTheFocus(page))?.role).toBe("status");
+  // The focus moved to the status region when the playback started, and the region keeps it. The
+  // case waits for it, because the focus moves in the effect that answers the start of the
+  // playback and that effect runs after the position moved.
+  await expect.poll(async () => (await readTheFocus(page))?.role).toBe("status");
 
   // The drawer never takes the focus to the status region: the focus goes inside the window, and
   // it comes back to the cell that opened it (ADR-048, decision 7).
@@ -384,5 +394,7 @@ test("the focus moves to the status region once when the playback starts and the
 
   await page.keyboard.press("Escape");
   await expect(drawer).toHaveCount(0);
-  expect((await readTheFocus(page))?.cell).toBe("0:0");
+  // The same waiting of the case of the Escape key: the focus comes back in the callback that
+  // closes the drawer, and the callback runs after the drawer left the page.
+  await expect.poll(async () => (await readTheFocus(page))?.cell).toBe("0:0");
 });

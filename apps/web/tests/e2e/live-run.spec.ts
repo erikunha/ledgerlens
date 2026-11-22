@@ -322,7 +322,7 @@ test("the visitor runs a case with a key of their own and reads what the run cos
   await runTheCase(page);
 
   // The run is on the screen, with the identifier the server gave it.
-  await expect(page.getByRole("heading", { name: "The run" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "The run", exact: true })).toBeVisible();
   await expect(page.getByText(RUN_ID)).toBeVisible();
 
   // The cost panel shows the two amounts of the server, apart, and computes nothing.
