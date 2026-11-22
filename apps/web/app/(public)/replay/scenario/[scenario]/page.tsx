@@ -58,7 +58,7 @@ interface ReplayScenarioPageProps {
  */
 export default async function ReplayScenarioPage({ params }: ReplayScenarioPageProps) {
   const { scenario } = await params;
-  const card = readCatalog().find((entry) => entry.id === scenario);
+  const card = readPublishedCatalog().find((entry) => entry.id === scenario);
 
   if (!card) {
     notFound();
