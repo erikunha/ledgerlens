@@ -31,8 +31,8 @@ description: "Task list for the isolated visitor sandbox branches feature"
 
 - [x] T001 [US1] Create the package `ledgerlens/sandbox/` with `ledgerlens/sandbox/__init__.py` that exports the public names of the branch layer and carries the module docstring that says what it does and why
 - [x] T002 [P] [US1] Add the `psycopg` dependency to the `api` extra in `pyproject.toml` and refresh `uv.lock` with `uv lock`
-- [ ] T003 [P] [US1] Add the sandbox settings to `ledgerlens/config.py`: the database url, the branch idle ttl in seconds, the branch absolute ttl in seconds and the maximum committed mutations per branch
-- [ ] T004 [P] [US1] Create `docker-compose.yml` with the `postgres` service on image `postgres:16`, the published port, the credentials from the environment, the named volume and a healthcheck, plus the `api` service that runs the image with `LEDGERLENS_OFFLINE=1`
+- [ ] T003 [P] [US1] Add the sandbox settings to `ledgerlens/config.py`: the database url, the branch idle ttl in seconds, the branch absolute ttl in seconds and the maximum committed mutations per branch - **PARTIAL**: the url, the idle ttl and the absolute ttl are settings of `ledgerlens/config.py` and are listed in `.env.example`. The maximum committed mutations per branch is a constant of module, `MAX_COMMITTED_MUTATIONS` in `ledgerlens/sandbox/branch.py`, and it has to become a setting of the configuration
+- [x] T004 [P] [US1] Create `docker-compose.yml` with the `postgres` service on the image `postgres:17-alpine`, the published port on the loopback, the user and the name of the database from the environment with the trust method, the named volume and a healthcheck, plus the `api` service that runs the image of the `Dockerfile` with `LEDGERLENS_OFFLINE=1` and reads the store of the branches by the name of the `postgres` service - the image is `postgres:17-alpine` and not `postgres:16`, because that is the image of the tree and the image of the continuous integration (ADR-020 and `.github/workflows/gate.yml`), and the container has no password: the trust method is the decision of the repository, the port is published on the loopback only and the continuous integration declares the same trust method
 - [x] T005 [P] [US1] List the sandbox variable names in `.env.example` with no values: the database url and the two ttl values
 - [x] T006 [P] [US2] Write `ledgerlens/sandbox/schema.sql` with the tables `sandbox_branches`, `sandbox_events` and `sandbox_commands`, the unique index on `(branch_id, event_uid)`, the unique index on `(branch_id, idempotency_key)` and the `expires_at` index
 - [x] T007 [P] [US2] Write `scripts/apply_sandbox_schema.py` that applies `ledgerlens/sandbox/schema.sql` to the configured database and is safe to run twice
@@ -77,7 +77,7 @@ description: "Task list for the isolated visitor sandbox branches feature"
 
 ### Implementation for User Story 1
 
-- [ ] T024 [US1] Implement the `SandboxBranch` dataclass in `ledgerlens/sandbox/branch.py` with the branch id, the owner session, the base snapshot id, the base canonical hash, the revision, the current canonical hash, the created time, the expiry time, the state and the resource counters
+- [ ] T024 [US1] Implement the `SandboxBranch` dataclass in `ledgerlens/sandbox/branch.py` with the branch id, the owner session, the base snapshot id, the base canonical hash, the revision, the current canonical hash, the created time, the expiry time, the state and the resource counters - **PARTIAL**: the dataclass exists with every field but the resource counters, and the counters are derived from the revision and from the count of the events against the constants of the module instead of being fields of the branch
 - [x] T025 [US1] Implement the id generation in `ledgerlens/sandbox/branch.py` that returns `sb_` plus 24 hexadecimal characters from `secrets`, with no session, scenario or path information in the id
 - [x] T026 [US1] Implement the fork in `ledgerlens/sandbox/branch.py` that reads the base snapshot read only, computes the base canonical hash, creates the branch through the store and returns it at revision 0
 - [x] T027 [US1] Implement the owner check in `ledgerlens/sandbox/branch.py` that refuses a branch whose owner session does not match the calling session, with a generic answer that does not disclose that the branch exists
@@ -181,9 +181,9 @@ description: "Task list for the isolated visitor sandbox branches feature"
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T059 [P] [US5] Write the two visitor isolation test in `tests/sandbox/test_isolation.py` that forks S01 in two sessions, mutates in the first one and asserts the second one still reads the base values, the base hash and an event count of 0
+- [ ] T059 [P] [US5] Write the two visitor isolation test in `tests/sandbox/test_isolation.py` that forks S01 in two sessions, mutates in the first one and asserts the second one still reads the base values, the base hash and an event count of 0 - **PARTIAL**: the file forks the same scenario in two sessions, asserts the same base hash and asserts that the branch of the other session has no event, but the only write of the file is a synthetic append to the store. The case of a real mutation of one session, read by the other, is still missing
 - [x] T060 [P] [US5] Write the cross branch read test in `tests/sandbox/test_isolation.py` that reads the branch, the diff and the ledger of the other session and asserts `404` with a generic message and no disclosure of the owner or of the existence
-- [ ] T061 [P] [US5] Write the cross branch write test in `tests/sandbox/test_isolation.py` that sends a mutation against the branch of the other session and asserts `404`, no event anywhere and an unchanged hash on the first branch
+- [ ] T061 [P] [US5] Write the cross branch write test in `tests/sandbox/test_isolation.py` that sends a mutation against the branch of the other session and asserts `404`, no event anywhere and an unchanged hash on the first branch - **PARTIAL**: the store refuses the append of the branch of another session and the facade answers `404` for the reads of another session, but the case of the HTTP status of a write, of the absence of any event and of the hash that did not move is still missing
 - [x] T062 [P] [US5] Write the case memory isolation test in `tests/sandbox/test_isolation.py` that writes a case in the first session and asserts the second session finds no case written by the first one
 
 ### Implementation for User Story 5
@@ -207,7 +207,7 @@ description: "Task list for the isolated visitor sandbox branches feature"
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T067 [P] [US6] Write the expiry test in `tests/sandbox/test_ttl.py` that forks a branch with a short time to live, waits for it and asserts a read and a mutation both answer `410` with `BRANCH_EXPIRED`
+- [ ] T067 [P] [US6] Write the expiry test in `tests/sandbox/test_ttl.py` that forks a branch with a short time to live, waits for it and asserts a read and a mutation both answer `410` with `BRANCH_EXPIRED` - **PARTIAL**: the behaviour of the facade is right and it is proven in tests/sandbox/test_sandbox_api.py, tests/sandbox/test_reset.py and tests/sandbox/test_undo.py, but the file of the time to live has no case of a read and of a mutation on an expired branch, although its own docstring says that it has
 - [x] T068 [P] [US6] Write the cleanup test in `tests/sandbox/test_ttl.py` that runs the cleanup and asserts the branch rows and its events are deleted and that the published snapshot is untouched
 - [x] T069 [P] [US6] Write the refork test in `tests/sandbox/test_ttl.py` that asserts a new fork after the expiry starts at revision 0 with the base canonical hash
 
@@ -247,11 +247,11 @@ description: "Task list for the isolated visitor sandbox branches feature"
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T077 [P] [US3] Publish the branch lifecycle over server sent events in `ledgerlens/api/sandbox.py` with a monotonically increasing sequence, a heartbeat and a resume by the last event id
+- [x] T077 [P] [US3] Publish the branch lifecycle over server sent events in `ledgerlens/api/sandbox.py` with a monotonically increasing sequence, a heartbeat and a resume by the last event id - **DELIVERED**: the route is GET /v1/sandboxes/{sandbox_id}/events, it answers text/event-stream, and it is the TWELFTH path of the facade, declared by ADR-047 as a path beyond the contract. The sequence is per branch and is NOT the revision, the heartbeat is every fifteen seconds, and the resume has three answers: the absent header opens the stream, the header equal to the counter continues it, and any other header opens with a `stream.resync` that tells the client to re-read the branch. The resume NEVER repeats the events that were lost, because the hub keeps no history (ADR-047).
 - [x] T078 [P] [US2] Create `apps/web/features/sandbox/api/sandboxClient.ts` with the typed calls to the versioned branch endpoints and the parsing of the error envelope
 - [x] T079 [P] [US2] Create `apps/web/features/sandbox/MutationForm.tsx` that previews the typed command, shows the reason of a rejection and commits only after a valid preview
 - [x] T080 [P] [US1] Create `apps/web/features/sandbox/BranchPanel.tsx` and `apps/web/features/sandbox/sandbox.css` that show the status, the revision, the expiry, the simulated label and the reset action
-- [ ] T081 [US6] Add the rate limit and the session limit checks to the facade in `ledgerlens/api/sandbox.py`, so that a branch cannot be created beyond the per session cap and a request over the limit answers `429`
+- [x] T081 [US6] Add the rate limit and the session limit checks to the facade in `ledgerlens/api/sandbox.py`, so that a branch cannot be created beyond the per session cap and a request over the limit answers `429` - **DELIVERED**: the cap is five LIVE branches per session and the rate is 120 requests per session per minute, in a sliding window. Both answer 429 with the code RESOURCE_LIMIT_EXCEEDED and the flag `retryable` tells them apart: the cap is not retryable and the rate is, with the header `Retry-After`. The cap of the branches is GLOBAL and the rate is PER PROCESS, and the documentation says so (ADR-047).
 - [x] T082 [P] [US2] Write the documentation in `docs/api/sandbox.md` with the endpoints, the status codes, the error codes and the mutation catalog, and the decision record in `docs/decisions/ADR-011-sandbox-branch-store.md` with the alternatives and why they lost - the path of the decision record cannot exist, because ADR-011 is the decision of the roadmap of the v3, and the decision record of the front of the sandbox is ADR-044, with the decisions of the store of the branch in ADR-018 and ADR-020
 
 ---

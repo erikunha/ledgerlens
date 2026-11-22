@@ -58,7 +58,7 @@ description: "Task list for the R1 public replay feature"
 - [x] T019 Implement the URL state helpers in apps/web/lib/state/urlState.ts and the harmless view preferences in apps/web/lib/state/viewPreferences.ts
 - [x] T020 Implement the static artifact client in apps/web/lib/api/replay.ts with no provider host in the allow list
 - [x] T021 Configure the query provider in apps/web/lib/api/provider.tsx with the static friendly defaults and no retry on a missing artifact
-- [x] T022 [P] Create the primitive components in apps/web/components/ui: Button.tsx, Card.tsx, Tabs.tsx, Dialog.tsx, Sheet.tsx, Skeleton.tsx, Badge.tsx, Table.tsx and LiveRegion.tsx
+- [x] T022 [P] Create the primitive components in apps/web/components/ui: Button.tsx, Card.tsx, Tabs.tsx, Dialog.tsx, Sheet.tsx, Skeleton.tsx, Badge.tsx, Table.tsx and LiveRegion.tsx - **DELIVERED for the eight primitives that exist**: Button.tsx, Card.tsx, Tabs.tsx, Dialog.tsx, Sheet.tsx, Skeleton.tsx, Badge.tsx and Table.tsx are in apps/web/components/ui. The primitive LiveRegion.tsx was NEVER built, and the task stays with the work it names: see T050, which is open
 - [x] T023 Create the shell components in apps/web/features/shell: AppShell.tsx, Header.tsx, ModeIndicator.tsx, SkipLink.tsx and ProvenancePanel.tsx
 - [x] T024 Write the unit tests of the reducer in apps/web/tests/unit/reducer.test.ts - **DELIVERED in apps/web/tests/unit/replay-reducer.test.ts**: the unit tests of the replay carry the name of the module they cover.
 - [x] T025 Write the unit tests of the validators in apps/web/tests/unit/validate.test.ts - **DELIVERED in apps/web/tests/unit/replay-validate.test.ts**: the unit tests of the replay carry the name of the module they cover.
@@ -84,14 +84,14 @@ description: "Task list for the R1 public replay feature"
 
 ### Implementation for User Story 1
 
-- [x] T030 [US1] Build the landing page in apps/web/app/(public)/page.tsx with the hero, the simulated money statement and the two calls to action
-- [x] T031 [US1] Build the scenario catalog page in apps/web/app/(public)/demo/page.tsx
+- [x] T030 [US1] Build the landing page in apps/web/app/(public)/page.tsx with the hero, the simulated money statement and the two calls to action - **DELIVERED with the path corrected**: the landing page is at apps/web/app/page.tsx, because the folder (public) holds the routes that have a segment and the root of the site is the landing
+- [x] T031 [US1] Build the scenario catalog page in apps/web/app/(public)/demo/page.tsx - **DELIVERED with the path corrected**: the catalog is at apps/web/app/(public)/replay/page.tsx, and the name of the route is the name of the feature
 - [x] T032 [P] [US1] Create the scenario components in apps/web/features/scenarios: ScenarioCatalog.tsx, ScenarioCard.tsx and ScenarioSummary.tsx
-- [x] T033 [US1] Build the replay route in apps/web/app/(public)/demo/[scenario]/page.tsx
+- [x] T033 [US1] Build the replay route in apps/web/app/(public)/demo/[scenario]/page.tsx - **DELIVERED with the path corrected**: the route is at apps/web/app/(public)/replay/scenario/[scenario]/page.tsx
 - [x] T034 [US1] Create the replay state provider in apps/web/features/replay/ReplayProvider.tsx with the idle, loading, ready, playing, paused, completed and failed states
 - [x] T035 [P] [US1] Create the run overview component in apps/web/features/replay/RunOverview.tsx with the scenario, the question, the mode and the capture date
 - [x] T036 [US1] Create the empty and the failure states in apps/web/features/replay/ReplayEmptyState.tsx and apps/web/features/replay/ReplayErrorState.tsx
-- [x] T037 [US1] Keep the URL free of anything but the scenario identifier and the view preferences in apps/web/app/(public)/demo/[scenario]/page.tsx
+- [x] T037 [US1] Keep the URL free of anything but the scenario identifier and the view preferences in apps/web/app/(public)/demo/[scenario]/page.tsx - **DELIVERED with the path corrected**: the route is at apps/web/app/(public)/replay/scenario/[scenario]/page.tsx, and the URL carries the scenario and the tab of the reader and nothing else
 - [x] T038 [US1] Add the page metadata in apps/web/app/layout.tsx and in apps/web/app/(public)/demo/[scenario]/page.tsx - **DELIVERED in apps/web/app/(public)/replay/scenario/[scenario]/page.tsx**: the route of a scenario is under replay and not under demo, and the metadata of the scenario is a generateMetadata that names the card of the catalog.
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
@@ -109,20 +109,20 @@ description: "Task list for the R1 public replay feature"
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
 - [x] T039 [P] [US2] Write the end to end test of the playback, the pause and the reset in apps/web/tests/e2e/playback.spec.ts
-- [x] T040 [P] [US2] Write the unit test of the determinism of the seek in apps/web/tests/unit/seek.test.ts
-- [x] T041 [P] [US2] Write the keyboard test of the trace tree in apps/web/tests/e2e/trace-keyboard.spec.ts
+- [x] T040 [P] [US2] Write the unit test of the determinism of the seek in apps/web/tests/unit/seek.test.ts - **DELIVERED in apps/web/tests/unit/replay-reducer.test.ts**: the unit tests of the replay carry the name of the machine they cover, and the determinism of the seek is proven there
+- [x] T041 [P] [US2] Write the keyboard test of the trace tree in apps/web/tests/e2e/trace-keyboard.spec.ts - **DELIVERED in two places**: the keyboard of the trace tree is proven in apps/web/tests/unit/features/agent-trace.test.tsx and, end to end, in apps/web/tests/e2e/mobile.spec.ts
 
 ### Implementation for User Story 2
 
 - [x] T042 [US2] Create the playback controls in apps/web/features/replay/ReplayControls.tsx with the play, the pause, the previous, the next, the speed and the reset
-- [x] T043 [US2] Create the progress component in apps/web/features/replay/ReplayProgress.tsx with the slider and its accessible name
+- [x] T043 [US2] Create the progress component in apps/web/features/replay/ReplayProgress.tsx with the slider and its accessible name - **DELIVERED inside the reader**: the slider is at apps/web/features/replay/ReplayViewer.tsx, where the state of the playback lives, and it was not worth a component of its own
 - [x] T044 [US2] Implement the playback clock in apps/web/features/replay/usePlaybackClock.ts so that the speed never alters the displayed original timing
 - [x] T045 [US2] Create the timeline component in apps/web/features/agent-trace/TraceTimeline.tsx with the observed time, the error and the token usage
 - [x] T046 [US2] Create the tree component in apps/web/features/agent-trace/TraceTree.tsx with the arrow, the home and the end navigation
-- [x] T047 [US2] Create the stepper component in apps/web/features/agent-trace/RunStepper.tsx
-- [ ] T048 [US2] Create the tool call drawer in apps/web/features/agent-trace/ToolCallDrawer.tsx with the focus return to the trigger
-- [ ] T049 [P] [US2] Create the SQL code pane in apps/web/features/agent-trace/SqlCodePane.tsx with the local horizontal scroll and the sanitized literals
-- [x] T050 [US2] Announce the step summary in apps/web/components/ui/LiveRegion.tsx without announcing every token
+- [ ] T047 [US2] Create the stepper component in apps/web/features/agent-trace/RunStepper.tsx - **NOT DELIVERED, the task is open again**: the stepper was never built, and ADR-046 says so out loud. The tree of the trace shows the steps of the run today
+- [x] T048 [US2] Create the tool call drawer in apps/web/features/agent-trace/ToolCallDrawer.tsx with the focus return to the trigger - **DELIVERED**: the drawer is built on the primitive of the sheet at apps/web/features/agent-trace/ToolCallDrawer.tsx, the trigger is the real button of the row header of the table of the calls at apps/web/features/replay/ReplayViewer.tsx, and the focus goes back to the CELL that opened the drawer and never to the button inside it. The proof is in apps/web/tests/unit/features/tool-call-drawer.test.tsx and in apps/web/tests/e2e/tool-call-drawer.spec.ts (ADR-048, decisions 1, 2, 3 and 7).
+- [x] T049 [P] [US2] Create the SQL code pane in apps/web/features/agent-trace/SqlCodePane.tsx with the local horizontal scroll and the sanitized literals - **DELIVERED**: the pane of the statement is at apps/web/features/agent-trace/SqlCodePane.tsx, it is a named region that the keyboard reaches, it holds the statement as a text node and it is the only area of the page that scrolls sideways (the class ll-code-pane). The literal of the recording is shown as it was written, because the sanitising of the literals belongs to the Python core and not to the browser (ADR-048, decisions 4 and 5). The proof is in apps/web/tests/unit/features/sql-code-pane.test.tsx and in apps/web/tests/e2e/tool-call-drawer.spec.ts.
+- [ ] T050 [US2] Announce the step summary in apps/web/components/ui/LiveRegion.tsx without announcing every token - **NOT DELIVERED, the task is open again**: the primitive LiveRegion.tsx was never built, and ADR-046 says so out loud. The summary of the step is announced inline by the reader of the replay
 - [x] T051 [US2] Add the timeline, the tree and the stepper to the replay route in apps/web/app/(public)/demo/[scenario]/page.tsx
 - [x] T052 [US2] Implement the reset of the replay state in apps/web/features/replay/ReplayProvider.tsx
 
@@ -140,18 +140,18 @@ description: "Task list for the R1 public replay feature"
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [x] T053 [P] [US3] Write the end to end test of the claims, the verdicts and the citations in apps/web/tests/e2e/evidence.spec.ts
-- [x] T054 [P] [US3] Write the unit test of the evidence and the verdict mapping in apps/web/tests/unit/evidence-mapping.test.ts
+- [x] T053 [P] [US3] Write the end to end test of the claims, the verdicts and the citations in apps/web/tests/e2e/evidence.spec.ts - **DELIVERED in apps/web/tests/e2e/replay.spec.ts**: the journey of the evidence is proven end to end there, because the evidence lives in the same route as the rest of the replay
+- [x] T054 [P] [US3] Write the unit test of the evidence and the verdict mapping in apps/web/tests/unit/evidence-mapping.test.ts - **DELIVERED in apps/web/tests/unit/replay-selectors.test.ts**: the mapping of the evidence and of the verdict is a selector of the replay and it is proven with the other selectors
 
 ### Implementation for User Story 3
 
-- [x] T055 [US3] Create the verdict pill in apps/web/features/evidence/VerdictPill.tsx with the icon, the text and the three allowed labels
+- [x] T055 [US3] Create the verdict pill in apps/web/features/evidence/VerdictPill.tsx with the icon, the text and the three allowed labels - **DELIVERED as apps/web/components/ui/StatusPill.tsx**: the pill of the verdict is a primitive of the interface, because the status of a claim and the status of a row of the ledger are the same shape, and it is used by apps/web/features/evidence/ClaimList.tsx
 - [x] T056 [US3] Create the claim list in apps/web/features/evidence/ClaimList.tsx with the text, the citations, the method and the note
 - [x] T057 [US3] Create the evidence card in apps/web/features/evidence/EvidenceCard.tsx with the source type, the origin and the copyable reference
-- [x] T058 [US3] Create the evidence inspector in apps/web/features/evidence/EvidenceInspector.tsx with the sanitized excerpt
+- [x] T058 [US3] Create the evidence inspector in apps/web/features/evidence/EvidenceInspector.tsx with the sanitized excerpt - **DELIVERED in another shape, as apps/web/features/evidence/EvidenceCard.tsx**: the source, the origin and the content of the evidence are drawn by the card, and there is no overlay inspector. The excerpt is sanitized by the reader of the bundle before it reaches the card
 - [x] T059 [US3] Create the answer panel in apps/web/features/evidence/AnswerPanel.tsx with the answer, the recommended action and the human review requirement
 - [x] T060 [US3] Render `Not available` for a missing reference and `Not verified` for an unavailable verifier in apps/web/features/evidence/ClaimList.tsx and apps/web/features/evidence/AnswerPanel.tsx
-- [x] T061 [US3] Add the decision panel to the replay route in apps/web/app/(public)/demo/[scenario]/page.tsx
+- [x] T061 [US3] Add the decision panel to the replay route in apps/web/app/(public)/demo/[scenario]/page.tsx - **DELIVERED with the path corrected**: the panel is the tab decision of the reader and the route is at apps/web/app/(public)/replay/scenario/[scenario]/page.tsx
 - [x] T062 [US3] Map the evidence and the verdict events to the canonical identifiers in apps/web/lib/replay/selectors.ts
 
 **Checkpoint**: At this point, User Stories 1, 2 AND 3 should all work independently
@@ -228,7 +228,7 @@ description: "Task list for the R1 public replay feature"
 - [x] T081 [US6] Make the layout a single column under 768 pixels in apps/web/features/shell/AppShell.tsx
 - [x] T082 [US6] Add the accessible tabs for the execution, the evidence, the decision and the ledger in apps/web/app/(public)/demo/[scenario]/page.tsx - **DELIVERED with the path corrected**: the route of a scenario is apps/web/app/(public)/replay/scenario/[scenario]/page.tsx. The tabs are the primitive of the design system, they carry the name of their group, the arrow keys move the focus and the panel of the chosen tab is the only one in the page. The ledger is the fifth tab, between the execution and the evidence (ADR-045, ADR-046).
 - [x] T083 [US6] Add the skip link and the landmark structure in apps/web/features/shell/SkipLink.tsx and apps/web/app/layout.tsx
-- [ ] T084 [US6] Manage the focus on the drawer and on the status region in apps/web/features/agent-trace/ToolCallDrawer.tsx and apps/web/features/replay/ReplayControls.tsx - **PARTIALLY DELIVERED, the task stays open**: the engineering drawer of the tour returns the focus to the control that opened it, because it is built on the primitive of the sheet (ADR-046). The drawer of a tool call of T048 was never built, and the status region of the controls of the replay still has to be proved. The task stays open with the work it names.
+- [x] T084 [US6] Manage the focus on the drawer and on the status region in apps/web/features/agent-trace/ToolCallDrawer.tsx and apps/web/features/replay/ReplayControls.tsx - **DELIVERED with the path corrected**: the drawer of a tool call of T048 returns the focus to the cell that opened it, and the one polite region of the page takes the focus once, when the playback starts, while the drawer never takes it and never announces anything. The status region of the page lives in apps/web/features/replay/ReplayViewer.tsx and not in apps/web/features/replay/ReplayControls.tsx, because ADR-048 decision 9 keeps the controls of the replay free of a live region and does not change that file. What remains open: the controls of the replay hold no region of their own, by decision, and the sanitising of the literals of the SQL is the work of the Python core and not of this milestone. The proof is in apps/web/tests/e2e/tool-call-drawer.spec.ts (ADR-048, decisions 7 and 9).
 - [x] T085 [US6] Keep the code panes as the only horizontally scrollable area in apps/web/app/globals.css
 
 **Checkpoint**: All user stories should now be independently functional
@@ -239,9 +239,9 @@ description: "Task list for the R1 public replay feature"
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T086 [P] Write the quickstart of the feature in specs/001-r1-public-replay/quickstart.md and link the feature from docs/architecture.md
+- [x] T086 [P] Write the quickstart of the feature in specs/001-r1-public-replay/quickstart.md and link the feature from docs/architecture.md - **DELIVERED**: the quickstart of the feature exists in specs/001-r1-public-replay/quickstart.md and docs/architecture.md links it
 - [ ] T087 Add the visual baselines at 390, 768 and 1440 pixels in apps/web/tests/e2e/screenshots.spec.ts
-- [ ] T088 Add the digest cross check between the interface and the Python loader in scripts/verify_replay_digests.py and in tests/replay/test_site_export.py
+- [x] T088 Add the digest cross check between the interface and the Python loader in scripts/verify_replay_digests.py and in tests/replay/test_site_export.py - **DELIVERED**: scripts/verify_replay_digests.py crosses the published artifacts against the canonical bundle, it is a step of scripts/gate.sh, and its own test lives in tests/replay/test_site_export.py
 - [ ] T089 Add the payload and the paint measurement in scripts/measure_replay_budget.py with the thresholds of the success criteria
 - [ ] T090 Run the full gate, `bash scripts/gate.sh` plus the web lint, the web unit, the web end to end and the accessibility scan, and record the results in specs/001-r1-public-replay/quickstart.md
 

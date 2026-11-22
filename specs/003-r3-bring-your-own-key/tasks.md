@@ -32,7 +32,7 @@ and delivered as an MVP increment.
 - [x] T004 [P] Add the web app folder apps/web/ with the package manifest and the TypeScript strict configuration
 - [x] T005 [P] Create the live mode page apps/web/app/(public)/live/page.tsx
 - [x] T006 [P] Create the feature folder apps/web/features/models/ with the picker, the dialog, the budget form and the cost report
-- [ ] T007 [P] Create the docker compose file docker-compose.yml with the demo server service, used by the local run and by the CI
+- [x] T007 [P] Create the docker compose file docker-compose.yml with the demo server service, used by the local run and by the CI - the compose file carries the `demo` service, which serves the published export of the site of the demo as plain files on the port 3000, the way a content delivery network serves it (ADR-040), and the `api` service, which runs the demo server of the visitor, the wired application, on the port 8010
 - [x] T008 [P] Add the byok dependencies to pyproject.toml under the api extra, pinned in uv.lock
 - [x] T009 [P] Create the test folder tests/byok/ with an __init__.py
 
@@ -117,7 +117,7 @@ panel, and the second one says unknown and shows no dollar amount.
 - [x] T043 [US2] Implement the cost report endpoint in ledgerlens/api/byok.py
 - [x] T044 [US2] Implement the CostReport component in apps/web/features/models/CostReport.tsx, with the unknown case
 - [x] T045 [US2] Show the live budget counters while the run happens, in apps/web/app/(public)/live/page.tsx
-- [ ] T046 [US2] Reuse the cost panel in the run inspector, in apps/web/features/evals/CostPanel.tsx
+- [x] T046 [US2] Reuse the cost panel in the run inspector, in apps/web/features/evals/CostPanel.tsx
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
 
@@ -138,7 +138,7 @@ visitor sees and the telemetry. The key is in none of them.
 - [x] T049 [P] [US3] Test a credential handle of another session is refused in tests/byok/test_vault.py
 - [x] T050 [P] [US3] Test the credential is dropped on session expiry in tests/byok/test_vault.py
 - [x] T051 [P] [US3] Test the vault holds nothing on disk in tests/byok/test_vault.py
-- [ ] T052 [P] [US3] Test a link-local provider endpoint is refused in tests/api/test_byok_api.py
+- [x] T052 [P] [US3] Test a link-local provider endpoint is refused in tests/api/test_byok_api.py
 - [x] T053 [P] [US3] Test two sessions on two providers do not cross the keys in tests/byok/test_live_run.py
 
 ### Implementation for User Story 3
@@ -202,7 +202,7 @@ provider call happens.
 - [x] T075 [P] [US5] Implement the cancellation token in the live run coordinator in ledgerlens/api/live_run.py
 - [x] T076 [US5] Implement the cancel endpoint in ledgerlens/api/byok.py
 - [x] T077 [US5] Emit the terminal event on cancellation in ledgerlens/api/live_run.py, keeping the partial trace
-- [ ] T078 [US5] Implement the cancel button and the best effort label in apps/web/app/(public)/live/page.tsx
+- [x] T078 [US5] Implement the cancel button and the best effort label in apps/web/app/(public)/live/page.tsx
 - [x] T079 [US5] Stop the SSE stream on cancellation in apps/web/app/api/live/[handle]/route.ts - **SUPERSEDED by ADR-040**: a static export has no server runtime and no route handler, the backend streams the events on its own route, and the client closes the source when the run ends or is cancelled.
 
 **Checkpoint**: At this point, all user stories should now be independently functional
@@ -216,8 +216,8 @@ provider call happens.
 - [x] T080 [P] Document the live mode in docs/architecture.md, with the credential lifecycle and the budget enforcement
 - [x] T081 [P] Document the zeroization limitation in docs/decisions/, as an ADR
 - [x] T082 [P] Add the adversarial key test to the offline gate, in tests/byok/test_vault.py
-- [ ] T083 [P] Add the end to end test of the live path with the fake adapter, in apps/web/tests/e2e/live-run.spec.ts
-- [ ] T084 [P] Add the accessibility check of the live page in apps/web/tests/e2e/live-run.spec.ts, with axe
+- [x] T083 [P] Add the end to end test of the live path with the fake adapter, in apps/web/tests/e2e/live-run.spec.ts
+- [x] T084 [P] Add the accessibility check of the live page in apps/web/tests/e2e/live-run.spec.ts, with axe
 - [x] T085 Run the quickstart validation from specs/003-r3-bring-your-own-key/quickstart.md
 - [x] T086 [P] Add the live mode to the README, with the disclosure and the limitation
 - [x] T087 Run `bash scripts/gate.sh` and confirm the offline path never calls a provider
