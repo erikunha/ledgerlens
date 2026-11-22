@@ -94,6 +94,15 @@ const EVENTS_WITH_A_SLOW_CALL: readonly TraceEvent[] = EVENTS.map((event) => {
   return { ...event, payload: { ...payload, latency_ms: 1200 } };
 });
 
+/**
+ * The commit of the checkout that the links of the engineering drawer open.
+ *
+ * Why the case carries a commit: the reader opens the engineering drawer, and the links of the
+ * drawer open the tree of that commit. The case does not read the repository, so it names a commit
+ * of forty hexadecimal characters and the drawer shows the links of that tree (ADR-046).
+ */
+const COMMIT = "0123456789abcdef0123456789abcdef01234567";
+
 /** The card of the scenario in the published catalog, as `site/replay/index.json` holds it. */
 const SCENARIO: ScenarioIndexEntry = {
   id: "S01",
@@ -217,7 +226,7 @@ function renderViewer(answer: LoadedReplay | { error: string }): void {
   stubFetch();
   render(
     <ReplayProvider scenario={SCENARIO} loader={loaderOf(answer)}>
-      <ReplayViewer scenario={SCENARIO} />
+      <ReplayViewer commit={COMMIT} scenario={SCENARIO} />
     </ReplayProvider>,
   );
 }

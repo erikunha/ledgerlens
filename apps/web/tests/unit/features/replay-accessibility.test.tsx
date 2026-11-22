@@ -113,6 +113,15 @@ const SCENARIO: ScenarioIndexEntry = {
 const LOADED: LoadedReplay = { manifest: MANIFEST, events: EVENTS, provenance: PROVENANCE };
 
 /**
+ * The commit of the checkout that the links of the engineering drawer open.
+ *
+ * Why the case carries a commit: the reader opens the engineering drawer, and the links of the
+ * drawer open the tree of that commit. The case does not read the repository, so it names a commit
+ * of forty hexadecimal characters and the drawer shows the links of that tree (ADR-046).
+ */
+const COMMIT = "0123456789abcdef0123456789abcdef01234567";
+
+/**
  * The tree of the case: three spans, one of them with a child.
  *
  * Why the tree is written by hand: the rule of the tree is about the SEMANTICS of the roles and the keyboard, and a
@@ -207,7 +216,7 @@ function renderViewer(): void {
   stubFetch();
   render(
     <ReplayProvider scenario={SCENARIO} loader={vi.fn(async () => LOADED)}>
-      <ReplayViewer scenario={SCENARIO} />
+      <ReplayViewer commit={COMMIT} scenario={SCENARIO} />
     </ReplayProvider>,
   );
 }

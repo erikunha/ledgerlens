@@ -13,7 +13,7 @@
  */
 
 import * as RadixDialog from "@radix-ui/react-dialog";
-import type { ReactElement, ReactNode } from "react";
+import type { ReactElement, ReactNode, RefObject } from "react";
 
 import { cn } from "@/lib/design/cn";
 
@@ -34,6 +34,17 @@ export interface SheetProps {
   readonly children: ReactNode;
   /** The edge of the screen the sheet comes from. */
   readonly side?: "top" | "bottom" | "left" | "right";
+  /**
+   * The element that takes the focus back when the sheet closes.
+   *
+   * Why the sheet needs it: the sheet is controlled by its caller and it is opened by a control
+   * that lives outside of it, so the primitive of the dialog does not know which control opened
+   * it and the focus lands on the body of the page when the sheet closes. A visitor who opened a
+   * window with the keyboard and closed it with the Escape key has to find his way back to the
+   * control from scratch, and the rule of the repository is that the focus returns to the control
+   * that opened the drawer.
+   */
+  readonly returnFocusTo?: RefObject<HTMLElement | null>;
 }
 
 /** The place of the sheet on the screen, for every side of the edge. */
@@ -53,6 +64,19 @@ const SIDE_CLASSES: Record<NonNullable<SheetProps["side"]>, string> = {
 export function Sheet(props: SheetProps): ReactElement {
   const side = props.side ?? "right";
 
+  /**
+   * Gives the focus back to the control that opened the sheet.
+   *
+   * Why the event is prevented: the primitive of the dialog returns the focus to the element it
+   * knows, and the sheet is opened by a control that lives outside of it, so the primitive would
+   * return the focus to the body of the page after this handler ran. Preventing the default stops
+   * that, and the sheet is the one that knows the control, so the sheet gives the focus back.
+   */
+  const handleCloseAutoFocus = (event: Event): void => {
+    event.preventDefault();
+    props.returnFocusTo?.current?.focus();
+  };
+
   return (
     <RadixDialog.Root open={props.open} onOpenChange={props.onOpenChange}>
       <RadixDialog.Portal>
@@ -62,6 +86,7 @@ export function Sheet(props: SheetProps): ReactElement {
             "fixed z-50 overflow-y-auto border-line bg-background p-4 shadow-lg",
             SIDE_CLASSES[side],
           )}
+          onCloseAutoFocus={handleCloseAutoFocus}
         >
           <RadixDialog.Title className="pr-8 text-base font-semibold">
             {props.title}

@@ -1,4 +1,5 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { forwardRef } from "react";
+import type { ButtonHTMLAttributes, ReactNode, Ref } from "react";
 
 import { cn } from "@/lib/design/cn";
 
@@ -55,9 +56,21 @@ export function buttonClasses(
   );
 }
 
-export function Button({ variant = "primary", size = "md", className, type, children, ...rest }: ButtonProps) {
+/**
+ * The button of the design system.
+ *
+ * Why the button takes a reference to the element it draws: a button that opens a window has to
+ * give the focus back to itself when the window closes, and the caller is the one that knows the
+ * button. A button that cannot be referenced is a button whose caller cannot give the focus back
+ * (ADR-046).
+ */
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  { variant = "primary", size = "md", className, type, children, ...rest },
+  ref: Ref<HTMLButtonElement>,
+) {
   return (
     <button
+      ref={ref}
       type={type ?? "button"}
       className={buttonClasses(variant, size, className)}
       {...rest}
@@ -65,4 +78,4 @@ export function Button({ variant = "primary", size = "md", className, type, chil
       {children}
     </button>
   );
-}
+});

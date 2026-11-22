@@ -253,6 +253,7 @@ export default function LivePage() {
       <CardSection
         title="The model of the run"
         description="Only the models the catalogue of the server enables for the public demo are offered."
+        titleLevel="h2"
       >
         <ModelSelector
           profiles={models}
@@ -263,11 +264,19 @@ export default function LivePage() {
         />
       </CardSection>
 
-      <CardSection title="The caps of the run" description="The caps bound the calls of the run.">
+      <CardSection
+        title="The caps of the run"
+        description="The caps bound the calls of the run."
+        titleLevel="h2"
+      >
         <BudgetForm limits={limits} onChange={setLimits} disabled={isRunning || liveControlsDisabled} />
       </CardSection>
 
-      <CardSection title="Your key" description="The key is read once and it dies with the session.">
+      <CardSection
+        title="Your key"
+        description="The key is read once and it dies with the session."
+        titleLevel="h2"
+      >
         <div className="flex flex-col gap-3">
           {credentialHandle ? (
             <p className="text-sm text-text-muted">
@@ -295,6 +304,7 @@ export default function LivePage() {
       <CardSection
         title="The case"
         description="The case of the demo is the same for every visitor."
+        titleLevel="h2"
       >
         <div className="flex flex-col gap-3">
           {demoCase ? (

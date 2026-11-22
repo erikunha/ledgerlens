@@ -36,6 +36,7 @@ export default function HomePage() {
         <CardSection
           title="Recorded demo"
           description="The published artifacts of a capture, played in the browser."
+          titleLevel="h2"
         >
           <div className="flex flex-col gap-3">
             <Badge tone="neutral">mode: deterministic_sandbox</Badge>
@@ -58,6 +59,7 @@ export default function HomePage() {
         <CardSection
           title="Sandbox"
           description="A published case, forked into a branch of your own session."
+          titleLevel="h2"
         >
           <div className="flex flex-col gap-3">
             <Badge tone="neutral">mode: visitor_sandbox</Badge>
@@ -78,7 +80,11 @@ export default function HomePage() {
           </div>
         </CardSection>
 
-        <CardSection title="Live mode" description="Your own key, your own run, on the backend.">
+        <CardSection
+          title="Live mode"
+          description="Your own key, your own run, on the backend."
+          titleLevel="h2"
+        >
           <div className="flex flex-col gap-3">
             <Badge tone="neutral">mode: live_agent</Badge>
             <p className="text-sm text-text-muted">
