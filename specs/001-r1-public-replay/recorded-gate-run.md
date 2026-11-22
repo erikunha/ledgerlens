@@ -1,35 +1,31 @@
 # The record of a run of the gate
 
-This file is the proof that the first public release of LedgerLens passed its own gate. It is the
-transcription of one real run, not a promise and not a reconstruction: every number below came out of the
-run that happened on 2026-11-22, and the commands are the ones that produced it.
+This file is the proof that the public site of LedgerLens passed its own gates, the Python one and the
+Node one. It is the transcription of one real run, not a promise and not a reconstruction: every number
+below came out of the run that happened on 2026-11-22, and the commands are the ones that produced it.
 
-**This run happened before the cross check of the digests and the measurement of the budget joined the gate
-of the repository.** The gate of that day answered with three steps, and the two checks of this milestone
-ran as commands of their own against the same tree, in the sections [4.4](#44-the-check-of-the-digests) and
-[4.5](#45-the-measurement-of-the-budget). The gate of the repository today runs both of them, right after
-the check of the export, so a run of the gate today prints two steps more than the transcript of the
-section 4.
+**This run is the first that covers EVERYTHING.** The earlier run of this file covered the Python gate
+alone and said plainly what it did not cover. This one covers the Python gate, the Node gate of the
+frontend, the unit tests of the frontend, the whole end to end suite of Playwright, the accessibility
+scan that the suite carries, the structural baseline of the pages and the measurement of the paint. The
+section [6](#6-what-this-record-does-not-cover) says what is still outside.
 
-A record of a green run that was never run is a lie, so this file also says plainly what the run did **not**
-cover. The Node gate and the end to end suite of the frontend are **not** in this record, and the reason is
-in [the section 6](#6-what-this-record-does-not-cover).
+A record of a green run that was never run is a lie, so this file also says plainly what the run did
+**not** cover.
 
 ## 1. What was measured
 
 | | |
 |---|---|
-| Measured commit | `bac3e7afe83380e46fb5c76ce3c6f6c8e28bd715` |
-| Commit subject | `docs(verification): the baseline of the milestone of the sandbox of the visitor` |
+| Measured commit | `d3a640d06e7cd78ff9e9c9d48a25494a75ff3eca` |
+| Commit subject | `docs(specs): the bookkeeping of the tasks of the milestones 15, 17 and 18` |
 | Branch | `feature/v3` |
-| Run at | 2026-11-22T09:18:57+00:00 (the local clock of the machine read 06:18:57, UTC-3) |
+| Run at | 2026-11-22, on the machine of the author (the local clock read 15:36, UTC-3) |
 | Tracked tree at the moment of the run | clean (`git status --porcelain --untracked-files=no` was empty) |
-| Untracked files at the moment of the run | three of the four new files of this milestone: `specs/001-r1-public-replay/quickstart.md`, `scripts/verify_replay_digests.py` and `scripts/measure_replay_budget.py` |
 
-The commit is the commit of the tracked tree. The four files of this milestone were not committed when the
-gate ran, so they are not part of the measured commit; three of them were on the disk that the gate read, and
-the gate therefore linted and scanned them. This record, the fourth file, was written from the output of the
-run, after the run. The orchestrator commits the four.
+The commit is the commit of the tracked tree. This file, the record of the run, was written from the
+output of the run, after the run, and it is the next commit of the branch. Nothing of the tree changed
+between the run and this file.
 
 ## 2. The environment
 
@@ -48,59 +44,85 @@ The values are the ones `scripts/baseline.py` collects, read the same way, so th
 ```bash
 cd <repository>
 LEDGERLENS_OFFLINE=1 bash scripts/gate.sh
+bash scripts/gate_web.sh
+cd apps/web && npx playwright test --reporter=line
+uv run python scripts/measure_replay_budget.py --paint
 ```
 
-The gate of the repository is the script `scripts/gate.sh`, and the run of this record went through it in
-this order: the lint, the offline suite and the check of the export. It stops at the first failure.
+The gate of the Python side is the script `scripts/gate.sh`, and the gate of the frontend is the script
+`scripts/gate_web.sh`. They are TWO gates and they are TWO jobs of `.github/workflows/gate.yml`, because
+the Python gate is the gate of a Python repository and it runs in the places where Node is absent. A
+gate that fails because a tool is missing is not a gate.
 
-Two more commands of this milestone ran against the same tree, and they are part of the proof of the
-release:
+The end to end suite of Playwright is NOT a step of any gate, because the download of the browsers is
+heavy. It ran here as a command of its own, against the static export that the build of the Node gate
+wrote.
 
-```bash
-uv run python scripts/verify_replay_digests.py
-uv run python scripts/measure_replay_budget.py
-```
+The arm of the paint is opt in and it is the one command of this record that is not a gate. It measures
+the paint of the replay page with a browser, and the default arm of the same script, the one the Python
+gate calls, stays the payload and never starts a browser.
 
 ## 4. The exact answers of the gates
 
-The output of the run, in the order the gate produced it. The path of the machine was removed from the
+The output of the run, in the order the gates produced it. The path of the machine was removed from the
 lines that carry it, because the rule of the repository keeps the path of the author out of the versioned
 files; the same rule that `scripts/baseline.py` applies to the record it writes.
-
-The transcript is the output of the gate of that day, which had three steps. The two steps the gate of the
-repository runs today, `== replay digests (offline)` and `== replay budget (offline)`, are not in it, because
-they joined the gate after this run. Their answers are in the sections 4.4 and 4.5.
 
 ```text
 == ruff check
 All checks passed!
 == pytest -q (offline)
-...
-2776 passed, 6 skipped, 8 deselected, 419 warnings in 87.47s (0:01:27)
+2951 passed, 6 skipped, 8 deselected, 419 warnings in 85.52s (0:01:25)
 == export check (offline)
 the artifacts in <repository>/site/replay match the bundle
+== replay digests (offline)
+the published artifacts match the canonical bundle
+== replay budget (offline)
+the published artifacts are inside the budget
 gate: ok
 ```
 
 The exit code of the gate was `0`.
 
-### 4.1 The lint
+```text
+== npm ci (locked dependencies)
+== npm run typecheck
+== npm run lint
+== npm test
+ Test Files  60 passed (60)
+      Tests  628 passed (628)
+== npm run build (static export)
+== the build wrote one page per scenario of the catalog, with the content of the scenario
+== the build wrote the page of the architecture, with a heading and the six labels of the nodes
+gate_web: ok
+```
+
+The exit code of the Node gate was `0`.
+
+```text
+  39 skipped
+  285 passed (55.7s)
+```
+
+The exit code of the suite of Playwright was `0`.
+
+### 4.1 The lint of the Python side
 
 `ruff check` answered `All checks passed!`. The rule of the repository is a line of 120 characters and the
 rule set is `E`, `F`, `I`, `UP` and `B` (`pyproject.toml`).
 
-### 4.2 The suite
+### 4.2 The suite of the Python side
 
 `pytest -q`, run offline with `LEDGERLENS_OFFLINE=1` and with the locale of CI (`LANG=C.UTF-8`,
 `LC_ALL=C.UTF-8`):
 
 | | |
 |---|---|
-| Passed | 2776 |
+| Passed | 2951 |
 | Skipped | 6 |
 | Deselected | 8 |
 | Warnings | 419 |
-| Duration | 87.47s |
+| Duration | 85.52s |
 
 The six skips are the ones the suite declares, and none of them is a failure of the release:
 
@@ -115,77 +137,82 @@ SKIPPED [1] tests/sandbox/test_sandbox_api.py: the layout on the disk belongs to
 The 419 warnings are the deprecation warnings of the libraries the repository pins (LangChain, LangSmith and
 pydantic). The suite declares none of them as an error.
 
-### 4.3 The check of the export
+### 4.3 The three checks of the published artifacts
 
-`uv run python scripts/export_replay_site.py --check` answered:
-
-```text
-the artifacts in <repository>/site/replay match the bundle
-```
-
-That check compares what the export would write with what is on the disk and writes nothing, so the
-published artifacts of `site/replay/` are the artifacts of the bundle of `data/eval/replay/s01/`.
-
-### 4.4 The check of the digests
-
-`uv run python scripts/verify_replay_digests.py` answered, with the exit code `0`. The gate of the
-repository runs this check today, right after the check of the export, under the step `== replay digests
-(offline)`:
-
-```text
-canonical bundle: <repository>/data/eval/replay/s01
-published files: <repository>/site/replay/s01
-scenario: S01
-files checked:
-  ok       events.jsonl  577939e532327f3af1a3897612f622d96edc27a620646437fb02c5fa5318de13
-  ok       manifest.json  bbbe1e54fcae712df66a3a6096838ab5b7f8c938e2e47b7ef6681e43cafa84ac
-  ok       provenance.json  bbbe1e54fcae712df66a3a6096838ab5b7f8c938e2e47b7ef6681e43cafa84ac
-  ok       index.json  S01
-the published artifacts match the canonical bundle
-```
-
-### 4.5 The measurement of the budget
-
-`uv run python scripts/measure_replay_budget.py` answered, with the exit code `0`. The gate of the
-repository runs this measurement today, right after the check of the digests, under the step `== replay
-budget (offline)`:
-
-```text
-published folder: <repository>/site/replay
-budget: 409600 bytes (400 kibibytes) per scenario, from SC-004 of specs/001-r1-public-replay/spec.md
-
-  file                                    bytes      gzipped
-  index.json                                872          527
-  s01/events.jsonl                        70321         6801
-  s01/manifest.json                         770          459
-  s01/provenance.json                      1048          542
-  TOTAL                                   73011         8329
-
-  scenario                                bytes      gzipped   events
-  s01                                     72139         7802       57
-
-  events of the recording: 57
-the published artifacts are inside the budget
-```
+The check of the export answered `the artifacts in <repository>/site/replay match the bundle`, the check
+of the digests answered `the published artifacts match the canonical bundle`, and the measurement of the
+budget answered `the published artifacts are inside the budget`.
 
 The budget that was applied is the one the repository declares, SC-004 of
 [the specification](spec.md): the compressed payload of one scenario stays under 400 kilobytes, which is
-409600 bytes when the kilobyte is read as 1024 bytes. The published payload of the scenario `S01` is 7802
+409600 bytes when the kilobyte is read as 1024 bytes. The published payload of the scenario `S01` is 8446
 compressed bytes, so it sits far inside the budget.
+
+### 4.4 The gate of the frontend
+
+The Node gate ran the locked install, the type check, the lint, the unit tests of the frontend and the
+build of the static export, and it answered `gate_web: ok`.
+
+| | |
+|---|---|
+| Files of the unit tests | 60 |
+| Tests of the unit tests | 628 |
+| Pages of the export | one per scenario of the catalog, the page of the architecture and the page of 404 |
+
+### 4.5 The suite of the end to end
+
+The suite of Playwright ran against the static export, served as plain files, because that is exactly
+what a visitor receives. It runs on four projects, Chromium and WebKit at 390 and 1440 pixels.
+
+| | |
+|---|---|
+| Passed | 285 |
+| Skipped | 39 |
+| Duration | 55.7s |
+
+The thirty-nine skips are the cases that a project of the suite does not run: the structural baseline of
+the pages is the same on every platform and on every engine, so it is measured in the project of Chromium
+alone, and the cases of the other three projects are skipped (ADR-051, decision 4).
+
+**The accessibility scan is inside those 285.** The suite of Playwright carries the scan of the axes of
+the pages of the feature, in `tests/e2e/a11y.spec.ts`, and it is a case of the suite like any other.
+
+### 4.6 The measurement of the paint
+
+`uv run python scripts/measure_replay_budget.py --paint` answered, with the exit code `0`:
+
+```text
+paint of the replay page: http://127.0.0.1:57803/replay/scenario/S01
+export measured: <repository>/apps/web/out
+throttling: the processor 4 times slower, 500000 bytes per second down, 125000 bytes per second up, 100 ms of latency
+
+  first contentful paint: 388 ms
+  largest contentful paint: 388 ms
+
+  promise of SC-003: the first contentful paint under 1800 ms and the largest contentful paint under 2500 ms
+  bound of the suite: the first contentful paint under 5000 ms and the largest contentful paint under 8000 ms
+  the measurement is inside the promise of SC-003, and the promise is a number of the deployed site on the connection named above
+```
+
+The numbers of the promise are the numbers of SC-003: the first contentful paint under 1800 ms and the
+largest contentful paint under 2500 ms, on a throttled mid-range connection. The bound of the suite is
+deliberately looser, because a shared machine and a container make the wall clock noisy, and a case that
+asserts 1800 ms exactly is a case that goes red for reasons that have nothing to do with the code.
 
 ## 5. How to reproduce this record
 
 ```bash
-git checkout bac3e7afe83380e46fb5c76ce3c6f6c8e28bd715
+git checkout d3a640d06e7cd78ff9e9c9d48a25494a75ff3eca
 LEDGERLENS_OFFLINE=1 bash scripts/gate.sh
+bash scripts/gate_web.sh
+cd apps/web && npx playwright test --reporter=line
+uv run python scripts/measure_replay_budget.py --paint
 ```
 
-The gate of that commit has the three steps of the transcript of the section 4, so the run above reproduces
-that transcript. The two checks of this milestone are not steps of the gate at that commit, so they are
-reproduced with the commands of the section 3, against the same tree.
-
-The suite is deterministic offline, so the counts of the section 4.2 are the counts of that commit. The
-duration and the order of the warnings are not, and the record does not claim them.
+The suite of Python is deterministic offline, so the counts of the section 4.2 are the counts of that
+commit. The duration and the order of the warnings are not, and the record does not claim them. The
+numbers of the paint are the numbers of ONE machine under ONE throttling, and the record does not claim
+them for another machine.
 
 The fingerprint of the whole state, with the versions, the data hashes and the score of the gate, is in
 [the baseline of the repository](../../verification/baseline.md). The command that recomputes it is
@@ -193,16 +220,15 @@ The fingerprint of the whole state, with the versions, the data hashes and the s
 
 ## 6. What this record does not cover
 
-- **The two steps the gate of the repository runs today** (`== replay digests (offline)` and `== replay budget
-  (offline)`) were **not steps of the gate** at the moment of this run. The checks themselves did run against
-  the same tree, as the two commands of the section 3, and their answers are in the sections 4.4 and 4.5.
-- **The Node gate of the frontend** (`bash scripts/gate_web.sh`) was **not run** in this record. It needs the
-  locked install of Node (`npm ci --engine-strict`) and the tree was shared with other work at the moment of
-  this run. The command exists and it is the second job of `.github/workflows/gate.yml`.
-- **The end to end suite of Playwright** (`cd apps/web && npm run test:e2e`) was **not run** in this record,
-  for the same reason. It is a local command and it is not part of any gate, because the download of the
-  browsers is heavy.
-- **The accessibility scan** of the six pages of the feature was **not run** in this record.
-- No online execution: the real model and the live exchange rate do not enter here.
-- The wall clock of a run is not stable, so the 87.47s of the section 4.2 describes that run and not the next
-  one.
+- **No online execution.** The real model and the live exchange rate do not enter here. The product is
+  offline, and the path of the live mode answers `503 LIVE_MODE_OFFLINE` (ADR-043).
+- **No deployment.** The site was not published and the numbers of the paint were taken against the
+  static export of this repository, served on the loopback, and not against a deployed site.
+- **The suite of Playwright is not a step of any gate.** It ran here as a command of its own. The
+  continuous integration runs the two gates and not the suite, because the download of the browsers is
+  heavy.
+- **The wall clock of a run is not stable**, so the 85.52s of the section 4.2 and the 55.7s of the
+  section 4.5 describe those runs and not the next ones.
+- **The baseline of the repository was not recomputed** by this run. The command that recomputes it is
+  `uv run python scripts/baseline.py --check`, and the record of the state that it freezes is the file
+  `verification/baseline.md`.
