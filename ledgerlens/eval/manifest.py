@@ -54,6 +54,12 @@ Two more rules keep the check from lying to the person who reads its log:
 The rule that decides what is wrong between the manifest and the disk lives in this module and only here.
 `manifest_problems` is that rule, `verify_manifests` gives its sentences and the check of the gate prints them.
 
+The module also holds the guard of the tuning: `may_be_tuned_against` answers whether a dataset may be tuned
+against and `require_tuning_dataset` refuses with a sentence when it may not. Only the datasets with the role
+`tuning` may be tuned against, so a script that chooses a threshold reads a set nobody decided anything on only
+by ignoring the guard. The guard takes the entries of the manifest as an argument and never reads the disk, so the
+caller decides which root it is about.
+
 Usage:
 
 ```python
@@ -86,6 +92,11 @@ MANIFEST_PATH = PROJECT_ROOT / "data" / "eval" / "datasets.json"
 # dataset with the role `held_out` may be read only by the final scoring step.
 SPLIT_ROLES: tuple[str, ...] = ("tuning", "validation", "held_out")
 
+# The role of the datasets a tuning script may read. It is the only role that may: a dataset with the role
+# `validation` may be scored but never tuned against, and a dataset with the role `held_out` may be read only by
+# the final scoring step.
+TUNING_ROLE = "tuning"
+
 # The folder of the datasets, relative to the project root, and the manifest file relative to it. They are relative
 # so that a check over another root reads that root and not this one.
 EVAL_DIR_RELATIVE = Path("data") / "eval"
@@ -105,6 +116,16 @@ class ManifestError(Exception):
 
     Why it exists: the reader of a manifest wants one sentence that names the file and the problem, not a stack
     trace. Every function of this module that can meet a bad file raises this, with that sentence in the message.
+    """
+
+
+class TuningRefusal(ManifestError):
+    """A caller asked for a dataset that may not be tuned against, and the message says why.
+
+    Why it exists: the rule of what a tuning script may read is the one thing that keeps a threshold from being
+    chosen against a set that no decision of the repository was taken against. The refusal has its own class, so a
+    caller can catch it without catching every error of the module, and the message names the dataset, the role it
+    has and the role that is allowed.
     """
 
 
@@ -811,19 +832,65 @@ def update_fingerprints(manifests: Sequence[EvalDatasetManifest], root: Path | N
     return FingerprintUpdate(entries=tuple(entries), messages=tuple(messages))
 
 
+# --- the guard of the tuning --------------------------------------------------------------------------
+
+
+def may_be_tuned_against(dataset_id: str, manifests: Sequence[EvalDatasetManifest]) -> bool:
+    """Whether the dataset may be tuned against, given the entries of the manifest.
+
+    Why it exists: the thresholds, the prompts and the hyperparameters of the repository were chosen against the
+    datasets with the role `tuning` and against nothing else. A dataset with the role `validation` may be scored
+    but never tuned against, and a dataset with the role `held_out` may be read only by the final scoring step. A
+    dataset that no entry declares may not be tuned against either: the manifest is what says which file is which,
+    so a file nobody declared is a file nobody may tune on.
+
+    The entries are an argument and the disk is never read, so the caller decides which root it is about and the
+    rule can be checked without a disk at all.
+    """
+    entry = next((manifest for manifest in manifests if manifest.dataset_id == dataset_id), None)
+    return entry is not None and entry.split_role == TUNING_ROLE
+
+
+def require_tuning_dataset(dataset_id: str, manifests: Sequence[EvalDatasetManifest]) -> EvalDatasetManifest:
+    """The entry of the dataset when it may be tuned against, and a refusal when it may not.
+
+    Why it exists: a script that tunes reads a dataset by name, and that door has to say no. The refusal names the
+    dataset, the role it has and the rule it breaks, and it names the role that is allowed, so the reader of the
+    log knows what to do next and does not have to read the source to find out.
+
+    Raises `TuningRefusal` when the manifest does not declare the dataset or when its role is not `tuning`.
+    """
+    entry = next((manifest for manifest in manifests if manifest.dataset_id == dataset_id), None)
+    if entry is None:
+        raise TuningRefusal(
+            f"The dataset '{safe_text(dataset_id)}' is not declared by the manifest, so it may not be tuned "
+            f"against: only the datasets with the role '{TUNING_ROLE}' may be tuned against."
+        )
+    if entry.split_role != TUNING_ROLE:
+        raise TuningRefusal(
+            f"The dataset '{safe_text(dataset_id)}' has the role '{safe_text(entry.split_role)}' and may not be "
+            f"tuned against: only the datasets with the role '{TUNING_ROLE}' may be tuned against."
+        )
+    return entry
+
+
 __all__ = [
     "EVAL_DIR_RELATIVE",
     "MANIFEST_PATH",
     "MANIFEST_RELATIVE",
     "SPLIT_ROLES",
+    "TUNING_ROLE",
     "EvalDatasetManifest",
     "FingerprintUpdate",
     "ManifestError",
     "ManifestProblem",
+    "TuningRefusal",
     "fingerprint_dataset",
     "load_manifests",
     "manifest_problems",
+    "may_be_tuned_against",
     "render_manifests",
+    "require_tuning_dataset",
     "safe_text",
     "update_fingerprints",
     "verify_manifests",
