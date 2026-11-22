@@ -140,8 +140,8 @@ description: "Task list for the isolated visitor sandbox branches feature"
 - [x] T048 [US3] Implement the invariant evaluation in `ledgerlens/sandbox/invariants.py` for the named rules of each scenario, with the readable reason of a failure
 - [x] T049 [US3] Implement the rollback on a failed invariant in `ledgerlens/sandbox/mutation.py` so that the branch keeps the previous hash and the response carries the failing invariant name
 - [x] T050 [US3] Add the `GET /v1/sandboxes/{id}/diff` route in `ledgerlens/api/sandbox.py` that returns the diff with the schema version
-- [ ] T051 [P] [US3] Create `apps/web/features/sandbox/types.ts` with the types of the branch status, the diff, the verdict and the error envelope, generated from the versioned contract
-- [ ] T052 [P] [US3] Create `apps/web/features/sandbox/DiffView.tsx` that renders the before and after values as the strings returned by the server, shows the verdict label and never calculates a value in the browser
+- [x] T051 [P] [US3] Create `apps/web/features/sandbox/types.ts` with the types of the branch status, the diff, the verdict and the error envelope, generated from the versioned contract
+- [x] T052 [P] [US3] Create `apps/web/features/sandbox/DiffView.tsx` that renders the before and after values as the strings returned by the server, shows the verdict label and never calculates a value in the browser
 
 **Checkpoint**: At this point, User Stories 1, 2 AND 3 should all work independently
 
@@ -191,7 +191,7 @@ description: "Task list for the isolated visitor sandbox branches feature"
 - [x] T063 [US5] Apply the owner check to every route in `ledgerlens/api/sandbox.py`, so that the status, the ledger, the diff, the preview, the commit, the reset and the undo all refuse a branch of another session with a generic `404`
 - [x] T064 [US5] Scope the case memory path of the sandbox to the session through `ledgerlens/run_context.py`, so that the memory directory of a branch is the session directory and never a shared folder
 - [x] T065 [US5] Fill the branch id, the branch revision and the base snapshot hash in `ledgerlens/run_context.py` when an execution runs inside a branch, so that every trace and every answer carries them
-- [ ] T066 [P] [US5] Create `apps/web/features/sandbox/useBranch.ts` that holds the branch state, the revision and the expiry of the current session only, and clears them when the session ends
+- [x] T066 [P] [US5] Create `apps/web/features/sandbox/useBranch.ts` that holds the branch state, the revision and the expiry of the current session only, and clears them when the session ends
 
 **Checkpoint**: At this point, User Stories 1 to 5 should all work independently
 
@@ -248,11 +248,11 @@ description: "Task list for the isolated visitor sandbox branches feature"
 **Purpose**: Improvements that affect multiple user stories
 
 - [ ] T077 [P] [US3] Publish the branch lifecycle over server sent events in `ledgerlens/api/sandbox.py` with a monotonically increasing sequence, a heartbeat and a resume by the last event id
-- [ ] T078 [P] [US2] Create `apps/web/features/sandbox/api/sandboxClient.ts` with the typed calls to the versioned branch endpoints and the parsing of the error envelope
-- [ ] T079 [P] [US2] Create `apps/web/features/sandbox/MutationForm.tsx` that previews the typed command, shows the reason of a rejection and commits only after a valid preview
-- [ ] T080 [P] [US1] Create `apps/web/features/sandbox/BranchPanel.tsx` and `apps/web/features/sandbox/sandbox.css` that show the status, the revision, the expiry, the simulated label and the reset action
+- [x] T078 [P] [US2] Create `apps/web/features/sandbox/api/sandboxClient.ts` with the typed calls to the versioned branch endpoints and the parsing of the error envelope
+- [x] T079 [P] [US2] Create `apps/web/features/sandbox/MutationForm.tsx` that previews the typed command, shows the reason of a rejection and commits only after a valid preview
+- [x] T080 [P] [US1] Create `apps/web/features/sandbox/BranchPanel.tsx` and `apps/web/features/sandbox/sandbox.css` that show the status, the revision, the expiry, the simulated label and the reset action
 - [ ] T081 [US6] Add the rate limit and the session limit checks to the facade in `ledgerlens/api/sandbox.py`, so that a branch cannot be created beyond the per session cap and a request over the limit answers `429`
-- [ ] T082 [P] [US2] Write the documentation in `docs/api/sandbox.md` with the endpoints, the status codes, the error codes and the mutation catalog, and the decision record in `docs/decisions/ADR-011-sandbox-branch-store.md` with the alternatives and why they lost
+- [x] T082 [P] [US2] Write the documentation in `docs/api/sandbox.md` with the endpoints, the status codes, the error codes and the mutation catalog, and the decision record in `docs/decisions/ADR-011-sandbox-branch-store.md` with the alternatives and why they lost - the path of the decision record cannot exist, because ADR-011 is the decision of the roadmap of the v3, and the decision record of the front of the sandbox is ADR-044, with the decisions of the store of the branch in ADR-018 and ADR-020
 
 ---
 
