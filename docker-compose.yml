@@ -25,10 +25,74 @@ services:
       start_period: 5s
     restart: unless-stopped
 
+  api:
+    # The api of the visitor: the wired application of the demo (ADR-039), the process that holds the
+    # credential vault of the live mode. It runs the image of the `Dockerfile`, it runs offline, and it
+    # reads the store of the branches from the `postgres` service BY THE NAME of that service and not by
+    # the published port: the published port is the way in from the machine, and the way in between the
+    # services of the compose is the network of the compose.
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ledgerlens-demo:local
+    container_name: ledgerlens-api
+    environment:
+      # The image runs offline, so it never calls a provider and it needs no key.
+      LEDGERLENS_OFFLINE: "1"
+      # The store of the branches, by the name of the service of the database.
+      #
+      # Why the whole url is ONE variable and not two interpolated names: the url of a connection carries the
+      # user and the name of the database, and a scanner of secrets reads `user:password@host` in a url that
+      # carries an interpolated default as a password. The connection of this compose carries NO password, the
+      # method of trust of the container of the database is enough, and a deployment that changes the user or
+      # the name of the database changes this url with `LEDGERLENS_SANDBOX_DATABASE_URL`.
+      LEDGERLENS_SANDBOX_DATABASE_URL: ${LEDGERLENS_SANDBOX_DATABASE_URL:-postgresql://ledgerlens@postgres:5432/ledgerlens_sandbox}
+      # The local run declares the origin of the site of the demo, because the site of the demo is served
+      # on the port 3000 (ADR-040). The list is exact and never a wildcard: a wildcard with credentials is
+      # illegal and would let any site drive the api with the session of the visitor.
+      LEDGERLENS_CORS_ORIGINS: http://localhost:3000
+    depends_on:
+      # The api waits for the healthcheck of the database, so it never reads a store that is still starting.
+      postgres:
+        condition: service_healthy
+    command: ["ledgerlens-demo", "--host", "0.0.0.0", "--port", "8010"]
+    ports:
+      # The port is published on the loopback only: the demo is not a public service of the machine.
+      - "127.0.0.1:8010:8010"
+    volumes:
+      # The runtime folder of the server: the key of the sessions of the wired application and the runtime
+      # material of the sandbox live there, and they survive a restart of the container.
+      - ledgerlens-runtime:/var/lib/ledgerlens
+    restart: unless-stopped
+
+  demo:
+    # The demo server of the site: the published export served as plain files, the way a content delivery
+    # network serves it (ADR-040). The export is written by the build of the frontend in `apps/web`, and
+    # this service only reads it: it never rebuilds the site and it never writes in it. The image is the
+    # one of the `Dockerfile`, because the site is a folder of files and a static file server is all it
+    # takes to serve them.
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ledgerlens-demo:local
+    container_name: ledgerlens-demo
+    command: ["python", "-m", "http.server", "3000", "--directory", "/srv/site"]
+    volumes:
+      # The export of the site, read only: the service reads the files the build wrote and writes nothing.
+      - ./apps/web/out:/srv/site:ro
+    ports:
+      # The port is published on the loopback only, and it is the port of the site of the repository.
+      - "127.0.0.1:3000:3000"
+    restart: unless-stopped
+
 volumes:
   ledgerlens-sandbox-pgdata:
+  ledgerlens-runtime:
 
 # The url of this container is the default of the setting `LEDGERLENS_SANDBOX_DATABASE_URL`:
 # postgresql://ledgerlens@127.0.0.1:5433/ledgerlens_sandbox
 # The schema of the store is applied with `uv run python scripts/apply_sandbox_schema.py`, which is safe to run
-# twice.
+# twice. Inside the compose the api reads the same database by the name of the service, so the schema is applied
+# with `docker compose run --rm api python scripts/apply_sandbox_schema.py`.
+# The local run of the whole thing is `docker compose up -d`: the database, the api on the port 8010 and the site
+# of the demo on the port 3000.
