@@ -32,7 +32,7 @@ mutation, so a request that is delivered twice undoes one mutation and not two.
 
 A seventh rule keeps the resources of a branch honest: the branch carries the two counters of its resources, the
 number of the mutations it committed and the number of the events of its log, and the checks of the limits read those
-fields and not a number recomputed on the spot (FR-025). The revision cannot stand for the first counter, because
+counters and never a guess (FR-025). The revision cannot stand for the first counter, because
 the revision goes back on an undo and the number of the committed mutations does not, and the number of the events is
 in no field of the row of the branch. Both counters are read from the log of the branch, which is the truth of the
 branch, so they cannot drift away from it. The two limits are the settings of the configuration, and the layer takes
@@ -212,11 +212,10 @@ class SandboxBranch:
     `generation` counts the resets the branch went through, and it is what tells an answer of the past from the
     current result of the branch (ADR-022).
 
-    `committed_mutations` and `event_count` are the counters of the resources of the branch (FR-025). They are fields
-    of the branch and not numbers recomputed on the spot, because the revision cannot stand for the first one: the
-    revision goes back on an undo and the number of the committed mutations does not, and the number of the events of
-    the log is in no field of the row of the branch. Both counters are read from the log of the branch, which is the
-    truth of the branch, so they cannot drift away from it.
+    `committed_mutations` and `event_count` are the counters of the resources of the branch (FR-025). They are
+    derived from the log of the branch, which is the truth of the branch, so they cannot drift away from it. The
+    revision cannot stand for the first one: the revision goes back on an undo and the number of the committed
+    mutations does not, and the number of the events of the log is in no field of the row of the branch.
     """
 
     branch_id: str

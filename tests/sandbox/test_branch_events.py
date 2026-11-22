@@ -76,6 +76,8 @@ CANONICAL_IDENTIFIERS = ("0", "1", "2")
 # The shapes that the header may never carry: a sign, a space, an underscore, a leading zero, a word or a digit of
 # another alphabet. Every one of them is a resync with the reason `unknown`.
 NON_CANONICAL_IDENTIFIERS = (" 1", "1 ", " 1 ", "01", "007", "+1", "-1", "1_0", "1.0", "0x1", "1e3", "one", "١")
+# The record that decides the lifecycle of the branch, read by the guard of the promise of the resume.
+ADR_047 = Path(__file__).resolve().parents[2] / "docs/decisions/ADR-047-the-lifecycle-and-the-limits-of-the-branch.md"
 
 
 def _events_of(text: str) -> list[dict[str, Any]]:
@@ -338,7 +340,12 @@ def test_the_module_lists_every_public_name_of_its_surface() -> None:
 
 
 def _public_names_of_the_module(module: Any) -> set[str]:
-    """The names that the module defines itself, without the ones that it imports and without the private ones."""
+    """The names that the module defines itself, without the ones that it imports and without the private ones.
+
+    Why the logger of the module is not one of them: a logger is the instrument of the module and not a name of its
+    surface, and the modules of the repository that have both a logger and a list of public names keep the logger out
+    of that list.
+    """
     source = Path(str(module.__file__)).read_text(encoding="utf-8")
     tree = ast.parse(source)
     names: set[str] = set()
@@ -346,10 +353,18 @@ def _public_names_of_the_module(module: Any) -> set[str]:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             names.add(node.name)
         elif isinstance(node, ast.Assign):
+            if _is_the_logger_of_the_module(node):
+                continue
             names.update(target.id for target in node.targets if isinstance(target, ast.Name))
         elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
             names.add(node.target.id)
     return {name for name in names if not name.startswith("_")}
+
+
+def _is_the_logger_of_the_module(node: ast.Assign) -> bool:
+    """True when the assignment of the module is the logger of the module."""
+    value = node.value
+    return isinstance(value, ast.Call) and isinstance(value.func, ast.Attribute) and value.func.attr == "getLogger"
 
 
 @pytest.mark.parametrize("identifier", CANONICAL_IDENTIFIERS)
@@ -660,3 +675,181 @@ def test_the_stream_closes_with_the_event_of_the_close_when_the_branch_expires(
     assert EVENT_STREAM_HEARTBEAT in names
     assert EVENT_BRANCH_EXPIRED in names
     assert names[-1] == EVENT_STREAM_CLOSED
+
+
+# --- the order of the sequences of a branch ------------------------------------------------------------
+
+
+def test_every_subscriber_receives_the_events_of_the_branch_in_the_order_of_their_sequences() -> None:
+    """The order of the events of a branch is the order of their sequences, for EVERY subscriber of the branch.
+
+    Why the case exists: the hub delivered the events to the subscribers while it held its lock, and the lock is
+    re-entrant, so a subscriber that published inside its own delivery handed the LATER subscriber the INNER event
+    first. A client that received the events out of order carries a `Last-Event-ID` behind the counter of the hub,
+    and it would believe that it missed nothing while it missed an event (ADR-047).
+
+    Why the case is a real concurrency case: the publishers wait at a barrier and publish at the same moment, and one
+    of the subscribers publishes inside its own delivery.
+    """
+    hub = EventHub()
+    received: dict[str, list[int]] = {"a": [], "b": []}
+    guard = threading.Lock()
+    publishers = 3
+    per_publisher = 10
+
+    def record(name: str, event: StreamEvent) -> None:
+        """Remembers the sequence that the subscriber received."""
+        with guard:
+            received[name].append(event.seq)
+
+    def subscriber_a(event: StreamEvent) -> None:
+        """The subscriber that publishes inside its own delivery, the case that broke the order."""
+        record("a", event)
+        if event.seq == 1:
+            hub.publish("branch-a", EVENT_MUTATION_COMMITTED, {"revision": 0})
+
+    def subscriber_b(event: StreamEvent) -> None:
+        """The subscriber that only watches the branch."""
+        record("b", event)
+
+    hub.subscribe("branch-a", subscriber_a)
+    hub.subscribe("branch-a", subscriber_b)
+
+    barrier = threading.Barrier(publishers)
+
+    def publish_many() -> None:
+        """Publishes the events of the lifecycle at the same moment as the other publishers."""
+        barrier.wait()
+        for _ in range(per_publisher):
+            hub.publish("branch-a", EVENT_MUTATION_COMMITTED, {"revision": 0})
+
+    workers = [threading.Thread(target=publish_many) for _ in range(publishers)]
+    for worker in workers:
+        worker.start()
+    for worker in workers:
+        worker.join(timeout=30)
+        assert not worker.is_alive(), "a publisher of the test did not come back"
+
+    expected = list(range(1, hub.counter("branch-a") + 1))
+    # The thirty events of the publishers and the one event that the subscriber published inside its delivery.
+    assert len(expected) == publishers * per_publisher + 1
+    assert received["a"] == expected
+    assert received["b"] == expected
+
+
+def test_a_subscriber_that_raises_does_not_break_the_delivery_to_the_others() -> None:
+    """A subscriber that raises is a broken connection, and it does not take the other connections with it.
+
+    Why the case exists: the hub called the subscribers in a loop, and the first one that raised ended the delivery,
+    so the connections that came after it never received the event at all (ADR-047).
+    """
+    hub = EventHub()
+    received: list[StreamEvent] = []
+
+    def broken(_event: StreamEvent) -> None:
+        """The subscriber whose connection is broken."""
+        raise RuntimeError("the connection of the subscriber is broken")
+
+    hub.subscribe("branch-a", broken)
+    hub.subscribe("branch-a", received.append)
+
+    event = hub.publish("branch-a", EVENT_BRANCH_OPENED, {"revision": 0})
+
+    assert received == [event]
+    assert hub.counter("branch-a") == 1
+
+
+def test_a_subscriber_that_waits_for_another_thread_that_publishes_does_not_deadlock() -> None:
+    """The delivery of an event happens OUTSIDE the lock of the hub, so a subscriber may wait for a publisher.
+
+    Why the case exists: the hub held its lock while it delivered, and a subscriber that waited for another thread that
+    publishes waited for ever: the thread waited for the lock and the lock waited for the subscriber (ADR-047).
+    """
+    hub = EventHub()
+    joined: list[bool] = []
+
+    def subscriber(event: StreamEvent) -> None:
+        """Waits for another thread that publishes the next event of the branch."""
+        if event.seq != 1:
+            return
+        worker = threading.Thread(
+            target=lambda: hub.publish("branch-a", EVENT_MUTATION_COMMITTED, {"revision": 0}), daemon=True
+        )
+        worker.start()
+        worker.join(timeout=5)
+        # Why the liveness and not the value of the join: `Thread.join` returns nothing, and the question of the
+        # case is whether the publisher CAME BACK, and not what the join answered.
+        joined.append(not worker.is_alive())
+
+    hub.subscribe("branch-a", subscriber)
+    hub.publish("branch-a", EVENT_BRANCH_OPENED, {"revision": 0})
+
+    assert joined == [True], "the subscriber waited for a publish that could not come: the delivery holds the lock"
+
+
+# --- the truth of the resume ----------------------------------------------------------------------------
+
+
+def test_a_client_that_subscribes_late_holds_the_state_of_the_branch_and_misses_nothing_from_now_on() -> None:
+    """A client that subscribes late is told the state of the branch, and it misses nothing from that moment on.
+
+    Why the case exists: the counter of the branch is per branch and it is shared by every connection of that branch,
+    so a client that connects late holds a sequence below which it never received anything, and the hub cannot prove
+    that it did. What the hub promises is that the client missed nothing FROM THE MOMENT IT SUBSCRIBED, and the event
+    of the opening carries the state of the branch, so the client is informed of it (ADR-047, decision 2).
+
+    Why the case pins the truth and not a hope: the hub keeps no history, so it can never repeat the events that the
+    client did not receive, and the only honest answer for a client that arrives late is the state of the branch.
+    """
+    hub = EventHub()
+    hub.publish("branch-a", EVENT_MUTATION_COMMITTED, {"revision": 1})
+    hub.publish("branch-a", EVENT_MUTATION_COMMITTED, {"revision": 2})
+    received: list[StreamEvent] = []
+
+    hub.subscribe("branch-a", received.append)
+    decision = hub.resume("branch-a", str(hub.counter("branch-a")))
+
+    # The client that arrives late holds the counter of the branch, and the hub continues with it: the client missed
+    # nothing that was published while it was connected.
+    assert decision.kind == RESUME_CONTINUE
+    assert hub.counter("branch-a") == 2
+    assert received == []
+
+
+def test_the_record_says_what_a_client_that_subscribes_late_is_told() -> None:
+    """The record promises what the code proves: the client misses nothing from the moment it subscribed.
+
+    Why the guard reads the record: the promise of the resume is the promise of the record, and a record that promises
+    more than the code proves is a record that lies (ADR-043, ADR-047). The guard fails when the record goes back to
+    the promise that the client holds every event of the branch since the branch was born.
+
+    Why the comparison is without case: the record says the same promise in two places and in two forms, and a guard
+    that pinned ONE spelling of it would break the record the next time that a sentence is rewritten. What the guard
+    pins is the MEANING of the promise, and not the letter of it.
+    """
+    text = ADR_047.read_text(encoding="utf-8")
+    lowered = text.lower()
+
+    assert "nothing from the moment it subscribed" in lowered
+    assert "the client proved that it missed nothing and it still holds the state" not in lowered
+
+
+# --- the shape of the header of the resume ---------------------------------------------------------------
+
+
+def test_the_resume_refuses_an_identifier_with_more_digits_than_a_sequence_can_have() -> None:
+    """A `Last-Event-ID` of any length answers with a resync of the reason `unknown`, and the hub never raises.
+
+    Why the case exists: the hub converted the header with `int()`, and Python refuses to convert a text of more than
+    4300 digits and raises, and nothing caught the failure, so the stream died AFTER the status and the headers of
+    the answer were sent (ADR-047, decision 2).
+    """
+    hub = EventHub()
+    hub.publish("branch-a", EVENT_BRANCH_OPENED, {})
+    identifier = "9" * 5000
+
+    decision = hub.resume("branch-a", identifier)
+
+    assert decision.kind == RESUME_RESYNC
+    assert decision.reason == RESYNC_REASON_UNKNOWN
+    assert decision.last_event_id == identifier

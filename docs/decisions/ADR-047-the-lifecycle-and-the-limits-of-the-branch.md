@@ -72,10 +72,10 @@ router (ADR-039), and it is the only place that writes a refusal. It scrubs the 
 credentials when the deployment gave one, so no value of the visitor leaves the process (FR-018, SC-001). The
 handler writes no header but the version of the schema today.
 
-**The third is the branch layer.** `ledgerlens/sandbox/branch.py` holds the dataclass `SandboxBranch` at line 194
-and the layer `BranchLayer` at line 356. The dataclass carries the identifier, the owner, the scenario, the base
+**The third is the branch layer.** `ledgerlens/sandbox/branch.py` holds the dataclass `SandboxBranch` at line 205
+and the layer `BranchLayer` at line 375. The dataclass carries the identifier, the owner, the scenario, the base
 snapshot, the two hashes, the revision, the three moments, the state and the two counters of the resources of the
-branch. The file holds the DEFAULTS of the limits of one branch at its lines 107 and 108:
+branch. The file holds the DEFAULTS of the limits of one branch at its lines 115 and 116:
 `MAX_COMMITTED_MUTATIONS = 20` and `MAX_EVENTS = 200`. Those two numbers are the defaults of the settings
 `sandbox_max_committed_mutations` and `sandbox_max_events` of `ledgerlens/config.py`, and the layer receives them
 as arguments, so a deployment changes the limits of the resources of a branch with the settings of the
@@ -228,7 +228,9 @@ a sequence, and a `Last-Event-ID` that goes back is not a resume.
 **The counter of the sequence lives in a hub of the facade, and the hub holds the subscribers and the counter and
 NEVER the events.** The hub is the place where the facade publishes the events of the lifecycle, and it is built
 like the cleanup worker of ADR-029: it belongs to the process, it is started with the application, and it holds
-nothing that the branch store holds.
+nothing that the branch store holds. The queue of a subscriber holds an event only while the event waits to be
+delivered, and it is empty again as soon as the subscriber received it: the hub keeps NO history of the branch, and
+it can never repeat an event that was lost.
 
 **The format of the header `Last-Event-ID` is the bare decimal integer of the sequence.** No prefix, no quotes,
 no branch identifier: the text is exactly the text of the `id:` line, because the browser sends the header by
@@ -238,9 +240,9 @@ itself on a reconnection of the `EventSource` and it must be the same text the s
 
 1. **The header is absent.** It is the first connection of the client. The stream opens with `branch.opened` and
    the sequence of that branch starts at one.
-2. **The header carries the last sequence the hub gave to that branch.** The client holds the last event and
-   nothing is missing. The stream continues with the next sequence, there is NO `stream.resync`, and it does NOT
-   receive `branch.opened` again: the client proved that it missed nothing and it still holds the state.
+2. **The header carries the last sequence the hub gave to that branch.** The client holds the last event of the branch
+   and it misses NOTHING FROM THE MOMENT IT SUBSCRIBED. The stream continues with the next sequence, there is NO
+   `stream.resync`, and it does NOT receive `branch.opened` again.
 3. **The header carries anything else.** It is behind the counter of the hub, so the client missed events, or the
    hub does not know it at all, because the counter was lost at the restart of the process or because the client
    is talking to another instance of the deployment. The stream sends `stream.resync` as its FIRST event, with the
@@ -248,6 +250,39 @@ itself on a reconnection of the `EventSource` and it must be the same text the s
    when the identifier is behind the counter and the text `unknown` when the hub does not know it. The client
    then re-reads the branch with `GET /v1/sandboxes/{sandbox_id}`, and with
    `GET /v1/sandboxes/{sandbox_id}/history` when it needs the log.
+
+**What the second answer proves, and what it does not.** The counter of the branch is PER BRANCH and it is shared by
+every connection of that branch, so the sequence that the client holds is the sequence of the branch and not a
+sequence of the client. A client that connects LATE (a second tab, or a visitor that comes back to a branch that
+already had a life) never received the events below the sequence that it holds, and the hub CANNOT prove that it
+did: the hub keeps no history and it knows nothing about the history of a client. What such a client receives
+instead is the event of the opening, `branch.opened`, whose payload carries the state of the branch at the moment of
+the opening (the revision, the two hashes and the state). The promise of the resume is therefore the promise of the
+moment of the subscription: the client missed nothing that was published WHILE IT WAS CONNECTED, and it holds the
+state of the branch as it was when it arrived. It is NOT the promise that the client holds every event of the branch
+since the branch was born, and the truth of a branch is the answer of `GET /v1/sandboxes/{sandbox_id}` in any case.
+
+**The header is read strictly, and it is never converted blindly.** The header is the bare decimal integer of the
+sequence, with no sign, no space, no underscore and no leading zero, and a header with more digits than any sequence
+can ever have is refused as well. The hub refuses it WITHOUT converting it into an integer: Python refuses to convert
+a text of more than 4300 digits and raises, and a refusal that raises kills the stream after the status and the
+headers of the answer were sent. Every header of any length and of any shape therefore answers with a resync of the
+reason `unknown`, and the stream lives.
+
+**The order of the events of a branch is the order of their sequences, for EVERY subscriber.** The hub gives every
+subscriber its own FIFO queue: the sequence is given and the event goes in the queue of every subscriber under the
+SAME lock, so the order of the queues is the order of the sequences, and ONE drainer at a time empties the queue of a
+subscriber, OUTSIDE the lock. The delivery can therefore neither reorder the events nor wait for the lock, and a
+subscriber that publishes inside its own delivery (which the docstring of the hub allows) does not hand the LATER
+subscriber the INNER event first: the inner event waits in the queue of every subscriber and it is delivered after
+the outer one. A subscriber that raises does not break the delivery to the others: the hub says so in the log and
+goes on with the next event.
+
+**The opening of a stream is ONE operation of the hub.** The subscription of the stream and the publication of the
+event of the opening happen under the SAME lock, so no other route can publish an event of the lifecycle in between,
+and the first event of a stream that opens for the first time is ALWAYS `branch.opened`. The event of the opening is
+an event of the LIFECYCLE of the branch, so the other streams of the same branch receive it too, and it moves the
+counter of the branch exactly once.
 
 **The resume NEVER repeats the events that were lost.** The hub keeps no history, so it has nothing to repeat.
 This is the honest resume, and the rule of the repository asks for it: an interface that invents what it did not
@@ -276,16 +311,16 @@ three other names: `stream.resync`, `stream.closed` and `stream.heartbeat`, and:
 4. **Their payload carries the `seq` of the LAST sequence of the lifecycle that the server published for the branch**,
    which is the current value of the counter.
 5. **`branch.opened` is the first event of a stream that opens FOR THE FIRST TIME.** A resume that is proven continues
-   with the next sequence and does NOT receive `branch.opened` again: the client proved that it missed nothing and it
-   still holds the state.
+   with the next sequence and does NOT receive `branch.opened` again: the client holds the last event of the branch and
+   it missed nothing from the moment it subscribed, and it still holds the state.
 6. **The disconnect of a client is NOT an event.** The client that left is gone and the other connections of the branch
    are not affected by it. The `stream.closed` exists only for the two reasons the SERVER ends a connection: the row
    of the branch disappeared (`branch_gone`) and the branch died (`branch_expired`).
 
-**The reason.** The counter exists so that a client can PROVE that it missed nothing. An event of the stream that
-moved the counter would make every reconnection look stale, because the event that moved it was never received by the
-client that disconnected. Before this decision the second answer of the resume, the one that continues without a
-resync, was unreachable in the real flow.
+**The reason.** The counter exists so that a client can PROVE that it missed nothing that was published while it was
+connected. An event of the stream that moved the counter would make every reconnection look stale, because the event
+that moved it was never received by the client that disconnected. Before this decision the second answer of the resume,
+the one that continues without a resync, was unreachable in the real flow.
 
 **What this decision forbids.** An event of the stream that moves the counter of the branch. A `stream.closed` that
 is given to the other connections of the branch. A `branch.opened` that is repeated on a resume that is proven.
@@ -293,7 +328,9 @@ is given to the other connections of the branch. A `branch.opened` that is repea
 **Where it lives.** The counter of the branch lives in the hub of the events (`ledgerlens/sandbox/events.py`), and
 the hub builds the three events of the stream with the methods `resync`, `closed` and `heartbeat`. Those three
 methods RETURN the event and they never publish it, because a published event moves the counter and carries an `id:`
-line. The route of the stream puts them in the queue of THAT connection (`ledgerlens/api/sandbox.py`).
+line. The event of the resync goes to the queue of THAT connection and to nobody else: the operation `open` of the hub
+puts it at the front of the queue of the connection that reconnected, and the route of the stream puts the event of
+the close and the heartbeat in the queue of that connection (`ledgerlens/api/sandbox.py`).
 
 **The expiry is an event of the lifecycle, and the close that follows it is not.** The branch died, so every
 connection of the branch has to know it, and the event of the expiry moves the counter of the branch. The close that
@@ -536,7 +573,9 @@ the cap of the branches is not. The front reads the flag when it decides whether
   rate of the requests lives in the module of its own, `ledgerlens/sandbox/rate_limit.py`.
 - The configuration gains three settings: `LEDGERLENS_SANDBOX_SESSION_BRANCH_CAP`,
   `LEDGERLENS_SANDBOX_RATE_LIMIT_REQUESTS` and `LEDGERLENS_SANDBOX_RATE_LIMIT_WINDOW_SECONDS`. The first
-  defaults to five, the second to 120 and the third to 60.
+  defaults to five, the second to 120 and the third to 60. The later milestone of the settings adds two more, the
+  limits of the resources of one branch: `LEDGERLENS_SANDBOX_MAX_COMMITTED_MUTATIONS` and
+  `LEDGERLENS_SANDBOX_MAX_EVENTS`, so the configuration of the facade carries FIVE settings and not three.
 - The exception of a refusal gains an optional mapping of headers, and the CORS gains `Retry-After` among the
   headers that the browser may read.
 - The documentation of the API, `docs/api/sandbox.md`, gains the twelfth path, the names of the events, the
@@ -548,6 +587,12 @@ the cap of the branches is not. The front reads the flag when it decides whether
     opens for the first time carries the facts of the creation and the state of the opening;
   - the sequence grows by one for every event of the lifecycle, and the `id:` line carries the same number as
     the field `seq` of the payload;
+  - every subscriber receives the events of the branch in the order of their sequences, under concurrency, and a
+    subscriber that publishes inside its own delivery never makes another subscriber receive the events out of order;
+  - a subscriber that raises does not break the delivery to the others, and a subscriber that waits for another thread
+    that publishes does not wait for ever;
+  - the first event of a stream that opens for the first time is ALWAYS `branch.opened`, whatever another route
+    publishes at the same moment;
   - the heartbeat arrives every fifteen seconds, carries no `id:` line, and does not move the counter;
   - the three events of the stream do not move the counter of the branch and carry no `id:` line, and their payload
     carries the `seq` of the last event of the lifecycle;
@@ -556,6 +601,10 @@ the cap of the branches is not. The front reads the flag when it decides whether
   - a reconnection with the last identifier of the hub receives NO `stream.resync` and NO `branch.opened` again, and
     a reconnection with any other identifier receives a `stream.resync`, as the FIRST event, with the identifier
     echoed back;
+  - a client that subscribes late receives the state of the branch in the payload of the opening, and the promise of
+    the resume covers the events that were published while the client was connected;
+  - a `Last-Event-ID` of any length and of any shape answers with a `stream.resync` of the reason `unknown`, and the
+    hub never raises and never kills the stream after the headers of the answer were sent;
   - a branch that expired answers `410` with the code `BRANCH_EXPIRED` at the route of the stream, and the opening of
     a stream counts ONE request of the rate;
   - the stream of a branch that dies says that the branch died and then says that the stream closed, in that order;
@@ -586,3 +635,22 @@ the cap of the branches is not. The front reads the flag when it decides whether
 - **The three settings of the configuration.** They do not exist today, and the setting of the maximum of the
   committed mutations of a branch is a module constant of the branch layer and not a setting, so a deployment
   cannot change the twenty mutations of a branch of FR-025 without touching the code.
+
+  **This debt is PAID, and this amendment says so.** The milestone of the settings added the three settings of
+  this decision and two more, the limits of the resources of one branch, and the layer of the branch takes them as
+  arguments of its constructor. The module constant `MAX_COMMITTED_MUTATIONS` of `ledgerlens/sandbox/branch.py` is
+  the DEFAULT of the setting and not the limit itself. The debt stays here as the record of what the milestone of
+  the settings paid, and it is not a debt that anybody owes.
+- **The settings of the facade that a deployment INJECTS.** The rate of the requests and the cap of the live
+  branches of a session were read from the ENVIRONMENT by the router of the sandbox, so a deployment that
+  injected a configuration of its own kept the defaults of the environment. The router takes the settings as an
+  argument now, and the application that serves the two facades passes the settings it holds. The defect was
+  found by the review before the push and it is closed with a test that pins the rate and the cap of the injected
+  configuration.
+- **The limit of the events of a branch, with the defaults, is UNREACHABLE.** The log of a branch holds one event
+  per mutation and one marker per undo, and an undo needs a mutation that is alive, so the log reaches at most
+  twice the mutations: forty events with the defaults of twenty mutations and two hundred events. The setting
+  `LEDGERLENS_SANDBOX_MAX_EVENTS` is therefore a DEAD setting until the mutations are raised with it. The layer
+  reads both limits and the limit of the events is a real limit for a deployment that raises the mutations, and
+  the default of two hundred is kept because it is the number of ADR-047 and because a limit that cannot be
+  reached is better than a limit that reaches itself.

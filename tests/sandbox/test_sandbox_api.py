@@ -7,6 +7,7 @@ cookie of the session between the requests, which is the way the browser behaves
 from __future__ import annotations
 
 import json
+import threading
 import time
 from datetime import timedelta
 from pathlib import Path
@@ -37,6 +38,7 @@ from ledgerlens.sandbox.events import (  # noqa: E402
     EVENT_STREAM_CLOSED,
     EVENT_STREAM_HEARTBEAT,
     EVENT_STREAM_RESYNC,
+    RESUME_CONTINUE,
     EventHub,
 )
 from ledgerlens.sandbox.rate_limit import RateDecision, RateLimiter  # noqa: E402
@@ -1010,3 +1012,131 @@ def test_the_close_belongs_to_its_connection_and_the_disconnect_publishes_nothin
         assert len(closed) == 1
         assert "id" not in closed[0]
         assert closed[0]["data"]["reason"] == CLOSED_REASON_GONE
+
+
+# --- the first event of a stream that opens for the first time --------------------------------------------
+
+
+def test_the_first_event_of_a_stream_that_opens_for_the_first_time_is_always_branch_opened(
+    stream_client: TestClient, scenario_id: str, hub: EventHub
+) -> None:
+    """The first event of a stream that opens for the first time is ALWAYS `branch.opened`.
+
+    Why the case exists: the route subscribed to the hub and published the opening AFTER, and a lifecycle event that
+    another route published in that window reached the new stream FIRST, before the `branch.opened` that ADR-047
+    promises as the first event of a stream that opens for the first time.
+
+    Why the case is a real concurrency case: a thread publishes the events of the lifecycle of the branch while the
+    streams open, and every one of the openings is checked. The thread and the test start at the same moment, at a
+    barrier, so the race is not a matter of luck.
+
+    Why the number of the openings: the session of the test spends one request of the rate for every opening, and the
+    rate of the facade is one hundred and twenty requests a minute.
+
+    Why the publisher is BOUNDED and why it sleeps: a publisher that never stops fills the queue of every subscriber
+    of the branch without ever emptying it, and the suite would spend its time in a loop that proves nothing. The
+    publisher of this test publishes a number of events and then stops, and it sleeps between two of them so that the
+    race is a race and not a flood. The race is still a real one: the thread and the test start at the same moment, at
+    a barrier, and the publisher works while the streams open.
+
+    Why the number of the openings is twenty-five and not a hundred: the store of postgres holds ONE connection per
+    thread, and every opening of a stream of this test asks the store for the branch, so every opening of a stream
+    spends a connection of the database of the suite. A hundred of them would exhaust the hundred connections of the
+    database of the suite and the case would fail with the error of the database and not with the promise of the
+    record. Twenty-five openings with a publisher that works at the same moment are a real race.
+    """
+    branch_id = _fork(stream_client, scenario_id).json()["id"]
+    path = f"/v1/sandboxes/{branch_id}/events"
+    stop = threading.Event()
+    barrier = threading.Barrier(2)
+    published = 0
+
+    def publish_forever() -> None:
+        """Publishes the events of the lifecycle of the branch while the streams open, and then stops."""
+        nonlocal published
+        barrier.wait()
+        while not stop.is_set() and published < 20_000:
+            hub.publish(
+                branch_id,
+                EVENT_MUTATION_COMMITTED,
+                {
+                    "revision": 0,
+                    "canonical_hash": "hash-of-the-branch",
+                    "command_id": "cmd-0001",
+                    "kind": "refund.apply_fx_adjustment",
+                },
+            )
+            published += 1
+            time.sleep(0.0005)
+
+    worker = threading.Thread(target=publish_forever, daemon=True)
+    worker.start()
+    barrier.wait()
+    try:
+        for _ in range(25):
+            with stream_client.stream("GET", path) as response:
+                frames = response.iter_text()
+                first = _events_of(next(frames))
+            assert first[0]["event"] == EVENT_BRANCH_OPENED, first
+    finally:
+        stop.set()
+        worker.join(timeout=10)
+
+
+def test_a_client_that_opens_the_stream_of_a_branch_that_already_has_a_life_is_told_the_state_of_the_branch(
+    stream_client: TestClient, scenario_id: str, adjustment_payload: dict[str, object], hub: EventHub
+) -> None:
+    """A client that subscribes late is told the state of the branch, and it misses nothing from that moment on.
+
+    Why the case exists: the counter of the branch is per branch and it is shared by every connection of that branch,
+    so a client that connects late never received the events below the sequence that it holds, and the hub cannot
+    prove that it did. What the hub promises is that the client missed nothing FROM THE MOMENT IT SUBSCRIBED, and the
+    event of the opening carries the state of the branch, so the client is informed of it (ADR-047, decision 2).
+    """
+    branch_id = _fork(stream_client, scenario_id).json()["id"]
+    path = f"/v1/sandboxes/{branch_id}/events"
+
+    # Another connection of the branch moves the branch before the client arrives.
+    with stream_client.stream("GET", path) as opening:
+        frames = opening.iter_text()
+        assert _events_of(next(frames))[0]["event"] == EVENT_BRANCH_OPENED
+    assert _commit(stream_client, branch_id, adjustment_payload).status_code == 200
+    assert hub.counter(branch_id) == 2
+
+    # The client that arrives late: the first event is the opening, and it carries the state of the branch.
+    with stream_client.stream("GET", path) as late:
+        frames = late.iter_text()
+        received = _events_of(next(frames))
+
+    assert received[0]["event"] == EVENT_BRANCH_OPENED
+    assert received[0]["id"] == "3"
+    assert received[0]["data"]["revision"] == 1
+    assert received[0]["data"]["current_canonical_hash"]
+
+    # The client holds the last event of the branch, so its next reconnection continues and it is never told that it
+    # is behind: it missed nothing from the moment it subscribed.
+    assert hub.resume(branch_id, "3").kind == RESUME_CONTINUE
+
+
+def test_a_last_event_id_of_any_length_answers_with_a_resync_and_never_kills_the_stream(
+    stream_client: TestClient, scenario_id: str
+) -> None:
+    """A `Last-Event-ID` of any shape and of any length answers with a resync of the reason `unknown`.
+
+    Why the case exists: the hub converted the header with `int()`, and Python refuses to convert a text of more than
+    4300 digits and raises, and nothing caught the failure, so the stream died AFTER the status and the headers of the
+    answer were sent (ADR-047, decision 2).
+    """
+    branch_id = _fork(stream_client, scenario_id).json()["id"]
+    identifier = "9" * 5000
+
+    with stream_client.stream(
+        "GET", f"/v1/sandboxes/{branch_id}/events", headers={"Last-Event-ID": identifier}
+    ) as response:
+        assert response.status_code == 200
+        frames = response.iter_text()
+        first = _events_of(next(frames))
+
+    assert first[0]["event"] == EVENT_STREAM_RESYNC
+    assert first[0]["data"]["reason"] == "unknown"
+    assert first[0]["data"]["last_event_id"] == identifier

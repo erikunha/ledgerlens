@@ -19,6 +19,12 @@ over. A hub with a queue of its own would have to know about the loop of the ser
 layer that writes the stream. The hub therefore knows nothing about the transport, and the route owns the queue of
 its own stream.
 
+Why every subscriber has its own queue in the hub: the order of the events of a branch must be the order of their
+sequences for EVERY subscriber, and the hub delivers the events to the subscribers one at a time. A subscriber that
+publishes inside its own delivery would otherwise hand the LATER subscriber the INNER event first. The queue of
+every subscriber is a FIFO that the hub fills under its lock and that ONE drainer empties at a time, outside the
+lock, so the delivery can neither reorder the events nor wait for the lock (ADR-047).
+
 Why the sequence is per branch and lives in the memory of the process: the counter is the state of the process,
 exactly like the worker of the cleanup of ADR-029, and it starts again when the process starts. The sequence is NOT
 the revision of the branch: the revision moves only on a commit, the undo moves it back, and a number that goes back
@@ -27,13 +33,17 @@ is not a sequence.
 
 from __future__ import annotations
 
+import logging
 import threading
+from collections import deque
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, TypedDict
 
 from ledgerlens.sim.events import canonical_json
+
+log = logging.getLogger(__name__)
 
 # The version of the shape of the payload of an event. It is the text "1", like the header of the answers of the
 # facade, and it travels inside the payload because the payload of an event is not a resource of the contract.
@@ -64,6 +74,13 @@ EVENT_NAMES: tuple[str, ...] = (
 # The cadence of the heartbeat: fifteen seconds, the number the design package names for the idle heartbeat of the
 # trace transport, so the two streams of the deployment share one number (ADR-047).
 HEARTBEAT_INTERVAL_SECONDS = 15
+
+# The number of digits that a sequence may have. The sequence is a counter of the process and it grows by one for
+# every event of the lifecycle of a branch, so it can never reach the number that this limit names. The limit exists
+# so that the hub can refuse a `Last-Event-ID` of any length WITHOUT converting it into an integer: Python refuses to
+# convert a text of more than 4300 digits and raises, and a refusal that raises kills the stream after the headers of
+# the answer were sent (ADR-047).
+MAX_SEQUENCE_DIGITS = 19
 
 # The three answers of a resume: the header is absent, the header is the counter of the hub, or the header is
 # anything else and the client missed events.
@@ -285,6 +302,24 @@ def format_event(event: StreamEvent) -> str:
     return "\n".join(lines) + "\n\n"
 
 
+@dataclass
+class _Delivery:
+    """The state of ONE subscriber of a branch: its queue of events and the flag of the drain.
+
+    Why the queue lives in the hub and not in the subscriber: the events of a branch must reach EVERY subscriber in
+    the order of their sequences, and a subscriber that publishes inside its own delivery must not hand the LATER
+    subscriber the INNER event first. The queue of every subscriber is a FIFO that the hub fills under its lock and
+    that ONE drainer empties at a time (ADR-047).
+
+    Why the queue holds the events only while they wait: the hub keeps no event of the branch, and the queue of a
+    subscriber is empty again as soon as the subscriber received them.
+    """
+
+    subscriber: Subscriber
+    queue: deque[StreamEvent] = field(default_factory=deque)
+    draining: bool = False
+
+
 class EventHub:
     """The hub of the events of the lifecycle: the subscribers of a branch and the counter of its sequence.
 
@@ -301,8 +336,11 @@ class EventHub:
     the route that writes it (ADR-047).
 
     Why the hub locks its counter: two routes of the threadpool may publish at the same moment, and the counter of the
-    branch has to give a different sequence to every event of the lifecycle. The lock is re-entrant, because a
-    subscriber may publish while the hub delivers an event to it.
+    branch has to give a different sequence to every event of the lifecycle (ADR-047).
+
+    Why the delivery happens OUTSIDE the lock: the lock of the hub is re-entrant, and a subscriber may publish while
+    the hub delivers an event to it. A delivery under the lock would hand the LATER subscriber the INNER event first,
+    and a subscriber that waited for another thread that publishes would wait for ever (ADR-047).
     """
 
     def __init__(self, *, clock: Callable[[], datetime] | None = None) -> None:
@@ -312,7 +350,7 @@ class EventHub:
         from a visitor (FR-031).
         """
         self._clock = clock or (lambda: datetime.now(UTC))
-        self._subscribers: dict[str, list[Subscriber]] = {}
+        self._subscribers: dict[str, list[_Delivery]] = {}
         self._counters: dict[str, int] = {}
         self._lock = threading.RLock()
 
@@ -326,23 +364,29 @@ class EventHub:
         Why a list and not a set: two streams of the same branch are two subscribers, and both of them have to
         receive the events (ADR-047).
         """
-        self._subscribers.setdefault(branch_id, []).append(subscriber)
+        with self._lock:
+            self._subscribers.setdefault(branch_id, []).append(_Delivery(subscriber=subscriber))
 
     def unsubscribe(self, branch_id: str, subscriber: Subscriber) -> None:
         """Removes a subscriber of the branch, when its stream ends.
 
         Why the removal is silent when the subscriber is not there: the end of a stream may be seen twice, and a
         double end must not fail the route that is closing (ADR-047).
+
+        Why the queue of the subscriber is emptied: the stream is gone, and the events that waited for it are not to be
+        delivered to anybody any more.
         """
-        subscribers = self._subscribers.get(branch_id)
-        if not subscribers:
-            return
-        try:
-            subscribers.remove(subscriber)
-        except ValueError:
-            return
-        if not subscribers:
-            del self._subscribers[branch_id]
+        with self._lock:
+            deliveries = self._subscribers.get(branch_id)
+            if not deliveries:
+                return
+            for delivery in list(deliveries):
+                if delivery.subscriber == subscriber:
+                    deliveries.remove(delivery)
+                    delivery.queue.clear()
+                    break
+            if not deliveries:
+                del self._subscribers[branch_id]
 
     def publish(self, branch_id: str, name: str, fields: Mapping[str, Any]) -> StreamEvent:
         """Publishes an event of the lifecycle to every subscriber of the branch and returns it.
@@ -354,27 +398,120 @@ class EventHub:
         branch that received the same sequence twice would make a client believe that it missed nothing while it
         missed an event (ADR-047).
 
-        Why the delivery happens under the lock as well: the order of the events of a branch must be the order of
-        their sequences, and a stream that received them in another order would carry a `Last-Event-ID` behind the
-        counter of the hub.
+        Why the event goes in the queue of every subscriber under the same lock: the queue of a subscriber is a FIFO,
+        and the order of the sequences is the order of the appends, so the events of a branch reach every subscriber
+        in the order of their sequences (ADR-047).
+
+        Why the delivery happens outside the lock: a subscriber may publish inside its own delivery, and the lock of
+        the hub must not be held while a subscriber waits for something (ADR-047).
 
         Why the event is not kept: the hub hands the event over and forgets it, and a resume that cannot be proven
         answers with a resync instead of repeating an event (ADR-047).
         """
         with self._lock:
-            seq = self._counters.get(branch_id, 0) + 1
-            self._counters[branch_id] = seq
-            payload: dict[str, Any] = {
-                "schema_version": SCHEMA_VERSION,
-                "branch_id": branch_id,
-                "seq": seq,
-                "at": self.now().isoformat(),
-                **fields,
-            }
-            event = StreamEvent(name=name, payload=payload, seq=seq)
-            for subscriber in list(self._subscribers.get(branch_id, ())):
-                subscriber(event)
+            event = self._publish_locked(branch_id, name, fields)
+            deliveries = list(self._subscribers.get(branch_id, ()))
+        for delivery in deliveries:
+            self._drain(delivery)
         return event
+
+    def open(
+        self,
+        branch_id: str,
+        subscriber: Subscriber,
+        *,
+        last_event_id: str | None = None,
+        opening: Mapping[str, Any],
+    ) -> ResumeDecision:
+        """Subscribes the subscriber of the branch and answers the resume under the SAME lock.
+
+        Why the subscription and the answer of the resume are ONE operation: the route of the stream used to subscribe
+        first and to publish the opening after, and a lifecycle event that another route published in that window
+        reached the new stream FIRST, before the `branch.opened` that ADR-047 promises as the first event of a stream
+        that opens for the first time. Under one lock no other publisher can slip in between, and a resume that is
+        proven never misses an event that was published while the client was away (ADR-047).
+
+        Why the opening is published here and not by the route: the event of the opening is an event of the LIFECYCLE
+        of the branch, so the other connections of the branch receive it too, and it moves the counter of the branch
+        exactly once (ADR-047).
+
+        Why the resync waits in the queue of the connection and is not published: the resync belongs to the connection
+        that reconnected, it moves no counter and it carries no `id:` line, and it is the FIRST event of that
+        connection (ADR-047).
+        """
+        with self._lock:
+            decision = self._decision_of(branch_id, last_event_id)
+            delivery = _Delivery(subscriber=subscriber)
+            self._subscribers.setdefault(branch_id, []).append(delivery)
+            if decision.kind == RESUME_OPEN:
+                self._publish_locked(branch_id, EVENT_BRANCH_OPENED, opening)
+            elif decision.kind == RESUME_RESYNC:
+                delivery.queue.append(
+                    self.resync(
+                        branch_id,
+                        last_event_id=decision.last_event_id or "",
+                        reason=decision.reason or "",
+                    )
+                )
+            deliveries = list(self._subscribers.get(branch_id, ()))
+        for item in deliveries:
+            self._drain(item)
+        return decision
+
+    def _publish_locked(self, branch_id: str, name: str, fields: Mapping[str, Any]) -> StreamEvent:
+        """Gives the sequence to the event and puts it in the queue of every subscriber of the branch.
+
+        Why the lock must be held: the sequence is given under the lock, and the event goes in the queues under the
+        same lock, so that the order of the queues is the order of the sequences whatever the threads do (ADR-047).
+        """
+        seq = self._counters.get(branch_id, 0) + 1
+        self._counters[branch_id] = seq
+        payload: dict[str, Any] = {
+            "schema_version": SCHEMA_VERSION,
+            "branch_id": branch_id,
+            "seq": seq,
+            "at": self.now().isoformat(),
+            **fields,
+        }
+        event = StreamEvent(name=name, payload=payload, seq=seq)
+        for delivery in self._subscribers.get(branch_id, ()):
+            delivery.queue.append(event)
+        return event
+
+    def _drain(self, delivery: _Delivery) -> None:
+        """Delivers the events that wait for the subscriber, in the order they were appended.
+
+        Why the flag of the drain: two threads may publish at the same moment, and only ONE of them may deliver the
+        events of ONE subscriber, or the subscriber would receive them out of the order of their sequences (ADR-047).
+
+        Why the delivery happens outside the lock: a subscriber may publish inside its own delivery, and it may wait
+        for another thread that publishes, and the lock of the hub must not be held while it does (ADR-047).
+        """
+        with self._lock:
+            if delivery.draining:
+                # Another thread is already delivering to this subscriber, and it takes the events that wait.
+                return
+            delivery.draining = True
+        while True:
+            with self._lock:
+                if not delivery.queue:
+                    # The queue is empty and the flag is cleared under the same lock as the appends, so no event can
+                    # wait for ever without a drainer.
+                    delivery.draining = False
+                    return
+                event = delivery.queue.popleft()
+            self._hand_to(delivery.subscriber, event)
+
+    def _hand_to(self, subscriber: Subscriber, event: StreamEvent) -> None:
+        """Hands the event to the subscriber, and a subscriber that raises does not break the delivery to the others.
+
+        Why the failure is swallowed: a subscriber is a connection of a visitor, and a connection that breaks must not
+        take the other connections of the branch with it. The hub says so in the log and goes on with the next event.
+        """
+        try:
+            subscriber(event)
+        except Exception as error:  # The subscriber is outside the hub, and the delivery to the others goes on.
+            log.warning("a subscriber of the branch raised and did not receive the event: %s", error)
 
     def counter(self, branch_id: str) -> int:
         """The sequence last given to the branch, and zero when the hub never published anything for it."""
@@ -441,10 +578,21 @@ class EventHub:
         resync that says why. The identifier the client sent is echoed back in the resync, and the reason is
         `not_current` when the identifier is behind the counter and `unknown` when the hub does not know it (ADR-047).
 
+        What the answer of `continue` proves: the client holds the last event of the branch and it misses NOTHING FROM
+        THE MOMENT IT SUBSCRIBED. The counter of the branch is per branch and it is shared by every connection of that
+        branch, so the hub cannot prove that a client that connects late received the events below the sequence it
+        holds. The event of the opening carries the state of the branch, and the truth of a branch is the answer of
+        `GET /v1/sandboxes/{sandbox_id}` in any case (ADR-047).
+
         Why the header is read strictly: the header is the bare decimal integer of the sequence, with no sign, no
         space, no underscore and no leading zero. Anything else cannot be proven, so the stream answers with a resync
         with the reason `unknown` instead of guessing what the client meant (ADR-047).
         """
+        with self._lock:
+            return self._decision_of(branch_id, last_event_id)
+
+    def _decision_of(self, branch_id: str, last_event_id: str | None) -> ResumeDecision:
+        """The answer of the resume, read under the lock of the hub."""
         text = last_event_id or ""
         if not text:
             return ResumeDecision(kind=RESUME_OPEN)
@@ -469,11 +617,17 @@ def _canonical_sequence(text: str) -> int | None:
     Why the digits of the ascii alphabet only: a digit of another alphabet is a digit for `int()` and is not the bare
     decimal integer that ADR-047 names, and a header that a client cannot write by accident is a header that proves
     nothing.
+
+    Why the number of digits is bounded: a sequence can never have that many digits, so the identifier cannot be
+    proven, and the text is refused WITHOUT being converted. Python raises when it converts a text of more than 4300
+    digits, and a refusal that raises kills the stream after the headers of the answer were sent (ADR-047).
     """
     if not text.isascii() or not text.isdigit():
         return None
     if len(text) > 1 and text.startswith("0"):
         # A leading zero is not the canonical text of a number, and two texts of one number are two identifiers.
+        return None
+    if len(text) > MAX_SEQUENCE_DIGITS:
         return None
     return int(text)
 
@@ -491,6 +645,7 @@ __all__ = [
     "EVENT_STREAM_RESYNC",
     "EVENT_UNDONE",
     "HEARTBEAT_INTERVAL_SECONDS",
+    "MAX_SEQUENCE_DIGITS",
     "RESUME_CONTINUE",
     "RESUME_OPEN",
     "RESUME_RESYNC",

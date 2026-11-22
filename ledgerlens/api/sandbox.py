@@ -61,7 +61,7 @@ from fastapi.security import APIKeyCookie
 from pydantic import BaseModel, ConfigDict, Field
 
 from ledgerlens.byok.vault import CredentialVault
-from ledgerlens.config import get_settings
+from ledgerlens.config import Settings, get_settings
 from ledgerlens.sandbox.branch import (
     BRANCH_ID_PREFIX,
     BranchExpired,
@@ -74,14 +74,11 @@ from ledgerlens.sandbox.events import (
     CLOSED_REASON_EXPIRED,
     CLOSED_REASON_GONE,
     EVENT_BRANCH_EXPIRED,
-    EVENT_BRANCH_OPENED,
     EVENT_MUTATION_COMMITTED,
     EVENT_RESET,
     EVENT_STREAM_CLOSED,
     EVENT_UNDONE,
     HEARTBEAT_INTERVAL_SECONDS,
-    RESUME_OPEN,
-    RESUME_RESYNC,
     EventHub,
     StreamEvent,
     committed_fields,
@@ -351,6 +348,7 @@ def build_router(
     runtime_dir: Path | str | None = None,
     clock: Callable[[], datetime] | None = None,
     event_hub: EventHub | None = None,
+    settings: Settings | None = None,
 ) -> APIRouter:
     """The routes of the sandbox, over the store, the layer and the issuer.
 
@@ -371,6 +369,11 @@ def build_router(
     Why the hub is an argument: the hub of the events of the lifecycle belongs to the process, and the deployment
     that mounts the two facades gives them the same hub on purpose, because the two facades are one visitor only
     when a deployment wires them that way (ADR-035, ADR-039, ADR-047).
+
+    Why the settings are an argument: the limits of the facade are read from the configuration, and a deployment
+    that INJECTS a configuration expects the limits of the facade to be the ones it injected. A router that read
+    the environment behind the back of the deployment would keep the defaults of the environment and would answer
+    429 or would accept a branch that the injected configuration forbids (ADR-047).
     """
     router = APIRouter()
     _the_routes_of_the_sandbox(
@@ -382,6 +385,7 @@ def build_router(
         runtime_dir=runtime_dir,
         clock=clock,
         event_hub=event_hub,
+        settings=settings,
     )
     return router
 
@@ -397,6 +401,7 @@ def _the_routes_of_the_sandbox(
     clock: Callable[[], datetime] | None = None,
     rate_limiter: RateLimiter | None = None,
     event_hub: EventHub | None = None,
+    settings: Settings | None = None,
 ) -> None:
     """The twelve routes of the contract of the sandbox, registered on the target.
 
@@ -417,15 +422,20 @@ def _the_routes_of_the_sandbox(
     Why the hub is an argument: the hub of the events of the lifecycle belongs to the process, and the route that
     publishes the events of a branch and the route that opens the stream of that branch have to see the same counter
     (ADR-047).
+
+    Why the settings are an argument: the limits of the facade, the rate of the requests and the cap of the live
+    branches of a session, are read from the configuration that the deployment injected. A facade that read the
+    environment behind the back of the deployment would keep the defaults of the environment, and the limits that
+    the deployment asked for would be limits that nobody enforces (ADR-047).
     """
-    settings = get_settings()
-    runtime = Path(runtime_dir) if runtime_dir is not None else settings.runtime_dir
+    the_settings = settings if settings is not None else get_settings()
+    runtime = Path(runtime_dir) if runtime_dir is not None else the_settings.runtime_dir
     branch_store = store
     issuer = session_issuer
     server_clock = clock or (lambda: datetime.now(UTC))
     limiter = rate_limiter or RateLimiter(
-        limit=settings.sandbox_rate_limit_requests,
-        window_seconds=settings.sandbox_rate_limit_window_seconds,
+        limit=the_settings.sandbox_rate_limit_requests,
+        window_seconds=the_settings.sandbox_rate_limit_window_seconds,
         clock=server_clock,
     )
     # The hub of the events of the lifecycle of a branch: the subscribers of a branch and the counter of its
@@ -539,7 +549,7 @@ def _the_routes_of_the_sandbox(
             branch_store,
             session,
             payload.scenario_id,
-            cap=settings.sandbox_session_branch_cap,
+            cap=the_settings.sandbox_session_branch_cap,
             now=server_clock(),
         )
         try:
@@ -817,6 +827,12 @@ def _the_routes_of_the_sandbox(
         three answers of the resume: the stream opens with `branch.opened`, the stream continues with the next
         sequence, or the stream answers with a `stream.resync` and the client re-reads the branch (ADR-047).
 
+        What the second answer proves: the client holds the last event of the branch and it missed NOTHING FROM THE
+        MOMENT IT SUBSCRIBED. The counter of the branch is per branch and it is shared by every connection of that
+        branch, so a client that connects late never received the events below the sequence it holds. The event of
+        the opening carries the state of the branch, so the client is informed of it, and the truth of a branch is the
+        answer of `GET /v1/sandboxes/{sandbox_id}` in any case (ADR-047).
+
         The three events of the stream, `stream.resync`, `stream.closed` and `stream.heartbeat`, belong to THIS
         connection: they move no counter of the branch and they carry no `id:` line, and the disconnect of the client
         publishes nothing (ADR-047).
@@ -887,6 +903,11 @@ async def _events_of_branch(
     subscribers of the branch with `call_soon_threadsafe`, so the copy of the event reaches the queue of this stream
     one turn of the loop later. A close that was put in the queue at once would therefore be handed first, the stream
     would end there, and the client would never receive the event of the expiry that came before it (ADR-047).
+
+    Why the opening of the stream is one operation of the hub: the route used to subscribe first and to publish the
+    opening after, and a lifecycle event that another route published in that window reached the new stream FIRST,
+    before the `branch.opened` that ADR-047 promises as the first event of a stream that opens for the first time
+    (ADR-047).
     """
     loop = asyncio.get_running_loop()
     queue: asyncio.Queue[StreamEvent] = asyncio.Queue()
@@ -895,42 +916,26 @@ async def _events_of_branch(
         """Hands an event of the branch to the queue of this stream, from any thread of the process."""
         loop.call_soon_threadsafe(queue.put_nowait, event)
 
-    hub.subscribe(branch.branch_id, deliver)
+    # The subscription and the answer of the resume happen under the SAME lock of the hub, and the opening of the
+    # branch is published under that lock too. That is what makes the first event of a stream that opens for the
+    # first time ALWAYS `branch.opened`: no other route can publish an event of the lifecycle in between, and a resume
+    # that is proven never misses an event that was published while the client was away (ADR-047).
+    hub.open(
+        branch.branch_id,
+        deliver,
+        last_event_id=last_event_id,
+        opening=opened_fields(
+            scenario_id=branch.scenario_id,
+            base_snapshot_id=branch.base_snapshot_id,
+            base_canonical_hash=branch.base_canonical_hash,
+            current_canonical_hash=branch.current_canonical_hash,
+            revision=branch.revision,
+            created_at=branch.created_at,
+            expires_at=branch.expires_at,
+            state=branch.state,
+        ),
+    )
     try:
-        decision = hub.resume(branch.branch_id, last_event_id)
-        if decision.kind == RESUME_OPEN:
-            # The first event of a stream that opens for the first time: the facts of the creation and the state of
-            # the branch right now. A resume that is proven does NOT receive it again, because the client proved that
-            # it missed nothing and it still holds the state (ADR-047).
-            hub.publish(
-                branch.branch_id,
-                EVENT_BRANCH_OPENED,
-                opened_fields(
-                    scenario_id=branch.scenario_id,
-                    base_snapshot_id=branch.base_snapshot_id,
-                    base_canonical_hash=branch.base_canonical_hash,
-                    current_canonical_hash=branch.current_canonical_hash,
-                    revision=branch.revision,
-                    created_at=branch.created_at,
-                    expires_at=branch.expires_at,
-                    state=branch.state,
-                ),
-            )
-        elif decision.kind == RESUME_RESYNC:
-            # The reconnection cannot be proven: the client re-reads the branch instead of receiving an event that
-            # never happened.
-            #
-            # Why the event is put in THIS queue and not published to the branch: the resync belongs to the
-            # connection that reconnected, and the other connections of the branch did not miss anything. The event
-            # moves no counter and carries no `id:` line, because a client that reconnects behind the counter must
-            # not be told that it is behind again because of an event it never received (ADR-047).
-            queue.put_nowait(
-                hub.resync(
-                    branch.branch_id,
-                    last_event_id=decision.last_event_id or "",
-                    reason=decision.reason or "",
-                )
-            )
         while True:
             try:
                 event = await asyncio.wait_for(queue.get(), timeout=heartbeat_seconds)

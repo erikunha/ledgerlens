@@ -154,6 +154,10 @@ def build_wired_app(
         session_issuer=the_issuer,
         credential_vault=the_vault,
         runtime_dir=runtime,
+        # The settings travel to the router of the sandbox because the limits of the facade are read from them.
+        # A router that read the environment would keep the defaults of the environment and would not enforce the
+        # limits that this deployment injected (ADR-047).
+        settings=the_settings,
     )
     live_router = byok.build_router(
         vault=the_vault,

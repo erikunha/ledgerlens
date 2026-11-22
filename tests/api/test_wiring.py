@@ -109,6 +109,11 @@ RATE_WINDOW_ENV = "LEDGERLENS_SANDBOX_RATE_LIMIT_WINDOW_SECONDS"
 # The code of the refusal of the rate of the requests, the one of the domain (ADR-031).
 CODE_RESOURCE_LIMIT = "RESOURCE_LIMIT_EXCEEDED"
 
+# The second scenario of the published sample, the one that the cap of the branches refuses. It is a different
+# scenario from `SCENARIO_ID` on purpose: a fork of a scenario the session already holds creates no branch, and
+# the reuse comes BEFORE the cap (ADR-047).
+OTHER_SCENARIO_ID = "S02"
+
 
 @pytest.fixture(autouse=True)
 def online(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -660,6 +665,89 @@ def test_a_refusal_of_the_rate_of_the_wired_application_carries_the_wait(rate_li
     # The wait of the server reaches the answer, because the front of the browser reads this header.
     assert "Retry-After" in refused.headers
     assert int(refused.headers["Retry-After"]) > 0
+
+
+def test_the_settings_that_the_deployment_injects_reach_the_rate_of_the_facade(
+    issuer: SessionIssuer,
+    store: FileBranchStore,
+    vault: CredentialVault,
+    runtime: Path,
+) -> None:
+    """ADR-047: the settings that a deployment INJECTS are the ones that the limits of the facade enforce.
+
+    Why this test exists: the rate of the requests and the cap of the live branches were read from the
+    ENVIRONMENT by the router of the sandbox, and the configuration that a deployment injected never reached
+    them. The limits of the facade were therefore the defaults of the environment and not the ones that the
+    deployment asked for, and a deployment that lowered the rate to refuse a flood of requests was not
+    refused at all.
+
+    Why the environment is NOT touched here: the test has to prove that the INJECTED configuration is the one
+    that counts. A test that set the environment would pass with the defect, because the environment and the
+    injection would agree.
+
+    Why the quota is two: the fork is the first request of the session and the read of the branch is the second
+    one, so the next read is the request over the rate.
+    """
+    settings = get_settings().model_copy(
+        update={"sandbox_rate_limit_requests": 2, "sandbox_rate_limit_window_seconds": 60}
+    )
+    application = build_wired_app(
+        settings=settings,
+        issuer=issuer,
+        store=store,
+        vault=vault,
+        adapter_factory=lambda _provider, _key: FakeProviderAdapter(provider="openai", api_key=MARKER),
+        runtime_dir=runtime,
+    )
+
+    with TestClient(application) as client:
+        session = client.post("/v1/sessions")
+        assert session.status_code == 201, session.text
+        forked = client.post("/v1/sandboxes", json={"scenario_id": SCENARIO_ID})
+        assert forked.status_code == 201, forked.text
+        branch_id = str(forked.json()["id"])
+        assert client.get(f"/v1/sandboxes/{branch_id}").status_code == 200
+        refused = client.get(f"/v1/sandboxes/{branch_id}")
+
+    assert refused.status_code == 429, refused.text
+    assert refused.json()["code"] == CODE_RESOURCE_LIMIT
+
+
+def test_the_settings_that_the_deployment_injects_reach_the_cap_of_the_branches(
+    issuer: SessionIssuer,
+    store: FileBranchStore,
+    vault: CredentialVault,
+    runtime: Path,
+) -> None:
+    """ADR-047: the cap of the live branches of a session is the cap that the deployment injected.
+
+    Why the two forks are of two scenarios: a fork of a scenario the session already holds creates no branch,
+    and the reuse comes BEFORE the cap, so a cap of one would never refuse the second fork of the same scenario.
+
+    Why the flag is false: the two limits answer with the same code and the same status, and the flag is what
+    tells them apart. The cap of the branches is not retryable and the rate of the requests is.
+    """
+    settings = get_settings().model_copy(update={"sandbox_session_branch_cap": 1})
+    application = build_wired_app(
+        settings=settings,
+        issuer=issuer,
+        store=store,
+        vault=vault,
+        adapter_factory=lambda _provider, _key: FakeProviderAdapter(provider="openai", api_key=MARKER),
+        runtime_dir=runtime,
+    )
+
+    with TestClient(application) as client:
+        session = client.post("/v1/sessions")
+        assert session.status_code == 201, session.text
+        first = client.post("/v1/sandboxes", json={"scenario_id": SCENARIO_ID})
+        assert first.status_code == 201, first.text
+        second = client.post("/v1/sandboxes", json={"scenario_id": OTHER_SCENARIO_ID})
+
+    assert second.status_code == 429, second.text
+    body = second.json()
+    assert body["code"] == CODE_RESOURCE_LIMIT
+    assert body["retryable"] is False
 
 
 def test_the_plain_factory_of_the_live_mode_still_refuses_every_run(

@@ -88,6 +88,11 @@ call.
 caller has to wait before the same request may work, and a caller shows that number as it was sent. A caller that
 computes a wait with its own clock is a caller that answers with a wait the server never promised.
 
+**A refusal of the live mode carries the headers it was given.** The live mode writes the header of the version of
+the schema on every answer, and the handler of its refusals merges the headers of the refusal into the answer, the
+way the handler of the sandbox does (ADR-047). A refusal that carries no header carries the version of the schema
+and nothing else, and the wait of a refusal that asks for one travels in the header and never in the body.
+
 ## The shape of a refusal
 
 Every refusal of the facade is the resource `Error` of the contract, field for field, and it is never a `500`:
@@ -128,11 +133,19 @@ request that failed. A caller shows the `code` and the `message` of the server a
 | `REVISION_CONFLICT` | `409` | the commit and the undo | the branch is at another revision than the request expected |
 | `IDEMPOTENCY_MISMATCH` | `409` | the commit and the undo | the key was already used with another payload |
 | `NOTHING_TO_UNDO` | `409` | the undo | the branch holds no mutation left to undo and stays untouched |
-| `RESOURCE_LIMIT_EXCEEDED` | `429` | the preview, the commit, the fork and every path of the session | the branch holds 20 mutations or 200 events, or there is no free identifier for a duplicate, or the session holds too many live branches, or the session is over the rate of the requests: the flag `retryable` tells the last two apart |
+| `RESOURCE_LIMIT_EXCEEDED` | `429` | the commit and the undo | the branch holds 20 mutations or 200 events: the branch is not written and the undo is not appended |
+| `RESOURCE_LIMIT_EXCEEDED` | `429` | the preview, the fork and every path of the session | there is no free identifier for a duplicate, or the session holds too many live branches, or the session is over the rate of the requests: the flag `retryable` tells the last two apart |
 | `CONTRACT_UNAVAILABLE` | `503` | the preview and the commit | the deployment cannot check the schema of the command |
 
 The statuses come from the domain: a conflict of the state is `409`, a rule of the payload is `422`, and the three
 limits are `413`, `429` and `503`.
+
+The two rows of `RESOURCE_LIMIT_EXCEEDED` are two DIFFERENT limits that answer with the same code, and the split
+says which path refuses for which reason. The limits of the RESOURCES of a branch are the limits of what the
+branch HOLDS, and the preview writes nothing, so a preview never refuses for them: a preview of a command that
+would pass the limits is allowed, and the commit that follows it is the one that the limits refuse. The rate of
+the requests and the cap of the live branches are the limits of the SESSION, and they refuse every path of the
+session, the preview included.
 
 ## The twelve paths, one by one
 
@@ -792,15 +805,15 @@ STREAM, and:
 4. **Their payload carries the `seq` of the LAST sequence of the lifecycle that the server published for the branch**,
    which is the current value of the counter.
 5. **`branch.opened` is the first event of a stream that opens FOR THE FIRST TIME.** A resume that is proven continues
-   with the next sequence and does NOT receive `branch.opened` again: the client proved that it missed nothing and it
-   still holds the state.
+   with the next sequence and does NOT receive `branch.opened` again: the client holds the last event of the branch and
+   it missed nothing from the moment it subscribed, and it still holds the state.
 6. **The disconnect of a client is NOT an event.** The client that left is gone and the other connections of the
    branch are not affected by it. The `stream.closed` exists only for the two reasons the SERVER ends a connection:
    the row of the branch disappeared (the reason `branch_gone`) and the branch died (the reason `branch_expired`).
 
-The reason is in one sentence: the counter exists so that a client can PROVE that it missed nothing, and an event of
-the stream that moved the counter would make every reconnection look stale, because the event that moved it was never
-received by the client that disconnected.
+The reason is in one sentence: the counter exists so that a client can PROVE that it missed nothing that was published
+while it was connected, and an event of the stream that moved the counter would make every reconnection look stale,
+because the event that moved it was never received by the client that disconnected.
 
 **The heartbeat is a named event and it is not a comment.** It arrives every fifteen seconds, it carries NO `id:` line,
 so the `Last-Event-ID` of the browser never moves because of a heartbeat, and its payload carries no change of the
@@ -810,21 +823,38 @@ invisible to the JavaScript of the `EventSource`.
 
 **The `Last-Event-ID` is the bare decimal integer of the sequence.** No prefix, no quotes, no branch identifier: the
 text is exactly the text of the `id:` line, because the browser sends the header by itself on a reconnection and it must
-be the same text the server wrote.
+be the same text the server wrote. A header of any other shape, and a header with more digits than any sequence can
+ever have, is refused with the reason `unknown` and never raises: the server reads it without converting it blindly,
+because a text of thousands of digits cannot be a sequence and a refusal that raises would kill the stream after the
+headers of the answer were sent.
 
 **The resume has three answers.**
 
 1. **The header is absent.** It is the first connection of the client. The stream opens with `branch.opened` and the
    sequence of that branch starts at one.
-2. **The header carries the last sequence the hub gave to that branch.** The client holds the last event and nothing is
-   missing. The stream continues with the next sequence, there is NO `stream.resync`, and it does NOT receive
-   `branch.opened` again: the client proved that it missed nothing and it still holds the state.
+2. **The header carries the last sequence the hub gave to that branch.** The client holds the last event of the branch
+   and it misses NOTHING FROM THE MOMENT IT SUBSCRIBED. The stream continues with the next sequence, there is NO
+   `stream.resync`, and it does NOT receive `branch.opened` again.
 3. **The header carries anything else.** It is behind the counter of the hub, or the hub does not know it at all,
    because the counter was lost at the restart of the process or because the client is talking to another instance of
    the deployment. The stream sends `stream.resync` as its FIRST event, with the identifier the client sent echoed back
    in `last_event_id` and the reason in `reason`: the text `not_current` when the identifier is behind the counter and
    the text `unknown` when the hub does not know it. The client then re-reads the branch with
    `GET /v1/sandboxes/{sandbox_id}`, and with `GET /v1/sandboxes/{sandbox_id}/history` when it needs the log.
+
+**What the second answer proves, and what it does not.** The counter of the branch is per branch and it is shared by
+every connection of that branch, so a client that connects LATE (a second tab, or a visitor that comes back to a branch
+that already had a life) never received the events below the sequence that it holds, and the server cannot prove that
+it did: the server keeps no history and it knows nothing about the history of a client. What such a client receives
+instead is the event of the opening, `branch.opened`, whose payload carries the state of the branch at the moment of
+the opening (the revision, the two hashes and the state). The promise of the resume is therefore the promise of the
+moment of the subscription: the client missed nothing that was published WHILE IT WAS CONNECTED, and it holds the
+state of the branch as it was when it arrived. It is NOT the promise that the client holds every event of the branch
+since the branch was born, and the truth of a branch is the answer of `GET /v1/sandboxes/{sandbox_id}` in any case.
+
+**The events of a branch arrive in the order of their sequences, for every connection of the branch.** The server puts
+the event in the queue of every connection under one lock and empties the queue of a connection outside that lock, so
+the order of the events of a branch is the order of their sequences even when two routes publish at the same moment.
 
 **The resume NEVER repeats the events that were lost.** The hub keeps no history, so it has nothing to repeat. The
 honest resume is a resync and a read of the branch, and the price of the honesty is one read of the branch per
