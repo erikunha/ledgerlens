@@ -53,6 +53,19 @@ export class ApiError extends Error {
   /** The body of the refusal, when the server answered with the resource `Error`. */
   readonly body: ApiErrorBody | null;
 
+  /**
+   * The wait the server asked for, as the header `Retry-After` wrote it.
+   *
+   * Why the TEXT of the server and never a number the browser calculated: the front never computes
+   * a wait with the clock of the browser, for the same reason it never computes the time that is
+   * left of the expiry (FR-031). The value is the text of the header, exactly as it was sent.
+   *
+   * Why it is null and not zero: the difference between "the server said nothing" and "the server
+   * said zero" is the difference between a refusal that carries no wait and a refusal that carries
+   * a wait of no time at all.
+   */
+  readonly retryAfter: string | null;
+
   constructor(
     message: string,
     details: {
@@ -61,6 +74,14 @@ export class ApiError extends Error {
       retryable: boolean;
       requestId: string;
       body: ApiErrorBody | null;
+      /**
+       * The wait of the server, when the answer carried the header `Retry-After`.
+       *
+       * Why it is optional here and not in the field above: a refusal that is not a refusal of the
+       * limits carries no wait, and the callers that do not read the header do not have to know
+       * about it.
+       */
+      retryAfter?: string | null;
     },
   ) {
     super(message);
@@ -70,6 +91,7 @@ export class ApiError extends Error {
     this.retryable = details.retryable;
     this.requestId = details.requestId;
     this.body = details.body;
+    this.retryAfter = details.retryAfter ?? null;
   }
 }
 
@@ -168,6 +190,27 @@ export function readErrorBody(value: unknown): ApiErrorBody | null {
   };
 }
 
+/** The header that carries the wait the server asks for, in seconds. */
+const RETRY_AFTER_HEADER = "Retry-After";
+
+/**
+ * Reads the wait of the server out of the headers of a refusal.
+ *
+ * Why only the status `429`: the header is the answer of the server to a request over the rate of
+ * the requests, and the facade writes it in no other refusal. A wait that the server did not ask
+ * for is a wait the browser invented, and the browser never invents one.
+ *
+ * Why the value is the text of the header: the front shows the number of seconds the server wrote
+ * and it never computes a wait with the clock of the browser (FR-031).
+ */
+export function readRetryAfter(response: Response): string | null {
+  if (response.status !== 429) {
+    return null;
+  }
+  const wait = response.headers.get(RETRY_AFTER_HEADER);
+  return wait === null || wait === "" ? null : wait;
+}
+
 /**
  * Creates the transport of the calls of the browser.
  *
@@ -223,6 +266,7 @@ export function createApiClient(options: ApiClientOptions = {}): ApiClient {
         retryable: refusal?.retryable ?? false,
         requestId: refusal?.request_id ?? "",
         body: refusal,
+        retryAfter: readRetryAfter(response),
       });
     }
 
@@ -305,3 +349,18 @@ export function createApiClient(options: ApiClientOptions = {}): ApiClient {
     },
   };
 }
+
+/**
+ * The whole surface of the module, so a reader who opens the file sees it at once.
+ *
+ * Why the list is here: the transport of the repository is the place where the rules of the
+ * credentials and of the refusals live, and a reader has to see the whole surface of it at once.
+ */
+export const __all__ = [
+  "ApiError",
+  "ApiClientOptions",
+  "ApiClient",
+  "readErrorBody",
+  "readRetryAfter",
+  "createApiClient",
+] as const;

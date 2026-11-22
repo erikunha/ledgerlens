@@ -18,9 +18,10 @@ hash of the branch and none for its state, and it accepts no other field. The tw
 `X-LedgerLens-Branch-Hash` and `X-LedgerLens-Branch-State`, and the version of the answers travels in the header
 `X-LedgerLens-Schema-Version` (FR-042). The domain layer keeps them all three.
 
-Three paths of the facade are beyond the contract of the design package, and ADR-023 declares them: the diff of the
-branch, the history of the branch and the undo of the last mutation. The contract of the package cannot be edited,
-so the difference is written down here and in the test that guards the paths.
+Four paths of the facade are beyond the contract of the design package, and ADR-023 and ADR-047 declare them: the diff
+of the branch, the history of the branch, the undo of the last mutation and the stream of the lifecycle of the branch.
+The contract of the package cannot be edited, so the difference is written down here and in the test that guards the
+paths.
 
 The cleanup of the expired branches is a job of the process, not a path: the lifespan of the app starts a daemon
 thread that sweeps the expired branches every thirty seconds, and the same sweep runs from the command line, so the
@@ -43,18 +44,19 @@ application are the routes of the router, written once, so that the two answer t
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import secrets
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable, Mapping
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import APIRouter, FastAPI, Header, Query, Request, Security
+from fastapi import APIRouter, Depends, FastAPI, Header, Query, Request, Security
 from fastapi import Path as PathParam
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.security import APIKeyCookie
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -68,22 +70,45 @@ from ledgerlens.sandbox.branch import (
     InvalidSessionId,
     SandboxBranch,
 )
+from ledgerlens.sandbox.events import (
+    CLOSED_REASON_EXPIRED,
+    CLOSED_REASON_GONE,
+    EVENT_BRANCH_EXPIRED,
+    EVENT_BRANCH_OPENED,
+    EVENT_MUTATION_COMMITTED,
+    EVENT_RESET,
+    EVENT_STREAM_CLOSED,
+    EVENT_UNDONE,
+    HEARTBEAT_INTERVAL_SECONDS,
+    RESUME_OPEN,
+    RESUME_RESYNC,
+    EventHub,
+    StreamEvent,
+    committed_fields,
+    expired_fields,
+    format_event,
+    opened_fields,
+    reset_fields,
+    undone_fields,
+)
 from ledgerlens.sandbox.factory import build_branch_store
 from ledgerlens.sandbox.memory import purge_session_memory
 from ledgerlens.sandbox.mutation import (
     CODE_INVALID_PAYLOAD,
     CODE_INVALID_REQUEST,
     CODE_READ_ONLY_FIELD,
+    CODE_RESOURCE_LIMIT,
     UNDO_KIND,
     MutationCommand,
     MutationRejected,
     read_only_field_in,
     status_for_code,
 )
+from ledgerlens.sandbox.rate_limit import RateLimiter
 from ledgerlens.sandbox.session import InvalidSession, SessionIssuer
 from ledgerlens.sandbox.snapshot import BaseResolver, UnknownScenario
-from ledgerlens.sandbox.store import BranchNotFound, BranchStore
-from ledgerlens.sandbox.ttl import CleanupWorker
+from ledgerlens.sandbox.store import BranchNotFound, BranchStore, SandboxBranchRow
+from ledgerlens.sandbox.ttl import CleanupWorker, is_expired
 
 log = logging.getLogger(__name__)
 
@@ -94,6 +119,16 @@ SCHEMA_VERSION_HEADER = "X-LedgerLens-Schema-Version"
 # The current canonical hash of the branch and its state, which the resource `Sandbox` has no field for.
 BRANCH_HASH_HEADER = "X-LedgerLens-Branch-Hash"
 BRANCH_STATE_HEADER = "X-LedgerLens-Branch-State"
+# The headers of the no store. The state of a branch of a visitor is not to be kept anywhere, and a cache that keeps
+# it would keep the answer of another visitor (FR-042).
+#
+# Why they live here and not in the module of the live mode: this module is BELOW the module of the live mode in the
+# graph of the imports, so the live mode imports them from here and there is only one definition of the triad.
+NO_STORE_HEADERS = {
+    "Cache-Control": "no-store",
+    "Pragma": "no-cache",
+    "Expires": "0",
+}
 # The cookie of the contract: the opaque session of the visitor.
 SESSION_COOKIE = "ledgerlens_session"
 # The security scheme of the contract: an apiKey in the cookie, and it is not the identity of a person.
@@ -123,12 +158,29 @@ class SandboxRequest(BaseModel):
 class ContractError(Exception):
     """An answer that is not a resource of the contract, but the resource `Error`."""
 
-    def __init__(self, status_code: int, code: str, message: str, *, retryable: bool = False) -> None:
+    def __init__(
+        self,
+        status_code: int,
+        code: str,
+        message: str,
+        *,
+        retryable: bool = False,
+        headers: Mapping[str, str] | None = None,
+    ) -> None:
         super().__init__(message)
         self.status_code = status_code
         self.code = code
         self.message = message
         self.retryable = retryable
+        # The headers of the answer of the refusal, when the refusal needs one. The wait of a refusal of the rate of
+        # the requests travels in the header `Retry-After` and never in the body, because the body of the contract is
+        # the resource `Error` field for field (ADR-047).
+        self._headers = dict(headers) if headers else {}
+
+    @property
+    def headers(self) -> Mapping[str, str]:
+        """The headers of the answer of the refusal. Empty when the refusal needs none."""
+        return dict(self._headers)
 
     def body(self) -> dict[str, Any]:
         """The resource `Error` of the contract, field for field."""
@@ -147,6 +199,7 @@ def create_app(
     clock: Callable[[], datetime] | None = None,
     runtime_dir: Path | str | None = None,
     credential_vault: CredentialVault | None = None,
+    event_hub: EventHub | None = None,
 ) -> FastAPI:
     """Builds the app over a store, a base resolver and a session issuer.
 
@@ -164,6 +217,10 @@ def create_app(
     the credentials of that session from the vault the application was given, and not from a vault of the process
     that may belong to another application (FR-022, ADR-035).
 
+    The hub of the events of the lifecycle is given to the application and never read from a global: it belongs to
+    the process, like the job of the cleanup, and it holds the subscribers of a branch and the counter of its
+    sequence and never an event (ADR-047).
+
     The routes of the facade are registered on the application itself and the router of the sandbox carries the same
     routes for the deployment that mounts the two facades in one application, so the sandbox application alone answers
     exactly as it answered before (ADR-039).
@@ -178,6 +235,16 @@ def create_app(
     # The clock of the server, shared by the layer and by the job of the cleanup, so the branch that the layer
     # refuses and the branch that the job deletes are the same branch at the same moment (FR-031, ADR-029).
     server_clock = clock or (lambda: datetime.now(UTC))
+    # The counter of the rate of the requests of a session. It lives in the memory of the process, so the limit is
+    # per process, and it counts with the clock of the server (ADR-047).
+    limiter = RateLimiter(
+        limit=settings.sandbox_rate_limit_requests,
+        window_seconds=settings.sandbox_rate_limit_window_seconds,
+        clock=server_clock,
+    )
+    # The hub of the events of the lifecycle of a branch. It lives in the memory of the process, like the job of the
+    # cleanup, and it holds the subscribers of a branch and the counter of its sequence and never an event (ADR-047).
+    hub = event_hub or EventHub(clock=server_clock)
     layer = BranchLayer(
         branch_store,
         # The base of a scenario is built in the runtime folder of the facade, so an injected folder keeps the whole
@@ -226,6 +293,9 @@ def create_app(
         session_issuer=issuer,
         credential_vault=credential_vault,
         runtime_dir=runtime,
+        clock=server_clock,
+        rate_limiter=limiter,
+        event_hub=hub,
     )
     return app
 
@@ -247,10 +317,14 @@ def install_refusal_handlers(app: FastAPI, *, credential_vault: CredentialVault 
         body = error.body()
         if credential_vault is not None:
             body["message"] = credential_vault.scrub(str(body["message"]))
+        # The headers of the refusal are merged into the answer of the facade: the wait of a refusal of the rate of
+        # the requests travels in the header `Retry-After`, and the header of the answer is not a field of the body
+        # of the contract (ADR-047).
+        headers = {SCHEMA_VERSION_HEADER: SCHEMA_VERSION, **error.headers}
         return JSONResponse(
             status_code=error.status_code,
             content=body,
-            headers={SCHEMA_VERSION_HEADER: SCHEMA_VERSION},
+            headers=headers,
         )
 
     @app.exception_handler(RequestValidationError)
@@ -271,6 +345,8 @@ def build_router(
     session_issuer: SessionIssuer,
     credential_vault: CredentialVault | None = None,
     runtime_dir: Path | str | None = None,
+    clock: Callable[[], datetime] | None = None,
+    event_hub: EventHub | None = None,
 ) -> APIRouter:
     """The routes of the sandbox, over the store, the layer and the issuer.
 
@@ -284,6 +360,13 @@ def build_router(
 
     Why the handlers of the refusals are not here: an included router brings its routes and nothing else, so a
     composed application installs the handlers on itself (ADR-039).
+
+    Why the clock is an argument: the rate of the requests and the life of a branch are decided by the server, and a
+    deployment that injects a clock into the layer injects the same one into the limits (ADR-047).
+
+    Why the hub is an argument: the hub of the events of the lifecycle belongs to the process, and the deployment
+    that mounts the two facades gives them the same hub on purpose, because the two facades are one visitor only
+    when a deployment wires them that way (ADR-035, ADR-039, ADR-047).
     """
     router = APIRouter()
     _the_routes_of_the_sandbox(
@@ -293,6 +376,8 @@ def build_router(
         session_issuer=session_issuer,
         credential_vault=credential_vault,
         runtime_dir=runtime_dir,
+        clock=clock,
+        event_hub=event_hub,
     )
     return router
 
@@ -305,8 +390,11 @@ def _the_routes_of_the_sandbox(
     session_issuer: SessionIssuer,
     credential_vault: CredentialVault | None = None,
     runtime_dir: Path | str | None = None,
+    clock: Callable[[], datetime] | None = None,
+    rate_limiter: RateLimiter | None = None,
+    event_hub: EventHub | None = None,
 ) -> None:
-    """The eleven routes of the contract of the sandbox, registered on the target.
+    """The twelve routes of the contract of the sandbox, registered on the target.
 
     Why the routes are written once and not twice: the application of the sandbox and the router of the sandbox have to
     answer the same thing, and two copies of the same route drift apart.
@@ -317,11 +405,57 @@ def _the_routes_of_the_sandbox(
 
     Why the target is an application or a router: the decorator of a route is the same on both, so the routes of the
     facade are the routes of the contract in either case.
+
+    Why the counter of the rate and the clock are arguments: the limits of the facade are decided by the server and
+    never by the visitor, and the same clock has to answer for the life of a branch and for the rate of the requests
+    (ADR-047).
+
+    Why the hub is an argument: the hub of the events of the lifecycle belongs to the process, and the route that
+    publishes the events of a branch and the route that opens the stream of that branch have to see the same counter
+    (ADR-047).
     """
     settings = get_settings()
     runtime = Path(runtime_dir) if runtime_dir is not None else settings.runtime_dir
     branch_store = store
     issuer = session_issuer
+    server_clock = clock or (lambda: datetime.now(UTC))
+    limiter = rate_limiter or RateLimiter(
+        limit=settings.sandbox_rate_limit_requests,
+        window_seconds=settings.sandbox_rate_limit_window_seconds,
+        clock=server_clock,
+    )
+    # The hub of the events of the lifecycle of a branch: the subscribers of a branch and the counter of its
+    # sequence, and never an event (ADR-047).
+    hub = event_hub or EventHub(clock=server_clock)
+
+    def _count_the_request(request: Request) -> None:
+        """The rate of the requests of the session: one request is counted and the one over the rate is refused.
+
+        Why the session and never the address of the client: the facade has no trusted address of the visitor, because
+        the repository has no policy of the headers of a proxy, and the session is the only identity the facade can
+        trust (ADR-047).
+
+        Why a request without a valid session is not counted: the counter holds the requests of a session, and a
+        request that carries no session is refused with `401` by the route itself.
+
+        Why the refusal carries the wait: the header `Retry-After` carries the number of seconds until the oldest
+        request of the window falls out of it, and the flag `retryable` is true because the same request, later, is
+        expected to answer (ADR-047).
+        """
+        try:
+            session = issuer.session_id(request.cookies.get(SESSION_COOKIE))
+        except InvalidSession:
+            return
+        decision = limiter.acquire(session)
+        if decision.allowed:
+            return
+        raise ContractError(
+            status_for_code(CODE_RESOURCE_LIMIT),
+            CODE_RESOURCE_LIMIT,
+            f"the session made more than {limiter.limit} requests in {limiter.window_seconds} seconds",
+            retryable=True,
+            headers={"Retry-After": str(decision.retry_after_seconds)},
+        )
 
     @target.post("/v1/sessions", status_code=201)
     def issue_session() -> JSONResponse:
@@ -343,6 +477,13 @@ def _the_routes_of_the_sandbox(
         )
         return response
 
+    # The rate of the requests of the session is a dependency of every route but the one that issues the session: a
+    # visitor that asks for a session has no session yet, and the route that issues it spends no quota of one. The
+    # dependency is added after the route of the session because the dependencies of a router are copied into the
+    # routes that are registered after them, and every route that follows counts one request of its session
+    # (ADR-047).
+    _the_router_of(target).dependencies.append(Depends(_count_the_request))
+
     @target.delete("/v1/sessions/current", status_code=204)
     def end_session(cookie: Annotated[str | None, Security(SESSION_SCHEME)]) -> Response:
         """Ends the session of the visitor, purges its branches and purges its case memory.
@@ -359,6 +500,9 @@ def _the_routes_of_the_sandbox(
         session = _session(cookie, issuer)
         for row in branch_store.list_branches(session):
             branch_store.delete_branch(row.branch_id, session)
+        # The counter of the rate of the session dies with the session: the memory of an anonymous visitor dies with
+        # the visitor (ADR-030, ADR-047).
+        limiter.forget(session)
         try:
             purge_session_memory(session, runtime)
         except Exception as error:  # pragma: no cover - the purge of the memory never fails the route.
@@ -382,8 +526,18 @@ def _the_routes_of_the_sandbox(
 
         The answer is `201` when the fork creates a branch and `200` when the reuse rule returns the branch that
         already exists: the difference matters to a client.
+
+        The cap of the live branches of the session is checked before the fork, and it refuses only a fork that would
+        create a branch (ADR-047).
         """
         session = _session(cookie, issuer)
+        _check_the_cap_of_the_branches(
+            branch_store,
+            session,
+            payload.scenario_id,
+            cap=settings.sandbox_session_branch_cap,
+            now=server_clock(),
+        )
         try:
             outcome = layer.fork(session, payload.scenario_id)
         except UnknownScenario:
@@ -465,6 +619,19 @@ def _the_routes_of_the_sandbox(
             raise ContractError(410, "BRANCH_EXPIRED", str(expired)) from None
         except BranchHashMismatch as mismatch:
             raise ContractError(409, mismatch.code, mismatch.message) from None
+        if not result.replayed:
+            # The branch moved, so the lifecycle of the branch moves too. A delivery that is replayed moves nothing
+            # and publishes nothing, because the branch did not change (ADR-047).
+            hub.publish(
+                sandbox_id,
+                EVENT_MUTATION_COMMITTED,
+                committed_fields(
+                    revision=result.revision,
+                    canonical_hash=result.canonical_hash,
+                    command_id=result.command_id,
+                    kind=result.kind,
+                ),
+            )
         return _answer(result.to_dict())
 
     @target.post("/v1/sandboxes/{sandbox_id}/reset")
@@ -489,6 +656,15 @@ def _the_routes_of_the_sandbox(
             raise ContractError(410, "BRANCH_EXPIRED", str(expired)) from None
         except BranchHashMismatch as mismatch:
             raise ContractError(409, mismatch.code, mismatch.message) from None
+        hub.publish(
+            sandbox_id,
+            EVENT_RESET,
+            reset_fields(
+                revision=branch.revision,
+                canonical_hash=branch.current_canonical_hash,
+                base_canonical_hash=branch.base_canonical_hash,
+            ),
+        )
         return _sandbox_response(branch, 200)
 
     @target.post("/v1/sandboxes/{sandbox_id}/undo")
@@ -528,6 +704,17 @@ def _the_routes_of_the_sandbox(
             raise ContractError(410, "BRANCH_EXPIRED", str(expired)) from None
         except BranchHashMismatch as mismatch:
             raise ContractError(409, mismatch.code, mismatch.message) from None
+        hub.publish(
+            sandbox_id,
+            EVENT_UNDONE,
+            undone_fields(
+                revision=result.revision,
+                canonical_hash=result.canonical_hash,
+                command_id=result.command_id,
+                kind=result.kind,
+                undone_event_uid=result.undone_event_uid or "",
+            ),
+        )
         return _answer(result.to_dict())
 
     @target.get("/v1/sandboxes/{sandbox_id}/diff")
@@ -610,6 +797,234 @@ def _the_routes_of_the_sandbox(
         except BranchHashMismatch as mismatch:
             raise ContractError(409, mismatch.code, mismatch.message) from None
         return _answer({"items": list(page.items), "next_cursor": page.next_cursor})
+
+    @target.get("/v1/sandboxes/{sandbox_id}/events")
+    def stream_sandbox(
+        sandbox_id: Annotated[str, PathParam(pattern=BRANCH_ID_PATTERN)],
+        cookie: Annotated[str | None, Security(SESSION_SCHEME)],
+        last_event_id: Annotated[str | None, Header(alias="Last-Event-ID")] = None,
+    ) -> StreamingResponse:
+        """The stream of the lifecycle of the branch: the eight names of ADR-047.
+
+        The answer is a stream of server sent events and it carries the header of the version of the schema and the
+        headers of the no store, because the state of a branch of a visitor is not to be kept anywhere (FR-042).
+
+        The header `Last-Event-ID` carries the last sequence the client holds, and the hub answers with one of the
+        three answers of the resume: the stream opens with `branch.opened`, the stream continues with the next
+        sequence, or the stream answers with a `stream.resync` and the client re-reads the branch (ADR-047).
+
+        The three events of the stream, `stream.resync`, `stream.closed` and `stream.heartbeat`, belong to THIS
+        connection: they move no counter of the branch and they carry no `id:` line, and the disconnect of the client
+        publishes nothing (ADR-047).
+
+        The branch of another session is refused with the same generic answer as every other route of the facade,
+        BEFORE the stream opens, so nothing about the existence of the branch leaks (ADR-047).
+
+        The route is one of the four paths that ADR-023 and ADR-047 declare beyond the contract of the design
+        package.
+        """
+        session = _session(cookie, issuer)
+        try:
+            branch = layer.status(session, sandbox_id)
+        except BranchNotFound:
+            raise ContractError(404, "NOT_FOUND", GENERIC_NOT_FOUND) from None
+        except InvalidSessionId:
+            raise ContractError(401, "SESSION_REQUIRED", "no valid session") from None
+        except BranchExpired as expired:
+            raise ContractError(410, "BRANCH_EXPIRED", str(expired)) from None
+        except BranchHashMismatch as mismatch:
+            raise ContractError(409, mismatch.code, mismatch.message) from None
+        return StreamingResponse(
+            _events_of_branch(
+                hub,
+                branch_store,
+                session,
+                branch,
+                last_event_id,
+                clock=server_clock,
+                heartbeat_seconds=HEARTBEAT_INTERVAL_SECONDS,
+                credential_vault=credential_vault,
+            ),
+            media_type="text/event-stream",
+            headers={
+                SCHEMA_VERSION_HEADER: SCHEMA_VERSION,
+                **NO_STORE_HEADERS,
+            },
+        )
+
+
+async def _events_of_branch(
+    hub: EventHub,
+    store: BranchStore,
+    session: str,
+    branch: SandboxBranch,
+    last_event_id: str | None,
+    *,
+    clock: Callable[[], datetime],
+    heartbeat_seconds: float,
+    credential_vault: CredentialVault | None,
+) -> AsyncIterator[str]:
+    """The events of the lifecycle of the branch, as they arrive, until the branch expires or the client leaves.
+
+    Why the generator is asynchronous: a stream waits for the next event of the branch and the wait is fifteen
+    seconds long. A generator that waits in a thread of the threadpool holds that thread for the whole life of the
+    stream, and a generator that waits cannot be cancelled at once when the client disconnects, so the end of the
+    stream would be late by up to fifteen seconds. The queue of the stream therefore lives in the loop of the server
+    and the wait is an await (ADR-047).
+
+    Why the payload is scrubbed with the vault: the payload is written by the same facade that writes the refusals,
+    and the rule of ADR-035 holds for it, so no value of the visitor leaves the process (FR-018, SC-001).
+
+    Why the life of the branch is asked to the store and not to the layer: the layer moves the deadline of the branch
+    on every read, so a stream that asks the layer every fifteen seconds would keep its own branch alive forever. The
+    row is read as it is and the rule of the expiry is the one of `ledgerlens/sandbox/ttl.py` (ADR-029, ADR-047).
+
+    Why the events that the generator publishes itself are yielded and not waited for: the hub hands an event to the
+    subscribers of the branch with `call_soon_threadsafe`, so the copy of the event reaches the queue of this stream
+    one turn of the loop later. A close that was put in the queue at once would therefore be handed first, the stream
+    would end there, and the client would never receive the event of the expiry that came before it (ADR-047).
+    """
+    loop = asyncio.get_running_loop()
+    queue: asyncio.Queue[StreamEvent] = asyncio.Queue()
+
+    def deliver(event: StreamEvent) -> None:
+        """Hands an event of the branch to the queue of this stream, from any thread of the process."""
+        loop.call_soon_threadsafe(queue.put_nowait, event)
+
+    hub.subscribe(branch.branch_id, deliver)
+    try:
+        decision = hub.resume(branch.branch_id, last_event_id)
+        if decision.kind == RESUME_OPEN:
+            # The first event of a stream that opens for the first time: the facts of the creation and the state of
+            # the branch right now. A resume that is proven does NOT receive it again, because the client proved that
+            # it missed nothing and it still holds the state (ADR-047).
+            hub.publish(
+                branch.branch_id,
+                EVENT_BRANCH_OPENED,
+                opened_fields(
+                    scenario_id=branch.scenario_id,
+                    base_snapshot_id=branch.base_snapshot_id,
+                    base_canonical_hash=branch.base_canonical_hash,
+                    current_canonical_hash=branch.current_canonical_hash,
+                    revision=branch.revision,
+                    created_at=branch.created_at,
+                    expires_at=branch.expires_at,
+                    state=branch.state,
+                ),
+            )
+        elif decision.kind == RESUME_RESYNC:
+            # The reconnection cannot be proven: the client re-reads the branch instead of receiving an event that
+            # never happened.
+            #
+            # Why the event is put in THIS queue and not published to the branch: the resync belongs to the
+            # connection that reconnected, and the other connections of the branch did not miss anything. The event
+            # moves no counter and carries no `id:` line, because a client that reconnects behind the counter must
+            # not be told that it is behind again because of an event it never received (ADR-047).
+            queue.put_nowait(
+                hub.resync(
+                    branch.branch_id,
+                    last_event_id=decision.last_event_id or "",
+                    reason=decision.reason or "",
+                )
+            )
+        while True:
+            try:
+                event = await asyncio.wait_for(queue.get(), timeout=heartbeat_seconds)
+            except TimeoutError:
+                # The silence is long enough: the heartbeat keeps the connection alive and lets the client count it.
+                yield _text_of(hub.heartbeat(branch.branch_id), credential_vault)
+                row = await _row_of_branch(store, session, branch.branch_id)
+                if row is None:
+                    # The row of the branch is gone, so the server ends THIS connection. The close belongs to the
+                    # connection and not to the branch, and it moves no counter (ADR-047).
+                    yield _text_of(hub.closed(branch.branch_id, reason=CLOSED_REASON_GONE), credential_vault)
+                    break
+                if is_expired(row, clock()):
+                    # The branch died, and that IS an event of the lifecycle: every connection of the branch has to
+                    # know it. The close that follows belongs to THIS connection alone (ADR-047).
+                    #
+                    # Why the event is yielded and not waited for: the hub hands an event to the subscribers of the
+                    # branch with `call_soon_threadsafe`, so the copy of the expiry that comes back to THIS stream
+                    # lands in the queue one turn of the loop later. The close is put in the queue at once, so the
+                    # queue would hand the close first, the stream would end there, and the client would never hear
+                    # that the branch died. The event is therefore yielded here, exactly once and before the close.
+                    expiry = hub.publish(
+                        branch.branch_id,
+                        EVENT_BRANCH_EXPIRED,
+                        expired_fields(expires_at=row.expires_at),
+                    )
+                    yield _text_of(expiry, credential_vault)
+                    yield _text_of(hub.closed(branch.branch_id, reason=CLOSED_REASON_EXPIRED), credential_vault)
+                    break
+                continue
+            yield _text_of(event, credential_vault)
+            if event.name == EVENT_STREAM_CLOSED:
+                break
+    finally:
+        hub.unsubscribe(branch.branch_id, deliver)
+        # Why nothing is published when the client leaves: the client that left is gone, and the other connections
+        # of the branch are not affected by it. A `stream.closed` that moved the counter would make the next
+        # reconnection of every other connection look stale, because the event that moved it was never received by
+        # anyone (ADR-047).
+
+
+async def _row_of_branch(store: BranchStore, session: str, branch_id: str) -> SandboxBranchRow | None:
+    """The row of the branch of the session, and None when the branch is not there any more.
+
+    Why the read is in a thread: the store of a deployment may be a database, and the read of the row blocks.
+    """
+    try:
+        return await asyncio.to_thread(store.get_branch, branch_id, session)
+    except BranchNotFound:
+        return None
+
+
+def _text_of(event: StreamEvent, credential_vault: CredentialVault | None) -> str:
+    """The text of an event of the stream, with the payload scrubbed by the vault of the credentials."""
+    payload: dict[str, Any] = dict(event.payload)
+    if credential_vault is not None:
+        payload = {
+            key: credential_vault.scrub(value) if isinstance(value, str) else value for key, value in payload.items()
+        }
+    return format_event(StreamEvent(name=event.name, payload=payload, seq=event.seq))
+
+
+def _the_router_of(target: FastAPI | APIRouter) -> APIRouter:
+    """The router that holds the routes of the target: the router of the application, or the target itself.
+
+    Why the helper exists: an application and a router register their routes the same way, but the dependencies of the
+    routes live on the router of the application and not on the application itself.
+    """
+    return target.router if isinstance(target, FastAPI) else target
+
+
+def _check_the_cap_of_the_branches(
+    store: BranchStore, session: str, scenario_id: str, *, cap: int, now: datetime
+) -> None:
+    """The cap of the live branches of the session, checked before the fork (ADR-047).
+
+    Why the reuse comes FIRST: a fork of a scenario the session already holds a live branch for is a reuse and not a
+    creation, so it creates no branch and the cap cannot refuse it.
+
+    Why the life of a branch is the one of the module of the time to live: a branch whose expiry has passed is dead
+    and does not count, even before the sweep of the cleanup deletes its row, because the sweep runs every thirty
+    seconds and a visitor must not be refused for the branches that are already dead (ADR-029).
+
+    Why the check only reads: the refusal happens before the branch is created, so it leaves nothing behind.
+
+    Why the refusal is not retryable: the branches of the session are alive, and the retry would be refused again.
+    """
+    rows = store.list_branches(session)
+    live = [row for row in rows if not is_expired(row, now)]
+    if any(row.scenario_id == scenario_id for row in live):
+        return
+    if len(live) >= cap:
+        raise ContractError(
+            status_for_code(CODE_RESOURCE_LIMIT),
+            CODE_RESOURCE_LIMIT,
+            f"the session holds {len(live)} live branches and the cap is {cap}",
+            retryable=False,
+        )
 
 
 def _session(cookie_value: str | None, issuer: SessionIssuer) -> str:
@@ -694,6 +1109,7 @@ __all__ = [
     "GENERIC_NOT_FOUND",
     "SCHEMA_VERSION",
     "SCHEMA_VERSION_HEADER",
+    "NO_STORE_HEADERS",
     "SESSION_COOKIE",
     "SandboxRequest",
     "build_router",

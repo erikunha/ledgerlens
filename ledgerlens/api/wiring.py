@@ -218,13 +218,18 @@ def build_wired_app(
 
         The message is scrubbed before it is written: the facade writes what it writes, and a refusal that carries a
         key would carry it out of the process (FR-018, SC-001).
+
+        The headers of the refusal are merged into the answer: the wait of a refusal of the rate of the requests
+        travels in the header `Retry-After`, the front of the browser reads that header, and the header of the answer
+        is not a field of the body of the contract (ADR-047).
         """
         body = error.body()
         body["message"] = the_vault.scrub(str(body["message"]))
+        headers = {SCHEMA_VERSION_HEADER: SCHEMA_VERSION, **error.headers}
         return JSONResponse(
             status_code=error.status_code,
             content=body,
-            headers={SCHEMA_VERSION_HEADER: SCHEMA_VERSION},
+            headers=headers,
         )
 
     @app.exception_handler(RequestValidationError)

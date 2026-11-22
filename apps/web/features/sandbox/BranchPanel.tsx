@@ -11,7 +11,18 @@
  * branch is still there, and a badge of a colour alone would not say it.
  *
  * Why the panel never calculates: the identifier, the revision, the expiry and the hash are the
- * texts of the server, and the panel renders them as they were sent (ADR-044).
+ * texts of the server, and the panel renders them as they were sent (ADR-044). The wait of a
+ * refusal of the limits is the text of the header `Retry-After`, and the panel renders it as it
+ * was sent too: the panel never counts the seconds, never counts them down and never asks the
+ * clock of the browser how long is left (FR-031).
+ *
+ * Why the panel never counts the branches of the session: the server names the count and the cap
+ * in the message of the refusal, and the panel shows that message as it is. A panel that counted
+ * the branches itself would count the branches it knows about and not the ones it does not.
+ *
+ * Why the act is not offered again after a refusal that is not retryable: the two limits of the
+ * facade are told apart by the flag `retryable` and not by the code, and the cap of the branches
+ * of the session is not retryable because a retry would be refused again (ADR-047).
  *
  * Why the controls are never `disabled`: a control that would do nothing carries `aria-disabled`
  * and points at its reason with `aria-describedby`, so that a visitor who pressed it and nothing
@@ -26,6 +37,7 @@ import type { ReactElement } from "react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import type { SandboxErrorBody } from "@/features/sandbox/types";
 import type { BranchState } from "@/features/sandbox/useBranch";
 
 import "./sandbox.css";
@@ -46,6 +58,39 @@ const SIMULATION_MODE = "visitor_sandbox";
 const RESET_REASON = "There is no branch to put back, so open a scenario first.";
 
 /**
+ * The sentence that says why the act is not offered again after a refusal that is not retryable.
+ *
+ * Why the sentence names the server and not the front: the flag `retryable` is what the server
+ * wrote, and the panel says what it means for the visitor (ADR-047).
+ */
+const RESET_REASON_NOT_RETRYABLE =
+  "The server refused this action and says that it will not work later, so the panel does not offer it again.";
+
+/**
+ * A refusal of the server, as the panel reads it.
+ *
+ * Why the wait is here: the wait of the server travels in the header `Retry-After` and it reaches
+ * the refusal that the client of the branch carries in the `ApiError`. The panel shows the number
+ * of seconds that the server wrote and it NEVER calculates a wait with the clock of the browser,
+ * for the same reason it never calculates the time that is left of the expiry (FR-031).
+ */
+export interface BranchRefusal extends SandboxErrorBody {
+  /** The wait the server asked for, as the header `Retry-After` wrote it, or null when it wrote none. */
+  readonly retryAfter?: string | null;
+}
+
+/**
+ * The state of the branch, with the refusal that may carry the wait of the server.
+ *
+ * Why the state is widened here and not in the hook: the shape of the refusal is the shape of the
+ * answer of the server, and the panel reads it. The state of the hook stays the state of the hook.
+ */
+export type BranchPanelState = Omit<BranchState, "refusal"> & {
+  /** The refusal of the server, with the code, the message and the wait the server wrote. */
+  readonly refusal: BranchRefusal | null;
+};
+
+/**
  * The props of the panel of the branch.
  *
  * Why the panel takes the whole state: every field of the panel is a field of the state of the
@@ -54,7 +99,7 @@ const RESET_REASON = "There is no branch to put back, so open a scenario first."
  */
 export interface BranchPanelProps {
   /** The state of the branch, as the hook of the branch holds it. */
-  readonly state: BranchState;
+  readonly state: BranchPanelState;
   /** Called when the visitor asks to put the branch back at the published base. */
   readonly onReset: () => void;
   /** Called when the visitor asks to end the session of the visitor. */
@@ -69,10 +114,23 @@ export interface BranchPanelProps {
  */
 export function BranchPanel({ state, onReset, onEndSession }: BranchPanelProps): ReactElement {
   const hasBranch = state.branchId !== null;
+  const refusal = state.refusal;
+
+  // The wait is the TEXT of the server, and the panel shows it as it was written. A refusal that
+  // carries no wait shows no wait at all.
+  const wait = refusal?.retryAfter ?? null;
+
+  // The two limits of the facade are told apart by the flag and not by the code: the rate of the
+  // requests is retryable and the cap of the branches of the session is not. The panel reads the
+  // flag when it decides whether to offer the act again (ADR-047).
+  const mayTryAgain = refusal === null || refusal.retryable === true;
+
+  /** Whether the act of the panel is offered, or marked with the reason why it is not. */
+  const actIsOffered = hasBranch && mayTryAgain;
 
   /** Puts the branch back at the base, but only when there is a branch to put back. */
   function handleReset(): void {
-    if (!hasBranch) {
+    if (!actIsOffered) {
       return;
     }
     onReset();
@@ -143,8 +201,8 @@ export function BranchPanel({ state, onReset, onEndSession }: BranchPanelProps):
       <div className="mt-2 flex flex-wrap items-center gap-3">
         <Button
           variant="secondary"
-          aria-disabled={hasBranch ? undefined : true}
-          aria-describedby={hasBranch ? undefined : RESET_REASON_ID}
+          aria-disabled={actIsOffered ? undefined : true}
+          aria-describedby={actIsOffered ? undefined : RESET_REASON_ID}
           onClick={handleReset}
         >
           Put the branch back at the base
@@ -153,20 +211,25 @@ export function BranchPanel({ state, onReset, onEndSession }: BranchPanelProps):
           End the session
         </Button>
       </div>
-      {hasBranch ? null : (
+      {actIsOffered ? null : (
         <p id={RESET_REASON_ID} className="mt-2 text-sm text-text-muted">
-          {RESET_REASON}
+          {hasBranch ? RESET_REASON_NOT_RETRYABLE : RESET_REASON}
         </p>
       )}
 
-      {state.refusal === null ? null : (
+      {refusal === null ? null : (
         <>
           <h3 className="mt-4 text-sm font-semibold uppercase tracking-wide text-text-muted">
             The reason of the refusal
           </h3>
           <div role="alert" className="mt-2 rounded border border-danger/40 bg-danger-light p-3">
-            <p className="text-sm font-semibold text-danger-dark">{state.refusal.code}</p>
-            <p className="text-sm text-danger-dark">{state.refusal.message}</p>
+            <p className="text-sm font-semibold text-danger-dark">{refusal.code}</p>
+            <p className="text-sm text-danger-dark">{refusal.message}</p>
+            {wait === null ? null : (
+              <p className="text-sm text-danger-dark">
+                The server asks to wait {wait} seconds before this request is tried again.
+              </p>
+            )}
           </div>
         </>
       )}
@@ -175,4 +238,4 @@ export function BranchPanel({ state, onReset, onEndSession }: BranchPanelProps):
 }
 
 /** Every symbol this module exports, so that a reader sees the whole surface of the panel at once. */
-export const __all__ = ["BranchPanelProps", "BranchPanel"] as const;
+export const __all__ = ["BranchRefusal", "BranchPanelState", "BranchPanelProps", "BranchPanel"] as const;

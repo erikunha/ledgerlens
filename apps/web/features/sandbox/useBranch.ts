@@ -355,17 +355,20 @@ function isLostBranch(refusal: SandboxErrorBody): boolean {
  *
  * Why a refusal always has a code and a message: the panel renders them where the action was, and
  * an empty error panel would hide the reason of the failure.
+ *
+ * Why the wait of the server travels with the refusal: the server tells the visitor how long it
+ * has to wait when it refuses a request over the rate limit, and the panel shows that number. The
+ * number is the text of the header, never a number the browser computes (ADR-047).
  */
 function readRefusal(caught: unknown): SandboxErrorBody {
   if (caught instanceof ApiError) {
-    return (
-      caught.body ?? {
-        code: caught.code,
-        message: caught.message,
-        retryable: caught.retryable,
-        request_id: caught.requestId,
-      }
-    );
+    const body = caught.body ?? {
+      code: caught.code,
+      message: caught.message,
+      retryable: caught.retryable,
+      request_id: caught.requestId,
+    };
+    return { ...body, retryAfter: caught.retryAfter };
   }
   return {
     code: "UNEXPECTED_ERROR",
@@ -375,6 +378,7 @@ function readRefusal(caught: unknown): SandboxErrorBody {
         : "the request failed for a reason the interface does not know",
     retryable: false,
     request_id: "",
+    retryAfter: null,
   };
 }
 

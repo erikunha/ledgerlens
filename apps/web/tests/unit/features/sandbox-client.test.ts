@@ -395,6 +395,51 @@ describe("the client of the branch", () => {
     });
   });
 
+  it("reads the wait of the server out of the header Retry-After of a refusal of the rate", async () => {
+    // The client of the branch has a fetch of its own, so the reading of the header has to be
+    // pinned HERE and not only in the transport of the repository: a client that dropped the header
+    // would show no wait at all, and the visitor would press the button again too early.
+    const { client } = clientOf(() => ({
+      status: 429,
+      body: {
+        code: "RESOURCE_LIMIT_EXCEEDED",
+        message: "the session made too many requests in one minute",
+        retryable: true,
+        request_id: "req_03",
+      },
+      headers: { "Retry-After": "37" },
+    }));
+
+    const failure = client.fork("S01");
+
+    await expect(failure).rejects.toBeInstanceOf(ApiError);
+    await expect(failure).rejects.toMatchObject({
+      status: 429,
+      code: "RESOURCE_LIMIT_EXCEEDED",
+      retryable: true,
+      retryAfter: "37",
+    });
+  });
+
+  it("carries no wait at all when the server refuses without the header Retry-After", async () => {
+    const { client } = clientOf(() => ({
+      status: 429,
+      body: {
+        code: "RESOURCE_LIMIT_EXCEEDED",
+        message: "the session holds five live branches already",
+        retryable: false,
+        request_id: "req_04",
+      },
+    }));
+
+    const failure = client.fork("S01");
+
+    await expect(failure).rejects.toMatchObject({
+      status: 429,
+      retryAfter: null,
+    });
+  });
+
   it("answers 201 when the fork creates the branch", async () => {
     const { client } = clientOf(() => ({ status: 201, body: sandboxResource, headers: branchHeaders }));
 

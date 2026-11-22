@@ -525,6 +525,13 @@ export interface SandboxErrorBody {
   retryable: boolean;
   /** The identifier of the request, the one the logs of the server carry. */
   request_id: string;
+  /**
+   * The wait of the server, in seconds, when the server wrote one.
+   *
+   * Why it is the text of the server: the browser never computes a wait, the same way it never
+   * computes the time that is left of the expiry (ADR-047).
+   */
+  retryAfter?: string | null;
 }
 
 /**

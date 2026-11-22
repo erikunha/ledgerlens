@@ -2,7 +2,9 @@
 
 The sandbox of the visitor is a private branch of a published case. A visitor opens a branch of a scenario, previews a
 typed mutation, commits it, reads the difference between the branch and the published base, reads the log of the
-branch, undoes the last mutation, puts the branch back at the base and ends the session.
+branch, undoes the last mutation, puts the branch back at the base and ends the session. The lifecycle of the branch
+is published as a stream of named events, and the facade refuses two limits of the session with the same code and the
+same status.
 
 This document is for whoever has to CALL that API. It says what to send, what comes back, what every status code
 means and what to do with a refusal.
@@ -12,15 +14,21 @@ The source of truth is the code: the facade lives in `ledgerlens/api/sandbox.py`
 (`tests/sandbox/test_sandbox_api.py`, `tests/api/test_sandbox_router.py`) and from the tests of the domain
 (`tests/sandbox/`). A reader who wants to see the code reads those files.
 
-**Eight of the eleven paths are paths of the versioned contract of the design package** (`docs/v3/contracts/openapi.yaml`)
-and three of them are beyond it: **the diff of the branch, the history of the branch and the undo of the last
-mutation**. ADR-023 declared those three beyond the contract, because the contract of the package is a converted copy
-of a package that lives outside the repository and cannot be edited. The front therefore writes against the routes of
-the code, and this document writes the three down so that no caller has to guess them. The decision is
-[ADR-023](../decisions/ADR-023-facade-routes-beyond-the-package.md) and the decision that the front writes against the
-code is [ADR-044](../decisions/ADR-044-the-interface-of-the-sandbox-in-the-frontend.md).
+**Eight of the twelve paths are paths of the versioned contract of the design package**
+(`docs/v3/contracts/openapi.yaml`) and four of them are beyond it: **the diff of the branch, the history of the branch,
+the undo of the last mutation and the stream of the lifecycle of the branch**. ADR-023 declared the first three beyond
+the contract, because the contract of the package is a converted copy of a package that lives outside the repository and
+cannot be edited, and ADR-047 declared the fourth for the same reason. The front therefore writes against the routes of
+the code, and this document writes the four down so that no caller has to guess them. The decisions are
+[ADR-023](../decisions/ADR-023-facade-routes-beyond-the-package.md) and
+[ADR-047](../decisions/ADR-047-the-lifecycle-and-the-limits-of-the-branch.md), and the decision that the front writes
+against the code is [ADR-044](../decisions/ADR-044-the-interface-of-the-sandbox-in-the-frontend.md).
 
-## The eleven paths
+The constant `PATHS_BEYOND_THE_CONTRACT` of `tests/sandbox/test_sandbox_api.py` names the four paths, and the guard of
+that constant is the reason the stream of the branch is written down here: a route that nobody decided cannot appear in
+the facade.
+
+## The twelve paths
 
 | path | method | what it does |
 | --- | --- | --- |
@@ -35,6 +43,7 @@ code is [ADR-044](../decisions/ADR-044-the-interface-of-the-sandbox-in-the-front
 | `/v1/sandboxes/{sandbox_id}/diff` | `GET` | reads the difference between the base and the branch |
 | `/v1/sandboxes/{sandbox_id}/history` | `GET` | reads the log of the branch and the answers it remembers |
 | `/v1/sandboxes/{sandbox_id}/ledger` | `GET` | reads the rows of the projection of the branch |
+| `/v1/sandboxes/{sandbox_id}/events` | `GET` | publishes the lifecycle of the branch as a stream of named events |
 
 The identifier of the branch travels in the path and it is opaque and it is not a secret: it is the prefix `sb_`
 followed by twenty four hexadecimal characters, and the pattern of it is `^sb_[0-9a-f]{24}$`. The right to read a
@@ -69,10 +78,15 @@ contract has no field for them:
 | `X-LedgerLens-Schema-Version` | the version of the shape of the answers, always `1` |
 | `X-LedgerLens-Branch-Hash` | the current canonical hash of the branch |
 | `X-LedgerLens-Branch-State` | the state of the branch, `active` today |
+| `Retry-After` | the wait the server asks for, in seconds, on a refusal of the rate of the requests |
 
-The CORS of the deployment exposes the three headers to the browser, so a browser reads them. The commit and the undo
+The CORS of the deployment exposes the headers to the browser, so a browser reads them. The commit and the undo
 send two headers of their own, `Idempotency-Key` and `If-Match`, and the browser sends them in the preflight of the
 call.
+
+**The `Retry-After` is the text of the server and never a number the caller computes.** It says how many seconds the
+caller has to wait before the same request may work, and a caller shows that number as it was sent. A caller that
+computes a wait with its own clock is a caller that answers with a wait the server never promised.
 
 ## The shape of a refusal
 
@@ -114,13 +128,13 @@ request that failed. A caller shows the `code` and the `message` of the server a
 | `REVISION_CONFLICT` | `409` | the commit and the undo | the branch is at another revision than the request expected |
 | `IDEMPOTENCY_MISMATCH` | `409` | the commit and the undo | the key was already used with another payload |
 | `NOTHING_TO_UNDO` | `409` | the undo | the branch holds no mutation left to undo and stays untouched |
-| `RESOURCE_LIMIT_EXCEEDED` | `429` | the preview and the commit | the branch holds 20 mutations or 200 events, or there is no free identifier for a duplicate |
+| `RESOURCE_LIMIT_EXCEEDED` | `429` | the preview, the commit, the fork and every path of the session | the branch holds 20 mutations or 200 events, or there is no free identifier for a duplicate, or the session holds too many live branches, or the session is over the rate of the requests: the flag `retryable` tells the last two apart |
 | `CONTRACT_UNAVAILABLE` | `503` | the preview and the commit | the deployment cannot check the schema of the command |
 
 The statuses come from the domain: a conflict of the state is `409`, a rule of the payload is `422`, and the three
 limits are `413`, `429` and `503`.
 
-## The eleven paths, one by one
+## The twelve paths, one by one
 
 ### 1. The session of the visitor
 
@@ -710,6 +724,174 @@ The answer is `200` and it carries the rows of the projection and the cursor of 
 there is no next page. The front of the site does not call this path today, and the reason is a debt written down in
 [ADR-044](../decisions/ADR-044-the-interface-of-the-sandbox-in-the-frontend.md).
 
+### 12. The stream of the lifecycle of the branch
+
+| | |
+| --- | --- |
+| Method and path | `GET /v1/sandboxes/{sandbox_id}/events` |
+| Body | none |
+| Headers of the request | the cookie of the session, and the header `Last-Event-ID` on a reconnection |
+| Statuses | `200` with the stream |
+| Answer | `text/event-stream`, with the header `X-LedgerLens-Schema-Version: 1` and the headers of the no store |
+| Refusals | `401` `SESSION_REQUIRED`; `404` `NOT_FOUND` with the generic message "no sandbox is available for this session"; `410` `BRANCH_EXPIRED`; `409` `HASH_MISMATCH`; `422` `INVALID_REQUEST` when the identifier does not match `^sb_[0-9a-f]{24}$`; `429` `RESOURCE_LIMIT_EXCEEDED` when the session is over the rate of the requests |
+
+```http
+GET /v1/sandboxes/sb_000000000000000000000000/events HTTP/1.1
+Host: localhost:8010
+Cookie: ledgerlens_session=...
+Accept: text/event-stream
+```
+
+**The answer is a stream and not a document.** The media type is `text/event-stream`, the answer carries the version of
+the shape and the headers of the no store, because the answer holds the state of a branch of a visitor and it is not to
+be kept anywhere. The two headers of the branch (`X-LedgerLens-Branch-Hash` and `X-LedgerLens-Branch-State`) are NOT
+headers of the stream: a header of a stream is read once, at the opening, and the state of the branch travels in the
+payload of the first event, where it can be read at the moment it is true.
+
+**The shape of an event is the shape of the server sent events.** Every event of the lifecycle carries three lines and a
+blank line:
+
+```
+id: 1
+event: branch.opened
+data: {"schema_version":"1","branch_id":"sb_000000000000000000000000","seq":1, ...}
+
+```
+
+The `id:` line is the sequence of the event, the `event:` line is the name of the event and the `data:` line is the JSON
+of the payload. The sequence starts at one for the first event of the lifecycle of a branch and grows by one for every
+event after it. The sequence is PER BRANCH and it is NOT the revision of the branch: the revision moves only on a commit,
+it does not move on an opening, on a reset or on the end of the stream, and the undo moves it BACK.
+
+**There are eight names, and each one means exactly one thing.**
+
+| name | when it is sent | what the payload carries |
+| --- | --- | --- |
+| `branch.opened` | first event of a stream that opens for the first time | `branch_id`, `scenario_id`, `base_snapshot_id`, `base_canonical_hash`, `current_canonical_hash`, `revision`, `created_at`, `expires_at`, `state` |
+| `branch.mutation.committed` | after a commit | `branch_id`, `revision`, `canonical_hash`, `command_id`, `kind` |
+| `branch.undone` | after an undo | `branch_id`, `revision`, `canonical_hash`, `command_id`, `kind`, `undone_event_uid` |
+| `branch.reset` | after a reset | `branch_id`, `revision` (zero), `canonical_hash`, `base_canonical_hash` |
+| `branch.expired` | the branch outlived its time to live | `branch_id`, `expires_at`, `state` (the text `expired`) |
+| `stream.resync` | first event of a reconnection that cannot be proven, for the connection that reconnected | `last_event_id`, `reason` |
+| `stream.closed` | the end of the connection that the server ended | `reason` |
+| `stream.heartbeat` | every fifteen seconds, for the connection that is silent | `at`, `last_seq` |
+
+**Every payload carries the same four fields**, so that a client reads one shape: `schema_version` (the text `1`),
+`branch_id`, `seq` (the sequence, the same number the `id:` line carries) and `at` (the moment in ISO 8601 with a time
+zone, taken from the clock of the server). The fields of the event itself come after those four.
+
+**The counter of the branch counts the events of the LIFECYCLE, and the lifecycle has FIVE names:** `branch.opened`,
+`branch.mutation.committed`, `branch.undone`, `branch.reset` and `branch.expired`. The three other names belong to the
+STREAM, and:
+
+1. **They do NOT move the counter of the branch.**
+2. **They carry NO `id:` line**, so the `Last-Event-ID` of the browser never moves because of them.
+3. **They belong to the CONNECTION that concerns them**, and they are NOT sent to the other connections of the same
+   branch: a `stream.resync` is for the client that reconnected, a `stream.closed` is for the connection that the
+   server ended, and the heartbeat is for the connection that is silent.
+4. **Their payload carries the `seq` of the LAST sequence of the lifecycle that the server published for the branch**,
+   which is the current value of the counter.
+5. **`branch.opened` is the first event of a stream that opens FOR THE FIRST TIME.** A resume that is proven continues
+   with the next sequence and does NOT receive `branch.opened` again: the client proved that it missed nothing and it
+   still holds the state.
+6. **The disconnect of a client is NOT an event.** The client that left is gone and the other connections of the
+   branch are not affected by it. The `stream.closed` exists only for the two reasons the SERVER ends a connection:
+   the row of the branch disappeared (the reason `branch_gone`) and the branch died (the reason `branch_expired`).
+
+The reason is in one sentence: the counter exists so that a client can PROVE that it missed nothing, and an event of
+the stream that moved the counter would make every reconnection look stale, because the event that moved it was never
+received by the client that disconnected.
+
+**The heartbeat is a named event and it is not a comment.** It arrives every fifteen seconds, it carries NO `id:` line,
+so the `Last-Event-ID` of the browser never moves because of a heartbeat, and its payload carries no change of the
+branch: it carries the moment `at` and the `last_seq`, the sequence of the last event of the lifecycle the server sent
+on that stream. A comment line would keep the connection alive and would tell the client nothing, because a comment is
+invisible to the JavaScript of the `EventSource`.
+
+**The `Last-Event-ID` is the bare decimal integer of the sequence.** No prefix, no quotes, no branch identifier: the
+text is exactly the text of the `id:` line, because the browser sends the header by itself on a reconnection and it must
+be the same text the server wrote.
+
+**The resume has three answers.**
+
+1. **The header is absent.** It is the first connection of the client. The stream opens with `branch.opened` and the
+   sequence of that branch starts at one.
+2. **The header carries the last sequence the hub gave to that branch.** The client holds the last event and nothing is
+   missing. The stream continues with the next sequence, there is NO `stream.resync`, and it does NOT receive
+   `branch.opened` again: the client proved that it missed nothing and it still holds the state.
+3. **The header carries anything else.** It is behind the counter of the hub, or the hub does not know it at all,
+   because the counter was lost at the restart of the process or because the client is talking to another instance of
+   the deployment. The stream sends `stream.resync` as its FIRST event, with the identifier the client sent echoed back
+   in `last_event_id` and the reason in `reason`: the text `not_current` when the identifier is behind the counter and
+   the text `unknown` when the hub does not know it. The client then re-reads the branch with
+   `GET /v1/sandboxes/{sandbox_id}`, and with `GET /v1/sandboxes/{sandbox_id}/history` when it needs the log.
+
+**The resume NEVER repeats the events that were lost.** The hub keeps no history, so it has nothing to repeat. The
+honest resume is a resync and a read of the branch, and the price of the honesty is one read of the branch per
+reconnection that cannot be proven.
+
+**The end of a stream comes in this order.** When the branch dies, the server publishes the event `branch.expired` to
+the branch, so that EVERY connection of the branch learns that it died, and then the server ends each connection with
+its OWN `stream.closed`, whose reason is `branch_expired`. The client therefore receives `branch.expired` first and
+`stream.closed` after it. When the row of the branch disappears, the server ends the connection with a
+`stream.closed` whose reason is `branch_gone`, and no event of the lifecycle is published. The disconnect of a client
+is not an event: nothing is published, and the other connections of the branch receive nothing.
+
+**What never goes in the stream.** Not the secret of the visitor (not the cookie, not the session identifier, not the key
+of a provider), not the state of another branch (a branch of another session is refused with the generic `404` before the
+stream opens), not the diff, not the history, not the rows of the ledger and never a money value. The truth of a branch
+is the answer of `GET /v1/sandboxes/{sandbox_id}` and never the stream: a client that lost an event reads the status.
+
+This path is one of the four that ADR-023 and ADR-047 declared beyond the contract of the package.
+
+## The limits of the facade
+
+The facade refuses two limits with the SAME code and the SAME status, and only the flag `retryable` tells them apart.
+
+| | the cap of the branches of the session | the rate of the requests |
+| --- | --- | --- |
+| the number | five live branches per session | 120 requests per session per minute |
+| the setting | `LEDGERLENS_SANDBOX_SESSION_BRANCH_CAP`, the default five | `LEDGERLENS_SANDBOX_RATE_LIMIT_REQUESTS`, the default 120, and `LEDGERLENS_SANDBOX_RATE_LIMIT_WINDOW_SECONDS`, the default 60 |
+| the code | `RESOURCE_LIMIT_EXCEEDED` | `RESOURCE_LIMIT_EXCEEDED` |
+| the status | `429` | `429` |
+| the flag `retryable` | **false** | **true** |
+| the header `Retry-After` | none | the number of seconds until the oldest request of the window falls out of it |
+| where it is counted | in the STORE of the branches, which is shared | in the MEMORY of the process |
+| when it is counted | before the fork, and only a fork that would CREATE a branch | on every request of the session, in a window that slides |
+| what the caller does | does not offer the action again, because a retry would be refused again | waits the number of seconds of the header and tries again |
+
+**The cap counts the branches of the session that are ALIVE.** A branch whose expiry has passed is dead and does not
+count, even before the sweep of the cleanup deletes its rows, because the sweep runs every thirty seconds and a visitor
+must not be refused for branches that are already dead. The reuse rule comes BEFORE the cap: a fork of a scenario that
+the session already holds a live branch for is a reuse and not a creation, it answers `200` with the branch that
+exists, and it is NEVER refused by the cap, because no branch is created.
+
+**The rate is measured over the requests of ONE session, in a sliding window of sixty seconds, and NOT over the address
+of the client.** The facade has no trusted address of the visitor, and the session is the only identity it can trust.
+The route that issues the session is NOT counted, because a visitor that asks for a session has no session yet. The
+opening of a stream counts as ONE request and the heartbeats of that stream do not count at all.
+
+**The truth of the rate of the requests: it is PER PROCESS.** The counter of the requests lives in the memory of the
+process, and the store of the branches has two implementations, a file backed one and Postgres. A deployment that runs
+the facade with N workers allows N times the quota: the limit of a session is 120 requests per minute in EVERY worker,
+and a visitor whose requests are spread over N workers may make N times 120 requests per minute. The number of workers
+is a decision of the deployment, and this document does not soften it: with four workers the real ceiling of a session
+is 480 requests per minute, and no setting of the repository changes that.
+
+**The truth of the cap of the branches: it is GLOBAL.** The count is read from the store of the branches and the store
+is shared, so the cap of five live branches per session is the same five for every worker of the deployment. That is
+the difference with the rate of the requests, and the difference matters.
+
+**The message of the refusal names the count and the cap**, and it never names a value of the visitor: the refusal of
+the cap says how many live branches the session holds and what the cap is, and the refusal of the rate says how many
+requests the session made and how long the window is. A caller shows that message as it is: a caller that counts the
+branches of the session itself counts the branches it knows about and not the ones it does not.
+
+**The wait of the header is an integer of seconds and never less than one.** It is the number of seconds until the
+oldest request of the window falls out of it, which is the shortest wait that can work, and the server rounds it up. A
+caller that shows that number shows the shortest wait that the server promised, and a caller that waits longer waits
+more than it had to.
+
 ## The catalog of the mutations
 
 The catalog of the sandbox holds FIVE kinds, and a kind is enabled only when it has a round trip test and a coherent
@@ -879,6 +1061,12 @@ is not the clock of the server.
 6. **The session is asked for only when the server says there is none.** A call refused with `401 SESSION_REQUIRED`
    triggers exactly one `POST /v1/sessions` and exactly one retry, and the caller clears its state when the retry
    fails with `401` again.
+7. **The two limits are told apart by the flag `retryable` and not by the code.** A refusal with `retryable` at false is
+   a refusal that the same request will not fix: the caller does not offer the action again. A refusal with `retryable`
+   at true is a refusal that the same request may fix later, and the caller waits the number of seconds of the header
+   `Retry-After` and tries again.
+8. **The wait is the number of the server.** The header `Retry-After` carries an integer of seconds, and the caller
+   shows it as it was sent. The caller never computes a wait with its own clock and never counts it down.
 
 ## The decisions behind this API
 
@@ -894,3 +1082,5 @@ is not the clock of the server.
   of the same site.
 - [ADR-044](../decisions/ADR-044-the-interface-of-the-sandbox-in-the-frontend.md), the interface of the sandbox in the
   frontend.
+- [ADR-047](../decisions/ADR-047-the-lifecycle-and-the-limits-of-the-branch.md), the lifecycle of the branch as a stream
+  and the limits of the facade as refusals of the family that already exists.

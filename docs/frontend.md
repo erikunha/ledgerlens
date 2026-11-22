@@ -843,6 +843,119 @@ the sandbox, with its eleven paths and the codes of its refusals, is in
   `/sandbox` and it carries NOTHING: no identifier of a branch, no identifier of a session, no revision and no text of a
   command.
 
+## The lifecycle of the branch and the limits of the facade
+
+The backend publishes the lifecycle of the branch as a stream of named events and it refuses the two limits of the
+session with the same code and the same status. The decision is
+[ADR-047](decisions/ADR-047-the-lifecycle-and-the-limits-of-the-branch.md), and this section says what the frontend
+does with the two, and what it does NOT do.
+
+### The client of the stream of the branch
+
+**The client of the stream of the branch is its own file, `apps/web/features/sandbox/api/branchStream.ts`, beside the
+client of the branch.** It EXISTS, it is typed to the eight names of the branch stream, and it is NAMED in the fence of
+the network (`apps/web/tests/unit/network-fence.test.ts`), because a stream IS the network. What does NOT exist is the
+wiring: NOTHING calls the client today and the browser does NOT open the stream yet. The client of the live mode,
+`apps/web/lib/api/events.ts`, CANNOT be reused: it is typed to the
+`TraceEvent` of a run and it closes its source on the terminal events of a run, and the names of the events of a branch
+and their payloads are another vocabulary. A client of a stream of another vocabulary that reused it would carry the
+vocabulary of the run into the branch.
+
+**The client shares the transport of the repository.** The transport is the origin of the backend and the joining of the
+paths, `apiUrl` of `apps/web/lib/api/config.ts`, plus the source of the browser opened with the credentials of the
+session, exactly like the client of the live mode opens its source. There is no second origin and no second rule
+(ADR-040).
+
+**The client holds the EIGHT names of the branch stream and nothing else.** Each name means exactly one thing:
+
+| name | what it carries |
+| --- | --- |
+| `branch.opened` | the facts of the creation of the branch and the state of the branch at the moment of the opening |
+| `branch.mutation.committed` | the revision, the hash, the command and the kind of the commit |
+| `branch.undone` | the revision, the hash, the command, the kind and the event of the log that the undo took back |
+| `branch.reset` | the revision, the hash of the branch and the hash of the base |
+| `branch.expired` | the moment the branch dies and the state of the branch |
+| `stream.resync` | the identifier the client sent and the reason the resume could not be proven |
+| `stream.closed` | the reason the stream ended |
+| `stream.heartbeat` | the moment and the sequence of the last event of the lifecycle |
+
+**The reader and the writer of the stream are pure and they are the shape of the wire.** The reader takes a piece of
+text and gives back the name, the sequence and the payload, and it refuses a payload that carries no `schema_version`,
+no `branch_id`, no `seq` or no `at` with a reason that names the field that is missing. The writer gives back the text
+the server writes: the `id:` line, the `event:` line, the `data:` line and the blank line. The `Last-Event-ID` of a
+reconnection is the bare decimal integer of the sequence, with no prefix and no name, because the browser sends that
+header by itself and the server expects the exact text of the `id:` line.
+
+**The browser does NOT open the stream yet.** The function that opens the connection, `openBranchStream`, is the API
+that the milestone of the browser will use, and NOTHING calls it today. The front keeps polling by hand, exactly as
+ADR-044 said it would. The fence of the network (`apps/web/tests/unit/network-fence.test.ts`) names the modules that
+are allowed to read the network, and the client of the stream of the branch IS NAMED in that fence today: a stream IS
+the network, and an exception is always a name and never a silence.
+
+### The wait of the server
+
+**The `ApiError` of the transport (`apps/web/lib/api/client.ts`) carries the wait of the server.** When the answer is a
+`429`, the client reads the header `Retry-After` and puts its TEXT in the `ApiError`, and the value is `null` when the
+header is not there. The difference between "the server said nothing" and "the server said zero" is the difference
+between a refusal that carries no wait and a refusal that carries a wait of no time at all.
+
+**The panel of the branch shows that number and it never calculates one.** The panel of the branch
+(`apps/web/features/sandbox/BranchPanel.tsx`) draws the wait as the number of seconds that the server wrote, next to
+the code and the message of the refusal. It is not a chronometer: the panel does not count it down, it does not ask the
+clock of the browser how much is left and it does not compute anything at all. The reason is the same reason the front
+never computes the time that is left of the expiry (FR-031): the clock of the browser is not the clock of the server.
+
+### What the frontend does NOT do
+
+- **The front NEVER counts the branches of the session.** The server names the count and the cap in the message of the
+  refusal, and the panel shows that message as it is. A front that counted the branches itself would count the branches
+  it knows about and not the ones it does not, and it would show a number that the server never wrote.
+- **The front NEVER computes the wait.** The wait is the text of the header `Retry-After`, and it is shown as it was
+  sent.
+- **The front NEVER opens the stream of the branch yet.** The client exists, it is typed and it is tested, and the page
+  keeps polling by hand until the milestone of the browser.
+- **The front NEVER tells the two limits apart by the code.** Both answer `429` with the code `RESOURCE_LIMIT_EXCEEDED`,
+  and the flag `retryable` is the difference: the rate of the requests is retryable and the cap of the branches of the
+  session is not. The panel reads the flag when it decides whether to offer the action again, and a control that would
+  do nothing is never `disabled`: it carries `aria-disabled` and points at the reason with `aria-describedby`.
+
+### The flow of the limits
+
+```mermaid
+flowchart TD
+  subgraph BROWSER["The browser of the visitor"]
+    ACT["The act of the visitor<br/>the fork, the preview, the commit"]
+    CLIENT["The client of the branch<br/>features/sandbox/api/sandboxClient.ts"]
+    HOOK["The state of the branch<br/>features/sandbox/useBranch.ts"]
+    PANEL["The panel of the branch<br/>features/sandbox/BranchPanel.tsx"]
+    STREAM["The client of the stream<br/>features/sandbox/api/branchStream.ts<br/>nobody opens it yet"]
+  end
+
+  subgraph API["The origin of the API"]
+    FACADE["The facade of the sandbox<br/>ledgerlens/api/sandbox.py"]
+  end
+
+  ACT -->|"the call"| CLIENT
+  CLIENT -->|"credentials: include"| FACADE
+  FACADE -->|"429 with Retry-After<br/>and the flag retryable"| CLIENT
+  CLIENT -->|"the ApiError with the wait of the server"| HOOK
+  HOOK -->|"the state of the branch, with the refusal"| PANEL
+  PANEL -->|"shows the number of seconds of the server"| VISITOR["The visitor"]
+  PANEL -->|"the act is offered again<br/>only when the refusal is retryable"| ACT
+  STREAM -.->|"the next milestone of the browser"| PANEL
+
+  NOTE["The front never counts the branches,<br/>never calculates the wait and never opens the stream yet"]
+  PANEL -.-> NOTE
+
+  style NOTE stroke-dasharray: 5 5
+```
+
+The diagram follows the code that is on the disk: the client of the branch is the file
+`apps/web/features/sandbox/api/sandboxClient.ts`, the state of the branch is the hook `apps/web/features/sandbox/useBranch.ts`,
+the panel is the file `apps/web/features/sandbox/BranchPanel.tsx`, and the client of the stream of the branch is the
+file `apps/web/features/sandbox/api/branchStream.ts`. The API of the sandbox, with its twelve paths, the eight names of
+the stream and the two limits of the session, is in [the document of the API of the sandbox](api/sandbox.md).
+
 ## The two gates
 
 ```bash

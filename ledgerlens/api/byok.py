@@ -95,6 +95,7 @@ from ledgerlens.api.live_run import (
 )
 from ledgerlens.api.sandbox import (
     GENERIC_NOT_FOUND,
+    NO_STORE_HEADERS,
     SCHEMA_VERSION,
     SCHEMA_VERSION_HEADER,
     SESSION_COOKIE,
@@ -234,11 +235,6 @@ KEY_ERASURE_TEXT = (
 
 # The headers that say that the answer is not to be kept anywhere. The answer of the credential route carries the
 # handle and nothing else, and it is not to be cached (FR-003).
-NO_STORE_HEADERS = {
-    "Cache-Control": "no-store",
-    "Pragma": "no-cache",
-    "Expires": "0",
-}
 
 # The cookie of the demo and the scheme that reads it. The cookie of the live mode carries the same name, but it is
 # signed with the key of the live mode by default: the two facades are the same visitor when the deployment wires

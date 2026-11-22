@@ -21,7 +21,7 @@
  * this milestone.
  */
 
-import { ApiError, readErrorBody } from "@/lib/api/client";
+import { ApiError, readErrorBody, readRetryAfter } from "@/lib/api/client";
 import { apiBaseUrl, apiUrl, normalizeBaseUrl } from "@/lib/api/config";
 import type { SessionBody } from "@/lib/api/live";
 import type {
@@ -173,6 +173,10 @@ export function createSandboxClient(options: SandboxClientOptions = {}): Sandbox
         retryable: refusal?.retryable ?? false,
         requestId: refusal?.request_id ?? "",
         body: refusal,
+        // The wait of the server, when the server wrote one. It is the text of the header, never a
+        // number the browser computes: the front shows what the server said and not what it
+        // believes (ADR-047).
+        retryAfter: readRetryAfter(response),
       });
     }
 

@@ -59,8 +59,16 @@ const ALLOWED_IN_LIB = new Set([
  * it on purpose, exactly like the live mode, by the decision of ADR-044. The client of the sandbox is the ONE module
  * of the folder `features/` that reads the network, and it is named here so that the exception is always a name and
  * never a silence.
+ *
+ * Why the client of the stream of the branch is allowed: a stream IS the network, and the client of the stream of
+ * the branch opens the source of events of the cycle of life of the branch, on the origin of the backend, with the
+ * credentials of the session (ADR-047). It is the SECOND module of `features/` that reads the network, and it is
+ * named here so that a third one has to be named too.
  */
-const ALLOWED_OUTSIDE_LIB = new Set([join("features", "sandbox", "api", "sandboxClient.ts")]);
+const ALLOWED_OUTSIDE_LIB = new Set([
+  join("features", "sandbox", "api", "sandboxClient.ts"),
+  join("features", "sandbox", "api", "branchStream.ts"),
+]);
 
 /**
  * Every module of the web app that is allowed to read the network, wherever it lives.

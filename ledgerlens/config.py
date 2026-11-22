@@ -15,6 +15,10 @@ Configurable paths: the ledger database (`LEDGERLENS_LEDGER_DB`) and the vector 
 
 The sandbox store: `LEDGERLENS_SANDBOX_DATABASE_URL` names the database of the branches. It is empty by default, and
 an empty url means the file backed store.
+
+The limits of the sandbox: `LEDGERLENS_SANDBOX_SESSION_BRANCH_CAP` is the number of live branches one session may
+hold, `LEDGERLENS_SANDBOX_RATE_LIMIT_REQUESTS` is the number of requests one session may make in the window, and
+`LEDGERLENS_SANDBOX_RATE_LIMIT_WINDOW_SECONDS` is the length of that window (ADR-047).
 """
 
 from __future__ import annotations
@@ -68,6 +72,13 @@ class Settings(BaseModel):
     # The url of the database of the sandbox store. Empty means the file backed store, which is the one the fast
     # unit tests use. The url points at the container of `docker-compose.yml`.
     sandbox_database_url: str | None = None
+    # The cap of the LIVE branches of one session. A branch that is already dead does not count, and a fork of a
+    # scenario the session already holds creates no branch, so it is never refused by the cap (ADR-047).
+    sandbox_session_branch_cap: int = 5
+    # The rate of the requests of one session, in a sliding window. The limit is per process: a deployment with more
+    # than one worker allows that many times the quota (ADR-047).
+    sandbox_rate_limit_requests: int = 120
+    sandbox_rate_limit_window_seconds: int = 60
     # The origins of the browser that may call the backend from another origin, with the cookie of the session. The
     # list is empty by default: a deployment that declares no origin installs no CORS at all, and the backend
     # answers exactly as it answers today (ADR-040).
@@ -135,6 +146,9 @@ def get_settings(env: Mapping[str, str] | None = None) -> Settings:
     idle_ttl = _text(values.get("LEDGERLENS_SANDBOX_BRANCH_IDLE_TTL_SECONDS"))
     absolute_ttl = _text(values.get("LEDGERLENS_SANDBOX_BRANCH_ABSOLUTE_TTL_SECONDS"))
     sandbox_database_url = _text(values.get("LEDGERLENS_SANDBOX_DATABASE_URL"))
+    session_branch_cap = _text(values.get("LEDGERLENS_SANDBOX_SESSION_BRANCH_CAP"))
+    rate_limit_requests = _text(values.get("LEDGERLENS_SANDBOX_RATE_LIMIT_REQUESTS"))
+    rate_limit_window = _text(values.get("LEDGERLENS_SANDBOX_RATE_LIMIT_WINDOW_SECONDS"))
     cors_origins = _text(values.get("LEDGERLENS_CORS_ORIGINS"))
     settings = Settings(
         offline=_flag(values.get("LEDGERLENS_OFFLINE")),
@@ -152,6 +166,9 @@ def get_settings(env: Mapping[str, str] | None = None) -> Settings:
         **({"sandbox_branch_idle_ttl_seconds": int(idle_ttl)} if idle_ttl else {}),
         **({"sandbox_branch_absolute_ttl_seconds": int(absolute_ttl)} if absolute_ttl else {}),
         **({"sandbox_database_url": sandbox_database_url} if sandbox_database_url else {}),
+        **({"sandbox_session_branch_cap": int(session_branch_cap)} if session_branch_cap else {}),
+        **({"sandbox_rate_limit_requests": int(rate_limit_requests)} if rate_limit_requests else {}),
+        **({"sandbox_rate_limit_window_seconds": int(rate_limit_window)} if rate_limit_window else {}),
         **({"cors_origins": _origins(cors_origins)} if cors_origins else {}),
     )
     log.debug("settings loaded: %r", settings)

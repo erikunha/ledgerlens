@@ -22,7 +22,9 @@ What the tests of this file guarantee, and why:
 (j) the order of the two mounts of the routers decides nothing: the application answers the same thing in the two
     orders (ADR-039);
 (k) the plain factory of the live mode still refuses every run, and a malformed body of the wired application is
-    the resource `Error` of the contract and not the answer of the framework (ADR-038, ADR-039).
+    the resource `Error` of the contract and not the answer of the framework (ADR-038, ADR-039);
+(l) a refusal of the rate of the requests of the wired application carries the wait of the server in the header
+    `Retry-After`, because the front of the browser reads that header and shows the wait (ADR-047).
 
 Everything offline, with no key and no network: the provider is the fake adapter of the domain, and no test of
 this file opens a socket.
@@ -99,6 +101,13 @@ CORS_ORIGIN = "http://localhost:3000"
 
 # The resource `Error` of the contract, field for field.
 ERROR_KEYS = {"code", "message", "retryable", "request_id"}
+
+# The names of the settings of the rate of the requests, as the decision of ADR-047 names them.
+RATE_REQUESTS_ENV = "LEDGERLENS_SANDBOX_RATE_LIMIT_REQUESTS"
+RATE_WINDOW_ENV = "LEDGERLENS_SANDBOX_RATE_LIMIT_WINDOW_SECONDS"
+
+# The code of the refusal of the rate of the requests, the one of the domain (ADR-031).
+CODE_RESOURCE_LIMIT = "RESOURCE_LIMIT_EXCEEDED"
 
 
 @pytest.fixture(autouse=True)
@@ -588,6 +597,69 @@ def test_a_refusal_of_the_wired_application_is_the_error_of_the_contract(app: Fa
         assert set(malformed.json()) == ERROR_KEYS
         assert "detail" not in malformed.json()
         assert malformed.json()["code"] == byok_api.CODE_INVALID_REQUEST
+
+
+@pytest.fixture
+def rate_limited_app(
+    monkeypatch: pytest.MonkeyPatch,
+    store: FileBranchStore,
+    issuer: SessionIssuer,
+    vault: CredentialVault,
+    adapter: FakeProviderAdapter,
+    runtime: Path,
+) -> FastAPI:
+    """The wired application of a deployment whose rate of the requests is two requests a minute.
+
+    Why the rate comes from the environment and not from an argument: the rate of the deployment is a setting of the
+    configuration, and the wired application reads it the way a deployment reads it (ADR-047).
+
+    Why the rate is lowered and not waited for: a test that waits a whole minute proves nothing, and the window of the
+    setting is the window the wait of the refusal is taken from.
+    """
+    monkeypatch.setenv(RATE_REQUESTS_ENV, "2")
+    monkeypatch.setenv(RATE_WINDOW_ENV, "60")
+    return build_wired_app(
+        issuer=issuer,
+        store=store,
+        vault=vault,
+        adapter_factory=lambda _provider, _key: adapter,
+        runtime_dir=runtime,
+    )
+
+
+def test_a_refusal_of_the_rate_of_the_wired_application_carries_the_wait(rate_limited_app: FastAPI) -> None:
+    """ADR-047: the refusal of the rate of the wired application carries the wait of the server.
+
+    Why the wait belongs to the wired application and not only to the facade: the wired application is the one that
+    the command serves and the one that the browser of the visitor reads, and the front shows the number of seconds
+    the server wrote, so a header that never reaches the answer is a visitor that never sees the wait (ADR-047,
+    decisions 5 and 6).
+
+    Why the two requests of the quota are spent on purpose: the fork is the first request of the session and the read
+    of the branch is the second one, so the next read of the branch is the request over the rate.
+
+    Why the wait is asserted as a positive number of seconds and not as an exact one: the wait is the number of
+    seconds until the oldest request of the window falls out of it, and the clock of the server moves.
+    """
+    with TestClient(rate_limited_app) as client:
+        session = client.post("/v1/sessions")
+        assert session.status_code == 201, session.text
+        forked = client.post("/v1/sandboxes", json={"scenario_id": SCENARIO_ID})
+        assert forked.status_code == 201, forked.text
+        branch_id = str(forked.json()["id"])
+
+        # The two requests of the quota of the session are spent by now.
+        assert client.get(f"/v1/sandboxes/{branch_id}").status_code == 200
+        refused = client.get(f"/v1/sandboxes/{branch_id}")
+
+    assert refused.status_code == 429, refused.text
+    body = refused.json()
+    assert body["code"] == CODE_RESOURCE_LIMIT
+    # The flag is true: the same request, later, is expected to answer.
+    assert body["retryable"] is True
+    # The wait of the server reaches the answer, because the front of the browser reads this header.
+    assert "Retry-After" in refused.headers
+    assert int(refused.headers["Retry-After"]) > 0
 
 
 def test_the_plain_factory_of_the_live_mode_still_refuses_every_run(

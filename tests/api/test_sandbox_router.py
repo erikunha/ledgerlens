@@ -67,6 +67,10 @@ CONTRACT_PATHS = {
     ("/v1/sandboxes/{sandbox_id}/diff", "GET"),
     ("/v1/sandboxes/{sandbox_id}/history", "GET"),
     ("/v1/sandboxes/{sandbox_id}/ledger", "GET"),
+    # ADR-047 declares the stream of the lifecycle of the branch. The path is a path of the
+    # facade and not a path of the contract of the design package, and the contract cannot be
+    # edited, so the decision of the record declares it here.
+    ("/v1/sandboxes/{sandbox_id}/events", "GET"),
 }
 # The resource `Error` of the contract, field for field.
 ERROR_KEYS = {"code", "message", "retryable", "request_id"}

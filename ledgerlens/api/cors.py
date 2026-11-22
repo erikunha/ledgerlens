@@ -19,7 +19,7 @@ as it answered before this module existed.
 
 Why the whole surface of the module is written in the `__all__`: the decision record of the milestone asks every
 module that it writes to carry its whole surface in one list, so that a reader who opens this file sees the names
-that the policy of the CORS uses, the six constants and the two functions, without opening another file.
+that the policy of the CORS uses, the seven constants and the two functions, without opening another file.
 """
 
 from __future__ import annotations
@@ -34,9 +34,13 @@ from ledgerlens.api.byok import (
     BILLING_DISCLOSURE_HEADER,
     KEY_ERASURE_HEADER,
     KEY_STORAGE_HEADER,
-    NO_STORE_HEADERS,
 )
-from ledgerlens.api.sandbox import BRANCH_HASH_HEADER, BRANCH_STATE_HEADER, SCHEMA_VERSION_HEADER
+from ledgerlens.api.sandbox import (
+    BRANCH_HASH_HEADER,
+    BRANCH_STATE_HEADER,
+    NO_STORE_HEADERS,
+    SCHEMA_VERSION_HEADER,
+)
 
 __all__ = [
     "ALLOWED_HEADERS",
@@ -45,6 +49,7 @@ __all__ = [
     "IDEMPOTENCY_KEY_HEADER",
     "IF_MATCH_HEADER",
     "PREFLIGHT_MAX_AGE",
+    "RETRY_AFTER_HEADER",
     "build_cors_middleware",
     "install_cors",
 ]
@@ -57,6 +62,9 @@ ALLOWED_METHODS = ("GET", "POST", "DELETE", "OPTIONS")
 # the two calls, so the two calls never reach the facade.
 IDEMPOTENCY_KEY_HEADER = "Idempotency-Key"
 IF_MATCH_HEADER = "If-Match"
+# The header that carries the wait of a refusal of the rate of the requests of a session. The browser reads it to
+# tell the visitor how long to wait, and a browser cannot read a header that the CORS does not expose (ADR-047).
+RETRY_AFTER_HEADER = "Retry-After"
 
 # The headers the browser may send: the bodies are JSON, the version header is the one the facade publishes, and the
 # two headers of the commit and of the undo of a branch are the ones the browser sends in the preflight of the call.
@@ -68,7 +76,8 @@ ALLOWED_HEADERS = (
     IF_MATCH_HEADER,
 )
 
-# The headers the browser may read: the four of the facade, the two of the branch and the trio of the no store.
+# The headers the browser may read: the four of the facade, the two of the branch, the trio of the no store and the
+# wait of a refusal of the rate.
 # The names come from the modules that own them, so a rename of a constant never leaves a stale name here.
 EXPOSED_HEADERS = (
     SCHEMA_VERSION_HEADER,
@@ -77,6 +86,7 @@ EXPOSED_HEADERS = (
     BILLING_DISCLOSURE_HEADER,
     BRANCH_HASH_HEADER,
     BRANCH_STATE_HEADER,
+    RETRY_AFTER_HEADER,
     *NO_STORE_HEADERS,
 )
 
