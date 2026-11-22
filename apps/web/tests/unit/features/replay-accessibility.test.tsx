@@ -233,6 +233,24 @@ async function findLoadedRun(): Promise<HTMLElement> {
 }
 
 /**
+ * Moves the recording to an event of the recording, the way a visitor moves it with the slider.
+ *
+ * Why the sequence number and not the position: the events of the published recording carry contiguous sequence
+ * numbers, so the event of a sequence number sits at the index of that number minus one.
+ *
+ * Why the case waits for the counter of the events: the counter is the visible text that says where the recording
+ * stands, and it is the sign that the recording really moved.
+ */
+async function seekToTheEvent(seq: number): Promise<void> {
+  const slider = screen.getByRole("slider", { name: "Position of the recording" });
+  fireEvent.change(slider, { target: { value: String(seq - 1) } });
+
+  await waitFor(() => {
+    expect(screen.getByText(`Event ${seq} of 57.`)).toBeInTheDocument();
+  });
+}
+
+/**
  * Stubs the preference of the system for less motion.
  *
  * Why the stub is needed: jsdom has no media query at all, so the preference of the visitor is unknown to the reader
@@ -447,7 +465,11 @@ describe("the preference for less motion", () => {
 
     fireEvent.click(play);
     await new Promise((resolve) => setTimeout(resolve, 50));
-    expect(screen.getByRole("status")).toHaveTextContent("Event 1 of 57.");
+
+    // The region does not carry the counter of the events any more: it announces the step of the run, and the
+    // recording never moved, so it says nothing at all. The counter stays visible in the page as ordinary text.
+    expect(screen.getByRole("status").textContent).toBe("");
+    expect(screen.getByText("Event 1 of 57.")).toBeInTheDocument();
   });
 
   it("lets the recording play when the visitor did not ask for less motion", async () => {
@@ -533,7 +555,7 @@ describe("the state is never only a colour", () => {
 
 describe("the live region of the reader", () => {
   it("announces the step politely and never assertively", async () => {
-    // It proves that the position of the recording is announced through ONE polite region and never through an
+    // It proves that the step of the recording is announced through ONE polite region and never through an
     // assertive one: a recording that interrupts the visitor at every event is a recording nobody can listen to.
     renderViewer();
     await findLoadedRun();
@@ -545,12 +567,73 @@ describe("the live region of the reader", () => {
     expect(region).toBeDefined();
     expect(region).toHaveAttribute("role", "status");
     expect(region).toHaveAttribute("aria-atomic", "true");
-    expect(region).toHaveTextContent("Event 1 of 57.");
+
+    // The region says nothing while the recording stands at its first event and the playback has not started: a
+    // region that holds a sentence when the page loads is announced by some readers as soon as it appears.
+    expect(region?.textContent).toBe("");
 
     // no assertive region, no alert, and no log: the reader never interrupts the visitor
     expect(document.querySelectorAll('[aria-live="assertive"]')).toHaveLength(0);
     expect(document.querySelectorAll('[role="alert"]')).toHaveLength(0);
     expect(document.querySelectorAll('[role="log"]')).toHaveLength(0);
+  });
+
+  it("moves the focus to the region once, when the playback starts", async () => {
+    // It proves the focus rule of the region: the focus moves to the region ONCE, when the playback starts, and it
+    // never comes back while the recording runs. A reader that is pulled back to the region on every event of the
+    // recording never hears the recording at all (FR-032).
+    stubReducedMotion(false);
+    renderViewer();
+    await findLoadedRun();
+
+    const region = screen.getByRole("status");
+    expect(document.activeElement).not.toBe(region);
+
+    await userEvent.setup().click(screen.getByRole("button", { name: "Play the recording" }));
+    await waitFor(() => expect(document.activeElement).toBe(region));
+
+    // The recording is stopped, so that the case does not run against a recording that moves by itself.
+    await userEvent.setup().click(screen.getByRole("button", { name: "Pause the recording" }));
+
+    // The recording moves, and the focus never comes back to the region.
+    const slider = screen.getByRole("slider", { name: "Position of the recording" });
+    slider.focus();
+    fireEvent.change(slider, { target: { value: "15" } });
+
+    await waitFor(() => expect(screen.getByText("Event 16 of 57.")).toBeInTheDocument());
+    expect(document.activeElement).not.toBe(region);
+  });
+
+  it("announces the step of the run and never the counter of the events", async () => {
+    // It proves that the region announces what the recording DID and not where it stands inside the list of the
+    // events: the counter is a position, and the position is on the slider and in the text of the page.
+    renderViewer();
+    await findLoadedRun();
+
+    await seekToTheEvent(16);
+
+    const region = screen.getByRole("status");
+    expect(region).toHaveTextContent("Step 1 of 4: query_ledger.");
+    expect(region.textContent).not.toMatch(/Event/);
+
+    // The counter of the events stays visible in the page, as ordinary text and outside the region.
+    expect(screen.getByText("Event 16 of 57.")).toBeInTheDocument();
+  });
+
+  it("does not change its text when the recording moves inside a step", async () => {
+    // It proves the granularity of the announcement: the region is rewritten only when the step of the run changes,
+    // and not on every event of the recording. The call of the first step opens at the event 16 and closes at the
+    // event 19, so the region says the same sentence at the two moments.
+    renderViewer();
+    await findLoadedRun();
+
+    await seekToTheEvent(16);
+    const region = screen.getByRole("status");
+    const announced = region.textContent;
+    expect(announced).toBe("Step 1 of 4: query_ledger.");
+
+    await seekToTheEvent(19);
+    expect(region.textContent).toBe(announced);
   });
 });
 

@@ -39,8 +39,10 @@ import type { KeyboardEvent, ReactElement } from "react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { LiveRegion } from "@/components/ui/LiveRegion";
 import { Table, type TableColumn } from "@/components/ui/Table";
 import { Tabs, type TabItem } from "@/components/ui/Tabs";
+import { RunStepper } from "@/features/agent-trace/RunStepper";
 import { TraceTimeline } from "@/features/agent-trace/TraceTimeline";
 import { TraceTree } from "@/features/agent-trace/TraceTree";
 import { ToolCallDrawer } from "@/features/agent-trace/ToolCallDrawer";
@@ -61,15 +63,18 @@ import { formatOriginalDuration } from "@/lib/format/duration";
 import { formatMoney, formatPercentage } from "@/lib/format/money";
 import { formatRunStatus, formatToolStatus } from "@/lib/format/status";
 import { summarizeProvenance } from "@/lib/replay/provenance";
-import { reduceToIndex, type ToolCallState } from "@/lib/replay/reducer";
+import { reduceEvents, reduceToIndex, type ToolCallState } from "@/lib/replay/reducer";
 import {
+  buildRunSteps,
   buildTimeline,
   buildTraceTree,
   collectAmounts,
   collectCurrency,
   collectEvidence,
   collectVerdicts,
+  findCurrentStep,
   findFinalAnswer,
+  type RunStep,
   type TraceTreeNode,
 } from "@/lib/replay/selectors";
 import {
@@ -165,6 +170,43 @@ function readLedgerState(state: ReplayState): {
     error: state.ledgerError ?? null,
     integrity: state.ledgerIntegrity ?? null,
   };
+}
+
+/**
+ * Builds the sentence that the live region of the reader announces.
+ *
+ * Why the sentence is about the step and never about the event: the counter of the events is a position, and the
+ * position is on the slider and in the text of the page. A region that carried the counter would be rewritten on every
+ * event of the recording, and a region that talks over the reader is a broken region (FR-033, ADR-050).
+ *
+ * Why the region is empty before the playback starts: a live region that holds a sentence when the page loads is
+ * announced by some readers as soon as it appears, and the visitor hears the state of the recording before he asked
+ * for it. The region speaks from the start of the playback on.
+ *
+ * Why the number of the calls is the number of the steps: the steps of the run are the calls of the recording, so the
+ * sentence says "of 4" for the recording of S01 because the recording carries four calls and not because a sentence
+ * says four.
+ */
+function buildAnnouncement(
+  steps: readonly RunStep[],
+  current: RunStep | null,
+  phase: ReplayPhase,
+  position: number,
+): string {
+  if (phase === "completed") {
+    return `The recording is over. It made ${steps.length} calls.`;
+  }
+
+  if (current !== null) {
+    return `Step ${current.number} of ${steps.length}: ${current.name}.`;
+  }
+
+  // The recording stands before its first call: the region says so once the visitor asked for the recording.
+  if (position > 0 || phase === "playing" || phase === "paused") {
+    return `The recording has not called a tool yet. It makes ${steps.length} calls.`;
+  }
+
+  return "";
 }
 
 /**
@@ -357,6 +399,15 @@ export function ReplayViewer({ scenario, commit }: ReplayViewerProps): ReactElem
   const currency = useMemo(() => collectCurrency(calls), [calls]);
   const answer = useMemo(() => findFinalAnswer(spans), [spans]);
 
+  /*
+   * The steps of the run are the calls of the WHOLE recording, and not the calls that already
+   * happened: the stepper shows the steps the recording is going to walk, and the step the
+   * recording stands at is found out of the position it is at.
+   */
+  const steps = useMemo(() => buildRunSteps(reduceEvents(state.events).state.spans), [state.events]);
+  const current = useMemo(() => findCurrentStep(steps, reduced.state.lastSeq), [steps, reduced.state.lastSeq]);
+  const announcement = buildAnnouncement(steps, current, state.phase, state.position);
+
   usePlaybackClock({
     phase: state.phase,
     position: state.position,
@@ -490,6 +541,7 @@ export function ReplayViewer({ scenario, commit }: ReplayViewerProps): ReactElem
       content: (
         <section id="ledgerlens-section-execution" tabIndex={-1} className="flex flex-col gap-4">
           <h3 className="text-base font-semibold">The execution of the recording</h3>
+          <RunStepper steps={steps} current={current} />
           <TraceTree nodes={tree} selectedSpanId={selectedSpanId} onSelect={handleSelectSpan} />
           <TraceTimeline rows={timeline} position={state.position} onSeek={onSeek} />
 
@@ -658,20 +710,18 @@ export function ReplayViewer({ scenario, commit }: ReplayViewerProps): ReactElem
         />
 
         {/*
-          The live region of the step. It is polite, so it never interrupts the reader, and it
-          carries the step alone, so the announcement of every event of the recording is a short
-          summary and never the whole state of the run (FR-033).
+          The counter of the events stays visible text, OUTSIDE the region: a region that carried
+          it would be rewritten on every event of the recording, and a region that talks over the
+          reader is a broken region (FR-033, ADR-050).
         */}
-        <p
-          ref={statusRegionRef}
-          role="status"
-          aria-live="polite"
-          aria-atomic="true"
-          tabIndex={-1}
-          className="text-sm font-medium text-foreground"
-        >
-          Event {step} of {total}.
-        </p>
+        <p className="text-sm text-text-muted">Event {step} of {total}.</p>
+
+        {/*
+          The live region of the step. It is polite, so it never interrupts the reader, and it
+          carries the step alone, so the announcement of the recording is a short summary and
+          never the whole state of the run (FR-032, FR-033).
+        */}
+        <LiveRegion ref={statusRegionRef}>{announcement}</LiveRegion>
 
         {/*
           The status of the run stays out of the live region: it changes with the run, and it is

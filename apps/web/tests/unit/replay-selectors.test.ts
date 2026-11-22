@@ -19,12 +19,14 @@ import { describe, expect, it } from "vitest";
 import type { TraceEvent } from "@/lib/api/schemas";
 import { reduceEvents, type SpanState, type ToolCallState } from "@/lib/replay/reducer";
 import {
+  buildRunSteps,
   buildTimeline,
   buildTraceTree,
   collectAmounts,
   collectCurrency,
   collectEvidence,
   collectVerdicts,
+  findCurrentStep,
   findFinalAnswer,
 } from "@/lib/replay/selectors";
 
@@ -575,5 +577,62 @@ describe("the projections of the recorded run", () => {
     const withoutInvestigation = SPANS.filter((span) => span.name !== "investigate");
 
     expect(findFinalAnswer(withoutInvestigation)).toBeNull();
+  });
+});
+
+describe("the steps of the run", () => {
+  it("keeps the spans of the kind tool in the order the reducer opened them", () => {
+    // It proves that the steps of the run are the calls of the tools and that they keep the order of the recording: the
+    // reducer appends a span when the recording opens it, so the order of the steps is the order of the calls.
+    const steps = buildRunSteps(SPANS);
+
+    expect(steps.map((step) => step.name)).toEqual([
+      "query_ledger",
+      "get_reference_fx",
+      "calculate",
+      "search_policies",
+      "check_claim",
+    ]);
+    expect(steps.map((step) => step.number)).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it("leaves the spans that are not calls of a tool out", () => {
+    // It proves that the life of the run is not a step of it: the chain and the verifier spans are not calls, and the
+    // stepper never shows them.
+    const steps = buildRunSteps(SPANS);
+
+    expect(steps.map((step) => step.name)).not.toContain("investigate");
+    expect(steps.map((step) => step.name)).not.toContain("tools");
+    expect(steps.map((step) => step.name)).not.toContain("verify");
+  });
+
+  it("carries the moment and the status of every call", () => {
+    // It proves that the step carries what the capture recorded about the call: the event that opened it, the event
+    // that closed it and the status it ended with.
+    const steps = buildRunSteps(SPANS);
+    const first = steps[0];
+
+    expect(first?.startedSeq).toBe(5);
+    expect(first?.endedSeq).toBe(6);
+    expect(first?.status).toBe("ok");
+  });
+
+  it("finds the step the recording stands at", () => {
+    // It proves that the current step is the last call the recording has opened: the recording stands at the call it is
+    // inside.
+    const steps = buildRunSteps(SPANS);
+
+    expect(findCurrentStep(steps, 5)?.name).toBe("query_ledger");
+    expect(findCurrentStep(steps, 13)?.name).toBe("search_policies");
+    expect(findCurrentStep(steps, 23)?.name).toBe("check_claim");
+  });
+
+  it("finds no step before the first call", () => {
+    // It proves that a recording that stands before its first call has no current step, and that the stepper then says
+    // that the recording has not called a tool yet.
+    const steps = buildRunSteps(SPANS);
+
+    expect(findCurrentStep(steps, null)).toBeNull();
+    expect(findCurrentStep(steps, 1)).toBeNull();
   });
 });

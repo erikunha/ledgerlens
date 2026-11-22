@@ -272,6 +272,80 @@ export function buildTimeline(events: readonly TraceEvent[]): TimelineRow[] {
   });
 }
 
+/**
+ * One step of the run: one call of a tool that the recording made.
+ *
+ * Why a step of the run is a call of a tool: the run of LedgerLens is the calls its tools made, and the
+ * recording already carries them. The step is a fact of the artifact and not a sentence of the interface.
+ */
+export interface RunStep {
+  /** The number of the step, counted from one. */
+  readonly number: number;
+  /** The name of the tool, as the capture recorded it. */
+  readonly name: string;
+  /** The sequence number of the event that opened the call. */
+  readonly startedSeq: number;
+  /** The sequence number of the event that closed the call, null while it is open. */
+  readonly endedSeq: number | null;
+  /** The status the call ended with, when it has ended. */
+  readonly status: string | null;
+}
+
+/**
+ * Builds the steps of the run out of the spans of the recording.
+ *
+ * Why only the spans of the kind `tool`: the steps of the run are the calls of the tools, and the spans of
+ * the other kinds are the life of the run and not steps of it. Why the order is the order of the reducer:
+ * the reducer appends a span when the recording opens it, so the order of the array is the order of the
+ * calls.
+ *
+ * The projection never invents a step and never repairs one: a span of the kind `tool` that carries no
+ * name is shown with the same name the table of the calls gives it, and a span that the capture closed
+ * without ever opening it is dated by the event that closed it, because that is the only moment the
+ * capture published about it.
+ */
+export function buildRunSteps(spans: readonly SpanState[]): RunStep[] {
+  const steps: RunStep[] = [];
+
+  for (const span of spans) {
+    if (span.runType !== "tool") {
+      continue;
+    }
+    steps.push({
+      number: steps.length + 1,
+      name: span.name ?? "tool",
+      startedSeq: span.startedSeq ?? span.endedSeq ?? 0,
+      endedSeq: span.endedSeq ?? null,
+      status: span.status ?? null,
+    });
+  }
+
+  return steps;
+}
+
+/**
+ * Finds the step the recording stands at.
+ *
+ * Why the last step that was opened: the recording stands at the call it is inside, and the calls are
+ * opened one after the other. The step of a recording that stands before its first call is null, because
+ * there is no call to be at yet.
+ */
+export function findCurrentStep(steps: readonly RunStep[], lastSeq: number | null): RunStep | null {
+  if (lastSeq === null) {
+    return null;
+  }
+
+  let current: RunStep | null = null;
+  for (const step of steps) {
+    // the steps are in the order they were opened, so the first step that was not opened yet ends the walk
+    if (step.startedSeq > lastSeq) {
+      break;
+    }
+    current = step;
+  }
+  return current;
+}
+
 /** Finds the chunk of a policy search that an evidence identifier names. */
 function findPolicyChunk(results: unknown, evidenceId: string): Record<string, unknown> | null {
   if (!Array.isArray(results)) {
@@ -591,6 +665,7 @@ export function findFinalAnswer(spans: readonly SpanState[]): FinalAnswer | null
 export const __all__ = [
   "TraceTreeNode",
   "TimelineRow",
+  "RunStep",
   "EvidenceSummary",
   "VerdictSummary",
   "AmountUnit",
@@ -598,6 +673,8 @@ export const __all__ = [
   "FinalAnswer",
   "buildTraceTree",
   "buildTimeline",
+  "buildRunSteps",
+  "findCurrentStep",
   "collectEvidence",
   "collectVerdicts",
   "collectAmounts",

@@ -355,6 +355,25 @@ describe("the reader of the recorded run", () => {
     expect(screen.getByText(/The status of the run is:/)).toBeInTheDocument();
   });
 
+  it("shows the stepper of the run with the four steps of the recording", async () => {
+    // It proves that the stepper is in the tab of the execution and that it shows the calls of the recording, in the
+    // order the capture made them. The recording stands at its first event, so no step of it is the current one yet.
+    renderViewer(LOADED);
+
+    await findLoadedRun();
+    const panel = await findPanel("The steps of the run", "Execution");
+    expect(panel).not.toBeNull();
+
+    const items = within(panel as HTMLElement).getAllByRole("listitem");
+    expect(items).toHaveLength(4);
+    expect(items.map((item) => item.textContent)).toEqual([
+      "Step 1 of 4: query_ledger. Not started yet.",
+      "Step 2 of 4: search_policies. Not started yet.",
+      "Step 3 of 4: get_reference_fx. Not started yet.",
+      "Step 4 of 4: calculate. Not started yet.",
+    ]);
+  });
+
   it("shows the tree of the investigation", async () => {
     // It proves that the panel of the tree of the investigation is on the screen.
     renderViewer(LOADED);

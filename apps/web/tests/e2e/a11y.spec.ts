@@ -283,3 +283,22 @@ for (const section of REPLAY_SECTIONS) {
     await expectNoViolation(page, `the section of ${section.label} of the replay of S01`);
   });
 }
+
+/**
+ * The stepper of the run in the section of the execution.
+ *
+ * Why this case is here: the stepper is a panel of the section of the execution, so the scan of that section already
+ * sees it, with no rule switched off and no exception. The case adds the proof that the panel is really there with the
+ * steps of the recording, because a scan of a page that lost the stepper would still be green (ADR-050).
+ */
+test("the section of the execution of S01 carries the stepper of the run", async ({ page }) => {
+  await page.goto("/replay/scenario/S01?tab=execution");
+
+  const recordedRun = page.getByRole("region", { name: "The recorded run" });
+  await expect(recordedRun).toBeVisible();
+  await expect(recordedRun.getByText("mode: deterministic_sandbox")).toBeVisible();
+
+  const stepper = page.getByRole("region", { name: "The steps of the run" });
+  await expect(stepper).toBeVisible();
+  await expect(stepper.getByRole("listitem")).toHaveCount(4);
+});
