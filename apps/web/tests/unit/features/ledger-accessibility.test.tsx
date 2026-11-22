@@ -15,6 +15,11 @@
  *    detail of a movement;
  * 6. the state of the visitor never reaches the URL, nor the storage of the browser.
  *
+ * The last cases are the ones ADR-049 asks of this set: the controls of the sorting and of the
+ * filtering are never disabled, the ones that would do nothing carry aria-disabled and a reason,
+ * the sort and the filter of the visitor never reach the URL nor the storage, and the list of the
+ * seven headers of the table does not change, because the sort is a control above the table.
+ *
  * Every case runs with no key and no network: the artifact of the case is a literal, and the
  * browser of the case is the one of the test environment.
  */
@@ -210,5 +215,68 @@ describe("the accessibility of the ledger of the recorded demo", () => {
     expect(window.location.href).not.toContain("C-0412");
     expect(window.localStorage.length).toBe(0);
     expect(window.sessionStorage.length).toBe(0);
+  });
+
+  it("never disables a control of the sorting and of the filtering", async () => {
+    // It proves that the controls of the new visit are never disabled: the control that would do
+    // nothing says so with aria-disabled and with a sentence a reader can hear, and no control of
+    // the panel carries the attribute disabled.
+    render(<LedgerPanel ledger={ARTIFACT} error={null} />);
+
+    for (const control of screen.getAllByRole("button")) {
+      expect(control).not.toHaveAttribute("disabled");
+    }
+
+    const clear = screen.getByRole("button", { name: "Clear the filter" });
+    expect(clear).toHaveAttribute("aria-disabled", "true");
+    const reason = document.getElementById(clear.getAttribute("aria-describedby") ?? "");
+    expect(reason).not.toBeNull();
+    expect(reason?.textContent).not.toBe("");
+
+    // The control works as soon as the filter holds something, and then it carries no reason.
+    await userEvent.setup().type(
+      screen.getByLabelText("The text the identifier, the kind, the state or the currency carries"),
+      "TX",
+    );
+
+    expect(clear).not.toHaveAttribute("aria-disabled");
+  });
+
+  it("never lets the sort and the filter of the visitor reach the URL or the storage", async () => {
+    // It proves that the state of the visit is the state of a session and not a preference of the
+    // visitor: the sort and the filter live in the memory of the panel and in nothing else.
+    render(<LedgerPanel ledger={ARTIFACT} error={null} />);
+
+    await userEvent.setup().click(screen.getByRole("button", { name: "Sort by the amount" }));
+    await userEvent.setup().type(
+      screen.getByLabelText("The text the identifier, the kind, the state or the currency carries"),
+      "TX",
+    );
+
+    expect(window.location.search).toBe("");
+    expect(window.location.href).not.toContain("amount");
+    expect(window.localStorage.length).toBe(0);
+    expect(window.sessionStorage.length).toBe(0);
+  });
+
+  it("keeps the seven headers of the table when the visitor sorts the movements", async () => {
+    // It proves that the sort is a control ABOVE the table and not a column of it: the list of the
+    // headers of the table does not change, because every header says what its column holds.
+    render(<LedgerPanel ledger={ARTIFACT} error={null} />);
+
+    await userEvent.setup().click(screen.getByRole("button", { name: "Sort by the amount" }));
+
+    const table = screen.getByRole("table", { name: "The movements of the account C-0412" });
+    const headers = within(table).getAllByRole("columnheader");
+
+    expect(headers.map((header) => header.textContent)).toEqual([
+      "The identifier of the movement",
+      "The kind of the movement",
+      "The moment of the movement",
+      "The amount the ledger carries",
+      "The state of the movement",
+      "The reading of the run",
+      "The state of the visit",
+    ]);
   });
 });

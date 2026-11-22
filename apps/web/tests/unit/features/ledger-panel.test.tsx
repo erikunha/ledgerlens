@@ -22,6 +22,10 @@
  * 7. the panel says in words how many rows the recording read;
  * 8. the panel shows the reason when the artifact is not available, and it shows nothing else.
  *
+ * The last cases are the ones ADR-049 asks of this set: the table sorts and filters the movements
+ * when the visitor asks for it, it names in words the order that is on the screen, and the detail
+ * says in words that the recording published no policy trigger for a movement.
+ *
  * Every case runs with no key and no network: the artifact of the case is the artifact the
  * repository publishes, written here as a literal so that the case never depends on a file that
  * the export may move.
@@ -308,5 +312,83 @@ describe("the panel of the ledger of the recorded demo", () => {
     render(<LedgerPanel ledger={ARTIFACT} error={null} integrity="checked" />);
 
     expect(screen.queryByText(/integrity/i)).toBeNull();
+  });
+
+  it("sorts the movements by the amount when the visitor asks for it", async () => {
+    // It proves that the table sorts the movements when the visitor asks, and that the same
+    // control asked twice reverses the order: the transaction carries 100.00 and the refund carries
+    // 549.31, so the refund comes first when the order is descending.
+    render(<LedgerPanel ledger={ARTIFACT} error={null} />);
+
+    const table = screen.getByRole("table", { name: "The movements of the account C-0412" });
+    const amount = screen.getByRole("button", { name: "Sort by the amount" });
+
+    await userEvent.setup().click(amount);
+    expect(amount).toHaveAttribute("aria-pressed", "true");
+    expect(within(table).getAllByRole("rowheader")[0]).toHaveTextContent("TX-2048");
+
+    await userEvent.setup().click(amount);
+    expect(within(table).getAllByRole("rowheader")[0]).toHaveTextContent("R-0731");
+  });
+
+  it("filters the movements by the state when the visitor asks for it", async () => {
+    // It proves that the filter of the state keeps the movements that carry it, and that the panel
+    // says in words how many movements it kept, because a row that disappears is never dropped
+    // without a word.
+    render(<LedgerPanel ledger={ARTIFACT} error={null} />);
+
+    const table = screen.getByRole("table", { name: "The movements of the account C-0412" });
+    await userEvent.setup().selectOptions(
+      screen.getByLabelText("The state of the movement kept"),
+      "refunded",
+    );
+
+    expect(within(table).getAllByRole("rowheader")).toHaveLength(1);
+    expect(within(table).getByRole("rowheader", { name: "TX-2048" })).toBeInTheDocument();
+    expect(screen.getByText("The table shows 1 of the 2 movements of the account.")).toBeInTheDocument();
+  });
+
+  it("says in words that the order on the screen is the order the visitor chose", async () => {
+    // It proves that a reorder that the visitor cannot see is a lie: the table names the order that
+    // is on the screen, and it names it when the order is not the order of the artifact.
+    render(<LedgerPanel ledger={ARTIFACT} error={null} />);
+
+    await userEvent.setup().click(screen.getByRole("button", { name: "Sort by the amount" }));
+    await userEvent.setup().click(screen.getByRole("button", { name: "Sort by the amount" }));
+
+    expect(
+      screen.getByText(
+        "The order on the screen is the order the visitor chose: by the amount, descending, and not the order the artifact declares.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("says in words that the order on the screen is the order of the artifact", async () => {
+    // It proves that the visitor can get the order of the artifact back, and that the table then
+    // says in words that the order on the screen is the order the artifact declares.
+    render(<LedgerPanel ledger={ARTIFACT} error={null} />);
+
+    const artifact = screen.getByRole("button", { name: "The order of the artifact" });
+    await userEvent.setup().click(screen.getByRole("button", { name: "Sort by the amount" }));
+    await userEvent.setup().click(artifact);
+
+    expect(artifact).toHaveAttribute("aria-pressed", "true");
+    expect(
+      screen.getByText("The order on the screen is the order the artifact declares."),
+    ).toBeInTheDocument();
+  });
+
+  it("says in words that the recording published no policy trigger for a movement", async () => {
+    // It proves that the detail says that the policy trigger is NOT AVAILABLE: the artifact of the
+    // ledger carries no policy, no policy identifier and no link between a policy and a movement,
+    // so the sentence says so instead of inventing a field.
+    render(<LedgerPanel ledger={ARTIFACT} error={null} />);
+
+    await userEvent.setup().click(screen.getByRole("button", { name: "TX-2048" }));
+
+    const detail = screen.getByRole("region", { name: "The movement TX-2048" });
+    expect(
+      within(detail).getByText("The recording published no policy trigger for this movement."),
+    ).toBeInTheDocument();
   });
 });

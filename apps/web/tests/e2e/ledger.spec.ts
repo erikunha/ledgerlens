@@ -22,6 +22,10 @@ import { SITE_ORIGIN } from "./site-origin";
  *
  * The test runs against the static export served as plain files, exactly as the files arrive in a
  * browser. Every assertion is about what the visitor sees and about the address of the page.
+ *
+ * Why the last journey sorts and filters: ADR-049 gave the visitor the controls of the order and
+ * of the filter of the recorded ledger, and the confirmation in a real browser belongs here, in
+ * the journey that is NOT part of the gate of the Node.
  */
 
 /**
@@ -307,6 +311,51 @@ test("the tab of the ledger reads the artifact of the site and calls nobody", as
   expect(requestsMade.length).toBeGreaterThan(0);
   for (const url of requestsMade) {
     expect(new URL(url).origin, `the request to ${url} must go to ${SITE_ORIGIN}`).toBe(SITE_ORIGIN);
+  }
+
+  expectEveryRequestStayedOnTheSite();
+});
+
+test("the visitor sorts and filters the movements of the ledger", async ({ page }) => {
+  const panel = await openTheLedgerFromTheAddress(page);
+  const table = panel.getByRole("table", { name: `The movements of the account ${ACCOUNT_ID}` });
+
+  // The order on the screen is the order the artifact declares, and the table says so in words.
+  await expect(panel.getByText("The order on the screen is the order the artifact declares.")).toBeVisible();
+  await expect(panel.getByText("The table shows the 2 movements of the account.")).toBeVisible();
+
+  // The visitor asks for the order of the amount, and the same control asked twice reverses it:
+  // the refund of 549.31 comes before the transaction of 100.00.
+  const amount = panel.getByRole("button", { name: "Sort by the amount" });
+  await amount.click();
+  await amount.click();
+
+  await expect(table.getByRole("rowheader").first()).toHaveText("R-0731");
+  await expect(
+    panel.getByText(
+      "The order on the screen is the order the visitor chose: by the amount, descending, and not the order the artifact declares.",
+    ),
+  ).toBeVisible();
+
+  // The visitor filters by the state, and the panel says in words how many movements it kept: a
+  // row that disappears is never dropped without a word.
+  await panel.getByLabel("The state of the movement kept").selectOption("refunded");
+
+  await expect(table.getByRole("rowheader")).toHaveCount(1);
+  await expect(table.getByRole("rowheader", { name: "TX-2048" })).toBeVisible();
+  await expect(panel.getByText("The table shows 1 of the 2 movements of the account.")).toBeVisible();
+
+  // The visitor gets the order of the artifact back.
+  await panel.getByRole("button", { name: "The order of the artifact" }).click();
+  await expect(panel.getByText("The order on the screen is the order the artifact declares.")).toBeVisible();
+
+  // The state of the visit never reaches the address of the page: the query string carries the tab
+  // and the speed and nothing else.
+  const url = new URL(page.url());
+  expect(url.pathname).toBe("/replay/scenario/S01");
+  expect(url.searchParams.get("tab")).toBe("ledger");
+  for (const key of url.searchParams.keys()) {
+    expect(["tab", "speed"], `the address of the page must not carry the parameter ${key}`).toContain(key);
   }
 
   expectEveryRequestStayedOnTheSite();

@@ -2,14 +2,17 @@
  * The panel of the ledger of the recorded demo.
  *
  * Why this file exists: the home page of the site promises the ledger rows the run read, and
- * ADR-045 turned that promise into an artifact of the site. The panel is the place where the
- * visitor reads that artifact: the switcher of the accounts, the table of the movements and the
- * detail of the movement that is open.
+ * ADR-045 turned that promise into an artifact of the site. ADR-049 turned the promise of the
+ * rows into a promise the visitor can use: the movements of the account may be sorted and
+ * filtered. The panel is the place where the visitor reads that artifact: the switcher of the
+ * accounts, the controls of the order and of the filter, the table of the movements and the detail
+ * of the movement that is open.
  *
- * Why the panel owns the state of the visitor: the account that is chosen and the row that is
- * open live in the memory of the panel and in nothing else. Neither of them goes in the URL, and
- * neither of them is written in the storage of the browser: the query string of the route carries
- * the tab and the speed and nothing else (ADR-043, ADR-045).
+ * Why the panel owns the state of the visitor: the account that is chosen, the row that is open,
+ * the page that is on the screen, the sort and the filter live in the memory of the panel and in
+ * nothing else. None of them goes in the URL, and none of them is written in the storage of the
+ * browser: the query string of the route carries the tab and the speed and nothing else (ADR-043,
+ * ADR-045, ADR-049).
  *
  * Why the panel shows the reason and nothing else when the artifact is not available: a half
  * drawn ledger is worse than no ledger, because a reader cannot tell which parts of it are true.
@@ -25,15 +28,19 @@ import type { ReactElement } from "react";
 
 import { AccountSwitcher } from "@/features/ledger/AccountSwitcher";
 import { LedgerRowDetail } from "@/features/ledger/LedgerRowDetail";
-import { LedgerAccountContext, LedgerTable } from "@/features/ledger/LedgerTable";
+import { LedgerAccountContext, LedgerTable, LedgerViewContext } from "@/features/ledger/LedgerTable";
 import type { LedgerArtifact } from "@/lib/api/schemas";
 import type { BundleIntegrity } from "@/lib/api/replay";
 import {
   LEDGER_UNAVAILABLE,
+  filterLedgerRows,
+  ledgerRowsHaveTheSameOrder,
   selectLedgerAccounts,
   selectLedgerReads,
   selectLedgerRows,
+  sortLedgerRows,
 } from "@/lib/replay/ledger";
+import type { LedgerFilter, LedgerSort } from "@/lib/replay/ledger";
 
 import "./ledger.css";
 
@@ -47,6 +54,14 @@ const PANEL_HEADING_ID = "ledgerlens-ledger-panel-heading";
  * that divided by nothing would show no movement at all.
  */
 const DEFAULT_PAGE_SIZE = 50;
+
+/**
+ * The filter of the movements, when the visitor asked for nothing.
+ *
+ * Why the filter starts empty: the default order of the movements is the order the artifact
+ * declares, and the default filter keeps every movement.
+ */
+const NO_FILTER: LedgerFilter = { text: "", kind: null, status: null };
 
 /**
  * The props of the panel of the ledger.
@@ -84,16 +99,18 @@ function rowsReadSentence(count: number): string {
 /**
  * The panel of the ledger of the recorded demo.
  *
- * The panel draws the switcher of the accounts, the table of the movements of the account that is
- * chosen and the detail of the movement that is open. It never reads the network and it never
- * calculates a value of money.
+ * The panel draws the switcher of the accounts, the controls of the order and of the filter, the
+ * table of the movements of the account that is chosen and the detail of the movement that is
+ * open. It never reads the network and it never calculates a value of money.
  */
 export function LedgerPanel({ ledger, error, integrity }: LedgerPanelProps): ReactElement {
   // The state of the visitor lives here and in nowhere else: the account that is chosen, the row
-  // that is open and the page that is on the screen.
+  // that is open, the page that is on the screen, the order and the filter.
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [openRowId, setOpenRowId] = useState<string | null>(null);
   const [page, setPage] = useState(0);
+  const [sort, setSort] = useState<LedgerSort | null>(null);
+  const [filter, setFilter] = useState<LedgerFilter>(NO_FILTER);
 
   if (ledger === null) {
     return <p className="ll-ledger-unavailable">{error ?? LEDGER_UNAVAILABLE}</p>;
@@ -108,19 +125,32 @@ export function LedgerPanel({ ledger, error, integrity }: LedgerPanelProps): Rea
     return <p className="ll-ledger-unavailable">{error ?? LEDGER_UNAVAILABLE}</p>;
   }
 
-  const rows = selectLedgerRows(ledger, account.id);
+  const artifactRows = selectLedgerRows(ledger, account.id);
   const reads = selectLedgerReads(ledger, account.id);
-  const openRow = rows.find((row) => row.id === openRowId) ?? null;
+  const openRow = artifactRows.find((row) => row.id === openRowId) ?? null;
   const pageSize = ledger.page_size > 0 ? ledger.page_size : DEFAULT_PAGE_SIZE;
 
   // The rows the recording read are counted, because the panel has to say in words how many rows
   // the run read. It is a count of rows and never a sum of money.
   const rowsRead = reads.reduce((total, read) => total + read.row_count, 0);
 
+  // The rows of the artifact come first, and the filter and the order of the visitor come
+  // afterwards: the filter keeps the rows that carry what the visitor asked for, and the order
+  // moves the rows that are left. Both rules live in the library of the ledger.
+  const filteredRows = filterLedgerRows(artifactRows, filter);
+  const rows = sort === null ? filteredRows : sortLedgerRows(filteredRows, sort);
+  const sortedByTheVisitor = !ledgerRowsHaveTheSameOrder(filteredRows, rows);
+
   /** Chooses another account: the open row and the page of the previous account are left behind. */
   function selectAccount(accountId: string): void {
     setSelectedAccountId(accountId);
     setOpenRowId(null);
+    setPage(0);
+  }
+
+  /** Changes the filter of the visitor: the page goes back to the first one. */
+  function changeFilter(nextFilter: LedgerFilter): void {
+    setFilter(nextFilter);
     setPage(0);
   }
 
@@ -139,15 +169,26 @@ export function LedgerPanel({ ledger, error, integrity }: LedgerPanelProps): Rea
       <AccountSwitcher accounts={accounts} selectedAccountId={account.id} onSelectAccount={selectAccount} />
 
       <LedgerAccountContext.Provider value={{ accountId: account.id }}>
-        <LedgerTable
-          rows={rows}
-          reads={reads}
-          openRowId={openRowId}
-          onOpenRow={setOpenRowId}
-          pageSize={pageSize}
-          page={page}
-          onPageChange={setPage}
-        />
+        <LedgerViewContext.Provider
+          value={{
+            artifactRows,
+            sort,
+            filter,
+            onSortChange: setSort,
+            onFilterChange: changeFilter,
+            sortedByTheVisitor,
+          }}
+        >
+          <LedgerTable
+            rows={rows}
+            reads={reads}
+            openRowId={openRowId}
+            onOpenRow={setOpenRowId}
+            pageSize={pageSize}
+            page={page}
+            onPageChange={setPage}
+          />
+        </LedgerViewContext.Provider>
       </LedgerAccountContext.Provider>
 
       {openRow === null ? null : <LedgerRowDetail row={openRow} reads={reads} />}

@@ -18,19 +18,27 @@
  *
  * Every case runs with no key and no network: the artifact of the case is a literal, so that the
  * case never depends on a file that the export may rewrite.
+ *
+ * The last group of cases is the one ADR-049 asks of this set: the selectors of the sorting and of
+ * the filtering live beside the other selectors of the ledger, the default sort gives the order of
+ * the artifact back, and the comparator of the amounts reads the decimal text and never a float.
  */
 
 import { describe, expect, it } from "vitest";
 
 import type { LedgerArtifact, LedgerRead } from "@/lib/api/schemas";
 import {
+  LEDGER_DEFAULT_SORT,
   LEDGER_UNAVAILABLE,
+  filterLedgerRows,
   ledgerRowIsRead,
+  ledgerRowsHaveTheSameOrder,
   paginateLedgerRows,
   selectLedgerAccounts,
   selectLedgerReads,
   selectLedgerRows,
   selectReadsForRecord,
+  sortLedgerRows,
 } from "@/lib/replay/ledger";
 
 /**
@@ -181,5 +189,64 @@ describe("the selectors of the ledger of the recorded demo", () => {
     // ledger, and that the sentence is a sentence and not a code.
     expect(LEDGER_UNAVAILABLE).toMatch(/ledger/i);
     expect(LEDGER_UNAVAILABLE.length).toBeGreaterThan(0);
+  });
+});
+
+describe("the sorting and the filtering of the selectors of the ledger", () => {
+  it("keeps the order of the artifact when the visitor asks for the default sort", () => {
+    // It proves that the default order of the movements is the order the artifact declares, and
+    // that the default sort of the library gives it back.
+    const rows = selectLedgerRows(ARTIFACT, "C-0412");
+
+    expect(sortLedgerRows(rows, LEDGER_DEFAULT_SORT).map((row) => row.id)).toEqual([
+      "TX-2048",
+      "R-0731",
+    ]);
+    expect(ledgerRowsHaveTheSameOrder(rows, sortLedgerRows(rows, LEDGER_DEFAULT_SORT))).toBe(true);
+  });
+
+  it("sorts the movements by the amount as the decimal text of the artifact", () => {
+    // It proves that the comparator reads the amounts as texts: the refund of 549.31 comes after
+    // the transaction of 100.00, and the reverse order comes with the other direction.
+    const rows = selectLedgerRows(ARTIFACT, "C-0412");
+
+    expect(sortLedgerRows(rows, { field: "amount", direction: "asc" }).map((row) => row.id)).toEqual([
+      "TX-2048",
+      "R-0731",
+    ]);
+    expect(sortLedgerRows(rows, { field: "amount", direction: "desc" }).map((row) => row.id)).toEqual([
+      "R-0731",
+      "TX-2048",
+    ]);
+  });
+
+  it("keeps the movements that the filter of the visitor names", () => {
+    // It proves that the filter keeps the movements that carry the kind, the state or the text of
+    // the filter, and that a filter with nothing in it keeps every movement.
+    const rows = selectLedgerRows(ARTIFACT, "C-0412");
+    const noFilter = { text: "", kind: null, status: null };
+
+    expect(filterLedgerRows(rows, { ...noFilter, kind: "refund" }).map((row) => row.id)).toEqual([
+      "R-0731",
+    ]);
+    expect(filterLedgerRows(rows, { ...noFilter, status: "refunded" }).map((row) => row.id)).toEqual([
+      "TX-2048",
+    ]);
+    expect(filterLedgerRows(rows, { ...noFilter, text: "BRL" }).map((row) => row.id)).toEqual([
+      "R-0731",
+    ]);
+    expect(filterLedgerRows(rows, noFilter)).toHaveLength(2);
+  });
+
+  it("says whether two lists of movements hold the same movements in the same order", () => {
+    // It proves that the panel can tell that the sort of the visitor moved a movement, and the
+    // answer is a rule of the ledger, so it lives in the library.
+    const rows = selectLedgerRows(ARTIFACT, "C-0412");
+
+    expect(ledgerRowsHaveTheSameOrder(rows, rows)).toBe(true);
+    expect(ledgerRowsHaveTheSameOrder(rows, sortLedgerRows(rows, { field: "amount", direction: "desc" }))).toBe(
+      false,
+    );
+    expect(ledgerRowsHaveTheSameOrder(rows, [])).toBe(false);
   });
 });

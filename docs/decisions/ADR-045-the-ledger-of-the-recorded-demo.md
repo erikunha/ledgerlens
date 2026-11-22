@@ -6,7 +6,9 @@ date: 2026-11-22
 
 # ADR-045: The ledger of the recorded demo is a published artifact of the site
 
-Status: accepted. Date: 2026-11-22.
+Status: accepted. Date: 2026-11-22. Amended by
+[ADR-049](ADR-049-the-ledger-of-the-full-account.md): the rule of the order of the table of the
+movements, and nothing else.
 
 ## Context
 
@@ -530,8 +532,10 @@ artifact is not available, and it shows nothing else, because a half drawn ledge
 ledger; and it never reads the network.
 
 **`LedgerTable`, the table of the movements.** It draws the rows of the account with the table of
-the design system, `Table` of `apps/web/components/ui/Table.tsx`, and it never reorders them: the
-order the visitor sees is the order the artifact declares.
+the design system, `Table` of `apps/web/components/ui/Table.tsx`, and the order it shows is the
+order the artifact declares, until the visitor asks for another one: when the visitor sorts or
+filters, the table shows that order AND says in words that the order on the screen is the order
+the visitor chose and not the order of the artifact.
 
 ```ts
 export interface LedgerTableProps {
@@ -630,6 +634,13 @@ a suggestion.
   with the control of the pagination. The artifact holds every row, but the DOM of the table never
   holds more than one page of them, because a DOM of a thousand rows is a DOM that a reader with a
   keyboard has to walk through row by row.
+- **A sort is a departure from the order of the artifact, and a departure that the visitor cannot
+  see is a lie: the table always says in words which order is on the screen.** The default order
+  of the rows is the order the artifact declares, and the sort and the filter of the visitor live
+  in the memory of the panel, never in the address of the page and never in the storage of the
+  browser. The comparator compares the decimal TEXT of the amounts and never a float, because a
+  binary float of a financial amount is a different amount. The rules are in
+  [ADR-049](ADR-049-the-ledger-of-the-full-account.md).
 - **The state of the visitor never goes in the URL.** The account that is chosen and the row that
   is open live in the memory of the panel and in nothing else. The query string carries `tab` and
   `speed`, the two keys the contract of ADR-043 allows, and a parameter that holds anything else
@@ -842,9 +853,10 @@ Set D owes:
   of the recording. What the debt wants: an artifact of its own, with the account switcher over the
   accounts and the pagination that goes with it, and a decision about the rows the site is allowed
   to publish.
-- **The search.** The site has no search over the ledger. A search needs the rows of every
-  account, and the artifact of this milestone holds the rows of one. What the debt wants: a search
-  over the published artifact, which means the artifact of the full ledger first.
+- **The search.** The search over the ledger is not a search over a published artifact yet, and
+  ADR-049 says what it is instead: the sorting and the filtering of the artifact that is
+  published, proved over a thousand rows in the tests of the frontend. What the debt wants: a
+  search over the published artifact, which means the artifact of the full ledger first.
 - **The published result of the recording.** The `run_result` of the bundle is still not published,
   and this milestone does not change that: it is the debt that ADR-043 named, and the claim of the
   recording is still rendered as `Not available` with the identifier and the note of the verdict.

@@ -9,6 +9,13 @@
  * names: a movement that the run did not read is a fact of the recording, and a reader that
  * cannot tell it apart from a movement the run never saw is reading a half truth.
  *
+ * Why the detail says in words that the recording published no policy trigger for the movement:
+ * the artifact of the ledger carries no policy, no policy identifier and no link between a policy
+ * and a movement, so the trigger is NOT AVAILABLE. A field that does not exist is never invented,
+ * and a field that the artifact does not carry is never guessed and never filled with a
+ * placeholder that looks like a value (ADR-049). The rate is never shown next to the refund
+ * either, because no read of the recording named the refund (ADR-045).
+ *
  * Why a rate is written as it was read: the `applied_rate` of a read is a rate and not an amount,
  * so it carries no currency and it is never written with `formatMoney`. The rows of a read are
  * shown exactly as the artifact carries them, with the names of the columns the recording
@@ -30,6 +37,15 @@ const HEADING_ID = "ledgerlens-ledger-detail-heading";
 
 /** The sentence that says in words that the recording read no record of the movement. */
 const NO_RECORD = "The recording read no record of this movement.";
+
+/**
+ * The sentence that says in words that the recording published no policy trigger for the movement.
+ *
+ * Why the sentence is here and not in a column of the fields: the artifact of the ledger carries
+ * no policy, so a column of the policy trigger would be a column that is empty for every row, and
+ * a column that is always empty is a column that lies about the shape of the data (ADR-049).
+ */
+const NO_POLICY_TRIGGER = "The recording published no policy trigger for this movement.";
 
 /**
  * The props of the detail of a movement.
@@ -112,7 +128,8 @@ function ReadDetail({ read }: { readonly read: LedgerRead }): ReactElement {
  * The detail of the movement that is open.
  *
  * The detail draws the six fields of the movement and the reads of the recording that name it. It
- * never calculates a value and it never shows a total.
+ * says in words that the recording published no policy trigger for the movement, because the
+ * artifact carries none. It never calculates a value and it never shows a total.
  */
 export function LedgerRowDetail({ row, reads }: LedgerRowDetailProps): ReactElement {
   const namedReads = selectReadsForRecord(reads, row.id);
@@ -149,6 +166,8 @@ export function LedgerRowDetail({ row, reads }: LedgerRowDetailProps): ReactElem
           <dd className="ll-ledger-field-value">{row.status}</dd>
         </div>
       </dl>
+
+      <p className="ll-ledger-note">{NO_POLICY_TRIGGER}</p>
 
       {namedReads.length === 0 ? (
         <p className="ll-ledger-note">{NO_RECORD}</p>

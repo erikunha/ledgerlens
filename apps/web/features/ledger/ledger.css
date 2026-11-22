@@ -2,10 +2,10 @@
  * The styles of the ledger of the recorded demo.
  *
  * Why this file exists: the panel of the ledger has a few surfaces of its own, the switcher of the
- * accounts, the table of the movements, the control of the pagination and the detail of a
- * movement. The rules below are the ones that a class of the design system cannot express, and
- * every colour of them is a token of `app/globals.css`: the file never declares a colour of its
- * own.
+ * accounts, the controls of the order and of the filter, the table of the movements, the control of
+ * the pagination and the detail of a movement. The rules below are the ones that a class of the
+ * design system cannot express, and every colour of them is a token of `app/globals.css`: the file
+ * never declares a colour of its own.
  *
  * Why the values of the money use the monospace typeface: the amount of a movement is the decimal
  * text of the artifact and it is read as a value and not as a sentence, so the digits of it line
@@ -88,6 +88,89 @@
   display: flex;
   flex-direction: column;
   gap: var(--ll-space-2);
+}
+
+/*
+ * the controls of the order and of the filter sit ABOVE the table and are never a column of it: a
+ * column that sorts would change the headers of the table, and the headers say what the columns
+ * hold.
+ */
+.ll-ledger-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ll-space-3);
+  border: 1px solid var(--ll-color-border);
+  border-radius: var(--ll-radius-default);
+  padding: var(--ll-space-3);
+}
+
+.ll-ledger-control-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ll-space-2);
+}
+
+.ll-ledger-control-label {
+  color: var(--ll-color-text-muted);
+  font-size: var(--ll-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ll-ledger-control-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ll-space-2);
+}
+
+/*
+ * the control that is chosen repeats the state of the pressed button with a border and a weight, so
+ * that a reader who cannot see the colour still sees which order is on the screen. The state is
+ * never only a colour: the button carries aria-pressed.
+ */
+.ll-ledger-control {
+  border: 1px solid var(--ll-color-border);
+  border-radius: var(--ll-radius-default);
+  background-color: var(--ll-color-background);
+  padding: var(--ll-space-1) var(--ll-space-3);
+  color: var(--ll-color-text);
+  font-size: var(--ll-text-sm);
+  line-height: var(--ll-leading-sm);
+}
+
+.ll-ledger-control[aria-pressed="true"] {
+  border-color: var(--ll-color-border-strong);
+  background-color: var(--ll-color-surface-muted);
+  font-weight: 600;
+}
+
+.ll-ledger-control[aria-disabled="true"] {
+  border-color: var(--ll-color-border);
+  color: var(--ll-color-text-subtle);
+}
+
+.ll-ledger-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ll-space-2);
+}
+
+.ll-ledger-filter-label {
+  color: var(--ll-color-text-muted);
+  font-size: var(--ll-text-sm);
+  line-height: var(--ll-leading-sm);
+}
+
+.ll-ledger-filter-input {
+  border: 1px solid var(--ll-color-border);
+  border-radius: var(--ll-radius-default);
+  background-color: var(--ll-color-background);
+  padding: var(--ll-space-1) var(--ll-space-2);
+  color: var(--ll-color-text);
+  font-size: var(--ll-text-sm);
+  line-height: var(--ll-leading-sm);
 }
 
 /* the identifier of a movement is the control that opens the detail of the movement */

@@ -379,6 +379,63 @@ digests the provenance and the card publish.
   `aria-disabled="true"` and a sentence a reader can hear, pointed at with `aria-describedby`. A focus that is dropped
   on the body of the document sends the next Tab back to the top of the page.
 
+### The sorting and the filtering of the ledger
+
+The visitor may sort the movements of the account and may filter them. The decision is
+[ADR-049](decisions/ADR-049-the-ledger-of-the-full-account.md).
+
+**The default order of the rows is the order the artifact declares.** The artifact of the recorded demo declares the
+movements by the moment, then by the kind, then by the identifier, and the table shows that order when the visitor asks
+for nothing. The order of the artifact is the truth of the recording, and a visitor who cannot tell a reorder from the
+truth is reading a lie, so the table always names in words the order that is on the screen: either "The order on the
+screen is the order the artifact declares." or "The order on the screen is the order the visitor chose: by the amount,
+descending, and not the order the artifact declares."
+
+**The sorts are the four fields of the row that carry an order**: the kind, the moment, the amount and the state. The
+identifier is the identity of the row and the tie breaker of every sort, never a sort of its own.
+
+**The rules live in the library and not in a component.** `sortLedgerRows` and `filterLedgerRows` of
+`apps/web/lib/replay/ledger.ts` sit beside the other selectors of the ledger, so that there is ONE implementation of the
+rules of the ledger. The comparator of the amounts compares the DECIMAL TEXT: the integer part by its number of digits
+and then by its digits, the fraction digit by digit. It never calls `Number`, never calls `parseFloat` and never builds a
+`BigInt` out of an amount, because a binary float of a financial amount is a different amount. A text that does not match
+the grammar of a decimal amount keeps the place the artifact gave it.
+
+**The state of the sort and of the filter lives in the memory of the panel.** It is never in the address of the page and
+never in the storage of the browser: the query string carries `tab` and `speed` and nothing else, and
+`apps/web/lib/state/viewPreferences.ts` keeps its two fields and gains none.
+
+**The bounded rendering is the pagination of the artifact.** The table draws at most `page_size` rows, the number the
+artifact declares, and there is no virtualisation: a virtualised table still reads the whole file into the memory of the
+browser, so the debt of ADR-045 stays a debt.
+
+```mermaid
+flowchart TB
+  VIS["The visitor<br/>sorts by the amount, filters by the state"] --> MEM["The memory of the panel<br/>LedgerPanel.tsx"]
+  MEM -->|"asks for the rows of the artifact"| LIB["lib/replay/ledger.ts<br/>filterLedgerRows, then sortLedgerRows"]
+  LIB --> TBL["The table of the movements<br/>LedgerTable.tsx"]
+  TBL -->|"the order on the screen"| SAY["The sentence of the order<br/>and the count of the rows"]
+  MEM -. "FORBIDDEN" .-> URL["The query string<br/>tab and speed, nothing else"]
+  MEM -. "FORBIDDEN" .-> STO["The storage of the browser<br/>tab and speed, nothing else"]
+  FIX["The fixture of a thousand rows<br/>apps/web/tests/fixtures/ledger.ts"] -. "the tests only" .-> LIB
+```
+
+**The thousand rows are a fixture of the tests.** The public data has no account with a thousand movements: the biggest
+account of the public data holds 190 movements and the biggest customer holds at most 38, so a published artifact of a
+thousand rows would carry rows that no recording read and no public invoice carries, and the site publishes only what it
+can prove. The fixture lives in `apps/web/tests/fixtures/ledger.ts`, it is deterministic, it carries the six fields of the
+row, and it is never imported by a file of `apps/web/features/`. The budget of SC-010 is measured over it in
+`apps/web/tests/unit/features/ledger-sort.test.ts`: the sort and the filter of a thousand rows under 200 ms, and the
+render of the panel with a thousand rows under 1 s, each measured with `performance.now()`. The unit test runs in jsdom,
+and jsdom is not a mid-range laptop: it proves the ALGORITHM, and the confirmation in a real browser is the journey of
+`apps/web/tests/e2e/ledger.spec.ts`, which is NOT part of the gate of the Node.
+
+**The debt.** The thousand rows of the fixture are not published, and the recipe is written in ADR-049: the artifact of
+the whole ledger of the public data, a new producer, its own chain of digests, a switcher that is a filter and not 1442
+buttons, and a tab of its own. The detail of a movement carries no policy trigger either, because the artifact carries no
+policy and no link between a policy and a movement, and the shape of the row does not carry the counterparty, the
+provider and the related identifiers.
+
 ### The flow of the ledger
 
 ```mermaid
