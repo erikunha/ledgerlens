@@ -53,49 +53,56 @@ disjoint files so that they can be worked on in parallel.
   **DELIVERED**: the file has the tests, they were written first and were seen failing without the script, and the
   case of the refusal that re-roles builds a temporary git repository and proves the refusal.
 
+- [x] T096 [P] Write `tests/eval/test_dataset_documentation.py` that reads the README, in both languages, and
+  `docs/verification_sets.md`, and that fails when a public number stops naming the dataset it comes from, the
+  role of that dataset and the restriction that applies to it - **DELIVERED**: the file reads the two READMEs and
+  the canonical document, and it holds the numbers to the dataset, the role and the decision that says what a
+  role means. The lens of the documentation of the milestone found that no test read those documents, and this
+  is that test.
+
 ## Milestone 20, the held out set and the pin of the calibration
 
 **Purpose**: a set that no decision was taken against, and a calibration that says what it was measured over.
 
-- [ ] T096 Write the cases of the held out set in `data/eval/verification_heldout.jsonl`, with different templates,
+- [ ] T097 Write the cases of the held out set in `data/eval/verification_heldout.jsonl`, with different templates,
   different text and different source structures from the sets of the tuning, including the negative controls: a
   claim with no evidence, a claim whose evidence contradicts itself and a benign claim the evidence does not support
-- [ ] T097 Read the labels of the held out cases by hand, one label per case, with the rule of ADR-007, and record
+- [ ] T098 Read the labels of the held out cases by hand, one label per case, with the rule of ADR-007, and record
   the labeling version in the manifest - the agent that writes a case does not label it
-- [ ] T098 Declare the held out set in `data/eval/datasets.json` with the role `held_out`, with the sha256 and the
+- [ ] T099 Declare the held out set in `data/eval/datasets.json` with the role `held_out`, with the sha256 and the
   count of the file, and commit the manifest BEFORE any threshold is chosen against it
-- [ ] T099 Add to `ledgerlens/eval/manifest.py` the guard that refuses to tune against a dataset whose role is not
+- [ ] T100 Add to `ledgerlens/eval/manifest.py` the guard that refuses to tune against a dataset whose role is not
   `tuning`, with a readable reason and a non zero exit code, and the test that proves it
-- [ ] T100 Pin the calibration of `ledgerlens/verify/thresholds.json` to the sha256 of the manifest it was measured
+- [ ] T101 Pin the calibration of `ledgerlens/verify/thresholds.json` to the sha256 of the manifest it was measured
   over, to the version of the NLI model and to the sweep log, and add the test that the pin and the manifest agree
-- [ ] T101 Write `scripts/sweep_nli_thresholds.py` that recomputes the sweep of ADR-007 over the sets of the role
+- [ ] T102 Write `scripts/sweep_nli_thresholds.py` that recomputes the sweep of ADR-007 over the sets of the role
   `tuning`, refuses to run when the manifest of the disk is not the one the calibration names, and refuses to read
   a held out dataset
-- [ ] T102 Write the ADR of the milestone, which decides how the cases are written, who labels them and what a
+- [ ] T103 Write the ADR of the milestone, which decides how the cases are written, who labels them and what a
   tuning script is allowed to read
 
 ## Milestone 21, the reports that show the cases that failed
 
 **Purpose**: the aggregate sits next to the per case list, and the two never mix.
 
-- [ ] T103 Recompute the calibration over the sets of the role `tuning` and preserve the reports of the past under
+- [ ] T104 Recompute the calibration over the sets of the role `tuning` and preserve the reports of the past under
   versioned ids, and mark the corpus of the old report as unrecoverable when it cannot be recovered
-- [ ] T104 Write the per case report of the verifier: the claim, the evidence, the expected verdict, the verdict
+- [ ] T105 Write the per case report of the verifier: the claim, the evidence, the expected verdict, the verdict
   that came out, the false supported, the false contradicted and the case without a verdict
-- [ ] T105 Write the per case report of the evaluation of the agent, and keep the correctness of the agent apart
+- [ ] T106 Write the per case report of the evaluation of the agent, and keep the correctness of the agent apart
   from the accuracy of the verifier in every sentence that publishes one of them
-- [ ] T106 Report a change of the prompt parser, with the model output unchanged, as a change of the extraction, and
+- [ ] T107 Report a change of the prompt parser, with the model output unchanged, as a change of the extraction, and
   never as a rewrite of the reports of the past
-- [ ] T107 Add the `verification_status = unavailable` rule, so that a missing NLI model is not a pass
+- [ ] T108 Add the `verification_status = unavailable` rule, so that a missing NLI model is not a pass
 
 ## Milestone 22, the Eval Lab of the interface
 
 **Purpose**: the reader of the interface sees the dataset, the restriction and the cases that failed.
 
-- [ ] T108 Build the page of the Eval Lab with the numbers of the verification and of the evaluation, each one with
+- [ ] T109 Build the page of the Eval Lab with the numbers of the verification and of the evaluation, each one with
   the dataset it comes from and the restriction that applies to it
-- [ ] T109 Build the list of the cases that failed, with the claim and the evidence of each one, and the drill into
+- [ ] T110 Build the list of the cases that failed, with the claim and the evidence of each one, and the drill into
   one case
-- [ ] T110 Show the confusion matrix of the verifier with its denominator, and the note that a missing model is not
+- [ ] T111 Show the confusion matrix of the verifier with its denominator, and the note that a missing model is not
   a pass
-- [ ] T111 Write the end to end cases of the Eval Lab, and add the structural baseline of the pages of the milestone
+- [ ] T112 Write the end to end cases of the Eval Lab, and add the structural baseline of the pages of the milestone

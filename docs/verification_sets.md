@@ -39,8 +39,9 @@ plateau. Both sets of the rule are the same sets the thresholds were chosen agai
 | Combined | the 70 NLI cases of the two sets above | 70 | 0.786 | (30 x 1.000 + 40 x 0.625) / 70 |
 
 **The 1.000 is measured over the 30 text cases of `data/eval/verification_set.jsonl`, which are the tuning set of
-the sweep of ADR-007: the sweep chose `entailment_min` 0.81 and `contradiction_min` 0.91 over exactly these cases,
-so an accuracy over the tuning set is a measure of the fit of the thresholds and not a measure of generalization.**
+the sweep of ADR-007: the sweep chose `entailment_min` 0.81 and `contradiction_min` 0.91 over these 30 cases
+together with the 40 live sentences of the live set, so an accuracy over the tuning set is a measure of the fit of the
+thresholds and not a measure of generalization.**
 
 **The 0.625 is measured over the 40 sentences of `data/eval/verification_live.jsonl`, which were part of the same
 sweep of ADR-007: the rule that chose the thresholds was "no false `supported` and no false `contradicted` on both

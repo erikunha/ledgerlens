@@ -19,9 +19,10 @@ cases failed instead of publishing an aggregate that hides them."
 
 A reader of the README, of `docs/verification_sets.md` or of a report asks what the number 1.0 over the 30 text
 cases of the verification set means. The answer names the file the 30 cases live in, says that the sweep of ADR-007
-chose the thresholds over exactly those cases, and says that an accuracy over a set the thresholds were chosen on is
-a measure of the fit and not a measure of the behavior on unseen data. The reader also learns that no dataset of the
-repository is held out today, and that this is a property of the repository and not a caveat that a report forgot.
+chose the thresholds over those cases together with the 40 live sentences, and says that an accuracy over a set the
+thresholds were chosen on is a measure of the fit and not a measure of the behavior on unseen data. The reader also
+learns that no dataset of the repository is held out today, and that this is a property of the repository and not a
+caveat that a report forgot.
 
 **Why this priority**: this is the honesty of every number the repository publishes. A number that cannot be read
 as more than it is worth exactly what the measurement behind it is worth.

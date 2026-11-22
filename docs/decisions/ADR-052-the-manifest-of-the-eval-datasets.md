@@ -53,11 +53,14 @@ history of the repository is what proves it.
   that decided the thresholds.
 - **`policy_questions` is `tuning`.** [ADR-006](ADR-006-embeddings-and-index.md) chose the embedding
   model `BAAI/bge-small-en-v1.5` with the Recall@3 over these 12 questions. The model and the index are
-  hyperparameters and they were chosen against these questions.
-- **`triage_cases` is `tuning`.** The complaints of T01, T02, T04 and T08 are the few-shot examples of the system
-  prompt of the agent: the text of `FEW_SHOT_EXAMPLES` in `ledgerlens/prompts/system.py` is the text of these cases,
-  and the docstring of that module names `data/eval/triage_cases.jsonl` as one of the two sources of that text. The
-  prompt of the agent was written over these cases.
+  hyperparameters and they were chosen against these questions. And the question PQ-09 of this file is the fifth
+  example of `FEW_SHOT_EXAMPLES` in `ledgerlens/prompts/system.py`, so the prompt of the agent was written over it
+  as well.
+- **`triage_cases` is `tuning`.** The complaints of T01, T02, T04 and T08 are four of the five few-shot examples of
+  the system prompt of the agent: `FEW_SHOT_EXAMPLES` in `ledgerlens/prompts/system.py` holds five examples, and four
+  of them are the text of these cases, while the fifth is the question PQ-09 of the policy questions. The docstring of
+  that module names `data/eval/triage_cases.jsonl` as one of the two sources of that text. The prompt of the agent
+  was written over these cases.
 - **`eval_cases` is `tuning`, and the reason is that the evidence is not clean.** These 30 cases are the ones the
   online evaluation runs the three variants of the agent over, and the report reads the decisions of the agent
   against them in two ways. First, `data/eval/report_online.json` carries an `expectation_changes` entry in which
@@ -96,12 +99,14 @@ evidence is not clean. The nine decisions below are the whole of it.**
 
 ### 1. `data/eval/datasets.json` is the manifest, and it is the single source
 
-The file holds one object with the key `datasets` and one entry per dataset. Every entry carries every field, and
-none of them is optional: `dataset_id`, `path` (relative to the project root, with forward slashes), `sha256` (the
+The file holds one object with the key `datasets` and one entry per dataset. Every entry carries every field but
+one: `dataset_id`, `path` (relative to the project root, with forward slashes), `sha256` (the
 sha256 of the file, 64 lowercase hexadecimal characters), `records_count` (the number of records, counted as
 nonblank JSONL lines), `source`, `labeling_version`, `split_role`, `scenario_seed` (null when the records do not
-come from a scenario) and `contamination_policy`. The `notes` of an entry says the honest caveat of that dataset,
-and an empty note is allowed only when there is genuinely nothing to say.
+come from a scenario) and `contamination_policy` are all required. The `notes` of an entry may be left out, and then
+it is the empty string; the note says the honest caveat of that dataset, and an empty note is allowed only when
+there is genuinely nothing to say. The loader raises `ManifestError` naming the file and the problem instead of
+filling a gap with a default, and the one gap it accepts is the note.
 
 The module that reads it is `ledgerlens/eval/manifest.py`, with the record `EvalDatasetManifest` and the functions
 `fingerprint_dataset`, `load_manifests`, `verify_manifests`, `render_manifests` and `update_fingerprints`.
@@ -109,7 +114,8 @@ The module that reads it is `ledgerlens/eval/manifest.py`, with the record `Eval
 disk in `entries` and the sentences that say what moved in `messages`. The rule that decides what is wrong between the
 manifest and the disk lives in `manifest_problems`, which answers with the records `ManifestProblem`: each one carries
 the kind of the problem and the sentence that says it. `verify_manifests` is the sentence view of that same rule, so
-the check and the module can never disagree about what is wrong.
+the check and the module can never disagree about what is wrong. The module also has `safe_text`, the one helper that
+renders a value that comes from a file before it enters a sentence.
 
 **What "the single source" means, and what it does not.** The manifest is the single source of what the DATASETS are:
 their digest, their count, their origin, their role and the rule that applies to them. It is not the single source of
@@ -182,6 +188,20 @@ of the next milestone.
 
 ### 5. `scripts/check_eval_datasets.py` is the check, and it has two modes
 
+```mermaid
+flowchart TB
+  D["A dataset under data/eval/"] --> M["data/eval/datasets.json<br/>the manifest: digest, count, source, role, seed, policy"]
+  M --> L["ledgerlens/eval/manifest.py<br/>load_manifests, fingerprint_dataset, manifest_problems"]
+  D --> L
+  L --> V["verify_manifests<br/>the sentences of the problems"]
+  L --> U["update_fingerprints<br/>the entries with the fingerprints of the disk"]
+  V --> S["check_eval_datasets.py<br/>verify: prints one line per problem, exits 1"]
+  U --> W["check_eval_datasets.py --write<br/>writes the two fingerprints, refuses a role"]
+  W --> M
+  S --> G["scripts/gate.sh<br/>a step between the tests and the export check"]
+  G --> C["the continuous integration"]
+```
+
 Without arguments it **verifies**: it asks the module `verify_manifests` what the disk has against the manifest, prints
 one line per problem and exits with a non zero code when there is a problem, and prints a single line when everything
 matches. It writes nothing.
@@ -195,10 +215,22 @@ manifest to compare against, the write says, in as many words, that the roles we
 
 The problems it reports, in this order: a declared file that does not exist, a declared file whose sha256 does not
 match, a declared file whose record count does not match, a declared file that exists and cannot be read, and a JSONL
-file of `data/eval/` that no entry declares. The rule that decides them lives in the module and only there, and the
-script prints the sentences the module returns, so there is one definition of the order and not two. The message of a
-failure names the dataset, the file and the two values that disagree. A data problem is a line of plain English and
-never a traceback.
+file of `data/eval/` that no entry declares. There is a sixth kind, and it is the only one of its list: a manifest
+that cannot be read at all comes back as the single sentence that says so, because there is nothing to compare it
+against. The rule that decides them lives in the module and only there, and the script prints the sentences the module
+returns, so there is one definition of the order and not two. The message of a failure names the dataset, the file and
+the two values that disagree. A data problem is a line of plain English and never a traceback.
+
+**A value that comes from a file cannot lie in the log.** Every path, id and file name that enters a sentence goes
+through `safe_text`, which renders the characters that can end a line or repaint a terminal as the two characters that
+name them. A file name with a newline in it therefore prints as ONE line, and a pull request that adds a file with a
+crafted name cannot forge the success line of a check that is failing. The exit code is the verdict, and the log is
+the explanation of it, and the explanation cannot be rewritten by the input it explains.
+
+**The scan of the undeclared files is not recursive.** It looks at the JSONL files that sit directly in `data/eval/`.
+The recording of the replay bundle lives in `data/eval/replay/s01/` and is a different family of artifact with its own
+manifest under ADR-014, so a recursive scan would make the gate fail forever over a file that is not a dataset of
+this manifest.
 
 **What the check protects and what it does not.** The check protects the two fingerprints and the presence of the
 datasets: it refuses when a dataset moved, when its count moved, when it is missing, and when a dataset of the folder
@@ -265,8 +297,12 @@ This milestone is release R4 of the design package, and it covers the following 
   of the NLI model and to the sweep log does not land here.
 - **Item 6**, the check in the continuous integration that refuses when a stored count or a stored sha256 does not
   match the file, when a declared dataset is missing, or when a dataset of the folder is not declared.
-- **Item 5, the naming part only.** The public numbers name the dataset they come from and the restriction that
-  applies. The rest of the item, which asks for the confidence and the uncertainty, for the protocol and for the
+- **Item 5, the naming part only.** The numbers of the DOCUMENTATION of the repository, the README and
+  `docs/verification_sets.md`, name the dataset they come from and the restriction that applies. The saved reports of
+  the online runs, `data/eval/report_online.md` and `data/eval/report_offline.md`, still publish their numbers over
+  their sets without naming the role of those sets, and they are the work of the milestone that recomputes the
+  calibration and writes the per case report: a saved report is the record of a run, and the run is not redone by a
+  document. The rest of the item, which asks for the confidence and the uncertainty, for the protocol and for the
   distinction between the correctness of the agent and the accuracy of the verifier in the interface and in the
   results, does not land here.
 
