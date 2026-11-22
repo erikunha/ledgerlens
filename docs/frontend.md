@@ -64,7 +64,9 @@ cd apps/web && npm run build && npm run preview
 
 The export lands in `apps/web/out/`. It is a folder of plain files: `out/index.html` is the page of the site,
 `out/replay.html` is the catalog of the scenarios and `out/replay/index.json` is the catalog itself, `out/replay/s01/`
-holds the artifacts of the bundle of the scenario `S01` (`manifest.json`, `events.jsonl` and `provenance.json`),
+holds the artifacts of the bundle of the scenario `S01` (`manifest.json`, `events.jsonl`, `provenance.json` and
+`ledger.json`, the artifact of the ledger of the recorded demo, which the section "The ledger of the recorded demo"
+describes),
 `out/replay/scenario/S01.html` is the page of the scenario and `out/404.html` is the page of an address that the
 site does not publish. The page of the catalog is the FILE `out/replay.html` and the artifacts are the FOLDER
 `out/replay/`, and the two shapes are the reason why the route of a scenario carries the extra segment `scenario`.
@@ -124,7 +126,7 @@ The copy is made before the unit tests run as well as before the build, through 
 the package, so that the suite of a checkout that has never built the frontend reads the same catalog the site serves.
 
 **The URL of the replay.** The URL carries the identifier of the scenario in the path, and in the query string exactly
-two keys, `tab` and `speed`, and nothing else ever. The four tabs are `execution`, `evidence`, `decision` and
+two keys, `tab` and `speed`, and nothing else ever. The five tabs are `execution`, `ledger`, `evidence`, `decision` and
 `provenance`, and the three speeds are 1, 2 and 4. The helper that reads them (`apps/web/lib/state/urlState.ts`)
 ignores every other parameter, whatever it holds, and falls back to the default of each field that is absent or that
 is illegal. The URL never carries a key, a handle, an answer, the text of a run or any other thing that came from a
@@ -256,6 +258,206 @@ flowchart TD
   style NOTE stroke-dasharray: 5 5
   style VA stroke-width:3px
 ```
+
+## The ledger of the recorded demo
+
+The home page of the site promises three things: the ledger rows the run read, the policy it applied and the arithmetic
+it did. The policy is in the tab of the evidence and the arithmetic is in the tab of the decision. **The ledger rows are
+the fifth tab of the replay**, between the tab of the execution and the tab of the evidence, and they are read from a
+published artifact like every other artifact of the site. The browser never calls anybody for them. The decision is
+[ADR-045](decisions/ADR-045-the-ledger-of-the-recorded-demo.md).
+
+### The artifact
+
+The artifact is the ledger of the account of the recording, with the reads of the recording marked in it. It is
+published per scenario, inside the folder of the scenario, beside the events, the manifest and the provenance, in the file
+`site/replay/s01/ledger.json`.
+
+The frozen source of that file is `data/eval/replay/ledger/s01.json`. It lives beside the folder of the bundle, OUTSIDE
+the sealed bundle, and it is committed with it. The reason is the seal: `load_bundle` of `ledgerlens/replay/bundle.py`
+refuses a folder that holds a file the manifest does not declare, so a file of the ledger inside the bundle would make
+the bundle unreadable, and it would move the digest of the bundle, which is the sha256 of the manifest.
+
+**The export is the only way the file reaches the site.** The export of `ledgerlens/replay/site_export.py` writes the
+published file with the bytes of the frozen file, byte for byte, and it never writes it by hand: a hand edit of the
+published file fails the check of the export, and a frozen file that was edited without publishing it fails the same
+step. The build of the frontend copies `site/replay/` into `apps/web/public/replay/`, a copy that git does not track,
+so there is one truth and no second copy that can go stale
+([ADR-042](decisions/ADR-042-the-site-of-the-demo-serves-the-published-artifacts.md)).
+
+The producer of the frozen file is `scripts/build_ledger_artifact.py`. It opens the bundle, it rebuilds the ledger of
+the account the same way the capture did, it proves that the ledger it rebuilt is the ledger the recording read, and it
+writes the file. It runs offline, with no key and with no network.
+
+### The shape of the artifact
+
+One JSON document, written with the format the repository uses everywhere (sorted keys, two spaces, a final line). It
+carries the scenario, the version of the shape, the number of rows of a page, the digest of the ledger the recording
+read and the list of the accounts.
+
+**A movement is a row of the ledger, and it carries the six fields of the ledger of the branch** (`_ledger_items` of
+`ledgerlens/sandbox/branch.py`), so that one table can draw the ledger of the recorded demo and the ledger of the
+branch of the sandbox:
+
+| field | what it holds |
+| --- | --- |
+| `kind` | `transaction`, `refund` or `chargeback` |
+| `id` | the identifier of the movement |
+| `at` | the moment of the movement |
+| `amount` | the decimal text of the ledger, never a number |
+| `currency` | the currency of the movement |
+| `status` | the state of the movement |
+
+**A read is one call of the tool `query_ledger` that the recording made**, and it carries:
+
+| field | what it holds |
+| --- | --- |
+| `evidence_id` | the citation of the evidence, `sql:1` for the recording of `S01` |
+| `seq` | the sequence number of the event that closed it |
+| `tool` | the name of the tool |
+| `sql` | the statement it ran |
+| `columns` | the names of the columns it asked for |
+| `row_count` | the number of rows it returned |
+| `truncated` | the flag that says whether the result was cut |
+| `records` | the identifiers the statement named |
+| `rows` | the rows themselves, with the names of the columns |
+
+The rows of a read keep the values the recording wrote and take the names of the columns the recording declared. The
+artifact never invents a column, never reorders a value and never repairs one.
+
+For the recording that the site publishes today, the artifact holds one account, `C-0412`, of the kind `customer`, the
+name `Mariana Albuquerque Costa`, two movements and one read:
+
+| kind | id | at | amount | currency | status |
+| --- | --- | --- | --- | --- | --- |
+| transaction | TX-2048 | 2026-10-15T09:12:00Z | 100.00 | EUR | refunded |
+| refund | R-0731 | 2026-10-20T14:05:00Z | 549.31 | BRL | paid |
+
+**The table shows the movements of the account, and a movement that a read names carries the words "Read by the run".**
+The recording read the rates of the transaction `TX-2048` and nothing else: it never asked for the transaction and
+never asked for the refund. So `TX-2048` carries the words and `R-0731` does not, and the detail of `R-0731` says in
+words that the recording read no record of it. The two rates the run read (`5.6679` and `5.4931`) are the rows of the
+read, and they are not money: a rate never wears the currency of a movement.
+
+### The identity of the artifact
+
+Three digests make a chain, and every link of it is checked.
+
+- **`snapshot_sha256` of the artifact is the digest the manifest of the bundle declares.** It is the digest of the
+  ledger the recording read, and it is the claim of identity between the artifact and the recording.
+- **The digest of the published file `site/replay/s01/ledger.json` is declared in the provenance of the scenario**,
+  under `artifacts`, with the key `ledger.json`.
+- **The digest of the provenance file is declared in the card of the catalog**, with the key `ledger_sha256`.
+
+The digest of the published file is pinned in the table of the pinned digests of `tests/replay/test_site_export.py`,
+beside the digest of every other published file, and it is not written here a second time.
+
+The browser checks the same chain with the Web Crypto, and the panel of the ledger says out loud that the integrity was
+not checked when the browser offered no Web Crypto. The check of the export compares the published file with the bytes
+the export would write, and the cross check of the digests compares the published file with the frozen file and the
+digests the provenance and the card publish.
+
+### The rules of the browser
+
+- **The money is the decimal text of the artifact.** The amount of a movement is read as the text it is (`"100.00"`,
+  `"549.31"`) and it is written with `formatMoney` of `apps/web/lib/format/money.ts`, which groups the digits and
+  changes no digit. The browser never calls `Number`, never calls `parseFloat`, never multiplies, never rounds, never
+  pads a fraction and never converts a currency. A binary float of a financial amount is a different amount.
+- **The browser never sums the column.** There is no total row, there is no total in the caption and there is no total
+  in the detail, and there will never be one. A total of the interface is a number that the browser calculated, and a
+  number that the browser calculated is a number that no artifact carries.
+- **A rate is not money.** The `applied_rate` of a read is a rate and not an amount: it carries no currency, it is
+  written with the text of the artifact exactly as it was read, and it never wears the currency of the run. A unit
+  written on a value would say something false about it.
+- **The state of the visitor never goes in the URL.** The account that is chosen and the row that is open live in the
+  memory of the panel and in nothing else. The query string carries `tab` and `speed`, the two keys the contract of
+  ADR-043 allows, and a parameter that holds anything else is ignored.
+- **The state is never only a colour.** The row that is open carries the words "Open", the movement that the run read
+  carries the words "Read by the run", and the account that is chosen carries the state of the pressed button. The
+  colour of a badge never carries a state alone.
+- **The controls are never `disabled`.** The control of the pagination that would do nothing says so with
+  `aria-disabled="true"` and a sentence a reader can hear, pointed at with `aria-describedby`. A focus that is dropped
+  on the body of the document sends the next Tab back to the top of the page.
+
+### The flow of the ledger
+
+```mermaid
+flowchart TD
+  subgraph REPO["The repository"]
+    BND["The bundle of the scenario<br/>data/eval/replay/s01<br/>the manifest, the events and the seal"]
+    PROD["The producer of the artifact<br/>scripts/build_ledger_artifact.py"]
+    FROZEN["The frozen artifact of the ledger<br/>data/eval/replay/ledger/s01.json<br/>beside the bundle, outside the seal"]
+    EXP["The export of the site<br/>scripts/export_replay_site.py"]
+  end
+
+  subgraph PUBLISHED["The published artifacts, the origin of the site"]
+    FILE["The file of the ledger<br/>site/replay/s01/ledger.json"]
+    PROV["The provenance of the scenario<br/>the digest of the file of the ledger"]
+    CARD["The card of the catalog<br/>the digest of the provenance"]
+  end
+
+  subgraph BROWSER["The browser of the visitor"]
+    LIB["lib/api/replay.ts<br/>the one place that reads the published files"]
+    TAB["The fifth tab of the replay<br/>Ledger, between the execution and the evidence"]
+    PANEL["The panel of the ledger<br/>the switcher, the table and the detail"]
+  end
+
+  BND -->|"the manifest declares the digest of the ledger"| PROD
+  PROD -->|"rebuilds the ledger of the account and writes it once"| FROZEN
+  FROZEN -->|"the bytes of the frozen file"| EXP
+  BND -->|"the bundle and the public dataset"| EXP
+  EXP -->|"writes the file, byte for byte"| FILE
+  EXP -->|"declares the digest of the file"| PROV
+  EXP -->|"declares the digest of the provenance"| CARD
+  FILE -->|"the artifact of the scenario"| LIB
+  LIB -->|"the artifact and the reason of its absence"| TAB
+  TAB -->|"the movements of the account"| PANEL
+
+  NOTE["The browser calls nobody:<br/>the ledger is a file of the site"]
+  LIB -.-> NOTE
+
+  style NOTE stroke-dasharray: 5 5
+```
+
+The diagram follows the code that is on the disk: the producer of the frozen artifact is the script
+`scripts/build_ledger_artifact.py`, the export that writes the published file is `scripts/export_replay_site.py`, the
+one module of the frontend that reads the published files is `apps/web/lib/api/replay.ts`, and the panel of the ledger
+is the file `apps/web/features/ledger/LedgerPanel.tsx`, drawn by the tab of the replay in
+`apps/web/features/replay/ReplayViewer.tsx`.
+
+### What the milestone does not deliver
+
+- **The ledger of the BRANCH of the sandbox.** The route `GET /v1/sandboxes/{id}/ledger` exists and the front does not
+  call it. The ledger of a branch is the state of the branch of a visitor, it moves with the mutations and it lives on
+  the origin of the backend. The row shape of this milestone is the shape of the branch ledger, so that the panel of
+  the branch can be written against a contract that already exists.
+- **The thousands of rows of the full ledger.** The simulated ledger holds 2483 movements over 24 merchants and 1418
+  customers. The recording read the ledger of ONE account, and publishing the whole ledger would publish rows that no
+  recording read.
+- **The search.** The site has no search over the ledger. A search needs the rows of every account, and the artifact
+  of this milestone holds the rows of one.
+- **The published result of the recording.** The `run_result` of the bundle is still not published, and the claim of
+  the recording is still rendered as `Not available`.
+- **The link between the rate of the refund and the refund `R-0731`.** The recorded statement asked for `kind`,
+  `applied_rate` and `applied_at`, and it did not ask for the identifier of the refund, so the artifact cannot say
+  that the rate `5.4931` is the rate of the refund `R-0731`. What the debt wants is a new capture, not a new
+  interface.
+
+### The debt of the milestone
+
+- **The identity of the ledger depends on the bytes of a file of SQLite.** The producer refuses on a machine with
+  another version of SQLite, even when the rows are the same rows. What the debt wants is a digest of the CONTENT of
+  the ledger, written by the capture next to the digest of the file, and that needs a new version of the contract of
+  the bundle.
+- **The artifact of a scenario is produced by a command that is not the capture.** A capture that is not followed by the
+  producer leaves the gate red, and that is the rule and not an accident.
+- **The catalog of the scenarios does not carry the account.** The card of the catalog publishes the digest of the
+  artifact and the question of the scenario, and not the account whose ledger is published.
+- **The table of the ledger reads the whole artifact into the memory of the browser.** The artifact of the recorded
+  demo holds four rows and the pagination is a formality, but an artifact of the full ledger would hold thousands of
+  rows and the browser would read all of them.
+- **The search of the ledger, the full ledger and the ledger of the branch** are the three debts named in the section
+  above.
 
 ## The rule of the same site
 
@@ -489,7 +691,7 @@ the sandbox, with its eleven paths and the codes of its refusals, is in
 ## The two gates
 
 ```bash
-bash scripts/gate.sh      # ruff, pytest offline, the check of the export
+bash scripts/gate.sh      # ruff, pytest offline, the check of the export, the cross check of the digests, the measurement of the budget
 bash scripts/gate_web.sh  # npm ci, typecheck, lint, vitest, next build
 ```
 
@@ -497,6 +699,19 @@ The Python gate is the one that runs everywhere, including in GitHub Actions. Th
 and it runs in the second job of the same workflow, with the Node 24 and the cache of npm. The Node gate is a separate
 script and it is not folded into `scripts/gate.sh`, because that one is the gate of a Python repository and it runs in
 places where Node is absent. A gate that fails because a tool is missing is not a gate.
+
+**The Python gate runs five steps, in this order**, and it stops at the first failure:
+
+1. the lint, `uv run ruff check`;
+2. the suite offline, `uv run pytest -q`;
+3. the check of the export, `uv run python scripts/export_replay_site.py --check`;
+4. the cross check of the digests, `uv run python scripts/verify_replay_digests.py`;
+5. the measurement of the budget, `uv run python scripts/measure_replay_budget.py`.
+
+The last two steps read the disk and write nothing, and each one of them can also be run alone, against the same tree.
+The transcript of a real run is in
+[the record of the run of the gate](../specs/001-r1-public-replay/recorded-gate-run.md), and it says plainly that the
+run it records happened before the two last steps joined the gate, so a reader knows which steps that transcript covers.
 
 The end to end suite of Playwright (`npm run test:e2e`) is a local command and it is not part of the gate: the download
 of the browsers is heavy.

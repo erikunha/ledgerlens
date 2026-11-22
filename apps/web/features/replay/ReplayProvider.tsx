@@ -24,7 +24,7 @@ import type { ReactElement, ReactNode } from "react";
 
 import { loadReplay } from "@/lib/api/replay";
 import type { BundleIntegrity, LoadedReplay } from "@/lib/api/replay";
-import type { ReplayBundleManifest, ScenarioIndexEntry, TraceEvent } from "@/lib/api/schemas";
+import type { LedgerArtifact, ReplayBundleManifest, ScenarioIndexEntry, TraceEvent } from "@/lib/api/schemas";
 
 /**
  * The six situations of the reader of a recording.
@@ -79,6 +79,30 @@ export interface ReplayState {
    * is a bundle whose integrity is unknown.
    */
   readonly integrity?: BundleIntegrity;
+  /**
+   * The artifact of the ledger of the recording, when the site published one.
+   *
+   * Why the state carries it: the tab of the ledger draws the artifact, and the artifact is read by
+   * the client of the published files and never by the component itself.
+   *
+   * Why the field is optional: the field was added to the state after the state was written down,
+   * so a state that was built before the field existed stays valid.
+   */
+  readonly ledger?: LedgerArtifact | null;
+  /**
+   * The reason the artifact of the ledger could not be read, when it could not be read.
+   *
+   * Why the state carries the reason: a bundle without a file of the ledger is still a bundle, and
+   * the tab of the ledger says in words what the site did not publish, instead of showing nothing.
+   */
+  readonly ledgerError?: string | null;
+  /**
+   * Whether the integrity of the file of the ledger was really checked.
+   *
+   * Why the state carries it: the interface never shows an artifact as verified when it was not, and
+   * the absence of the Web Crypto is a check that could not be made.
+   */
+  readonly ledgerIntegrity?: BundleIntegrity;
 }
 
 /**
@@ -107,6 +131,21 @@ export type ReplayAction =
        * valid, and a bundle that carries no field is a bundle whose integrity is unknown.
        */
       readonly integrity?: BundleIntegrity;
+      /**
+       * The artifact of the ledger of the recording, when the client of the artifacts read one.
+       *
+       * Why the field is optional: a bundle that publishes no file of the ledger is still a bundle,
+       * and the action of a loader that reads no file stays valid.
+       */
+      readonly ledger?: LedgerArtifact | null;
+      /**
+       * The reason the artifact of the ledger could not be read, when it could not be read.
+       */
+      readonly ledgerError?: string | null;
+      /**
+       * Whether the integrity of the file of the ledger was really checked.
+       */
+      readonly ledgerIntegrity?: BundleIntegrity;
     }
   | { readonly type: "refused"; readonly reason: string; readonly reasons?: readonly string[] }
   | { readonly type: "play" }
@@ -127,6 +166,9 @@ const INITIAL_STATE: ReplayState = {
   refusalReasons: [],
   provenance: null,
   integrity: undefined,
+  ledger: null,
+  ledgerError: null,
+  ledgerIntegrity: undefined,
 };
 
 /**
@@ -166,6 +208,9 @@ export function replayReducer(state: ReplayState, action: ReplayAction): ReplayS
         refusalReasons: [],
         provenance: null,
         integrity: undefined,
+        ledger: null,
+        ledgerError: null,
+        ledgerIntegrity: undefined,
       };
 
     case "loaded":
@@ -179,6 +224,9 @@ export function replayReducer(state: ReplayState, action: ReplayAction): ReplayS
         refusalReasons: [],
         provenance: action.provenance ?? null,
         integrity: action.integrity ?? "unknown",
+        ledger: action.ledger ?? null,
+        ledgerError: action.ledgerError ?? null,
+        ledgerIntegrity: action.ledgerIntegrity ?? "unknown",
       };
 
     case "refused":
@@ -192,6 +240,9 @@ export function replayReducer(state: ReplayState, action: ReplayAction): ReplayS
         refusalReasons: action.reasons ?? [],
         provenance: null,
         integrity: undefined,
+        ledger: null,
+        ledgerError: null,
+        ledgerIntegrity: undefined,
       };
 
     case "play":
@@ -283,6 +334,9 @@ function stateForScenario(state: ReplayState, scenarioId: string | null): Replay
       error: null,
       refusalReasons: [],
       integrity: undefined,
+      ledger: null,
+      ledgerError: null,
+      ledgerIntegrity: undefined,
     };
   }
   if ((state.scenario?.id ?? null) === scenarioId) {
@@ -298,6 +352,9 @@ function stateForScenario(state: ReplayState, scenarioId: string | null): Replay
     refusalReasons: [],
     provenance: null,
     integrity: undefined,
+    ledger: null,
+    ledgerError: null,
+    ledgerIntegrity: undefined,
   };
 }
 
@@ -358,6 +415,9 @@ export function ReplayProvider(props: ReplayProviderProps): ReactElement {
         events: result.events,
         provenance: result.provenance,
         integrity: result.integrity,
+        ledger: result.ledger,
+        ledgerError: result.ledgerError,
+        ledgerIntegrity: result.ledgerIntegrity,
       });
     }
 

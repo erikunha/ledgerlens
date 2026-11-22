@@ -24,9 +24,20 @@ import {
 } from "@/lib/state/urlState";
 
 describe("the contract of the URL", () => {
-  it("allows exactly the four tabs of the replay", () => {
+  it("allows exactly the five tabs of the replay", () => {
     // It proves that the list of the tabs is closed, so that a tab of a later export never appears out of nowhere.
-    expect(REPLAY_TABS).toEqual(["execution", "evidence", "decision", "provenance"]);
+    // The ledger sits between the execution and the evidence, because the reader sees what the run did, then the
+    // rows it read, then what it gathered (ADR-045).
+    expect(REPLAY_TABS).toEqual(["execution", "ledger", "evidence", "decision", "provenance"]);
+  });
+
+  it("keeps the other four tabs of the replay unchanged", () => {
+    // It proves that the fifth tab was added and that no other tab moved, so that a link of the past still opens
+    // the tab it opened before.
+    expect(REPLAY_TABS).toContain("execution");
+    expect(REPLAY_TABS).toContain("evidence");
+    expect(REPLAY_TABS).toContain("decision");
+    expect(REPLAY_TABS).toContain("provenance");
   });
 
   it("allows exactly the three speeds of the playback", () => {
@@ -117,10 +128,22 @@ describe("the contract of the URL", () => {
   });
 
   it("says whether a word is a tab of the replay", () => {
-    // It proves that the guard of the tab accepts the four tabs and nothing else.
+    // It proves that the guard of the tab accepts the five tabs and nothing else.
     expect(isReplayTab("execution")).toBe(true);
+    expect(isReplayTab("ledger")).toBe(true);
     expect(isReplayTab("provenance")).toBe(true);
     expect(isReplayTab("nonsense")).toBe(false);
+  });
+
+  it("never reads the state of the ledger of the visitor out of the query string", () => {
+    // It proves that the chosen account and the open row never reach the URL: the query string carries the tab and
+    // the speed and nothing else, and a parameter that holds an identifier of a row or of an account is dropped
+    // before it reaches the state of the interface (ADR-045).
+    const preferences = readViewPreferences("?row=TX-2048&account=C-0412&tab=ledger&speed=2");
+    expect(preferences).toEqual({ tab: "ledger", speed: 2 });
+    expect(Object.keys(preferences).sort()).toEqual(["speed", "tab"]);
+    expect("row" in preferences).toBe(false);
+    expect("account" in preferences).toBe(false);
   });
 
   it("says whether a number is a speed of the playback", () => {

@@ -19,6 +19,7 @@ import {
   TRACE_EVENT_TYPES,
   TRACE_MODES,
   TRACE_SCHEMA_VERSION,
+  type LedgerArtifact,
   type PublicInvestigationResult,
   type ReplayBundle,
   type ReplayBundleManifest,
@@ -171,6 +172,59 @@ const scenarioIndexEntrySchema = z.object({
     .optional(),
   capture_kind: z.enum(CAPTURE_KINDS).optional(),
   bundle_path: z.string().optional(),
+  ledger_sha256: z.string().optional(),
+});
+
+/**
+ * The pattern of a decimal amount, as the ledger writes it.
+ *
+ * Why the amount is checked and not accepted as any text: the money of the interface is the decimal
+ * text of the ledger, and a text that is not a decimal is a text that a reader would read as money
+ * and that is not money.
+ */
+const DECIMAL_PATTERN = /^-?\d+(?:\.\d+)?$/;
+
+/** The schema of one movement of the ledger, transcribed from the artifact of the recorded demo. */
+const ledgerRowSchema = z.object({
+  kind: z.string().min(1),
+  id: z.string().min(1),
+  at: z.string().regex(DATE_TIME_PATTERN, "the moment must be an ISO 8601 date and time"),
+  amount: z
+    .string()
+    .regex(DECIMAL_PATTERN, "the amount must be the decimal text of the ledger, and never a number"),
+  currency: z.string().min(1),
+  status: z.string().min(1),
+});
+
+/** The schema of one read of the ledger, transcribed from the artifact of the recorded demo. */
+const ledgerReadSchema = z.object({
+  evidence_id: z.string(),
+  seq: z.number().int().min(0),
+  tool: z.string().min(1),
+  sql: z.string(),
+  columns: z.array(z.string()),
+  row_count: z.number().int().min(0),
+  truncated: z.boolean(),
+  records: z.array(z.string()),
+  rows: z.array(z.record(z.string(), z.string())),
+});
+
+/** The schema of one account of the ledger, transcribed from the artifact of the recorded demo. */
+const ledgerAccountSchema = z.object({
+  id: z.string().min(1),
+  kind: z.string().min(1),
+  name: z.string().min(1),
+  rows: z.array(ledgerRowSchema),
+  reads: z.array(ledgerReadSchema),
+});
+
+/** The schema of the artifact of the ledger, transcribed from the artifact of the recorded demo. */
+const ledgerArtifactSchema = z.object({
+  schema_version: z.string().min(1),
+  scenario: z.string().regex(SCENARIO_ID_PATTERN, "the scenario identifier must be a letter S and two digits"),
+  snapshot_sha256: z.string().regex(SHA256_PATTERN, "the snapshot hash must be 64 lowercase hexadecimal characters"),
+  page_size: z.number().int().min(1, "the page holds at least one row"),
+  accounts: z.array(ledgerAccountSchema),
 });
 
 /** Turns the issues of zod into readable reasons, one per line, with the path of the field that failed. */
@@ -298,3 +352,31 @@ export function validateScenarioIndex(input: unknown): ValidationResult<Scenario
   }
   return { ok: true, value: entries };
 }
+
+/**
+ * Validates the artifact of the ledger of a recorded demo.
+ *
+ * Why the artifact is validated like every other published artifact: the interface must never render
+ * an artifact it does not understand, and the money of the ledger is the decimal text of the artifact,
+ * so a text that is not a decimal is refused here and never drawn as an amount.
+ */
+export function validateLedgerArtifact(input: unknown): ValidationResult<LedgerArtifact> {
+  const parsed = ledgerArtifactSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, reasons: toReasons(parsed.error, "ledger: ") };
+  }
+  return { ok: true, value: parsed.data as LedgerArtifact };
+}
+
+/** Every symbol this module exports, so that a reader sees the whole surface of the validators at once. */
+export const __all__ = [
+  "ValidationResult",
+  "validateTraceEvent",
+  "validateTraceEvents",
+  "validateManifest",
+  "validateResult",
+  "validateBundle",
+  "validateScenarioIndexEntry",
+  "validateScenarioIndex",
+  "validateLedgerArtifact",
+] as const;

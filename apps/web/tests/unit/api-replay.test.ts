@@ -30,7 +30,13 @@ import type { ReplayBundleManifest, ScenarioIndexEntry } from "@/lib/api/schemas
  * artifacts of the repository are the source of truth, so the test serves the real bytes of the real files and never a
  * bundle that the test invented.
  */
-function findPublishedBundle(): { folder: string; manifest: string; events: string; provenance: string } {
+function findPublishedBundle(): {
+  folder: string;
+  manifest: string;
+  events: string;
+  provenance: string;
+  ledger: string;
+} {
   const roots: string[] = [];
   let current = process.cwd();
   for (;;) {
@@ -56,6 +62,9 @@ function findPublishedBundle(): { folder: string; manifest: string; events: stri
       manifest: readFileSync(join(folder, "manifest.json"), "utf8"),
       events: readFileSync(join(folder, "events.jsonl"), "utf8"),
       provenance: readFileSync(join(folder, "provenance.json"), "utf8"),
+      ledger: existsSync(join(folder, "ledger.json"))
+        ? readFileSync(join(folder, "ledger.json"), "utf8")
+        : "",
     };
   }
   throw new Error("the published bundle of the scenario S01 was not found on the disk of the repository");
@@ -125,11 +134,16 @@ function fakeFetch(answers: {
   manifest?: string;
   events?: string;
   provenance?: string;
+  ledger?: string;
+  ledgerMissing?: boolean;
 }): { impl: typeof fetch; urls: string[] } {
   const urls: string[] = [];
   const impl = (async (input: RequestInfo | URL) => {
     const url = String(input);
     urls.push(url);
+    if (answers.ledgerMissing === true && url.endsWith("ledger.json")) {
+      return { ok: false, status: 404, text: async () => "" } as unknown as Response;
+    }
     const body = url.endsWith("index.json")
       ? (answers.catalog ?? PUBLISHED_CATALOG)
       : url.endsWith("manifest.json")
@@ -138,7 +152,9 @@ function fakeFetch(answers: {
           ? (answers.events ?? PUBLISHED.events)
           : url.endsWith("provenance.json")
             ? (answers.provenance ?? PUBLISHED.provenance)
-            : "";
+            : url.endsWith("ledger.json")
+              ? (answers.ledger ?? PUBLISHED.ledger)
+              : "";
     return { ok: true, status: 200, text: async () => body } as unknown as Response;
   }) as unknown as typeof fetch;
   return { impl, urls };
@@ -368,5 +384,128 @@ describe("the client of the static artifacts", () => {
     const loaded = await loadReplay(PUBLISHED_CARD, impl);
 
     expect("error" in loaded).toBe(false);
+  });
+
+  it("reads the file of the ledger beside the bundle", async () => {
+    // It proves that the artifact of the ledger is read from the folder of the bundle, next to the manifest, the
+    // events and the provenance, and that the ONE place that reads the published artifacts is the one that reads it.
+    vi.stubGlobal("crypto", webcrypto);
+    const { impl, urls } = fakeFetch({});
+
+    const loaded = await loadReplay(PUBLISHED_CARD, impl);
+
+    expect(urls).toContain("/replay/s01/ledger.json");
+    if ("error" in loaded) {
+      throw new Error(`the loader refused the published bundle: ${loaded.error}`);
+    }
+    expect(loaded.ledger).not.toBeNull();
+    expect(loaded.ledger?.accounts).toHaveLength(1);
+    expect(loaded.ledger?.accounts[0]?.id).toBe("C-0412");
+    expect(loaded.ledger?.accounts[0]?.rows).toHaveLength(2);
+    expect(loaded.ledgerError).toBeNull();
+    expect(loaded.ledgerIntegrity).toBe("checked");
+  });
+
+  it("does not refuse a bundle that publishes no file of the ledger", async () => {
+    // It proves that the file of the ledger is a SIDECAR: a bundle without it is still a bundle, and the recording is
+    // still a recording. The state carries the reason, so that the interface says in words what the site did not
+    // publish, instead of showing nothing and saying nothing (ADR-045).
+    vi.stubGlobal("crypto", webcrypto);
+    const { impl } = fakeFetch({ ledgerMissing: true });
+
+    const loaded = await loadReplay(PUBLISHED_CARD, impl);
+
+    expect("error" in loaded).toBe(false);
+    if ("error" in loaded) {
+      throw new Error(`the loader refused a bundle without a file of the ledger: ${loaded.error}`);
+    }
+    expect(loaded.ledger).toBeNull();
+    expect(loaded.ledgerError).toContain("no ledger");
+  });
+
+  it("does not refuse a bundle whose file of the ledger is not a JSON document", async () => {
+    // It proves that a broken sidecar does not make the recording unreadable, and that the reason says what happened.
+    vi.stubGlobal("crypto", webcrypto);
+    const { impl } = fakeFetch({ ledger: "{ this is not a document" });
+
+    const loaded = await loadReplay(PUBLISHED_CARD, impl);
+
+    expect("error" in loaded).toBe(false);
+    if ("error" in loaded) {
+      throw new Error(`the loader refused a bundle with a broken sidecar: ${loaded.error}`);
+    }
+    expect(loaded.ledger).toBeNull();
+    expect(loaded.ledgerError).toContain("not a JSON document");
+  });
+
+  it("does not show a file of the ledger whose digest does not match the digest that was published", async () => {
+    // It proves that the file of the ledger is checked against the digest that the provenance publishes, and that a
+    // file that was tampered with is hidden with the reason. The BUNDLE is not refused: the ledger is a sidecar and a
+    // recording stays a recording.
+    vi.stubGlobal("crypto", webcrypto);
+    const tampered = PUBLISHED.ledger.replace('"100.00"', '"100.01"');
+    expect(tampered).not.toBe(PUBLISHED.ledger);
+    const { impl } = fakeFetch({ ledger: tampered });
+
+    const loaded = await loadReplay(PUBLISHED_CARD, impl);
+
+    expect("error" in loaded).toBe(false);
+    if ("error" in loaded) {
+      throw new Error(`the loader refused a bundle because of its sidecar: ${loaded.error}`);
+    }
+    expect(loaded.ledger).toBeNull();
+    expect(loaded.ledgerError).toContain("ledger.json");
+    expect(loaded.ledgerError).toContain(sha256Of(tampered));
+  });
+
+  it("says out loud that the integrity of the file of the ledger was not checked without the Web Crypto", async () => {
+    // It proves that the absence of the Web Crypto is not a refusal and not a silent pass: the integrity of the file
+    // of the ledger is then unknown, and the interface never shows an artifact as verified when it was not.
+    vi.stubGlobal("crypto", undefined);
+    const { impl } = fakeFetch({});
+
+    const loaded = await loadReplay(PUBLISHED_CARD, impl);
+
+    expect("error" in loaded).toBe(false);
+    if ("error" in loaded) {
+      throw new Error(`the loader refused the published bundle: ${loaded.error}`);
+    }
+    expect(loaded.ledger).not.toBeNull();
+    expect(loaded.ledgerIntegrity).toBe("unknown");
+  });
+
+  it("never says that the integrity of the file of the ledger was checked when nothing was compared", async () => {
+    // It proves that the field says the truth: a site that published no digest of the file of the ledger published
+    // nothing to compare, and a field that says "checked" when no digest was compared is a field that lies about the
+    // only thing it exists to say.
+    vi.stubGlobal("crypto", webcrypto);
+    const publishedProvenance = JSON.parse(PUBLISHED.provenance) as Record<string, unknown>;
+    const artifacts = { ...(publishedProvenance["artifacts"] as Record<string, string>) };
+    delete artifacts["ledger.json"];
+    const { impl } = fakeFetch({ provenance: JSON.stringify({ ...publishedProvenance, artifacts }) });
+
+    const loaded = await loadReplay(PUBLISHED_CARD, impl);
+
+    expect("error" in loaded).toBe(false);
+    if ("error" in loaded) {
+      throw new Error(`the loader refused the published bundle: ${loaded.error}`);
+    }
+    expect(loaded.ledger).not.toBeNull();
+    expect(loaded.ledgerIntegrity).toBe("unknown");
+  });
+
+  it("says that the integrity of the file of the ledger was checked only when a digest was compared", async () => {
+    // It proves the other side of the same truth: a file whose digest was compared with the digest that the
+    // provenance published is a file whose integrity really was checked.
+    vi.stubGlobal("crypto", webcrypto);
+    const { impl } = fakeFetch({});
+
+    const loaded = await loadReplay(PUBLISHED_CARD, impl);
+
+    expect("error" in loaded).toBe(false);
+    if ("error" in loaded) {
+      throw new Error(`the loader refused the published bundle: ${loaded.error}`);
+    }
+    expect(loaded.ledgerIntegrity).toBe("checked");
   });
 });

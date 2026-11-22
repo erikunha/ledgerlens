@@ -25,7 +25,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ReplayProvider } from "@/features/replay/ReplayProvider";
 import { ReplayViewer } from "@/features/replay/ReplayViewer";
 import { loadReplay, type LoadedReplay } from "@/lib/api/replay";
-import type { ReplayBundleManifest, ScenarioIndexEntry, TraceEvent } from "@/lib/api/schemas";
+import type { LedgerArtifact, ReplayBundleManifest, ScenarioIndexEntry, TraceEvent } from "@/lib/api/schemas";
 
 /**
  * Finds the folder of the published bundle of the scenario S01 on the disk.
@@ -111,8 +111,72 @@ const SCENARIO: ScenarioIndexEntry = {
   bundle_path: "s01",
 };
 
-/** The bundle that the loader of the case answers with. */
-const LOADED: LoadedReplay = { manifest: MANIFEST, events: EVENTS, provenance: PROVENANCE };
+/**
+ * The artifact of the ledger of the scenario S01, as `site/replay/s01/ledger.json` holds it.
+ *
+ * Why the artifact is a literal here: the case proves that the reader opens the panel of the
+ * ledger, and the bytes of the artifact are not the subject of this case.
+ */
+const LEDGER: LedgerArtifact = {
+  schema_version: "1",
+  scenario: "S01",
+  snapshot_sha256: "26849ada6f60c63fa30a0b085fd1ff473508d18a5892498cade13b7dc436ee2f",
+  page_size: 50,
+  accounts: [
+    {
+      id: "C-0412",
+      kind: "customer",
+      name: "Mariana Albuquerque Costa",
+      rows: [
+        {
+          kind: "transaction",
+          id: "TX-2048",
+          at: "2026-10-15T09:12:00Z",
+          amount: "100.00",
+          currency: "EUR",
+          status: "refunded",
+        },
+        {
+          kind: "refund",
+          id: "R-0731",
+          at: "2026-10-20T14:05:00Z",
+          amount: "549.31",
+          currency: "BRL",
+          status: "paid",
+        },
+      ],
+      reads: [
+        {
+          evidence_id: "sql:1",
+          seq: 19,
+          tool: "query_ledger",
+          sql: "SELECT * FROM (SELECT kind, applied_rate, applied_at FROM fx_applied WHERE transaction_id = 'TX-2048' ORDER BY applied_at) LIMIT 50",
+          columns: ["kind", "applied_rate", "applied_at"],
+          row_count: 2,
+          truncated: false,
+          records: ["TX-2048"],
+          rows: [
+            { kind: "charge", applied_rate: "5.6679", applied_at: "2026-10-15T09:12:04Z" },
+            { kind: "refund", applied_rate: "5.4931", applied_at: "2026-10-20T14:30:00Z" },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+/**
+ * The bundle that the loader of the case answers with.
+ *
+ * Why the bundle carries the artifact of the ledger: the site publishes the rows the run read
+ * beside the recording, and the tab of the ledger shows them (ADR-045).
+ */
+const LOADED: LoadedReplay = {
+  manifest: MANIFEST,
+  events: EVENTS,
+  provenance: PROVENANCE,
+  ledger: LEDGER,
+};
 
 /**
  * The loader of the case: it answers with the bundle or with the reason of the refusal.
@@ -348,6 +412,48 @@ describe("the reader of the recorded run", () => {
     expect(within(tabs).getByRole("tab", { name: "Evidence" })).toBeInTheDocument();
     expect(within(tabs).getByRole("tab", { name: "Decision" })).toBeInTheDocument();
     expect(within(tabs).getByRole("tab", { name: "Provenance" })).toBeInTheDocument();
+  });
+
+  it("has five sections of the replay and the ledger sits between the execution and the evidence", async () => {
+    // It proves the order of the sections: the reader sees what the run did, then the rows it
+    // read, then what it gathered, then what it concluded and then the proof of the recording.
+    renderViewer(LOADED);
+
+    await findLoadedRun();
+    const tabs = screen.getByRole("tablist", { name: "The sections of the replay" });
+    expect(
+      within(tabs)
+        .getAllByRole("tab")
+        .map((tab) => tab.textContent),
+    ).toEqual(["Execution", "Ledger", "Evidence", "Decision", "Provenance"]);
+  });
+
+  it("opens the panel of the ledger from the tab of the ledger", async () => {
+    // It proves that the fifth tab opens the panel of the ledger, with the movements of the
+    // account and the amount the artifact carries.
+    renderViewer(LOADED);
+
+    await findLoadedRun();
+    const trigger = screen.getByRole("tab", { name: "Ledger" });
+    await userEvent.setup().click(trigger);
+
+    const table = await screen.findByRole("table", { name: "The movements of the account C-0412" });
+    expect(within(table).getByRole("rowheader", { name: "TX-2048" })).toBeInTheDocument();
+    expect(within(table).getByText("EUR 100.00")).toBeInTheDocument();
+  });
+
+  it("keeps the state of the visit in the tab and the speed and nothing else", async () => {
+    // It proves that the address of the visit carries the tab and the speed and nothing else: the
+    // account that is chosen and the row that is open live in the memory of the panel.
+    renderViewer(LOADED);
+
+    await findLoadedRun();
+    await userEvent.setup().click(screen.getByRole("tab", { name: "Ledger" }));
+
+    expect(window.location.pathname).toBe("/");
+    expect(window.location.search).toBe("?tab=ledger&speed=1");
+    expect(window.location.href).not.toContain("TX-2048");
+    expect(window.location.href).not.toContain("C-0412");
   });
 
   it("keeps the fragment of the address when the visitor changes a preference", async () => {

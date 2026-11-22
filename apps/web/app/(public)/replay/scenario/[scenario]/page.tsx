@@ -13,6 +13,7 @@
  * time.
  */
 
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -47,6 +48,37 @@ export const dynamicParams = false;
 interface ReplayScenarioPageProps {
   /** The identifier of the scenario, as it is in the path. */
   readonly params: Promise<{ scenario: string }>;
+}
+
+/**
+ * The metadata of the route of a scenario.
+ *
+ * Why the route carries a title and a description of its own: a scenario is a place of the site, and every place has a
+ * name that the browser, the search engine and the tab of the reader show. The name is the identifier of the scenario
+ * and the question of the catalog, because that is what the page is about.
+ *
+ * Why the description says what the page does: the description is what a visitor reads before the page opens, so it has
+ * to promise only what the page keeps. The page reads the published artifacts of a capture, it asks no provider and it
+ * needs no key and no network, and that is exactly what the description says.
+ *
+ * Why an identifier the catalog does not publish still gets a title: the metadata of a route is read before the page
+ * decides that the scenario does not exist, so the route has to answer with words instead of with nothing.
+ */
+export async function generateMetadata({ params }: ReplayScenarioPageProps): Promise<Metadata> {
+  const { scenario } = await params;
+  const card = readPublishedCatalog().find((entry) => entry.id === scenario);
+
+  if (!card) {
+    return {
+      title: "Scenario not found",
+      description: `This site publishes no scenario with the identifier ${scenario}.`,
+    };
+  }
+
+  return {
+    title: `${card.id}: ${card.question}`,
+    description: `The published recording of the scenario ${card.id}, played in the browser: it reads the published artifacts of the capture, it asks no provider, and it needs no key and no network.`,
+  };
 }
 
 /**

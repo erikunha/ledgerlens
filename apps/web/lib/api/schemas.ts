@@ -299,6 +299,113 @@ export interface ScenarioIndexEntry {
   capture_kind?: CaptureKind;
   /** The path of the bundle of the scenario, relative to the artifact root. */
   bundle_path?: string;
+  /**
+   * The digest of the file of the ledger of the scenario, when the export published one.
+   *
+   * Why the field is optional: a scenario whose recording read no ledger publishes no file of the
+   * ledger, and a card that carries no digest is a card that publishes no ledger.
+   */
+  ledger_sha256?: string;
+}
+
+/**
+ * One movement of the ledger of an account.
+ *
+ * From the artifact of the ledger of the recorded demo, `site/replay/<scenario>/ledger.json`. The
+ * six fields are the six fields of `_ledger_items` of `ledgerlens/sandbox/branch.py`, so that one
+ * table draws the ledger of the recorded demo and the ledger of the branch of the sandbox.
+ *
+ * Why the amount is a string: the amount is the decimal text the ledger wrote, and a binary float
+ * of a financial amount is a different amount. The browser never turns it into a number.
+ */
+export interface LedgerRow {
+  /** The kind of the movement: `transaction`, `refund` or `chargeback`. */
+  kind: string;
+  /** The identifier of the movement, as the ledger wrote it. */
+  id: string;
+  /** The moment of the movement, in ISO 8601 with a time zone. */
+  at: string;
+  /** The amount of the movement, as the decimal text of the ledger. */
+  amount: string;
+  /** The currency of the amount, as the ledger wrote it. */
+  currency: string;
+  /** The status of the movement, as the ledger wrote it. */
+  status: string;
+}
+
+/**
+ * One row a read of the ledger returned.
+ *
+ * Why the shape is open: the columns of a read are the columns the recording declared, so the
+ * values are named with them and the type carries the names as strings. A rate is not money and
+ * carries no currency, and the text of the value is never changed.
+ */
+export type LedgerReadRow = Readonly<Record<string, string>>;
+
+/**
+ * One read of the ledger that the recording made.
+ *
+ * From the artifact of the ledger of the recorded demo. One read per call of the tool
+ * `query_ledger` that the recording made.
+ */
+export interface LedgerRead {
+  /** The citation of the evidence of the read, as the recording wrote it. */
+  evidence_id: string;
+  /** The sequence number of the event that closed the read. */
+  seq: number;
+  /** The name of the tool that made the read. */
+  tool: string;
+  /** The statement the read ran. */
+  sql: string;
+  /** The names of the columns the read asked for. */
+  columns: string[];
+  /** The number of rows the read returned. */
+  row_count: number;
+  /** Whether the result of the read was cut. */
+  truncated: boolean;
+  /** The identifiers of the records the statement named. */
+  records: string[];
+  /** The rows the read returned, named with the columns of the read. */
+  rows: LedgerReadRow[];
+}
+
+/**
+ * One account of the ledger of a recording.
+ *
+ * From the artifact of the ledger of the recorded demo. The account carries its movements and the
+ * reads of the recording that named them.
+ */
+export interface LedgerAccount {
+  /** The identifier of the account, as the ledger wrote it. */
+  id: string;
+  /** The kind of the account, as the ledger wrote it. */
+  kind: string;
+  /** The name of the account, as the ledger wrote it. */
+  name: string;
+  /** The movements of the account, oldest first. */
+  rows: LedgerRow[];
+  /** The reads of the recording that named the movements of the account. */
+  reads: LedgerRead[];
+}
+
+/**
+ * The artifact of the ledger of a recorded demo.
+ *
+ * From `site/replay/<scenario>/ledger.json`, the file the export publishes beside the manifest,
+ * the events and the provenance of the bundle. The artifact is a SIDECAR: a bundle without it is
+ * still a bundle, and the reader says in words what the site did not publish.
+ */
+export interface LedgerArtifact {
+  /** The version of the shape of the artifact. */
+  schema_version: string;
+  /** The identifier of the scenario the artifact belongs to. */
+  scenario: string;
+  /** The digest of the ledger the recording read, as the manifest of the bundle declares it. */
+  snapshot_sha256: string;
+  /** The number of rows of a page of the table. */
+  page_size: number;
+  /** The accounts the artifact publishes, even when it publishes one. */
+  accounts: LedgerAccount[];
 }
 
 /**
@@ -333,3 +440,33 @@ export interface Provenance {
   /** The note that says in words what the bundle is. */
   note?: string;
 }
+
+/** Every symbol this module exports, so that a reader sees the whole surface of the types at once. */
+export const __all__ = [
+  "TRACE_SCHEMA_VERSION",
+  "BUNDLE_SCHEMA_VERSION",
+  "RESULT_SCHEMA_VERSION",
+  "TRACE_EVENT_TYPES",
+  "TraceEventType",
+  "TRACE_MODES",
+  "TraceMode",
+  "CAPTURE_KINDS",
+  "CaptureKind",
+  "TraceEvent",
+  "PublicClaim",
+  "PublicEvidence",
+  "PublicVerdict",
+  "PublicInvestigationResult",
+  "ReplayBundle",
+  "ReplayBundleManifest",
+  "SCENARIO_STATUSES",
+  "KnownScenarioStatus",
+  "ScenarioStatus",
+  "ScenarioIndexEntry",
+  "LedgerRow",
+  "LedgerReadRow",
+  "LedgerRead",
+  "LedgerAccount",
+  "LedgerArtifact",
+  "Provenance",
+] as const;

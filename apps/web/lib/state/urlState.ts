@@ -8,8 +8,14 @@
  * the state of the interface.
  */
 
-/** The tabs of the replay, in the order they are shown. */
-export const REPLAY_TABS = ["execution", "evidence", "decision", "provenance"] as const;
+/**
+ * The tabs of the replay, in the order they are shown.
+ *
+ * Why the ledger sits between the execution and the evidence: the reader sees what the run did, then
+ * the rows it read, then what it gathered, then what it concluded and then the proof of the
+ * recording (ADR-045).
+ */
+export const REPLAY_TABS = ["execution", "ledger", "evidence", "decision", "provenance"] as const;
 
 /** One of the tabs of the replay. */
 export type ReplayTab = (typeof REPLAY_TABS)[number];

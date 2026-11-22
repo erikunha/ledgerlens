@@ -1,0 +1,204 @@
+/**
+ * The styles of the ledger of the recorded demo.
+ *
+ * Why this file exists: the panel of the ledger has a few surfaces of its own, the switcher of the
+ * accounts, the table of the movements, the control of the pagination and the detail of a
+ * movement. The rules below are the ones that a class of the design system cannot express, and
+ * every colour of them is a token of `app/globals.css`: the file never declares a colour of its
+ * own.
+ *
+ * Why the values of the money use the monospace typeface: the amount of a movement is the decimal
+ * text of the artifact and it is read as a value and not as a sentence, so the digits of it line
+ * up in a column.
+ *
+ * Why the rule of the row that is open changes the surface and not the colour alone: the words
+ * "Open" and "Read by the run" are already in the row, and the colour only repeats them.
+ *
+ * Why the rules are NOT inside an `@layer components`: this file is a stylesheet of its own and it
+ * is processed by the CSS pipeline on its own, and a layer of the components of Tailwind is only
+ * allowed in a file that declares the matching `@tailwind components`. The rules below are plain
+ * rules of the sheet, the way the styles of the sandbox are.
+ */
+
+/* the panel of the ledger sits on the surface of the page and separates itself with a border */
+.ll-ledger-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ll-space-3);
+  border: 1px solid var(--ll-color-border);
+  border-radius: var(--ll-radius-lg);
+  background-color: var(--ll-color-background);
+  padding: var(--ll-space-4);
+}
+
+/* the sentences of the panel are the notes that a reader reads before the table */
+.ll-ledger-note {
+  color: var(--ll-color-text-muted);
+  font-size: var(--ll-text-sm);
+  line-height: var(--ll-leading-sm);
+}
+
+/* the reason of an artifact that could not be read is said and nothing else is drawn */
+.ll-ledger-unavailable {
+  color: var(--ll-color-text-muted);
+  font-size: var(--ll-text-sm);
+  line-height: var(--ll-leading-sm);
+}
+
+/* the switcher of the accounts is a row of buttons that wraps on a narrow screen */
+.ll-ledger-switcher {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ll-space-2);
+}
+
+.ll-ledger-switcher-label {
+  color: var(--ll-color-text-muted);
+  font-size: var(--ll-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ll-ledger-accounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ll-space-2);
+}
+
+/* the account that is chosen repeats the state of the pressed button with a border */
+.ll-ledger-account {
+  border: 1px solid var(--ll-color-border);
+  border-radius: var(--ll-radius-default);
+  background-color: var(--ll-color-background);
+  padding: var(--ll-space-1) var(--ll-space-3);
+  color: var(--ll-color-text);
+  font-size: var(--ll-text-sm);
+  line-height: var(--ll-leading-sm);
+}
+
+.ll-ledger-account-pressed {
+  border-color: var(--ll-color-border-strong);
+  background-color: var(--ll-color-surface-muted);
+  font-weight: 600;
+}
+
+/* the table of the movements scrolls sideways and nothing else */
+.ll-ledger-table {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ll-space-2);
+}
+
+/* the identifier of a movement is the control that opens the detail of the movement */
+.ll-ledger-open {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--ll-color-text);
+  font-family: var(--ll-font-mono);
+  font-size: var(--ll-text-sm);
+  text-align: left;
+  text-decoration: underline;
+}
+
+/* the values of the money are read as values and not as sentences */
+.ll-ledger-amount {
+  font-family: var(--ll-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* the marks of the state are words, and the colour only repeats them */
+.ll-ledger-mark {
+  color: var(--ll-color-text);
+  font-size: var(--ll-text-xs);
+  font-weight: 600;
+}
+
+/*
+ * the row that is open changes the SURFACE and not only the colour: it takes a border of its own
+ * and a weight, so that a reader who cannot see the colour still sees which row is open. The words
+ * "Open" are already in the row, and this rule only repeats them.
+ */
+.ll-ledger-table tr[aria-current="true"] > * {
+  border-left: 2px solid var(--ll-color-border-strong);
+  font-weight: 600;
+}
+
+/* the control of the pagination is a row that keeps the page it shows in the middle */
+.ll-ledger-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ll-space-3);
+}
+
+.ll-ledger-page {
+  border: 1px solid var(--ll-color-border);
+  border-radius: var(--ll-radius-default);
+  background-color: var(--ll-color-background);
+  padding: var(--ll-space-1) var(--ll-space-3);
+  color: var(--ll-color-text);
+  font-size: var(--ll-text-sm);
+  line-height: var(--ll-leading-sm);
+}
+
+.ll-ledger-page[aria-disabled="true"] {
+  border-color: var(--ll-color-border);
+  color: var(--ll-color-text-subtle);
+}
+
+.ll-ledger-page-state {
+  color: var(--ll-color-text-muted);
+  font-size: var(--ll-text-sm);
+  line-height: var(--ll-leading-sm);
+}
+
+/* the detail of a movement sits under the table and holds the fields of the movement */
+.ll-ledger-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ll-space-3);
+  border: 1px solid var(--ll-color-border);
+  border-radius: var(--ll-radius-lg);
+  padding: var(--ll-space-4);
+}
+
+.ll-ledger-fields {
+  display: grid;
+  gap: var(--ll-space-2);
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+}
+
+.ll-ledger-field-name {
+  color: var(--ll-color-text-subtle);
+  font-size: var(--ll-text-xs);
+}
+
+.ll-ledger-field-value {
+  color: var(--ll-color-text);
+  font-size: var(--ll-text-sm);
+  line-height: var(--ll-leading-sm);
+}
+
+/* one read of the recording carries the statement it ran and the rows it returned */
+.ll-ledger-read {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ll-space-2);
+  border-left: 2px solid var(--ll-color-border);
+  padding-left: var(--ll-space-3);
+}
+
+/* the statement of a read is read as code and it never wraps a word in the middle */
+.ll-ledger-statement {
+  overflow-x: auto;
+  border: 1px solid var(--ll-color-border);
+  border-radius: var(--ll-radius-default);
+  background-color: var(--ll-color-surface);
+  padding: var(--ll-space-2);
+  color: var(--ll-color-text);
+  font-family: var(--ll-font-mono);
+  font-size: var(--ll-text-xs);
+  line-height: var(--ll-leading-xs);
+}

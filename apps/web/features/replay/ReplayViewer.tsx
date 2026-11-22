@@ -44,14 +44,16 @@ import { TraceTimeline } from "@/features/agent-trace/TraceTimeline";
 import { TraceTree } from "@/features/agent-trace/TraceTree";
 import { AnswerPanel } from "@/features/evidence/AnswerPanel";
 import { ClaimList } from "@/features/evidence/ClaimList";
-import { useReplay, type ReplayPhase } from "@/features/replay/ReplayProvider";
+import { LedgerPanel } from "@/features/ledger/LedgerPanel";
+import { useReplay, type ReplayPhase, type ReplayState } from "@/features/replay/ReplayProvider";
 import { ReplayControls } from "@/features/replay/ReplayControls";
 import { ReplayEmptyState } from "@/features/replay/ReplayEmptyState";
 import { ReplayErrorState } from "@/features/replay/ReplayErrorState";
 import { RunOverview } from "@/features/replay/RunOverview";
 import { usePlaybackClock } from "@/features/replay/usePlaybackClock";
 import { ProvenancePanel } from "@/features/shell/ProvenancePanel";
-import type { ScenarioIndexEntry } from "@/lib/api/schemas";
+import type { LedgerArtifact, ScenarioIndexEntry } from "@/lib/api/schemas";
+import type { BundleIntegrity } from "@/lib/api/replay";
 import { formatOriginalDuration } from "@/lib/format/duration";
 import { formatMoney, formatPercentage } from "@/lib/format/money";
 import { formatRunStatus, formatToolStatus } from "@/lib/format/status";
@@ -128,6 +130,24 @@ function findNode(nodes: readonly TraceTreeNode[], spanId: string): TraceTreeNod
 }
 
 /**
+ * Reads the artifact of the ledger and the reason of its absence out of the state.
+ *
+ * Why the reader does not read the network: the artifact of the ledger is read by the library of
+ * the artifacts, and the reader draws what the machine holds (ADR-045).
+ */
+function readLedgerState(state: ReplayState): {
+  readonly ledger: LedgerArtifact | null;
+  readonly error: string | null;
+  readonly integrity: BundleIntegrity | null;
+} {
+  return {
+    ledger: state.ledger ?? null,
+    error: state.ledgerError ?? null,
+    integrity: state.ledgerIntegrity ?? null,
+  };
+}
+
+/**
  * The reader of a recorded run.
  *
  * The reader draws the state of the machine: the overview of the capture, the controls of the
@@ -137,6 +157,9 @@ function findNode(nodes: readonly TraceTreeNode[], spanId: string): TraceTreeNod
  */
 export function ReplayViewer({ scenario }: ReplayViewerProps): ReactElement {
   const { state, dispatch } = useReplay();
+
+  // The ledger of the recording, and the reason of its absence when the site published no ledger.
+  const { ledger, error: ledgerError, integrity: ledgerIntegrity } = readLedgerState(state);
 
   const [tab, setTab] = useState<ReplayTab>(DEFAULT_VIEW_PREFERENCES.tab);
   const [speed, setSpeed] = useState<PlaybackSpeed>(DEFAULT_VIEW_PREFERENCES.speed);
@@ -358,6 +381,16 @@ export function ReplayViewer({ scenario }: ReplayViewerProps): ReactElement {
               emptyMessage="The recording has no call of a tool yet."
             />
           </div>
+        </section>
+      ),
+    },
+    {
+      value: "ledger",
+      label: "Ledger",
+      content: (
+        <section id="ledgerlens-section-ledger" tabIndex={-1} className="flex flex-col gap-4">
+          <h3 className="text-base font-semibold">The ledger of the recording</h3>
+          <LedgerPanel ledger={ledger} error={ledgerError} integrity={ledgerIntegrity} />
         </section>
       ),
     },

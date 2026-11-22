@@ -25,8 +25,13 @@
  * a live bundle through (ADR-043).
  */
 
-import type { ReplayBundleManifest, ScenarioIndexEntry, TraceEvent } from "@/lib/api/schemas";
-import { validateManifest, validateScenarioIndex, validateTraceEvent } from "@/lib/replay/validate";
+import type {
+  LedgerArtifact,
+  ReplayBundleManifest,
+  ScenarioIndexEntry,
+  TraceEvent,
+} from "@/lib/api/schemas";
+import { validateLedgerArtifact, validateManifest, validateScenarioIndex, validateTraceEvent } from "@/lib/replay/validate";
 
 /**
  * The root of the published artifacts of the site.
@@ -69,6 +74,29 @@ export interface LoadedReplay {
    * a bundle that carries no field is a bundle whose integrity is unknown.
    */
   readonly integrity?: BundleIntegrity;
+  /**
+   * The artifact of the ledger of the recording, when the site published one.
+   *
+   * Why the ledger is a field and not a requirement: the ledger is a SIDECAR of the bundle. A
+   * bundle without a file of the ledger is still a bundle, and a recording is still a recording, so
+   * the reader shows the run and says in words that the site published no ledger (ADR-045).
+   */
+  readonly ledger?: LedgerArtifact | null;
+  /**
+   * The reason the artifact of the ledger could not be read, when it could not be read.
+   *
+   * Why the reason travels with the state: a panel that shows nothing and says nothing leaves the
+   * visitor guessing, and a visitor who guesses thinks the site published a ledger that is empty.
+   */
+  readonly ledgerError?: string | null;
+  /**
+   * Whether the integrity of the file of the ledger was really checked.
+   *
+   * Why the field exists: the absence of the Web Crypto is not a refusal, so a file of the ledger
+   * that was accepted without a check has to say that it was accepted without a check, and the
+   * interface never shows an artifact as verified when it was not.
+   */
+  readonly ledgerIntegrity?: BundleIntegrity;
 }
 
 /**
@@ -93,6 +121,14 @@ const EVENTS_FILE = "events.jsonl";
 
 /** The name of the file of the manifest of a bundle. */
 const MANIFEST_FILE = "manifest.json";
+
+/**
+ * The name of the file of the ledger of a bundle.
+ *
+ * Why the name is fixed: the file is published beside the manifest, the events and the provenance of
+ * the bundle, and the export is the only thing that writes it.
+ */
+const LEDGER_FILE = "ledger.json";
 
 /** Takes the fetch of the caller, or the fetch of the runtime. */
 function resolveFetch(fetchImpl?: typeof fetch): typeof fetch {
@@ -235,6 +271,7 @@ export async function loadReplay(
   const manifestUrl = `${ARTIFACT_ROOT}/${directory}/${MANIFEST_FILE}`;
   const eventsUrl = `${ARTIFACT_ROOT}/${directory}/${EVENTS_FILE}`;
   const provenanceUrl = `${ARTIFACT_ROOT}/${directory}/provenance.json`;
+  const ledgerUrl = `${ARTIFACT_ROOT}/${directory}/${LEDGER_FILE}`;
 
   let manifestText: string;
   try {
@@ -312,11 +349,13 @@ export async function loadReplay(
   }
 
   const provenance = await readProvenance(provenanceUrl, doFetch);
+  const ledger = await readLedger(ledgerUrl, doFetch, index.id);
 
   const integrity = await verifyBundleDigests({
     manifest: manifest.value,
     eventsBytes: bytesOf(eventsText),
     provenance,
+    ledgerBytes: ledger.bytes,
   });
   const manifestReasons = await verifyManifestDigest(manifestText, provenance);
   if (!integrity.ok) {
@@ -330,7 +369,23 @@ export async function loadReplay(
     };
   }
 
-  return { manifest: manifest.value, events, provenance, integrity: integrity.integrity };
+  // A file of the ledger whose digest does not match the digest that the provenance published is
+  // not shown, and the reason says so. The bundle is NOT refused: the ledger is a sidecar, and a
+  // recording stays a recording even when the site published a ledger that cannot be trusted.
+  const ledgerReasons = integrity.ledgerReasons;
+  const shownLedger = ledgerReasons.length > 0 ? null : ledger.artifact;
+  const ledgerError =
+    ledgerReasons.length > 0 ? ledgerReasons.join("; ") : ledger.reason;
+
+  return {
+    manifest: manifest.value,
+    events,
+    provenance,
+    integrity: integrity.integrity,
+    ledger: shownLedger,
+    ledgerError,
+    ledgerIntegrity: integrity.ledgerIntegrity,
+  };
 }
 
 /**
@@ -369,6 +424,65 @@ async function readProvenance(
 }
 
 /**
+ * Reads the file of the ledger of a bundle.
+ *
+ * Why nothing here is a refusal: the file of the ledger is a SIDECAR of the bundle. A bundle without
+ * it is still a bundle, and a file that is not a JSON document is still a sidecar that is broken. The
+ * answer carries the artifact when it could be read, the reason when it could not, and the bytes when
+ * the integrity of the file has to be checked (ADR-045).
+ */
+async function readLedger(
+  url: string,
+  doFetch: typeof fetch,
+  scenarioId: string,
+): Promise<{
+  readonly artifact: LedgerArtifact | null;
+  readonly reason: string | null;
+  readonly bytes: ArrayBuffer | null;
+}> {
+  let text: string;
+  try {
+    const response = await doFetch(url);
+    if (!response.ok) {
+      return {
+        artifact: null,
+        reason: `the site published no ledger of the scenario ${scenarioId}`,
+        bytes: null,
+      };
+    }
+    text = await response.text();
+  } catch {
+    return {
+      artifact: null,
+      reason: `the file of the ledger of the scenario ${scenarioId} could not be read: the site did not answer`,
+      bytes: null,
+    };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return {
+      artifact: null,
+      reason: `the file of the ledger of the scenario ${scenarioId} is not a JSON document`,
+      bytes: null,
+    };
+  }
+
+  const artifact = validateLedgerArtifact(parsed);
+  if (!artifact.ok) {
+    return {
+      artifact: null,
+      reason: `the file of the ledger of the scenario ${scenarioId} did not pass the contract of the published artifacts: ${artifact.reasons.join("; ")}`,
+      bytes: null,
+    };
+  }
+
+  return { artifact: artifact.value, reason: null, bytes: bytesOf(text) };
+}
+
+/**
  * Checks the digest of the file of the events against the digest that was published for it.
  *
  * Why the digest function can be injected: a unit test has to be able to say what the digest of a
@@ -386,13 +500,26 @@ export async function verifyBundleDigests(input: {
   readonly eventsBytes: ArrayBuffer;
   readonly provenance?: Readonly<Record<string, unknown>> | null;
   readonly sha256?: Sha256Hex;
+  readonly ledgerBytes?: ArrayBuffer | null;
 }): Promise<
-  | { readonly ok: true; readonly integrity: BundleIntegrity }
-  | { readonly ok: false; readonly reasons: readonly string[] }
+  | {
+      readonly ok: true;
+      readonly integrity: BundleIntegrity;
+      readonly ledgerIntegrity: BundleIntegrity;
+      readonly ledgerReasons: readonly string[];
+    }
+  | {
+      readonly ok: false;
+      readonly reasons: readonly string[];
+      readonly ledgerIntegrity: BundleIntegrity;
+      readonly ledgerReasons: readonly string[];
+    }
 > {
   const sha256 = input.sha256 ?? browserSha256();
   if (!sha256) {
-    return { ok: true, integrity: "unknown" };
+    // The absence of the Web Crypto is not a refusal: the check is then unknown, for the bundle and
+    // for the file of the ledger alike, and the interface says out loud that nothing was checked.
+    return { ok: true, integrity: "unknown", ledgerIntegrity: "unknown", ledgerReasons: [] };
   }
 
   let observed: string;
@@ -400,7 +527,7 @@ export async function verifyBundleDigests(input: {
     observed = await sha256(input.eventsBytes);
   } catch {
     // A digest function that fails is not a broken bundle, so the check stays unknown.
-    return { ok: true, integrity: "unknown" };
+    return { ok: true, integrity: "unknown", ledgerIntegrity: "unknown", ledgerReasons: [] };
   }
 
   const expectations: { source: string; digest: string }[] = [];
@@ -426,10 +553,71 @@ export async function verifyBundleDigests(input: {
     }
   }
 
+  // The file of the ledger is checked the same way and separately: its digest never refuses the
+  // bundle, because the ledger is a sidecar and a recording stays a recording.
+  const ledger = await verifyLedgerDigest(input.ledgerBytes, input.provenance, sha256);
+
   if (reasons.length > 0) {
-    return { ok: false, reasons };
+    return { ok: false, reasons, ledgerIntegrity: ledger.integrity, ledgerReasons: ledger.reasons };
   }
-  return { ok: true, integrity: "checked" };
+  return { ok: true, integrity: "checked", ledgerIntegrity: ledger.integrity, ledgerReasons: ledger.reasons };
+}
+
+/**
+ * Checks the digest of the file of the ledger against the digest that the provenance published.
+ *
+ * Why the reasons do not refuse the bundle: the file of the ledger is a sidecar, and a sidecar that
+ * cannot be trusted hides itself and says why. The recording is still a recording.
+ *
+ * Why the integrity is unknown when there is nothing to compare: the field exists to say whether the
+ * file was REALLY checked, and a field that says "checked" when no digest was compared is a field
+ * that lies about the only thing it exists to say. There are three cases of "nothing to compare":
+ * the site published no file of the ledger, the provenance published no digest for it, and the
+ * digest function failed. All three answer "unknown", and the interface says out loud that the
+ * integrity was not checked.
+ */
+async function verifyLedgerDigest(
+  ledgerBytes: ArrayBuffer | null | undefined,
+  provenance: Readonly<Record<string, unknown>> | null | undefined,
+  sha256: Sha256Hex,
+): Promise<{ readonly integrity: BundleIntegrity; readonly reasons: readonly string[] }> {
+  const unknown: { readonly integrity: BundleIntegrity; readonly reasons: readonly string[] } = {
+    integrity: "unknown",
+    reasons: [],
+  };
+  if (!ledgerBytes) {
+    return unknown;
+  }
+
+  const expectations: string[] = [];
+  const fromFiles = readDigestMap(provenance?.["files"])[LEDGER_FILE];
+  if (fromFiles) {
+    expectations.push(fromFiles);
+  }
+  const fromArtifacts = readDigestMap(provenance?.["artifacts"])[LEDGER_FILE];
+  if (fromArtifacts) {
+    expectations.push(fromArtifacts);
+  }
+  if (expectations.length === 0) {
+    return unknown;
+  }
+
+  let observed: string;
+  try {
+    observed = await sha256(ledgerBytes);
+  } catch {
+    return unknown;
+  }
+
+  const reasons: string[] = [];
+  for (const expected of expectations) {
+    if (expected !== observed) {
+      reasons.push(
+        `the digest of the file ${LEDGER_FILE} does not match the digest that the provenance published: expected ${expected}, observed ${observed}`,
+      );
+    }
+  }
+  return { integrity: "checked", reasons };
 }
 
 /**
