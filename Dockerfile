@@ -26,9 +26,13 @@ WORKDIR /app
 
 # The user of the image. It is not the root: a container that serves a site has no reason to write to the
 # system of the host, and the files of the repository stay readable by it.
-RUN useradd --system --create-home --uid 10001 --home-dir /home/ledgerlens ledgerlens \
-    && mkdir -p /var/lib/ledgerlens \
-    && chown -R ledgerlens:ledgerlens /var/lib/ledgerlens
+#
+# Why the home of the user is under `/srv` and not under `/home`: the guard of the public repository refuses
+# every path that looks like the home of a person, because a path of a machine of a developer has no place in
+# a repository that everybody reads, and the home of a user of a container is exactly such a path.
+RUN useradd --system --create-home --uid 10001 --home-dir /srv/ledgerlens ledgerlens \
+    && mkdir -p /srv/ledgerlens /var/lib/ledgerlens \
+    && chown -R ledgerlens:ledgerlens /srv/ledgerlens /var/lib/ledgerlens
 
 # The manifest and the lock file come first, so the layer of the dependencies is reused when only the code
 # changes. The project itself is not installed yet, because the source is not in the image yet.
