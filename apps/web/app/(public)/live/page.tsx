@@ -17,6 +17,13 @@
  * the backend takes no credential and starts no run, so the controls of the live mode stay disabled
  * for the rest of the session (ADR-040, question 7). Every other refusal leaves the controls
  * usable, because the visitor may type another key or start the backend and try again.
+ *
+ * The page says what stopping a run does and does not promise, before the visitor presses the
+ * button: the calls that have not started never start, and a call that is already at the provider
+ * is a best effort, because it cannot be guaranteed to stop (FR-019). The truth of the
+ * cancellation comes from the server: the answer of the cancellation and the terminal event of the
+ * trace carry the flag of the best effort, the hook keeps it, and the page says what really
+ * happened when the visitor stopped the run.
  */
 
 import Link from "next/link";
@@ -26,15 +33,21 @@ import { Badge } from "@/components/ui/Badge";
 import { Button, buttonClasses } from "@/components/ui/Button";
 import { CardSection } from "@/components/ui/Card";
 import { ConsentSummary } from "@/features/consent/ConsentNotice";
+import { CostPanel } from "@/features/evals/CostPanel";
 import { DEMO_CASES } from "@/features/live/cases";
 import { RunTimeline } from "@/features/live/RunTimeline";
 import { useLiveRun } from "@/features/live/useLiveRun";
 import { ApiKeyDialog } from "@/features/models/ApiKeyDialog";
 import { BudgetForm } from "@/features/models/BudgetForm";
-import { CostReport } from "@/features/models/CostReport";
 import { ModelSelector } from "@/features/models/ModelSelector";
 import { ApiError, createApiClient } from "@/lib/api/client";
-import { DEFAULT_RUN_LIMITS, type DisclosureHeaders, type ModelProfile, type Provider, type RunLimits } from "@/lib/api/live";
+import {
+  DEFAULT_RUN_LIMITS,
+  type DisclosureHeaders,
+  type ModelProfile,
+  type Provider,
+  type RunLimits,
+} from "@/lib/api/live";
 
 /**
  * The code the backend answers with while the product runs offline.
@@ -44,6 +57,15 @@ import { DEFAULT_RUN_LIMITS, type DisclosureHeaders, type ModelProfile, type Pro
  * instance) is about the act of the visitor, and the visitor may act again.
  */
 const LIVE_MODE_OFFLINE = "LIVE_MODE_OFFLINE";
+
+/**
+ * The identifier of the sentence that says what stopping a run does and does not promise.
+ *
+ * Why the sentence has an identifier: the control that stops the run points at it with
+ * `aria-describedby`, so a reader of a screen reader hears the contract of the cancellation
+ * before pressing the button (FR-019).
+ */
+const CANCEL_REASON_ID = "ledgerlens-live-cancel-reason";
 
 /**
  * Turns whatever the backend refused with into words a visitor can read.
@@ -181,6 +203,11 @@ export default function LivePage() {
 
   const isRunning = run.status === "starting" || run.status === "running";
   const isRefused = run.status === "refused";
+  // The truth of the cancellation comes from the server: the flag of the best effort says that a
+  // call was already at the provider when the visitor asked for the end of the run, and the status
+  // of the run says that the run ended because it was cancelled (FR-019).
+  const wasCancelled = run.status === "cancelled" || run.bestEffort;
+
   // The offline refusal is the only one that disables the controls of the live mode for the rest
   // of the session: the backend will take no credential and start no run while the product runs
   // offline, so a control that stayed usable would only offer the visitor a refusal.
@@ -328,11 +355,39 @@ export default function LivePage() {
               Run the case
             </Button>
             {isRunning ? (
-              <Button variant="secondary" onClick={() => void run.cancel()}>
+              <Button
+                variant="secondary"
+                aria-describedby={CANCEL_REASON_ID}
+                onClick={() => void run.cancel()}
+              >
                 Stop the run
               </Button>
             ) : null}
           </div>
+          <p id={CANCEL_REASON_ID} className="text-sm text-text-subtle">
+            Stopping a run ends it: the calls that have not started never start. A call that is
+            already at the provider is a best effort, and it may not stop. The run ends with the
+            status cancelled, and the trace keeps the events that already happened.
+          </p>
+          {wasCancelled ? (
+            <div role="alert" className="rounded-lg border border-warning/40 bg-warning-light p-4">
+              <h3 className="text-base font-semibold text-warning-dark">
+                {run.bestEffort ? "The cancellation was a best effort" : "The run was cancelled"}
+              </h3>
+              <p className="text-sm text-warning-dark">
+                {run.bestEffort
+                  ? "A call of the provider was already in flight when you stopped the run, and it could not be guaranteed to stop: it may finish anyway, and the tokens it reports are counted in the cost of the run. The calls that had not started never started."
+                  : "The calls that had not started never started."}
+              </p>
+              <p className="mt-2 text-sm text-text-muted">
+                The run ends with the status cancelled, and the trace keeps the events that already
+                happened.
+              </p>
+              {run.cancelMessage ? (
+                <p className="mt-2 text-sm text-text-subtle">{run.cancelMessage}</p>
+              ) : null}
+            </div>
+          ) : null}
           <p className="text-sm text-text-subtle">
             The page never starts a run on its own, and a refusal of the server is shown with its
             code and its message.
@@ -344,8 +399,9 @@ export default function LivePage() {
         <div className="flex flex-col gap-4">
           <h2 className="text-lg font-semibold">The run</h2>
           <p className="font-mono text-xs text-text-subtle">{run.runId}</p>
+
           <RunTimeline counters={run.counters} events={run.events} />
-          <CostReport report={run.cost} running={isRunning} />
+          <CostPanel report={run.cost} running={isRunning} />
         </div>
       ) : null}
 

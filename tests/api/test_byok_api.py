@@ -20,7 +20,9 @@ account that is not the account of the branch and a revision that moved, with a 
 calling any provider (ADR-038); (o) the trace of the run names the branch, the revision and the hash of the state
 that was read, and the run reads the ledger of that branch and not the ledger of the configuration (ADR-038);
 (p) the run carries the case of the application and the coordinator of the caller is never rewritten, so a
-coordinator keeps the case it was built with (ADR-038).
+coordinator keeps the case it was built with (ADR-038); (q) the API never accepts an endpoint, so a
+body that carries one is refused, and a deployment that points the adapter at a link-local endpoint
+is refused before any provider is called, with the code of the rule (FR-017).
 
 Everything offline, with no key and no network: the provider is the fake adapter of the domain and the tests never
 open a socket. The application of the tests is wired the way a deployment wires it: one session issuer over one key
@@ -52,7 +54,13 @@ from ledgerlens.api import byok as byok_api  # noqa: E402
 from ledgerlens.api.byok import LiveRunRequest, RunLimits, create_app  # noqa: E402
 from ledgerlens.api.live_run import LiveRunCoordinator, LiveRunPlan, ModelCaller  # noqa: E402
 from ledgerlens.api.sandbox import SESSION_COOKIE  # noqa: E402
-from ledgerlens.byok.adapter import FakeProviderAdapter, ProviderRequest  # noqa: E402
+from ledgerlens.byok.adapter import (  # noqa: E402
+    ENDPOINT_LINK_LOCAL,
+    EndpointRefused,
+    FakeProviderAdapter,
+    ProviderRequest,
+    build_adapter,
+)
 from ledgerlens.byok.registry import ModelNotAllowed, ModelProfile, Pricing, ProviderRegistry  # noqa: E402
 from ledgerlens.byok.vault import DEFAULT_TTL_SECONDS, CredentialHandle, CredentialVault  # noqa: E402
 from ledgerlens.config import Settings  # noqa: E402
@@ -102,6 +110,11 @@ ACCOUNT_ID = "C-0412"
 # The account of another customer of the same published ledger. A request that names it is refused, because the rows
 # of that customer are not the rows of the visitor.
 ANOTHER_ACCOUNT_ID = "C-0001"
+
+# The endpoint of a provider that reaches the machine itself: the address of the metadata of a cloud machine. The
+# public demo refuses it before it opens a socket, because a request that goes there reads the credentials of the
+# machine instead of the answer of the provider (FR-017).
+LINK_LOCAL_ENDPOINT = "http://169.254.169.254/latest/meta-data"
 
 PRICED = ModelProfile(
     profile_id=PROFILE_ID,
@@ -645,6 +658,98 @@ def test_the_cancel_route_ends_the_run_and_says_that_the_cancellation_is_a_best_
         # The provider answers and the run stops: the run ends as cancelled and the trace stays visible.
         release.set()
         assert _wait_for_the_end(client, run_id)["status"] == "cancelled"
+
+
+# --- the endpoint of the provider -----------------------------------------------------------------------
+
+
+def test_the_credential_route_refuses_a_body_that_carries_an_endpoint(client: TestClient) -> None:
+    """FR-017: the API never takes an endpoint, so a body that carries one is refused.
+
+    Why this is the first line of defence: the visitor never chooses the endpoint of the provider,
+    and the contract of the credential has exactly two fields. A body that carries an endpoint, a
+    link-local one included, is a body the contract does not have, and the facade refuses it before
+    it reads anything of it (FR-007, FR-027).
+
+    Why the refusal names the contract and not the field: the facade answers every body that does
+    not match the contract with the same answer, so a refusal cannot be used to guess what the
+    server reads.
+    """
+    response = client.post(
+        "/v1/credentials",
+        json={"provider": "openai", "api_key": MARKER, "endpoint": LINK_LOCAL_ENDPOINT},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["code"] == byok_api.CODE_INVALID_REQUEST
+    assert "does not match the contract" in response.json()["message"]
+
+
+def test_the_run_route_refuses_a_body_that_carries_a_link_local_endpoint(client: TestClient) -> None:
+    """FR-017: the body of the run carries no endpoint either, so a link-local one never reaches the server.
+
+    Why the run matters as much as the credential: the run is the request that spends the money of
+    the visitor, and a body that named an endpoint would be a body that could point the server at
+    the machine itself. The request is the published contract, and the published contract has no
+    endpoint (FR-017, FR-027).
+    """
+    handle = _credential(client)
+    body = _run_body(client, handle)
+    body["endpoint"] = LINK_LOCAL_ENDPOINT
+
+    response = client.post("/v1/live-runs", json=body)
+
+    assert response.status_code == 422
+    assert response.json()["code"] == byok_api.CODE_INVALID_REQUEST
+    assert "does not match the contract" in response.json()["message"]
+    # The refusal never carries the value of the visitor.
+    assert MARKER not in response.text
+
+
+def test_a_link_local_provider_endpoint_is_refused_before_any_provider_call(
+    online: None, vault: CredentialVault, issuer: SessionIssuer, branch_layer: BranchLayer, tmp_path: Path
+) -> None:
+    """FR-017: a link-local endpoint is refused, and no provider is ever called.
+
+    Why the adapter factory of the test points at the link-local address: the API refuses every
+    body that names an endpoint, so the only way an endpoint reaches the server is a deployment
+    that points the adapter at an endpoint of its own. This test is that deployment, and the
+    refusal it gets is the refusal of the product and not a refusal of the test.
+    """
+    app = create_app(
+        vault=vault,
+        registry=_registry(),
+        session_issuer=issuer,
+        adapter_factory=lambda _provider, key: build_adapter("openai", key, endpoint=LINK_LOCAL_ENDPOINT),
+        branch_layer=branch_layer,
+        executor=_the_light_case,
+        runtime_dir=tmp_path / "runtime",
+    )
+    with TestClient(app) as client:
+        session = client.post("/v1/sessions").json()
+        cast(Any, client).branch_id = _the_branch_of(branch_layer, str(session["id"]))
+        handle = _credential(client)
+        run_id = client.post("/v1/live-runs", json=_run_body(client, handle)).json()["run_id"]
+        state = _wait_for_the_end(client, run_id)
+        cost = client.get(f"/v1/live-runs/{run_id}/cost").json()
+
+    # The run ends with the reason of the refusal, and the reason names the family of the address.
+    assert state["status"] == "failed"
+    assert "link-local" in str(state["error"])
+
+    # The refusal came before the provider was called: the run spent nothing and shows no amount of money.
+    assert cost["model_calls"] == 0
+    assert cost["observed_cost_usd"] is None
+    assert cost["estimated_cost_usd"] is None
+
+
+def test_the_refusal_of_a_link_local_endpoint_carries_the_code_of_the_rule() -> None:
+    """FR-017: the refusal of a link-local endpoint is machine readable, and the code names the rule."""
+    with pytest.raises(EndpointRefused) as refused:
+        build_adapter("openai", MARKER, endpoint=LINK_LOCAL_ENDPOINT)
+
+    assert refused.value.code == ENDPOINT_LINK_LOCAL
+    assert "link-local" in str(refused.value)
 
 
 # --- the branch of the visitor ------------------------------------------------------------------------

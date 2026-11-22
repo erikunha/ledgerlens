@@ -13,6 +13,12 @@
  * again, from the beginning, forever. And a refusal of the server is a refusal, never a run: the
  * `503` with the code `LIVE_MODE_OFFLINE` becomes the status `refused`, with the code and the
  * message of the server.
+ *
+ * The cancellation has its own state, because the truth of a cancellation is in the server and not
+ * in the browser: the answer of the route of the cancellation carries the flag that says a call
+ * was already at the provider and could not be guaranteed to stop, and the terminal event of the
+ * trace carries the same flag. The hook keeps both, so the page can tell the visitor that the
+ * cancellation was a best effort and what it means for the call that was in flight (FR-019).
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -34,8 +40,19 @@ import type { DemoCase } from "@/features/live/cases";
  *
  * Why `refused` is a status of its own: a refusal is not a run, and a page that cannot tell the
  * two apart would show a failed run where nothing ever started.
+ *
+ * Why `cancelled` is a status of its own: a run that the visitor stopped is not a run that
+ * finished and not a run that failed, and the page has to be able to tell the visitor that the run
+ * was stopped on purpose (FR-019).
  */
-export type LiveRunStatus = "idle" | "starting" | "running" | "ended" | "failed" | "refused";
+export type LiveRunStatus =
+  | "idle"
+  | "starting"
+  | "running"
+  | "ended"
+  | "failed"
+  | "cancelled"
+  | "refused";
 
 /**
  * What the run consumed, as the server reported it.
@@ -75,6 +92,17 @@ export interface UseLiveRunResult {
   cost: CostReportBody | null;
   /** The refusal of the server, or `null` when nothing was refused. */
   error: ApiErrorBody | null;
+  /**
+   * Whether the cancellation of the run was a best effort.
+   *
+   * Why the flag comes from the server and not from the browser: the server knows whether a call
+   * was already at the provider when the visitor asked for the end of the run, and a call like
+   * that cannot be guaranteed to stop (FR-019). The flag travels with the answer of the
+   * cancellation and with the terminal event of the trace.
+   */
+  bestEffort: boolean;
+  /** What the server said about the cancellation, or `null` when it said nothing. */
+  cancelMessage: string | null;
   /** Starts the run of a case. */
   start(input: {
     profile: ModelProfile;
@@ -137,6 +165,23 @@ function toErrorBody(caught: unknown): ApiErrorBody {
 }
 
 /**
+ * The status of the page for the terminal event of the run.
+ *
+ * Why the three ends are three states: a run that finished, a run that failed and a run that the
+ * visitor stopped are three different things for the visitor, and a page that shows them all as
+ * "ended" cannot tell the visitor that the run was stopped on purpose (FR-019).
+ */
+function statusOfTheTerminalEvent(eventType: TraceEvent["event_type"]): LiveRunStatus {
+  if (eventType === "run.failed") {
+    return "failed";
+  }
+  if (eventType === "run.cancelled") {
+    return "cancelled";
+  }
+  return "ended";
+}
+
+/**
  * The hook of the live run.
  *
  * The client is given by the caller, so the unit test of the hook uses a fake and never opens a
@@ -154,6 +199,11 @@ export function useLiveRun(
   const [counters, setCounters] = useState<RunCounters | null>(null);
   const [cost, setCost] = useState<CostReportBody | null>(null);
   const [error, setError] = useState<ApiErrorBody | null>(null);
+  // The flag of the best effort and the words of the server about the cancellation. The flag is
+  // never taken back: the server sets it when a call was already at the provider, and it never
+  // clears it (FR-019).
+  const [bestEffort, setBestEffort] = useState(false);
+  const [cancelMessage, setCancelMessage] = useState<string | null>(null);
 
   const streamRef = useRef<LiveStreamHandle | null>(null);
   const runIdRef = useRef<string | null>(null);
@@ -203,7 +253,12 @@ export function useLiveRun(
       if (TERMINAL_EVENT_TYPES.includes(event.event_type)) {
         streamRef.current?.close();
         streamRef.current = null;
-        setStatus(event.event_type === "run.failed" ? "failed" : "ended");
+        setStatus(statusOfTheTerminalEvent(event.event_type));
+        // The flag of the best effort travels with the terminal event of the trace, so the page
+        // knows what happened even when the answer of the cancellation was lost (FR-019).
+        if (event.payload["best_effort"] === true) {
+          setBestEffort(true);
+        }
         const id = runIdRef.current;
         if (id) {
           void loadCost(id);
@@ -232,6 +287,8 @@ export function useLiveRun(
       setCounters(null);
       setEvents([]);
       setRunId(null);
+      setBestEffort(false);
+      setCancelMessage(null);
       runIdRef.current = null;
 
       try {
@@ -273,7 +330,14 @@ export function useLiveRun(
       return;
     }
     try {
-      await client.cancelRun(id);
+      const answer = await client.cancelRun(id);
+      // The answer of the cancellation is where the truth of the cancellation lives: the flag says
+      // that a call was already at the provider and could not be guaranteed to stop, and the
+      // message is the sentence of the server about what happened (FR-019).
+      if (answer.best_effort === true) {
+        setBestEffort(true);
+      }
+      setCancelMessage(answer.message === "" ? null : answer.message);
     } catch (caught) {
       setError(toErrorBody(caught));
     }
@@ -290,6 +354,8 @@ export function useLiveRun(
     setCounters(null);
     setCost(null);
     setError(null);
+    setBestEffort(false);
+    setCancelMessage(null);
   }, []);
 
   return {
@@ -299,6 +365,8 @@ export function useLiveRun(
     counters,
     cost,
     error,
+    bestEffort,
+    cancelMessage,
     start,
     cancel,
     reset,
