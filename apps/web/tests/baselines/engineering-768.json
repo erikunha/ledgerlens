@@ -1,0 +1,66 @@
+{
+  "view": "the tour of the architecture",
+  "route": "/engineering",
+  "width": 768,
+  "decidedBy": "ADR-051",
+  "tolerance": 8,
+  "clientWidth": 768,
+  "boxes": [
+    {
+      "id": "banner",
+      "role": "banner",
+      "name": "LedgerLens",
+      "title": "",
+      "left": 0,
+      "width": 768
+    },
+    {
+      "id": "main",
+      "role": "main",
+      "name": "",
+      "title": "The architecture of the recorded demo",
+      "left": 0,
+      "width": 768
+    },
+    {
+      "id": "contentinfo",
+      "role": "contentinfo",
+      "name": "",
+      "title": "",
+      "left": 0,
+      "width": 768
+    },
+    {
+      "id": "container",
+      "role": "generic",
+      "name": "",
+      "title": "The architecture of the recorded demo",
+      "left": 0,
+      "width": 768
+    },
+    {
+      "id": "tour",
+      "role": "region",
+      "name": "The architecture of the recorded demo",
+      "title": "Query guard",
+      "left": 24,
+      "width": 720
+    },
+    {
+      "id": "picture",
+      "role": "group",
+      "name": "The picture of the architecture of the recorded demo",
+      "title": "",
+      "left": 24,
+      "width": 512
+    },
+    {
+      "id": "node-list",
+      "role": "region",
+      "name": "The subsystems of the architecture",
+      "title": "Query guard",
+      "left": 24,
+      "width": 720
+    }
+  ]
+}
