@@ -38,12 +38,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactElement } from "react";
 
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { Table, type TableColumn } from "@/components/ui/Table";
 import { Tabs, type TabItem } from "@/components/ui/Tabs";
 import { TraceTimeline } from "@/features/agent-trace/TraceTimeline";
 import { TraceTree } from "@/features/agent-trace/TraceTree";
 import { AnswerPanel } from "@/features/evidence/AnswerPanel";
 import { ClaimList } from "@/features/evidence/ClaimList";
+import { EngineeringDrawer } from "@/features/architecture/EngineeringDrawer";
 import { LedgerPanel } from "@/features/ledger/LedgerPanel";
 import { useReplay, type ReplayPhase, type ReplayState } from "@/features/replay/ReplayProvider";
 import { ReplayControls } from "@/features/replay/ReplayControls";
@@ -85,11 +87,28 @@ import { loadViewPreferences, saveViewPreferences } from "@/lib/state/viewPrefer
  *
  * Why the reader takes the card of the scenario: the card is what the catalog of the site
  * publishes, and the provider has already read the bundle of the scenario it names.
+ *
+ * Why the reader takes the commit of the checkout: the reader opens the engineering drawer, and
+ * the links of the drawer open the tree of that commit, so the drawer never points at a tree that
+ * the site did not describe. The route reads the commit while the export is built and hands it
+ * over here (ADR-046).
  */
 export interface ReplayViewerProps {
   /** The card of the scenario in the catalog of the site. */
   readonly scenario: ScenarioIndexEntry;
+  /** The commit of the checkout that the links of the engineering drawer open. */
+  readonly commit: string;
 }
+
+/**
+ * The identifier of the sentence that says why the drawer of the engineering tour is not tied to
+ * one call of the recording.
+ *
+ * Why the sentence has an identifier: the control that opens the drawer points at it with
+ * `aria-describedby`, so a reader of a screen reader hears the reason of the control and not only
+ * its name.
+ */
+const ENGINEERING_DRAWER_REASON_ID = "ledgerlens-replay-engineering-drawer-reason";
 
 /**
  * Reads the preferences of the visit out of the query string of the location.
@@ -155,7 +174,7 @@ function readLedgerState(state: ReplayState): {
  * investigation, the timeline, the evidence of the answer, the claims of the answer and the
  * provenance of the recording.
  */
-export function ReplayViewer({ scenario }: ReplayViewerProps): ReactElement {
+export function ReplayViewer({ scenario, commit }: ReplayViewerProps): ReactElement {
   const { state, dispatch } = useReplay();
 
   // The ledger of the recording, and the reason of its absence when the site published no ledger.
@@ -164,6 +183,14 @@ export function ReplayViewer({ scenario }: ReplayViewerProps): ReactElement {
   const [tab, setTab] = useState<ReplayTab>(DEFAULT_VIEW_PREFERENCES.tab);
   const [speed, setSpeed] = useState<PlaybackSpeed>(DEFAULT_VIEW_PREFERENCES.speed);
   const [selectedSpanId, setSelectedSpanId] = useState<string | null>(null);
+  // The drawer of the engineering tour, and the state of the visit that opens it. The drawer is
+  // the same drawer that the page of the tour opens, and it is opened from here without the
+  // context of a call, because the drawer of a call of the recording waits for T048.
+  const [engineeringDrawerOpen, setEngineeringDrawerOpen] = useState(false);
+  // The control that opened the engineering drawer, so that the focus goes back to it when the
+  // drawer closes. The drawer is controlled and it is opened by a control that lives outside of
+  // it, so the primitive of the dialog does not know which control opened it (ADR-046).
+  const engineeringDrawerTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   // The region that announces the step, and the phase the reader saw the last time it looked.
   const statusRegionRef = useRef<HTMLParagraphElement | null>(null);
@@ -374,6 +401,42 @@ export function ReplayViewer({ scenario }: ReplayViewerProps): ReactElement {
                 wrote.
               </p>
             </div>
+
+            {/*
+              The control that opens the engineering drawer. It sits in the section of the calls of
+              the tools, in the tab of the execution, because that is where the visitor reads what
+              the run did.
+
+              Why the control is never disabled: the rule of the repository is that a control never
+              leaves the keyboard and never carries the attribute `disabled`. The drawer of the
+              engineering tour opens with no context, because it is not tied to one call of the
+              recording, and the control says so with the sentence that `aria-describedby` points
+              at, so a visitor that presses it and finds a drawer that is not about a call reads why
+              (ADR-046).
+
+              Why the control announces the drawer: `aria-haspopup="dialog"` tells a reader of a
+              screen reader that the control opens a window, and a control that opens a window
+              without saying so is a control that lies about what it does.
+            */}
+            <div className="flex flex-col gap-2 border-b border-line px-4 py-3">
+              <div>
+                <Button
+                  ref={engineeringDrawerTriggerRef}
+                  variant="secondary"
+                  size="sm"
+                  aria-haspopup="dialog"
+                  aria-describedby={ENGINEERING_DRAWER_REASON_ID}
+                  onClick={() => setEngineeringDrawerOpen(true)}
+                >
+                  Open the engineering drawer
+                </Button>
+              </div>
+              <p id={ENGINEERING_DRAWER_REASON_ID} className="text-sm text-text-muted">
+                The drawer explains the guard, the arithmetic and the verification, and it is not
+                tied to one call of the recording.
+              </p>
+            </div>
+
             <Table
               caption="The calls of the tools of the recorded run"
               columns={columns}
@@ -511,6 +574,19 @@ export function ReplayViewer({ scenario }: ReplayViewerProps): ReactElement {
       </div>
 
       <Tabs label="The sections of the replay" items={items} value={tab} onValueChange={onTabChange} />
+
+      {/*
+        The drawer of the engineering tour. It is the same drawer that the page of the tour opens,
+        and it is opened from here without the context of a call, so it says in words that it is
+        not tied to one call (ADR-046).
+      */}
+      <EngineeringDrawer
+        open={engineeringDrawerOpen}
+        onOpenChange={setEngineeringDrawerOpen}
+        commit={commit}
+        context={null}
+        returnFocusTo={engineeringDrawerTriggerRef}
+      />
     </section>
   );
 }

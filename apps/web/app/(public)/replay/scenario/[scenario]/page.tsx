@@ -20,6 +20,7 @@ import { notFound } from "next/navigation";
 import { buttonClasses } from "@/components/ui/Button";
 import { ReplayProvider } from "@/features/replay/ReplayProvider";
 import { ReplayViewer } from "@/features/replay/ReplayViewer";
+import { readRepositoryMeta } from "@/lib/repository";
 import { readPublishedCatalog } from "@/lib/replay/catalog";
 
 /**
@@ -87,6 +88,11 @@ export async function generateMetadata({ params }: ReplayScenarioPageProps): Pro
  * The page reads the card of the scenario from the same file the export serves, and it hands it
  * to the provider of the replay, which reads the bundle of the scenario and hands the recording
  * to the reader.
+ *
+ * Why the route reads the commit of the checkout: the reader opens the engineering drawer, and
+ * the links of the drawer open the tree of that commit, so the drawer never points at a tree that
+ * the site did not describe. The commit is read while the export is built, and the route asks for
+ * nothing at run time (ADR-046).
  */
 export default async function ReplayScenarioPage({ params }: ReplayScenarioPageProps) {
   const { scenario } = await params;
@@ -95,6 +101,8 @@ export default async function ReplayScenarioPage({ params }: ReplayScenarioPageP
   if (!card) {
     notFound();
   }
+
+  const meta = readRepositoryMeta();
 
   return (
     <div className="mx-auto flex w-full max-w-content flex-col gap-8 px-6 py-12">
@@ -116,7 +124,7 @@ export default async function ReplayScenarioPage({ params }: ReplayScenarioPageP
           {card.id} - {card.question}
         </h2>
         <ReplayProvider scenario={card}>
-          <ReplayViewer scenario={card} />
+          <ReplayViewer scenario={card} commit={meta.commit} />
         </ReplayProvider>
       </section>
     </div>
