@@ -18,4 +18,16 @@ uv run pytest -q
 echo "== export check (offline)"
 uv run python scripts/export_replay_site.py --check
 
+# The published artifacts must carry the digests of the canonical bundle, because the browser checks the digests of
+# what it downloads and nobody compares the two copies. The check reads the disk, writes nothing, and refuses with
+# a readable reason and a non zero exit code, so the gate stops on the reason and not on a traceback.
+echo "== replay digests (offline)"
+uv run python scripts/verify_replay_digests.py
+
+# The published payload must stay inside the budget the specification declares (SC-004), and the number of events
+# must agree with the manifest. The check reads the disk, writes nothing, and refuses with a readable reason and a
+# non zero exit code, so the gate stops on the reason and not on a traceback.
+echo "== replay budget (offline)"
+uv run python scripts/measure_replay_budget.py
+
 echo "gate: ok"

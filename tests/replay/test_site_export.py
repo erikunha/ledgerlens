@@ -9,12 +9,20 @@ this file, so a change of the export cannot land without the artifacts being reg
 the worst failure this repository can have; (e) a bundle whose manifest was tampered with is refused, so a broken
 recording never reaches the site; (f) the provenance carries the digest of each artifact, the commit the capture
 wrote and the digest of the dataset, so the interface can prove what it is showing; (g) the check reports a
-difference when a file on the disk is not what the bundle says it is.
+difference when a file on the disk is not what the bundle says it is; (h) the cross check that compares the
+published artifacts with the canonical bundle accepts what the export publishes and refuses a file that is missing,
+a digest that does not match and a file that nobody accounts for, which is what the gate of the repository relies
+on; (i) the cross check refuses a published file of the ledger that is not the frozen artifact, byte for byte, and
+the reason names the difference between the two files; (j) the cross check refuses a provenance that publishes
+another digest of the file of the ledger, and the reason names the digest that was expected and the one that was
+observed.
 
 Everything here runs offline, with no key and no network. The bundle used is the canonical one of the S01 scenario,
 recorded by the offline path of the product, with the scripted model and the recorded exchange rate. The bundles a
 test needs a different one of are built under `tmp_path`, by copying the canonical one and changing it there: the
-canonical bundle is an input of the export and is never written to.
+canonical bundle is an input of the export and is never written to. The published set a test needs is built under
+`tmp_path` too, and the artifacts of `site/replay/` are only read, so no test writes into the folder the
+repository publishes.
 """
 
 from __future__ import annotations
@@ -41,21 +49,28 @@ CANONICAL = ROOT / "data" / "eval" / "replay" / "s01"
 DATASET = ROOT / "data" / "scenarios.json"
 SCHEMA = ROOT / "docs" / "v3" / "contracts" / "schemas" / "trace-event.schema.json"
 SCRIPT = ROOT / "scripts" / "export_replay_site.py"
+VERIFY_SCRIPT = ROOT / "scripts" / "verify_replay_digests.py"
 PUBLISHED = ROOT / "site" / "replay"
 
+# The frozen artifact of the ledger, beside the folder of the bundle. It is the source of the published file of the
+# ledger, and the export copies it byte for byte.
+FROZEN_LEDGER = ROOT / "data" / "eval" / "replay" / "ledger" / "s01.json"
+
 # The digest of every file the export publishes, pinned here so that a change of the export cannot land without the
-# artifacts of `site/replay` being regenerated. The bundle and the dataset are the only inputs of these digests.
+# artifacts of `site/replay` being regenerated. The bundle, the dataset and the frozen artifact of the ledger are the
+# only inputs of these digests.
 EXPECTED_DIGESTS = {
-    "index.json": "9117f8bbb3df7f12d2c95c7de7cb9f967cc4596ba6f7652e5de743e435a3c868",
+    "index.json": "ed9c92a6c7591b791473ad7abed9b1a71df9653d9fd208b44704e1b2f211a0bc",
     "s01/events.jsonl": "577939e532327f3af1a3897612f622d96edc27a620646437fb02c5fa5318de13",
+    "s01/ledger.json": "049e84ca6753121918beb7daa3401b7e26d814940f103111dba834ec787e5ebf",
     "s01/manifest.json": "bbbe1e54fcae712df66a3a6096838ab5b7f8c938e2e47b7ef6681e43cafa84ac",
-    "s01/provenance.json": "c879b10e32cc1f889cac717141da83da78bd3ac2497ebaf774a05090a73d06e5",
+    "s01/provenance.json": "3f01acae2460d7dc93c46aa06dd9c2afc477124ec7045ec8a1bc420254738166",
 }
 
 
-def _load_script():
-    """The export script, loaded as a module so the test can drive its command line."""
-    spec = importlib.util.spec_from_file_location("export_replay_site", SCRIPT)
+def _load_script(name: str, path: Path):
+    """A script of the repository, loaded as a module so the test can drive its command line."""
+    spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
     sys.modules[spec.name] = module
@@ -63,7 +78,11 @@ def _load_script():
     return module
 
 
-export_replay_site = _load_script()
+export_replay_site = _load_script("export_replay_site", SCRIPT)
+
+# The cross check compares the artifacts the site publishes with the canonical bundle of the repository. The gate
+# of the repository runs it, so the test drives its command line the same way the gate does.
+verify_replay_digests = _load_script("verify_replay_digests", VERIFY_SCRIPT)
 
 
 def _sha256(path: Path) -> str:
@@ -89,6 +108,26 @@ def _copy_bundle(tmp_path: Path, name: str = "bundle") -> Path:
     return bundle
 
 
+def _copy_scenario(tmp_path: Path) -> Path:
+    """A copy of the canonical bundle under the name of a scenario, with its frozen artifact beside it.
+
+    The export looks for the frozen artifact beside the folder of the bundle, so a test that wants another one has to
+    put the bundle where the export expects it.
+    """
+    bundle = tmp_path / "s01"
+    shutil.copytree(CANONICAL, bundle)
+    return bundle
+
+
+def _frozen_ledger(tmp_path: Path, payload: dict) -> Path:
+    """The frozen artifact of the ledger, written beside the folder of the bundle."""
+    folder = tmp_path / "ledger"
+    folder.mkdir(exist_ok=True)
+    path = folder / "s01.json"
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return path
+
+
 def _rewrite_events(bundle: Path, events: list[dict]) -> None:
     """Writes the events back and re-seals the manifest.
 
@@ -104,8 +143,8 @@ def _rewrite_events(bundle: Path, events: list[dict]) -> None:
     )
 
 
-def test_the_export_writes_the_events_the_manifest_the_provenance_and_the_index(tmp_path: Path):
-    """The export leaves on the disk everything the site needs to open a recorded case."""
+def test_the_export_writes_the_events_the_manifest_the_provenance_the_ledger_and_the_index(tmp_path: Path):
+    """The export leaves on the disk everything the site needs to open a recorded case and to read its ledger."""
     out = tmp_path / "replay"
     artifacts = build_export([CANONICAL])
     written = write_export(artifacts, out).written
@@ -114,13 +153,53 @@ def test_the_export_writes_the_events_the_manifest_the_provenance_and_the_index(
     assert (out / "s01" / "events.jsonl").is_file()
     assert (out / "s01" / "manifest.json").is_file()
     assert (out / "s01" / "provenance.json").is_file()
+    assert (out / "s01" / "ledger.json").is_file()
     assert {artifact.path.relative_to(out).as_posix() for artifact in written} == {
         "index.json",
         "s01/events.jsonl",
+        "s01/ledger.json",
         "s01/manifest.json",
         "s01/provenance.json",
     }
     assert all(len(artifact.sha256) == 64 for artifact in written)
+
+
+def test_the_export_publishes_the_file_of_the_ledger_and_declares_its_digest(tmp_path: Path):
+    """The ledger of the account of the recording is published, and its digest is declared in two places."""
+    out = tmp_path / "replay"
+    write_export(build_export([CANONICAL]), out)
+
+    published = out / "s01" / "ledger.json"
+    assert published.is_file()
+    # The published file is the frozen artifact, byte for byte: the export copies it and never rebuilds it.
+    assert published.read_bytes() == FROZEN_LEDGER.read_bytes()
+
+    provenance = json.loads((out / "s01" / "provenance.json").read_text(encoding="utf-8"))
+    assert provenance["artifacts"]["ledger.json"] == _sha256(published)
+
+    card = json.loads((out / "index.json").read_text(encoding="utf-8"))[0]
+    assert card["ledger_sha256"] == _sha256(published)
+
+
+def test_the_export_refuses_an_artifact_that_belongs_to_another_recording(tmp_path: Path):
+    """An artifact whose digest of the snapshot is not the digest of the bundle is refused, with the reason."""
+    bundle = _copy_scenario(tmp_path)
+    payload = json.loads(FROZEN_LEDGER.read_text(encoding="utf-8"))
+    payload["snapshot_sha256"] = "3" * 64
+    _frozen_ledger(tmp_path, payload)
+
+    with pytest.raises(ExportError) as refusal:
+        build_export([bundle])
+    assert "another recording" in str(refusal.value)
+
+
+def test_the_export_refuses_a_bundle_that_names_an_account_and_has_no_artifact(tmp_path: Path):
+    """A recording that owes the site the ledger of its account cannot be published without it."""
+    bundle = _copy_scenario(tmp_path)
+
+    with pytest.raises(ExportError) as refusal:
+        build_export([bundle])
+    assert "ledger" in str(refusal.value)
 
 
 def test_the_exported_manifest_carries_exactly_the_keys_of_the_manifest_of_the_core(tmp_path: Path):
@@ -511,3 +590,169 @@ def test_a_folder_of_bundles_gives_one_scenario_per_bundle():
     assert [path.name for path in found] == ["s01"]
 
     assert discover_bundles(CANONICAL) == [CANONICAL]
+
+
+def _published_set(tmp_path: Path) -> tuple[Path, Path]:
+    """The published set of an export, built under `tmp_path`: the folder of the scenario and the catalog.
+
+    The set is built outside `site/replay/`, because the artifacts the repository publishes are only read by the
+    tests, and a test that changed them would make the gate of the repository prove something else.
+    """
+    out = tmp_path / "replay"
+    write_export(build_export([CANONICAL]), out)
+    return out / "s01", out / "index.json"
+
+
+def _cross_check(published: Path, index: Path) -> int:
+    """The cross check, driven the way the gate of the repository drives it, and its exit code."""
+    return verify_replay_digests.main(
+        ["--bundle", str(CANONICAL), "--published", str(published), "--index", str(index)]
+    )
+
+
+def test_the_cross_check_finds_no_difference_in_the_set_the_export_publishes(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+):
+    """What the export publishes is what the cross check expects, so the gate finds nothing to refuse."""
+    published, index = _published_set(tmp_path)
+
+    assert _cross_check(published, index) == 0
+    assert capsys.readouterr().err == ""
+
+    # The artifacts of the repository were only read, so they still match the bundle they claim to show.
+    assert check_export(build_export([CANONICAL]), PUBLISHED) == []
+
+
+def test_the_cross_check_refuses_a_file_that_is_missing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+):
+    """A file the manifest declares and the site does not publish is refused, and the reason names the file."""
+    published, index = _published_set(tmp_path)
+    (published / "events.jsonl").unlink()
+
+    assert _cross_check(published, index) == 1
+    refusal = capsys.readouterr().err
+    assert "missing" in refusal
+    assert "events.jsonl" in refusal
+
+
+def test_the_cross_check_refuses_a_digest_that_does_not_match(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+):
+    """A published file that is not the file of the recording is refused, and the reason names the digest."""
+    published, index = _published_set(tmp_path)
+    (published / "events.jsonl").write_text("tampered\n", encoding="utf-8")
+
+    assert _cross_check(published, index) == 1
+    refusal = capsys.readouterr().err
+    assert "does not match the manifest" in refusal
+    assert "events.jsonl" in refusal
+
+
+def test_the_cross_check_refuses_a_file_that_nobody_accounts_for(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+):
+    """A file that neither the manifest nor the export accounts for is refused, and the reason names the file."""
+    published, index = _published_set(tmp_path)
+    (published / "stray.json").write_text("{}", encoding="utf-8")
+
+    assert _cross_check(published, index) == 1
+    refusal = capsys.readouterr().err
+    assert "unexpected" in refusal
+    assert "stray.json" in refusal
+
+
+def test_the_cross_check_refuses_a_published_ledger_that_is_not_the_frozen_one(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+):
+    """A file of the ledger that is not the frozen artifact is refused, and the reason names the file."""
+    published, index = _published_set(tmp_path)
+    (published / "ledger.json").write_text("{}\n", encoding="utf-8")
+
+    assert _cross_check(published, index) == 1
+    refusal = capsys.readouterr().err
+    assert "ledger.json" in refusal
+
+
+def test_the_cross_check_refuses_a_catalog_that_does_not_declare_the_digest_of_the_ledger(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+):
+    """A card that publishes another digest of the file of the ledger is refused, and the reason names the field."""
+    published, index = _published_set(tmp_path)
+    cards = json.loads(index.read_text(encoding="utf-8"))
+    cards[0]["ledger_sha256"] = "4" * 64
+    index.write_text(json.dumps(cards, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+    assert _cross_check(published, index) == 1
+    refusal = capsys.readouterr().err
+    assert "ledger_sha256" in refusal
+
+
+def _cross_check_copy(tmp_path: Path) -> tuple[Path, Path, Path, Path]:
+    """A copy of the published set, of the canonical bundle and of the frozen artifact of the ledger.
+
+    Why the copies are laid out the way the cross check expects: it reads the folder of the canonical bundle, the
+    folder of the published artifacts, the catalog and the frozen artifact, which is the file beside the folder of
+    the bundle under the name of the folder of the scenario. The artifacts of the repository are only read, so a test
+    that changes one of them works on a copy and the gate of the repository keeps proving what it proves.
+    """
+    root = tmp_path / "replay"
+    bundle = root / "s01"
+    shutil.copytree(CANONICAL, bundle)
+    frozen = root / "ledger" / "s01.json"
+    frozen.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(FROZEN_LEDGER, frozen)
+    published = tmp_path / "published" / "s01"
+    shutil.copytree(PUBLISHED / "s01", published)
+    index = tmp_path / "published" / "index.json"
+    shutil.copy2(PUBLISHED / "index.json", index)
+    return bundle, published, index, frozen
+
+
+def _cross_check_of_copy(bundle: Path, published: Path, index: Path) -> int:
+    """The cross check over a copy of the published set, driven the way the gate of the repository drives it."""
+    return verify_replay_digests.main(
+        ["--bundle", str(bundle), "--published", str(published), "--index", str(index)]
+    )
+
+
+def test_the_cross_check_refuses_a_frozen_ledger_that_is_not_the_published_one(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+):
+    """The published file has to be the frozen file, byte for byte, and the reason names the difference.
+
+    Why the frozen file is the one that changed: the digest the provenance publishes and the digest the card
+    publishes still describe the published file, so only the byte for byte comparison can catch this.
+    """
+    bundle, published, index, frozen = _cross_check_copy(tmp_path)
+    frozen.write_bytes(frozen.read_bytes() + b" ")
+
+    assert _cross_check_of_copy(bundle, published, index) == 1
+    refusal = capsys.readouterr().err
+    assert "ledger.json" in refusal
+    assert "byte for byte" in refusal
+    assert _sha256(frozen) in refusal
+    assert _sha256(published / "ledger.json") in refusal
+
+
+def test_the_cross_check_refuses_a_provenance_that_publishes_another_digest_of_the_ledger(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+):
+    """The provenance has to publish the digest of the file the site really serves.
+
+    Why only that field changed: the published file is still the frozen file byte for byte and the card still
+    publishes the right digest, so only the check of the provenance can catch this.
+    """
+    bundle, published, index, _frozen = _cross_check_copy(tmp_path)
+    provenance_path = published / "provenance.json"
+    provenance = json.loads(provenance_path.read_text(encoding="utf-8"))
+    provenance["artifacts"]["ledger.json"] = "5" * 64
+    provenance_path.write_text(
+        json.dumps(provenance, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+
+    assert _cross_check_of_copy(bundle, published, index) == 1
+    refusal = capsys.readouterr().err
+    assert "ledger.json" in refusal
+    assert "5" * 64 in refusal
+    assert _sha256(published / "ledger.json") in refusal

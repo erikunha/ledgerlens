@@ -2,9 +2,9 @@
 
 Why it exists: the site is a static export, so the browser cannot ask a backend for a trace. It needs the recorded
 events, a manifest that says what they are, and a provenance file that proves what is being shown. This module
-produces those three things per scenario, plus one index that tells the catalog which scenarios exist. It runs
-offline, with no key and with no network, and it never changes the recorded content: it copies, it hashes and it
-labels.
+produces those three things per scenario, plus the ledger of the account of the recording and one index that tells the
+catalog which scenarios exist. It runs offline, with no key and with no network, and it never changes the recorded
+content: it copies, it hashes and it labels.
 
 The shapes are the ones the interface already reads, transcribed field by field from `apps/web/lib/api/schemas.ts` and
 `apps/web/lib/replay/validate.ts`: the exported manifest is the manifest of the core, the provenance carries the
@@ -13,11 +13,20 @@ question, the concepts, the origin of the data as a string, the status, the kind
 bundle. The export adds its own names under names of their own (`bundle_digest`, `artifacts`, `dataset_sha256`), so
 that nothing the interface reads is renamed and nothing of the export invents a field of the contract.
 
-The export is a pure function of two inputs: the bundle and the public dataset. Every timestamp comes from the
-manifest of the bundle, never from the clock, and the state of the repository is never read, so running the export
-twice leaves the same bytes on the disk and a third party can confirm the result with a hash. The commit that
-appears in the provenance is the one the capture wrote in the bundle: the export never looks at the repository, so
-the published artifacts stay valid across commits.
+The export is a pure function of three inputs: the bundle, the public dataset and the frozen artifact of the ledger
+of the scenario. Every timestamp comes from the manifest of the bundle, never from the clock, and the state of the
+repository is never read, so running the export twice leaves the same bytes on the disk and a third party can confirm
+the result with a hash. The commit that appears in the provenance is the one the capture wrote in the bundle: the
+export never looks at the repository, so the published artifacts stay valid across commits.
+
+The file of the ledger is published beside the events, the manifest and the provenance, and it is copied byte for byte
+from the frozen artifact that the producer wrote beside the bundle. It cannot live inside the bundle, because
+`load_bundle` refuses a folder that holds a file the manifest does not declare, and adding it would move the digest of
+the bundle. The export copies the file and never rebuilds it: the bytes of a file of SQLite carry the version of the
+library that wrote it, so the proof of the identity of the ledger belongs to the producer, once, and not to the export,
+which runs on every machine. The export refuses an artifact whose digest of the snapshot is not the digest the bundle
+declares, because that artifact belongs to another recording, and it refuses a bundle that names an account and has no
+artifact, because the recording owes the site the ledger of that account.
 
 The labels are the point of the module. The mode it writes is always `deterministic_sandbox`, because the published
 bundles are deterministic recordings made with the scripted model and the recorded exchange rate. A bundle that
@@ -55,6 +64,11 @@ from ledgerlens.replay.bundle import (
     bundle_digest,
     load_bundle,
 )
+from ledgerlens.replay.ledger_artifact import (
+    LEDGER_FILE,
+    LedgerArtifactError,
+    account_of_manifest,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 TRACE_EVENT_SCHEMA = ROOT / "docs" / "v3" / "contracts" / "schemas" / "trace-event.schema.json"
@@ -68,6 +82,11 @@ PROVENANCE_FILE = "provenance.json"
 
 # The name of the file that lists every exported scenario, at the root of the export.
 INDEX_FILE = "index.json"
+
+# The folder of the frozen artifacts of the ledger, beside the folder of the bundle. The artifact cannot live inside
+# the bundle, because `load_bundle` refuses a folder that holds a file the manifest does not declare, so the producer
+# writes it here and the export copies it into the folder of the scenario.
+LEDGER_DIR_NAME = "ledger"
 
 # The status a published scenario card carries: the recording exists and it is a recording.
 SCENARIO_STATUS = "Recorded"
@@ -86,9 +105,9 @@ SCENARIO_ID_PATTERN = re.compile(r"^[S][0-9]{2}$")
 # with this name is a scenario folder, so the write never removes a folder of somebody else.
 SCENARIO_SLUG_PATTERN = re.compile(r"^[sS][0-9]{2}$")
 
-# The three files of a scenario. They are the only files the export writes inside a scenario folder, and therefore
+# The four files of a scenario. They are the only files the export writes inside a scenario folder, and therefore
 # the only files the write may delete: a file outside this list is not an artifact of the export.
-SCENARIO_ARTIFACT_NAMES = (EVENTS_FILE, MANIFEST_FILE, PROVENANCE_FILE)
+SCENARIO_ARTIFACT_NAMES = (EVENTS_FILE, MANIFEST_FILE, PROVENANCE_FILE, LEDGER_FILE)
 
 # The concept each tool of the agent demonstrates, in the words a visitor of the site understands.
 TOOL_CONCEPTS = {
@@ -323,16 +342,59 @@ def _load_manifest(bundle_dir: Path) -> BundleManifest:
     return manifest
 
 
+def _frozen_ledger(bundle_dir: Path, slug: str, manifest: BundleManifest) -> bytes | None:
+    """The bytes of the frozen artifact of the ledger of the scenario, or None when the scenario published none.
+
+    The artifact lives beside the folder of the bundle, in the folder of the frozen artifacts, because the bundle is
+    sealed and a file it does not declare would make it unreadable. The export copies the bytes and never rebuilds
+    the artifact: the proof of the identity of the ledger belongs to the producer, once, and not to the export.
+
+    Two refusals, and both of them are about the truth of the claim: an artifact whose digest of the snapshot is not
+    the digest the bundle declares belongs to another recording, and a bundle that names an account and has no
+    artifact owes the site the ledger of that account.
+    """
+    scenario = str(manifest.scenario)
+    path = bundle_dir.parent / LEDGER_DIR_NAME / f"{slug}.json"
+    if not path.is_file():
+        try:
+            named = account_of_manifest(manifest)
+        except LedgerArtifactError as exc:
+            # The refusal of the artifact is a refusal of the export, and never a traceback: the export names the
+            # scenario and the reason, and the caller of the export prints that and stops.
+            raise ExportError(f"the bundle of the scenario {scenario} is not usable: {exc}") from exc
+        if named is not None:
+            raise ExportError(
+                f"the bundle of the scenario {scenario} names the account of the recording and the artifact of the "
+                f"ledger is missing: {path}"
+            )
+        return None
+    try:
+        raw = path.read_bytes()
+        payload = json.loads(raw.decode("utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ExportError(f"the artifact of the ledger of the scenario {scenario} cannot be read: {path}") from exc
+    if not isinstance(payload, dict):
+        raise ExportError(f"the artifact of the ledger of the scenario {scenario} is not a JSON object: {path}")
+    declared = payload.get("snapshot_sha256")
+    if declared != manifest.snapshot_sha256:
+        raise ExportError(
+            f"the artifact of the ledger of the scenario {scenario} declares the digest of the snapshot {declared} "
+            f"and the bundle declares {manifest.snapshot_sha256}, so it belongs to another recording"
+        )
+    return raw
+
+
 def _scenario_artifacts(
     bundle_dir: Path,
     dataset: dict[str, Any],
     dataset_sha256: str,
     schema_path: Path,
 ) -> tuple[str, dict[str, bytes], dict[str, Any]]:
-    """The three files of one scenario, and the card the index holds for it.
+    """The four files of one scenario, and the card the index holds for it.
 
     The bundle is read with the loader of the core, which checks the hashes, the secret and the order of the
-    events, and its recorded lines are checked against the versioned public schema.
+    events, and its recorded lines are checked against the versioned public schema. The file of the ledger is copied
+    from the frozen artifact beside the bundle, and the export refuses it when it belongs to another recording.
     """
     events_bytes, lines = _recorded_lines(bundle_dir)
     _validate_recorded_events(lines, schema_path)
@@ -358,6 +420,10 @@ def _scenario_artifacts(
     # the bundle declares. Nothing is added and nothing is renamed.
     manifest_bytes = _json_bytes(manifest.to_dict())
 
+    # The file of the ledger is copied byte for byte from the frozen artifact, so that the published file and the
+    # frozen one are the same file and the digest of the chain of the scenario describes both.
+    ledger_bytes = _frozen_ledger(bundle_dir, slug, manifest)
+
     provenance_payload: dict[str, Any] = {
         "mode": manifest.mode,
         "files": dict(manifest.files),
@@ -370,6 +436,8 @@ def _scenario_artifacts(
         },
         "dataset_sha256": dataset_sha256,
     }
+    if ledger_bytes is not None:
+        provenance_payload["artifacts"][LEDGER_FILE] = _sha256_bytes(ledger_bytes)
     if manifest.snapshot_sha256:
         provenance_payload["snapshot_sha256"] = manifest.snapshot_sha256
     # The provenance is declared field by field: a field the bundle does not declare never reaches the artifact,
@@ -385,6 +453,8 @@ def _scenario_artifacts(
         f"{slug}/{MANIFEST_FILE}": manifest_bytes,
         f"{slug}/{PROVENANCE_FILE}": provenance_bytes,
     }
+    if ledger_bytes is not None:
+        files[f"{slug}/{LEDGER_FILE}"] = ledger_bytes
     card: dict[str, Any] = {
         "id": scenario,
         "name": metadata["name"],
@@ -397,6 +467,10 @@ def _scenario_artifacts(
         "bundle_digest": provenance_payload["bundle_digest"],
         "provenance_sha256": _sha256_bytes(provenance_bytes),
     }
+    if ledger_bytes is not None:
+        # The card declares the digest of the file of the ledger under a name of its own, and only when the scenario
+        # published that file.
+        card["ledger_sha256"] = _sha256_bytes(ledger_bytes)
     if manifest.capture_kind:
         card["capture_kind"] = manifest.capture_kind
     if manifest.code_sha:

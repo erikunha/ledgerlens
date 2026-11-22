@@ -19,8 +19,9 @@
       "seed": 42
     },
     "id": "S01",
+    "ledger_sha256": "049e84ca6753121918beb7daa3401b7e26d814940f103111dba834ec787e5ebf",
     "name": "fx_markup_refund",
-    "provenance_sha256": "c879b10e32cc1f889cac717141da83da78bd3ac2497ebaf774a05090a73d06e5",
+    "provenance_sha256": "3f01acae2460d7dc93c46aa06dd9c2afc477124ec7045ec8a1bc420254738166",
     "question": "Why was the BRL refund for TX-2048 lower than the EUR payment?",
     "status": "Recorded"
   }

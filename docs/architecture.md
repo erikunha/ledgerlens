@@ -1,6 +1,6 @@
 # LedgerLens cognitive architecture
 
-This document covers the anatomy of the agent, its type and maturity level, the planning design, the choice between imperative and declarative composition, and the live mode in which the visitor brings a key of their own. The tools are in `docs/tools.md`.
+This document covers the anatomy of the agent, its type and maturity level, the planning design, the choice between imperative and declarative composition, and the live mode in which the visitor brings a key of their own. The tools are in `docs/tools.md`. The recorded demo of the first public release is in [the quickstart of the release](../specs/001-r1-public-replay/quickstart.md), where a reader finds how to install the repository, how to capture the recording, how to publish the artifacts the site reads and how to run the two gates of the repository.
 
 ## 1. Anatomy of the agent
 
