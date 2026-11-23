@@ -220,8 +220,11 @@ def _s03(truth: dict[str, Any]) -> tuple[list[AIMessage], list[str]]:
 def _s04(truth: dict[str, Any]) -> tuple[list[AIMessage], list[str]]:
     sql = "SELECT id, status FROM transactions WHERE id = 'TX-9999'"
     calls = [tool_call_message("query_ledger", {"question": "the status of TX-9999"})]
+    # The wording is the one the product uses for a record that is not in the ledger, and it repeats what the
+    # query found. A sentence that names the record without saying that the query found nothing is a sentence the
+    # verifier has no evidence for, and the case the dataset says needs no person becomes an escalation.
     answer = (
-        "There is no transaction TX-9999 in the ledger. [sql:1] "
+        "The record TX-9999 was not found and does not exist in the ledger. [sql:1] "
         "Could you check the id on the receipt, or tell me the date and amount of the payment?"
     )
     return [*calls, text_message(answer)], [sql]

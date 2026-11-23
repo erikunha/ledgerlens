@@ -495,7 +495,8 @@ def test_offline_an_id_on_no_statement_is_answered_as_absent_with_a_scripted_tri
     suggestion(app, "What is the status of TX-9999?").click().run()
     send(app, draft(app))
     assert not app.exception
-    assert "There is no transaction TX-9999" in answer_of(app)
+    assert "TX-9999" in answer_of(app)
+    assert "was not found and does not exist in the ledger" in answer_of(app)
     assert '"intent": "status_lookup"' in trace_json(app)  # offline, triage is scripted too
 
 

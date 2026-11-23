@@ -9,6 +9,7 @@ way a portal does.
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 
 from ledgerlens import demo
@@ -21,6 +22,7 @@ from ledgerlens.schemas import (
     Triage,
     Verdict,
 )
+from ledgerlens.verify.checks import verify_result
 
 MANIFEST = demo.load_manifest()
 
@@ -344,3 +346,41 @@ def test_the_account_card_figures() -> None:
         ("Last payout", "BRL 29,992.87"),
         ("Open disputes", "0"),
     ]
+
+
+def test_the_answer_of_the_unknown_id_is_supported_by_the_query_that_found_nothing() -> None:
+    """The answer of the scenario S04 is supported by the ledger that found nothing, so the case needs no person.
+
+    Why it matters: the bundle of the scenario S04 is published with the verdict of the verifier, and the dataset
+    says the case needs no human. A sentence that the verifier cannot support turns the case into an escalation,
+    and the published catalogue would show a case the product hands to a person and that the dataset says it does
+    not.
+    """
+    manifest = demo.load_manifest()
+    scenario = next(item for item in manifest["scenarios"] if item["id"] == "S04")
+    script = demo.offline_script(scenario["questions"][0], manifest, "S04")
+
+    assert script is not None
+    messages, _ = script
+    answer = str(messages[-1].content)
+    evidence = _evidence(
+        "sql:1",
+        "sql",
+        json.dumps(
+            {
+                "sql": "SELECT id, status FROM transactions WHERE id = 'TX-9999'",
+                "columns": ["id", "status"],
+                "row_count": 0,
+                "rows": [],
+            }
+        ),
+        "transactions",
+    )
+    result = _result(question=scenario["questions"][0], answer=answer, evidence=[evidence])
+
+    verified = verify_result(result)
+
+    assert [verdict.label for verdict in verified.verdicts] == ["supported"]
+    assert verified.missing_information == []
+    assert not verified.requires_human_review, "the dataset says the case needs no human."
+    assert scenario["requires_human_review"] is False
