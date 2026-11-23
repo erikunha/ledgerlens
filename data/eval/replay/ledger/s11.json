@@ -15,7 +15,8 @@
             "payout_amount_minor",
             "payout_amount_major",
             "payout_currency",
-            "…+2 items"
+            "applied_rate",
+            "applied_at"
           ],
           "evidence_id": "sql:1",
           "records": [
@@ -26,13 +27,14 @@
             {
               "amount_major": "100.00",
               "amount_minor": "10000",
+              "applied_at": "2026-10-20T14:30:00Z",
+              "applied_rate": "5.4931",
               "currency": "EUR",
               "payout_amount_major": "549.31",
               "payout_amount_minor": "54931",
               "payout_currency": "BRL",
               "refund_id": "R-0731",
-              "transaction_id": "TX-2048",
-              "…+2 items": "…+2 rows"
+              "transaction_id": "TX-2048"
             }
           ],
           "seq": 19,

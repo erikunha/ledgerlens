@@ -15,7 +15,14 @@
             "gross_minor",
             "gross_major",
             "refunds_minor",
-            "…+8 items"
+            "refunds_major",
+            "fees_minor",
+            "fees_major",
+            "net_minor",
+            "net_major",
+            "status",
+            "expected_payout_date",
+            "paid_at"
           ],
           "evidence_id": "sql:1",
           "records": [
@@ -25,14 +32,21 @@
           "rows": [
             {
               "currency": "BRL",
+              "expected_payout_date": "2026-10-14",
+              "fees_major": "926.67",
+              "fees_minor": "92667",
               "gross_major": "30919.54",
               "gross_minor": "3091954",
               "id": "ST-0044",
               "merchant_id": "M-03",
+              "net_major": "29992.87",
+              "net_minor": "2999287",
+              "paid_at": "2026-10-14T06:00:00Z",
               "period_end": "2026-10-11",
               "period_start": "2026-10-05",
+              "refunds_major": "0.00",
               "refunds_minor": "0",
-              "…+8 items": "…+8 rows"
+              "status": "paid"
             }
           ],
           "seq": 19,
