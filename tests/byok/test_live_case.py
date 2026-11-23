@@ -16,7 +16,11 @@ byte, and a text that is not a JSON text travels as it is (FR-012); (i) a provid
 not have ends the run with a refusal of the family of the product, and never with the error of a library (FR-018);
 (j) the history of the session is the one the plan of the run carries, and the bridges belong to the run, so two runs
 of the same case never see each other (FR-012); (k) the case reads the ledger of the plan of the run, and never the
-ledger of its own, so the tools of the agent cannot read the rows of another customer (ADR-038).
+ledger of its own, so the tools of the agent cannot read the rows of another customer (ADR-038); (l) the wall behind
+the tools is on the live path too, so a tool that raises becomes the envelope the model reads and the result names
+the code of the failure and goes to a human; (m) a run that the ceiling of the turn cuts ends with what stopped it,
+and never with an empty answer for the visitor; (n) a cap of the run is not a failure of a tool, so it still stops
+the live run and the report of the run names it (FR-009).
 
 Everything offline, with no key and no network: the provider is the fake adapter of the domain, the model of the demo
 is the bridge over the caller of the run, and the ledger and the policy index are built in a temporary folder.
@@ -26,6 +30,7 @@ from __future__ import annotations
 
 import json
 import threading
+from dataclasses import replace
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
@@ -38,6 +43,8 @@ from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, ConfigDict, Field
 
 from ledgerlens import embeddings as emb
+from ledgerlens.agents.integrator import investigate
+from ledgerlens.api import live_case
 from ledgerlens.api.accounts import scoped_ledger
 from ledgerlens.api.live_case import (
     MAX_BRIDGE_REQUESTS,
@@ -47,6 +54,7 @@ from ledgerlens.api.live_case import (
     SLOT_TRIAGE,
     BridgeChatModel,
     DemoCase,
+    build_demo_agent,
     demo_executor,
     wrap_tool,
 )
@@ -927,3 +935,191 @@ def test_the_requests_of_the_bridge_are_bounded() -> None:
         bridge.invoke([HumanMessage(content=QUESTION)])
 
     assert len(bridge.requests) == MAX_BRIDGE_REQUESTS
+
+
+# --- the wall behind the tools and the cut of the ceiling, on the live path -----------------------------
+
+# The answer of the agent when a tool of the case broke: the agent says what it could not get and stops.
+ANSWER_AFTER_A_BROKEN_TOOL = "I could not read the ledger, so a person has to take this case over."
+
+# The failure of a tool that broke, the way a corrupt index or a ledger that cannot be opened breaks.
+BROKEN_TOOL_FAILURE = RuntimeError("the index file is corrupt")
+
+
+def _a_tool_that_raises(tool: Any, failure: BaseException) -> StructuredTool:
+    """The tool of the case with the name and the schema of the original, and the failure of a broken tool.
+
+    Why a tool that raises and not a tool that returns an envelope: the tools of the contract return the envelope
+    themselves, and the wall behind them exists for the tool whose implementation breaks anyway.
+    """
+
+    def broken(**kwargs: Any) -> Any:
+        """The body of a tool whose implementation is broken."""
+        raise failure
+
+    broken.__name__ = tool.name
+    return StructuredTool.from_function(
+        func=broken,
+        name=tool.name,
+        description=tool.description,
+        args_schema=tool.args_schema,
+    )
+
+
+def _the_case_with_a_tool_that_raises(monkeypatch: pytest.MonkeyPatch, name: str, failure: BaseException) -> None:
+    """Makes one tool of the case of the demo raise, the way a broken tool does in production.
+
+    Why the tool is replaced and not the index corrupted: the wall of the live path is about the tool that raises,
+    and the way the tool breaks is not what the wall sees.
+    """
+    original = live_case.build_integrator
+
+    def patched(*args: Any, **kwargs: Any) -> Any:
+        """The integrator of the case, with one of its tools replaced by a broken one."""
+        agent = original(*args, **kwargs)
+        tools = [_a_tool_that_raises(tool, failure) if tool.name == name else tool for tool in agent.tools]
+        return replace(agent, tools=tools)
+
+    monkeypatch.setattr(live_case, "build_integrator", patched)
+
+
+def _the_adapter_of_a_broken_tool() -> FakeProviderAdapter:
+    """The provider of the test: the triage, the call of the tool that breaks and the answer of the agent."""
+    adapter = FakeProviderAdapter(provider="openai", api_key=MARKER)
+    adapter.script_answer(SIMPLE_TRIAGE_ANSWER)
+    adapter.script_tool_call("query_ledger", json.dumps({"question": "the status of TX-0001"}), call_id="call_broken")
+    adapter.script_answer(ANSWER_AFTER_A_BROKEN_TOOL)
+    return adapter
+
+
+def test_a_tool_that_raises_does_not_take_the_live_run_down(case: DemoCase, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The wall behind the tools is on the live path too: a tool that raises does not take the run down.
+
+    Why the live path needs the wall of the demo path: the contract of the tools says that a tool that raises does
+    not take the run down, and the live path is the path a visitor walks.
+    """
+    _the_case_with_a_tool_that_raises(monkeypatch, "query_ledger", BROKEN_TOOL_FAILURE)
+    adapter = _the_adapter_of_a_broken_tool()
+    vault = CredentialVault()
+    coordinator = _coordinator(adapter, vault, executor=case)
+    handle = vault.accept(MARKER, "openai", session_id=SESSION)
+
+    coordinator.start(_plan(handle.handle))
+    result = coordinator.wait("run-case", timeout=20.0)
+
+    assert result is not None
+    # The run did not die with the error of the tool: the model read the failure and answered.
+    assert result.status == "completed"
+    assert result.answer == ANSWER_AFTER_A_BROKEN_TOOL
+    # And the visitor never saw the error of the tool.
+    assert result.error is None
+
+
+def test_the_failure_of_a_tool_that_raises_is_named_in_the_result_of_the_live_path(
+    ledger_db: Path, index_root: Path, embeddings: FastEmbedEmbeddings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The result of the live path carries the code of the failure and goes to a human, like the demo path."""
+    _the_case_with_a_tool_that_raises(monkeypatch, "query_ledger", BROKEN_TOOL_FAILURE)
+    adapter = _the_adapter_of_a_broken_tool()
+    # The caller of the run plans its output tokens against the cap of the run, the way the coordinator does it.
+    caller = ModelCaller(
+        adapter=adapter,
+        budget=BudgetCoordinator(
+            RunBudget(max_model_calls=8, max_tool_calls=8, max_wall_seconds=30, max_output_tokens=512), registry()
+        ),
+        trace=TraceEventStream("run-case", InMemoryTraceSink(), mode=LIVE_MODE),
+        cancel=threading.Event(),
+        provider="openai",
+        model_id=MODEL_ID,
+        call_timeout=lambda: None,
+        max_output_tokens=512,
+    )
+    demo = build_demo_agent(
+        caller,
+        db_path=ledger_db,
+        verifier=refusing_verifier(),
+        index_root=index_root,
+        embeddings=embeddings,
+    )
+
+    result = investigate(demo.agent, QUESTION, thread_id="thread-live")
+
+    # The trace of the turn names the code of the failure.
+    assert [record.error_code for record in result.tool_trace] == ["TOOL_FAILED"]
+    assert not result.tool_trace[0].ok
+    # And the result goes to a person, because the run could not answer with what it found.
+    assert result.requires_human_review
+    assert any("TOOL_FAILED" in entry for entry in result.missing_information)
+    # The model read the envelope of the failure, and not a stack trace.
+    request = adapter.calls[-1]
+    tool_messages = [message for message in request.messages if message.role == "tool"]
+    assert tool_messages, "the model never received the result of the tool that broke"
+    envelope = json.loads(tool_messages[-1].content)
+    assert envelope["ok"] is False
+    assert envelope["error"]["code"] == "TOOL_FAILED"
+    assert "Traceback" not in tool_messages[-1].content
+
+
+def test_the_cap_of_the_calls_of_the_tools_still_stops_the_live_run_and_names_the_cap(case: DemoCase) -> None:
+    """FR-009: a cap of the run is not a failure of a tool: it stops the run and the report names the cap.
+
+    Why the cap is not enveloped: the model must never read a cap of the run as something it can work around, and
+    the run has to end with the reason that names the cap (ADR-054).
+    """
+    adapter = FakeProviderAdapter(provider="openai", api_key=MARKER)
+    adapter.script_answer(SIMPLE_TRIAGE_ANSWER)
+    for index in range(2):
+        adapter.script_tool_call(
+            "calculate",
+            json.dumps({"operation": "difference", "values": {"a": "10.00", "b": "2.00"}}),
+            call_id=f"call_{index}",
+        )
+    adapter.script_answer(FINAL_ANSWER)
+    vault = CredentialVault()
+    coordinator = _coordinator(adapter, vault, executor=case)
+    handle = vault.accept(MARKER, "openai", session_id=SESSION)
+    # The cap of the tools of the run allows one call, and the second one stops the run.
+    budget = RunBudget(max_model_calls=8, max_tool_calls=1, max_wall_seconds=30, max_output_tokens=512)
+
+    coordinator.start(_plan(handle.handle, budget=budget))
+    result = coordinator.wait("run-case", timeout=20.0)
+
+    assert result is not None
+    assert result.status == "failed"
+    assert result.report.cut_by == "max_tool_calls"
+    assert "max_tool_calls" in (result.error or "")
+    # The model never read the cap as the failure of a tool, so it never answered around it.
+    assert len(adapter.calls) == 3
+
+
+def test_a_run_that_the_ceiling_of_the_turn_cuts_never_ends_with_an_empty_answer(case: DemoCase) -> None:
+    """A run that a ceiling cuts says what stopped it: the visitor never reads an empty answer.
+
+    Why the agent loops: a model that asks for a tool forever is what a ceiling of the turn cuts, and the run has
+    to end with a reason the visitor can read instead of with nothing at all.
+    """
+    adapter = FakeProviderAdapter(provider="openai", api_key=MARKER)
+    adapter.script_answer(SIMPLE_TRIAGE_ANSWER)
+    for index in range(20):
+        adapter.script_tool_call(
+            "calculate",
+            json.dumps({"operation": "difference", "values": {"a": "10.00", "b": "2.00"}}),
+            call_id=f"call_{index}",
+        )
+    vault = CredentialVault()
+    coordinator = _coordinator(adapter, vault, executor=case)
+    handle = vault.accept(MARKER, "openai", session_id=SESSION)
+    # The caps of the visitor are wide enough: the ceiling that cuts the run is the one of the turn.
+    budget = RunBudget(max_model_calls=60, max_tool_calls=60, max_wall_seconds=30, max_output_tokens=512)
+
+    coordinator.start(_plan(handle.handle, budget=budget))
+    result = coordinator.wait("run-case", timeout=30.0)
+
+    assert result is not None
+    # The visitor reads what stopped the run, and not an empty answer.
+    assert result.answer != ""
+    assert "the run ended without an answer" in result.answer
+    # And the limit that stopped the turn is named in the words the visitor reads: the sentence of the result
+    # says which limit it was, and the case repeats it.
+    assert "stopped the turn" in result.answer
+    assert "the cap '" in result.answer or "the ceiling of the graph" in result.answer

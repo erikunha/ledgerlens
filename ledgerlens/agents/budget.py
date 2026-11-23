@@ -5,9 +5,10 @@ Why it exists: the agent loop had no ceiling in the paths that ship. The demo an
 model that loops cost an unbounded number of calls of a provider and an unbounded wall clock (ADR-054).
 
 What lives here and not in the integrator: how the caps become a limit of the graph (the `recursion_limit`),
-how a call is counted (the coordinator of the run context, the only thing that enforces the caps, ADR-034) and
-how the numbers of the turn are read back. The integrator wires the three together and turns an exhausted
-budget into a result for a human.
+what the graph gets when the caller gave no cap of the calls of the models at all (the backstop of the
+product), how a call is counted (the coordinator of the run context, the only thing that enforces the caps,
+ADR-034) and how the numbers of the turn are read back. The integrator wires the three together and turns
+an exhausted budget into a result for a human.
 
 The caps live in the `RunBudget` of the run context (`ledgerlens/run_context.py`), because ADR-034 put them
 there, and the enforcement lives in the `BudgetCoordinator` (`ledgerlens/byok/budget.py`), because that is the
@@ -28,9 +29,15 @@ from ledgerlens.run_context import SHIPPED_RUN_BUDGET, RunBudget
 
 __all__ = [
     "BudgetReservationMiddleware",
+    "GRAPH_HEADROOM",
+    "GRAPH_STEP_BACKSTOP",
+    "GRAPH_STEPS",
+    "Owner",
+    "STEPS_PER_MODEL_CALL",
     "TurnBudget",
     "cap_sentence",
     "caps_of",
+    "derived_recursion_limit",
     "model_id_of",
     "recursion_limit_for",
     "shipped_turn_budget",
@@ -45,6 +52,19 @@ STEPS_PER_MODEL_CALL = 2
 # The steps the graph needs besides the calls: the first call of the turn and the answer that ends it. The
 # headroom keeps a turn that uses the whole cap from being cut by the graph before the reservation cuts it.
 GRAPH_HEADROOM = 4
+
+# The ceiling of the steps of the graph that a turn gets when the caller gave no cap of the calls of the
+# models: the backstop of the product. It is the number the shipped paths derive (twelve calls of a model and
+# the headroom), so a turn that nobody bounded is no longer than a turn of the shipped paths and no path that
+# reaches the graph is unbounded (ADR-054).
+#
+# Why it is not a cap of the run: nobody gave one. A turn that the backstop stops is therefore not stopped by
+# a cap, and the sentence that names the cut says so instead of naming a cap that nobody gave.
+GRAPH_STEP_BACKSTOP = STEPS_PER_MODEL_CALL * (SHIPPED_RUN_BUDGET.max_model_calls or 0) + GRAPH_HEADROOM
+
+# The name of the cut when the graph ran out of steps and the caller gave no cap of the calls of the models.
+# It is not the name of a cap of the run: naming one would say that a caller gave a cap that it gave not.
+GRAPH_STEPS = "graph_steps"
 
 # Who counts the calls of a turn. The integrator counts when nobody else does (the demo and the evaluation),
 # the caller counts when it holds the provider (the live path) and nobody counts when the graph was built
@@ -117,15 +137,32 @@ def shipped_turn_budget(caps: RunBudget | None = None, *, owner: Owner = "integr
     return TurnBudget(caps=caps, coordinator=BudgetCoordinator(caps, ProviderRegistry([])), owner=owner)
 
 
-def recursion_limit_for(caps: RunBudget) -> int:
-    """The ceiling of the steps of the graph, computed from the cap of the calls of the models.
+def derived_recursion_limit(caps: RunBudget) -> int | None:
+    """The ceiling of the steps of the graph that the cap of the calls of the models derives.
 
     Why it is computed and not written down: the number that stops the loop of the graph and the number that
     stops the provider have to come from the same cap, or the graph would cut a turn the budget allows and
     the budget would allow a turn the graph cuts (ADR-054).
+
+    Why it can be nothing: a run that gave no cap of the calls of the models gave no limit at all (the
+    `RunBudget` of the run context says that what is not given is not a limit). The graph then gets the
+    backstop of the product (`recursion_limit_for`) and not a cap that nobody gave.
     """
-    calls = caps.max_model_calls or SHIPPED_RUN_BUDGET.max_model_calls or 1
+    calls = caps.max_model_calls
+    if calls is None:
+        return None
     return STEPS_PER_MODEL_CALL * calls + GRAPH_HEADROOM
+
+
+def recursion_limit_for(caps: RunBudget) -> int:
+    """The ceiling of the steps of the graph that a turn with these caps gets.
+
+    The derived one when the caller gave a cap of the calls of the models, and the backstop of the product
+    when it gave none: no path that reaches the graph is unbounded (ADR-054), and the backstop is not a cap
+    of the run, so the cut of the graph is never named after a cap that nobody gave.
+    """
+    derived = derived_recursion_limit(caps)
+    return GRAPH_STEP_BACKSTOP if derived is None else derived
 
 
 def caps_of(caps: RunBudget) -> dict[str, Any]:
@@ -162,21 +199,34 @@ def cap_sentence(cap: str, caps: RunBudget | None = None) -> str:
 
     It says the same as the refusal of the coordinator (FR-009): whoever reads the result has to know which
     limit was reached, because a turn that stopped and a model that failed look the same from the outside.
+
+    The ceiling of the graph is not a cap of the run, so the sentence names it as what it is: a run that gave
+    no cap of the calls of the models was not stopped by a cap (ADR-054). A cap that has no value is named
+    without a number too, because a number that nobody gave is a number of nothing.
     """
+    if cap == GRAPH_STEPS:
+        return (
+            "the ceiling of the graph stopped the turn: the turn reached the ceiling of "
+            f"{GRAPH_STEP_BACKSTOP} steps of the graph, so the turn stops and a person takes it over"
+        )
     label = _CAP_LABELS.get(cap, cap)
     limit = _limit_of(cap, caps)
+    reached = f"the cap of {limit} {label}" if limit is not None else f"the cap of {label}"
     return (
-        f"the cap '{cap}' stopped the turn: the turn reached the cap of {limit} {label}, "
+        f"the cap '{cap}' stopped the turn: the turn reached {reached}, "
         "so the turn stops and a person takes it over"
     )
 
 
-def _limit_of(cap: str, caps: RunBudget | None) -> str:
-    """The value of the cap that stopped the turn, as the text the result reads."""
+def _limit_of(cap: str, caps: RunBudget | None) -> str | None:
+    """The value of the cap that stopped the turn, as the text the result reads.
+
+    `None` when the run gave no value for the cap: the sentence then names the cap without a number.
+    """
     if caps is None:
-        return "the limit"
+        return None
     value = getattr(caps, cap, None)
-    return "the limit" if value is None else str(value)
+    return None if value is None else str(value)
 
 
 def turn_of(runtime: Any) -> TurnBudget | None:

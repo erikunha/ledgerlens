@@ -67,17 +67,33 @@ provider model would have to be the bridge too, exactly like the four slots abov
 The cancellation of the run is not swallowed: the caller raises `RunCancelled` before the next call, and the case
 turns any failure of a cancelled run back into the cancellation, so the run ends as cancelled and not as a mystery
 (FR-019).
+
+Why the live path has the wall behind the tools: the graph of the live path is built here and not by
+`build_integrator`, so the middleware of the demo path is not on it. A tool that raises would take the run down with
+it, and the visitor would read the error of a tool instead of an answer. The wall of the live path is the same wall of
+the demo path (`ToolErrorMiddleware` over the envelope of the integrator): the exception becomes the `TOOL_FAILED`
+envelope the model reads, the result names the code and goes to a human (the contract of the tools).
+
+Why the wall of the live path lets a cap and a cancellation through: a cap that stops the run and a run the visitor
+stopped are ends of runs and not failures of a tool, and the model must never read them as something it can work
+around (ADR-054, FR-019).
+
+Why the answer of a run without an answer says what stopped it: the case answers with a text and the text is what the
+visitor reads, so a run that a ceiling cut cannot end with nothing at all. The ceiling that stopped the turn is named
+in the missing information of the result, and the case repeats it in the words the visitor reads (ADR-054).
 """
 
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
 from langchain.agents import create_agent
+from langchain.agents.middleware import ToolCallRequest, ToolErrorMiddleware
 from langchain_core.embeddings import Embeddings
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage, ToolMessage
@@ -87,13 +103,15 @@ from langchain_core.tools import BaseTool, StructuredTool
 from langgraph.checkpoint.memory import InMemorySaver
 from pydantic import Field
 
-from ledgerlens.agents.integrator import Integrator, build_integrator, investigate
-from ledgerlens.api.live_run import LIVE_MODE, LiveRunPlan, ModelCaller, RunCancelled
+from ledgerlens.agents.integrator import Integrator, _tool_failure_content, build_integrator, investigate
+from ledgerlens.api.live_run import LIVE_MODE, LiveRunError, LiveRunPlan, ModelCaller, RunCancelled
 from ledgerlens.byok import arguments_text
 from ledgerlens.byok.adapter import ProviderMessage, ProviderRequest, ProviderResponse, ToolCall, ToolSchema
+from ledgerlens.byok.budget import BudgetExceededError
 from ledgerlens.byok.errors import ByokError
 from ledgerlens.memory.long_term import CaseMemory
 from ledgerlens.run_context import RunContext
+from ledgerlens.schemas import ESCALATION_PREFIX, InvestigationResult
 from ledgerlens.tools.fx import FxClient
 
 __all__ = [
@@ -129,6 +147,15 @@ _ROLE_USER = "user"
 _ROLE_ASSISTANT = "assistant"
 _ROLE_TOOL = "tool"
 _ROLE_SYSTEM = "system"
+
+# What the visitor reads when the run ended without an answer. The limit that stopped the run, when the result
+# names one, is added to it, because a visitor cannot tell a run that was cut from a run that never started.
+_NO_ANSWER = "the run ended without an answer"
+
+# The words the sentence of the result uses when a limit stopped the turn. The sentence names the limit ("the cap
+# 'max_model_calls' stopped the turn" or the ceiling of the graph), and the case repeats the sentence of the result
+# instead of writing a second wording of the same limit (ADR-054).
+_CUT_SENTENCE = re.compile(r"stopped the turn")
 
 
 class UnknownToolRequested(ByokError):
@@ -284,6 +311,22 @@ class DemoAgent:
     bridges: Mapping[str, BridgeChatModel]
 
 
+def _live_tool_failure_content(exc: Exception, request: ToolCallRequest) -> str | None:
+    """The envelope of a tool that raised in the live path, or None when the failure is not the tool's.
+
+    Why the envelope and not the traceback: the model has to read what it could not get and report it, and a stack
+    trace is not something the model can use. The envelope is the one of the demo path, so the live path and the
+    demo path name the failure the same way (the contract of the tools).
+
+    Why a cap and a cancellation are not enveloped: a cap that stops the run and a run the visitor stopped are
+    ends of runs and not failures of a tool. The model must never read them as something it can work around, and
+    the run has to end with the reason that a person can read (ADR-054, FR-019).
+    """
+    if isinstance(exc, (BudgetExceededError, ByokError, LiveRunError)):
+        return None
+    return _tool_failure_content(exc, request)
+
+
 def build_demo_agent(
     caller: ModelCaller,
     *,
@@ -308,6 +351,11 @@ def build_demo_agent(
     Why the graph is built twice: `build_integrator` does not take the tools, so the tools it built are wrapped
     here and the graph of the agent is bound over the wrapped tools. The agent itself is not rewritten: the same
     six tools, the same verifier, the same memory, the same prompt and the same checkpointer.
+
+    Why the graph of the live path carries the wall behind the tools: the graph of the demo path is built by
+    `build_integrator`, which puts the wall on it, and the graph of the live path is built here. A tool that raises
+    has to become the envelope the model reads on both paths, or the visitor of the live path reads the error of a
+    tool where the visitor of the demo path reads an answer (the contract of the tools).
     """
     bridges = {
         slot: BridgeChatModel(caller=caller, model_id=caller.model_id, slot=slot)
@@ -333,6 +381,9 @@ def build_demo_agent(
         bridges[SLOT_AGENT],
         tools=tools,
         system_prompt=agent.system_prompt,
+        # The wall behind the tools of the live path: a tool that raises becomes the envelope the model reads, so
+        # the run ends with a result for a human and not with the error of the tool (the contract of the tools).
+        middleware=[ToolErrorMiddleware(_live_tool_failure_content)],
         checkpointer=checkpointer,
     )
     live = Integrator(
@@ -437,7 +488,11 @@ class DemoCase:
         self._bridges.pop(run_id, None)
 
     def __call__(self, caller: ModelCaller, plan: LiveRunPlan) -> str:
-        """The answer of the agent of the demo, on the bridge over the caller of the run."""
+        """The answer of the agent of the demo, on the bridge over the caller of the run.
+
+        Why the answer of a run without an answer is not empty: the text this method returns is what the visitor
+        reads, and a run that a ceiling cut cannot end with nothing at all (ADR-054).
+        """
         options = self._options_of_the_run(plan)
         demo = build_demo_agent(caller, **options)
         self._bridges[plan.run_id] = demo.bridges
@@ -454,7 +509,7 @@ class DemoCase:
             raise
         if caller.cancelled:
             raise RunCancelled("the run was cancelled while the case was running")
-        return result.answer
+        return _the_answer_of_the_result(result)
 
     def _options_of_the_run(self, plan: LiveRunPlan) -> dict[str, Any]:
         """The options of the agent of this run: the ledger of the plan and the memory of the session.
@@ -745,3 +800,35 @@ def _answer_of(response: ProviderResponse) -> AIMessage:
         additional_kwargs={"tool_calls": raw},
         usage_metadata=usage,
     )
+
+
+def _the_answer_of_the_result(result: InvestigationResult) -> str:
+    """The text the visitor reads: the answer of the agent, or what stopped the run when there is no answer.
+
+    Why a run without an answer says so: an empty answer is a run that says nothing, and a visitor cannot tell a
+    run that a ceiling cut from a run that never started (ADR-054).
+    """
+    if result.answer.strip():
+        return result.answer
+    limit = _the_limit_of_the_cut(result)
+    if limit is None:
+        return f"{_NO_ANSWER}, and a person has to take the case over"
+    return f"{_NO_ANSWER}: {limit}"
+
+
+def _the_limit_of_the_cut(result: InvestigationResult) -> str | None:
+    """The sentence that names the limit that stopped the turn, when the result of the run carries one.
+
+    Why the sentence of the result and not a limit of its own: the result of the turn already says which limit
+    stopped it and with which value, and a second wording of the same limit would be a second truth about it
+    (ADR-054).
+
+    Why the reasons of the escalation are left out: they say why a person has to review the result, and they are
+    not the limit that stopped the turn.
+    """
+    for entry in result.missing_information:
+        if entry.startswith(ESCALATION_PREFIX):
+            continue
+        if _CUT_SENTENCE.search(entry):
+            return entry
+    return None

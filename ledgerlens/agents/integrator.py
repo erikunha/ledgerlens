@@ -38,9 +38,12 @@ What each part does and what it leaves to another:
 - **The ceiling of the turn**: the loop of the agent has a limit, and the limit is the budget of the turn
   (`ledgerlens/agents/budget.py`, ADR-054). The caps live in the `RunBudget` of the run context
   (`SHIPPED_RUN_BUDGET`), the coordinator of the run context enforces them and the graph of the agent gets a
-  `recursion_limit` computed from them. The follow-up spends what the turn has left and never gets a ceiling of
-  its own. A turn that a cap cuts is a result and not an exception: the cap that stopped it is named in the
-  missing information and the result goes to a human. What the turn spent travels in the trace.
+  `recursion_limit` computed from them. Every path that reaches the graph carries that limit, also the one
+  that calls the integrator outside `investigate`. The follow-up spends what the turn has left and never gets a
+  ceiling of its own. A turn that a cap cuts is a result and not an exception: the cap that stopped it is named
+  in the missing information and the result goes to a human. A turn that nobody gave a cap of the calls of the
+  models is not cut by a cap that nobody gave: the ceiling of the graph stops it and the sentence says so. What
+  the turn spent travels in the trace.
 - **Assembled result**: only what is known without judging. The trace (`tool_trace`) and the evidence come from
   the turn's tool messages; `claims`, `verdicts` and `coherence` come out empty and passing because they are the
   verifier's job, which also decides `recommended_action`. Here `requires_human_review` already goes up when a tool
@@ -65,7 +68,7 @@ import json
 import logging
 import time
 import typing
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from functools import partial
@@ -85,10 +88,12 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.errors import GraphRecursionError
 
 from ledgerlens.agents.budget import (
+    GRAPH_STEPS,
     BudgetReservationMiddleware,
     TurnBudget,
     cap_sentence,
     caps_of,
+    derived_recursion_limit,
     recursion_limit_for,
     shipped_turn_budget,
     usage_of,
@@ -100,7 +105,7 @@ from ledgerlens.chains.triage import build_triage_declarative
 from ledgerlens.config import get_chat_model, get_settings
 from ledgerlens.memory.long_term import CaseMemory
 from ledgerlens.observability.trace import OnEvent, Tracer, langsmith_url, review_reasons, summary_line
-from ledgerlens.run_context import RunBudget, RunContext
+from ledgerlens.run_context import SHIPPED_RUN_BUDGET, RunBudget, RunContext
 from ledgerlens.schemas import Coherence, Evidence, InvestigationResult, PlanStep, ToolCallRecord, Triage, VerdictLabel
 from ledgerlens.tools.envelope import error
 from ledgerlens.tools.fx import FxClient
@@ -175,11 +180,38 @@ def default_verifier_for(db_path: Path | str | None) -> Verifier:
     return partial(_default_verifier, ledger_db=db_path)
 
 
+def _caps_of_turn(context: Any) -> RunBudget:
+    """The caps of the turn that a call carries: the caps of its ceiling, or the caps of the shipped paths.
+
+    The ceiling of the turn travels with the call as its context, because that is where the caps live
+    (ADR-054). A call that carries no ceiling gets the caps of the shipped paths.
+    """
+    return context.caps if isinstance(context, TurnBudget) else SHIPPED_RUN_BUDGET
+
+
+def _with_step_limit(config: Any, caps: RunBudget) -> Any:
+    """The configuration of a call with the ceiling of the steps of the graph.
+
+    The limit never goes above the one the caps derive and never loosens a limit that the configuration
+    already carries: a caller that brought a smaller limit keeps it (ADR-054).
+    """
+    limit = recursion_limit_for(caps)
+    if config is None:
+        return {"recursion_limit": limit}
+    if not isinstance(config, Mapping):
+        return config
+    brought = config.get("recursion_limit")
+    if isinstance(brought, int) and not isinstance(brought, bool) and brought <= limit:
+        return config
+    return {**config, "recursion_limit": limit}
+
+
 @dataclass
 class Integrator:
     """The assembled agent: the `create_agent` graph plus the verifier and the case memory.
 
-    `invoke` passes through to the graph, so this object works where a LangChain agent is expected.
+    `invoke` passes through to the graph and adds the ceiling of the steps of the graph to the configuration
+    of the call, so every path that reaches the graph is limited (ADR-054).
 
     `counts_calls` says whether this integrator reserves the calls of the turn against its own coordinator
     (ADR-054). It is True for the integrator that `build_integrator` builds, whose graph carries the
@@ -200,11 +232,16 @@ class Integrator:
     def invoke(self, payload: Any, config: Any = None, **kwargs: Any) -> Any:
         """Runs the graph, with the ceiling of the turn when the caller did not bring one.
 
-        A call that comes from outside `investigate` gets the ceiling of the shipped paths, so no way of
-        reaching the graph is unbounded (ADR-054).
+        Every path that reaches the graph carries a limit of the steps: the one the caps of the turn derive
+        (the caps of the shipped paths when the caller brought none), so no way of reaching the graph is
+        unbounded (ADR-054).
+
+        The limit never goes above the derived one and never loosens a limit the configuration already
+        carries: a caller that brought a smaller limit keeps it.
         """
         if "context" not in kwargs:
             kwargs["context"] = shipped_turn_budget(owner="integrator" if self.counts_calls else "none")
+        config = _with_step_limit(config, _caps_of_turn(kwargs.get("context")))
         return self.graph.invoke(payload, config, **kwargs)
 
     def identity(self) -> dict[str, str]:
@@ -338,7 +375,8 @@ def _investigate(
     agent: Integrator, question: str, thread_id: str, context: str | None, trace: Tracer, turn: TurnBudget
 ) -> InvestigationResult:
     # The limit of the steps of the graph comes from the cap of the calls of the models, so the graph and the
-    # budget stop a turn that loops at the same place (ADR-054).
+    # budget stop a turn that loops at the same place (ADR-054). A turn that was given no cap of the calls
+    # gets the backstop of the product, which is a ceiling of the graph and not a cap of the run.
     config = {
         "configurable": {"thread_id": thread_id},
         "recursion_limit": recursion_limit_for(turn.caps),
@@ -364,8 +402,9 @@ def _investigate(
             raise
         return _cut_turn(agent, question, thread_id, config, turn, exc.cap, timer, plan, trace)
     except GraphRecursionError:
-        # The graph ran out of steps: the cap it names is the cap of the calls of the models (ADR-054).
-        return _cut_turn(agent, question, thread_id, config, turn, "max_model_calls", timer, plan, trace)
+        # The graph ran out of steps: the cut is the cap of the calls of the models when the caller gave
+        # one, and the ceiling of the graph when it gave none (ADR-054).
+        return _cut_turn(agent, question, thread_id, config, turn, _graph_cut(turn.caps), timer, plan, trace)
     turn_messages = _this_turn(state["messages"])
     result = _assemble(question, thread_id, turn_messages, timer.durations_ms, triage=plan)
 
@@ -404,6 +443,16 @@ def _investigate(
             outputs={"failed": extra is None, "cut_by": cut_by, "plan_deviations": result.plan_deviations},
         )
     return finish(agent, result, trace=trace)
+
+
+def _graph_cut(caps: RunBudget) -> str:
+    """The name of the cut when the graph ran out of steps.
+
+    A cap that the caller gave names the cut, because the limit of the graph came from it. When the caller
+    gave no cap of the calls of the models, the cut is the ceiling of the graph and not a cap of the run:
+    naming a cap that nobody gave would be a lie (ADR-054).
+    """
+    return "max_model_calls" if derived_recursion_limit(caps) is not None else GRAPH_STEPS
 
 
 def _cut_turn(
