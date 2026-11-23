@@ -280,7 +280,7 @@ Type: hardcoded, pure function. Evidence id: `calc:<n>`.
 
 Description:
 
-> Do exact arithmetic for money, rates and fees. Never do arithmetic yourself: call this tool. Choose an operation and pass the named values as decimal strings. Operations: convert (amount, rate), difference (a, b), percent_diff (base, other), implied_markup_pct (reference_rate, applied_rate), fee (gross, percent, fixed_per_item, items), net_settlement (gross, refunds, fees), fx_gap_breakdown (units, charge_rate, refund_reference_rate, refund_applied_rate). All results use exact decimal math and round half to even.
+> Do exact arithmetic for money, rates and fees. Never do arithmetic yourself: call this tool. Choose an operation and pass the named values as decimal strings. Operations: convert (amount, rate), difference (a, b), percent_diff (base, other), implied_markup_pct (reference_rate, applied_rate), fee (gross, percent, fixed_per_item, items), net_settlement (gross, refunds, fees), fx_gap_breakdown (units, charge_rate, refund_reference_rate, refund_applied_rate), fx_markup_check (units, charge_rate, refund_reference_rate, refund_applied_rate; states the plan of the merchant). All results use exact decimal math and round half to even.
 
 Input:
 
@@ -290,12 +290,13 @@ Input:
   "additionalProperties": false,
   "required": ["operation", "values"],
   "properties": {
-    "operation": {"enum": ["convert", "difference", "percent_diff", "implied_markup_pct", "fee", "net_settlement", "fx_gap_breakdown"]},
+    "operation": {"enum": ["convert", "difference", "percent_diff", "implied_markup_pct", "fee", "net_settlement", "fx_gap_breakdown", "fx_markup_check"]},
     "values": {
       "type": "object",
       "additionalProperties": {"type": "string", "pattern": "^-?[0-9]+(\\.[0-9]+)?$"}
     },
-    "decimals": {"type": "integer", "minimum": 0, "maximum": 6, "default": 2}
+    "decimals": {"type": "integer", "minimum": 0, "maximum": 6, "default": 2},
+    "plan": {"type": ["string", "null"], "enum": ["markup", "standard", null], "description": "The FX plan of the merchant, read from the ledger. Only fx_markup_check uses it."}
   }
 }
 ```
@@ -311,6 +312,9 @@ Operations, required keys and results (`Decimal`, rounding `ROUND_HALF_EVEN`):
 | `fee` | `gross`, `percent`, `fixed_per_item`, `items` | `gross * percent / 100 + fixed_per_item * items` |
 | `net_settlement` | `gross`, `refunds`, `fees` | `gross - refunds - fees` |
 | `fx_gap_breakdown` | `units`, `charge_rate`, `refund_reference_rate`, `refund_applied_rate` | object with `charge`, `refund`, `gap`, `rate_move`, `markup`, `markup_pct`; `gap = rate_move + markup` |
+| `fx_markup_check` | `units`, `charge_rate`, `refund_reference_rate`, `refund_applied_rate` | the same object, with `markup_limit_pct`, `within_limit` and `refund_at_reference`; the plan of the merchant comes in the argument `plan` |
+
+The limit of a plan is a number of the policy (`ledgerlens/policy_limits.py`), not a value the model sends: a merchant on the `markup` plan may apply up to 3.0% over the reference rate, and a merchant on the `standard` plan applies no markup at all, so the limit of that plan is zero. `within_limit` is `yes` or `no`, and the comparison leaves out a difference under 0.01%, which is the rounding of the applied rate. `refund_at_reference` is the amount the refund would have been at the reference rate of the refund day, which is what the customer would have received with no markup at all.
 
 Output `data`:
 
@@ -330,9 +334,9 @@ Output `data`:
 }
 ```
 
-Worked example (S01): `fx_gap_breakdown` with `units 100.00`, `charge_rate 5.6679`, `refund_reference_rate 5.6339`, `refund_applied_rate 5.4931` returns `charge 566.79`, `refund 549.31`, `gap 17.48`, `rate_move 3.40`, `markup 14.08`, `markup_pct 2.50`.
+Worked example (S01): `fx_gap_breakdown` with `units 100.00`, `charge_rate 5.6679`, `refund_reference_rate 5.6339`, `refund_applied_rate 5.4931` returns `charge 566.79`, `refund 549.31`, `gap 17.48`, `rate_move 3.40`, `markup 14.08`, `markup_pct 2.50`. The same values in `fx_markup_check`, with the argument `plan markup`, return those six keys with `markup_limit_pct 3.00`, `within_limit yes` and `refund_at_reference 563.39`.
 
-Errors: `UNKNOWN_OPERATION` (no), `MISSING_VALUE` (yes; message names the key), `INVALID_NUMBER` (yes), `DIVISION_BY_ZERO` (no), `SUSPECTED_MINOR_UNITS` (yes; a money field with four or more digits and no decimal point looks like minor units; the message gives the value in major units), `SWAPPED_RATES` (yes; in `fx_gap_breakdown` the applied rate is above the reference rate).
+Errors: `UNKNOWN_OPERATION` (no), `MISSING_VALUE` (yes; message names the key), `INVALID_NUMBER` (yes), `DIVISION_BY_ZERO` (no), `SUSPECTED_MINOR_UNITS` (yes; a money field with four or more digits and no decimal point looks like minor units; the message gives the value in major units), `SWAPPED_RATES` (yes; in `fx_gap_breakdown` and in `fx_markup_check` the applied rate is above the reference rate), `MISSING_PLAN` (yes; `fx_markup_check` without the plan of the merchant).
 
 ## 6. `recall_cases`
 

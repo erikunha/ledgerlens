@@ -91,7 +91,72 @@ def test_the_s01_breakdown_matches_the_worked_example() -> None:
 def test_every_declared_operation_is_tested_here() -> None:
     assert set(OPERATIONS) == {
         "convert", "difference", "percent_diff", "implied_markup_pct", "fee", "net_settlement", "fx_gap_breakdown",
+        "fx_markup_check",
     }  # fmt: skip
+
+
+# --- the markup against the limit of the plan ----------------------------------------------------------
+
+
+def check(plan: str | None = "markup", **values: str) -> dict:
+    """The tool with the plan of the merchant, which is not one of the values."""
+    return build_calculate_tool().invoke({"operation": "fx_markup_check", "values": values, "plan": plan})
+
+
+S01_VALUES = {
+    "units": "100.00",
+    "charge_rate": "5.6679",
+    "refund_reference_rate": "5.6339",
+    "refund_applied_rate": "5.4931",
+}
+
+
+def test_the_markup_check_states_the_limit_the_plan_allows_and_the_amount_at_the_reference_rate() -> None:
+    answer = check(**S01_VALUES)
+    assert answer["ok"], answer
+    assert answer["data"]["result"] == {
+        "charge": "566.79",
+        "refund": "549.31",
+        "gap": "17.48",
+        "rate_move": "3.40",
+        "markup": "14.08",
+        "markup_pct": "2.50",
+        "markup_limit_pct": "3.00",
+        "within_limit": "yes",
+        "refund_at_reference": "563.39",
+    }
+
+
+def test_the_standard_plan_allows_no_markup_at_all() -> None:
+    answer = check("standard", **S01_VALUES)
+    assert answer["ok"], answer
+    assert answer["data"]["result"]["markup_limit_pct"] == "0.00"
+    assert answer["data"]["result"]["within_limit"] == "no"
+
+
+def test_a_markup_above_the_limit_of_the_plan_is_outside_it() -> None:
+    values = {**S01_VALUES, "refund_applied_rate": "5.3000"}  # a markup of 5.93%
+    answer = check("markup", **values)
+    assert answer["ok"], answer
+    assert answer["data"]["result"]["within_limit"] == "no"
+
+
+def test_the_check_refuses_without_the_plan_of_the_merchant() -> None:
+    """The limit belongs to the plan, and the plan is a fact of the ledger the model has to read and state."""
+    answer = check(None, **S01_VALUES)
+    assert answer["ok"] is False and answer["error"]["code"] == "MISSING_PLAN"
+    assert answer["error"]["retryable"] is True
+    assert "markup" in answer["error"]["message"] and "standard" in answer["error"]["message"]
+
+
+def test_the_check_refuses_a_plan_it_does_not_know() -> None:
+    answer = check("premium", **S01_VALUES)
+    assert answer["ok"] is False and answer["error"]["code"] == "MISSING_PLAN"
+
+
+def test_the_other_operations_do_not_need_the_plan() -> None:
+    answer = build_calculate_tool().invoke({"operation": "fx_gap_breakdown", "values": S01_VALUES})
+    assert answer["ok"] and answer["data"]["result"]["markup_pct"] == "2.50"
 
 
 # --- rounding --------------------------------------------------------------------------------
@@ -268,7 +333,7 @@ def test_the_tool_is_described_for_the_model() -> None:
     assert "Never do arithmetic yourself" in tool.description
     for operation in OPERATIONS:
         assert operation in tool.description
-    assert set(tool.args) == {"operation", "values", "decimals"}
+    assert set(tool.args) == {"operation", "values", "decimals", "plan"}
     assert tool.args["decimals"]["default"] == 2
 
 
