@@ -14,6 +14,8 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from ledgerlens.config import PROJECT_ROOT
 from ledgerlens.eval.heldout import (
     CASE_COUNT,
@@ -219,8 +221,26 @@ def test_the_recipes_are_not_in_the_file_the_person_reads() -> None:
             assert label not in line
 
 
+def test_the_file_of_the_cases_on_the_disk_is_the_build() -> None:
+    """The cases file of the repository is the build of the module.
+
+    Why the cases and not the recipes: the recipes are the answer key of the set and they are not in the
+    repository, so a checkout without them can still compare the cases with the build.
+    """
+    assert load_cases(CASES_PATH) == build_cases()
+
+
+@pytest.mark.skipif(
+    not RECIPES_PATH.exists(),
+    reason="the recipes of the generator are the answer key of the set and they are not in the repository",
+)
 def test_the_file_on_disk_is_the_build() -> None:
-    """The cases file of the repository is the build of the module, and the recipes file is its recipes."""
+    """The cases file of the repository is the build of the module, and the recipes file is its recipes.
+
+    Why the skip and not the failure: the recipes of the generator are not committed (`.gitignore`), so a
+    checkout of the repository has no file to compare with, and a test that fails for a file that was never in
+    the repository is a test that says something false about the state of the repository.
+    """
     assert load_cases(CASES_PATH) == build_cases()
     assert load_recipes(RECIPES_PATH) == build_recipes()
 

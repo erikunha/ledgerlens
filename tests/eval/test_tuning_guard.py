@@ -725,9 +725,17 @@ def test_the_reserved_case_digests_are_the_cases_of_the_files_on_the_disk() -> N
         digests.update(case_digest(case) for case in _joined_cases(labels_path))
 
     assert len(HELD_OUT_RESERVED_CASE_DIGESTS) == 50
-    assert set(HELD_OUT_RESERVED_CASE_DIGESTS) == digests, (
-        "the reserved case digests and the digests of the cases on the disk are not the same: "
-        f"reserved {len(HELD_OUT_RESERVED_CASE_DIGESTS)}, on the disk {len(digests)}"
+    if RECIPES_PATH.exists():
+        assert set(HELD_OUT_RESERVED_CASE_DIGESTS) == digests, (
+            "the reserved case digests and the digests of the cases on the disk are not the same: "
+            f"reserved {len(HELD_OUT_RESERVED_CASE_DIGESTS)}, on the disk {len(digests)}"
+        )
+        return
+    # The recipes of the generator are the answer key of the set and they are not in the repository, so a checkout
+    # without them has one of the two variants of the labels and not the other. What can still be checked is that
+    # every case on the disk is reserved, which is what the door of the case is for.
+    assert digests <= set(HELD_OUT_RESERVED_CASE_DIGESTS), (
+        "a case of the disk is not reserved: the door of the case would let it through"
     )
 
 
