@@ -20,6 +20,16 @@ and the reason names the pair that was asked for (`EUR/ARS 2026-10-27`). Both FX
 that decided them (`policy:escalation-and-review#missing-data`), so the reader sees the rule and not only the
 symptom.
 
+A third rule reads the ledger and the reference rate the run obtained, and decides the markup of a cross-currency
+refund against the plan of the merchant. The policy lets a merchant on the `markup` plan apply up to 3.0% over the
+reference rate and says that a markup above the limit goes to a person; a merchant on the `standard` plan applies
+no markup at all, and a difference larger than the rounding of the rate has to be investigated. The applied rate
+and the plan are read from the ledger and not from the rows the model chose, so the decision does not depend on
+what the model wrote; the reference rate comes from the trace, because the policy does not keep it on the refund
+record. The limit and the tolerance are numbers of the policy, in `thresholds.json`, and the reason names the
+policy section that decided (`policy:cross-currency-refunds#merchant-fx-markup` and
+`policy:cross-currency-refunds#standard-plan`).
+
 `recommended_action` comes from the same evidence, in order: human review beats everything; an action already
 chosen is kept; then duplicate charge, ambiguous request or empty lookup, rejected refund and, last, an
 explanation when there is a calculation, a settlement or a recalled case. With none of these, `none`.
@@ -46,12 +56,19 @@ import json
 import logging
 import re
 import sqlite3
+from collections.abc import Sequence
 from datetime import date, datetime, timedelta
-from decimal import Decimal
+from decimal import ROUND_HALF_EVEN, Decimal
 from pathlib import Path
 from typing import Any
 
 from ledgerlens.config import get_settings
+from ledgerlens.policy_limits import (
+    FX_MARKUP_LIMIT_PCT,
+    FX_MARKUP_LIMIT_POLICY,
+    FX_MARKUP_TOLERANCE_PCT,
+    FX_STANDARD_PLAN_POLICY,
+)
 from ledgerlens.schemas import ESCALATION_PREFIX, Evidence, InvestigationResult
 from ledgerlens.sim.calendars import is_business_day
 from ledgerlens.verify.checks import _OPEN_CHARGEBACK, _rows, load_thresholds
@@ -75,6 +92,11 @@ _MAX_RECORDS = 200  # per table: the conversation cites few records, and the mod
 _MISSING_DATA = "escalation-and-review#missing-data"
 _UPSTREAM_UNAVAILABLE = "UPSTREAM_UNAVAILABLE"
 _UNSUPPORTED_CURRENCY = "UNSUPPORTED_CURRENCY"
+# The rules that decide the markup of a cross-currency refund: the limit of the plan of a merchant that may apply
+# a markup, and the tolerance under which a difference is the rounding of the rate and not a markup. The numbers
+# and the policy sections they come from are in `ledgerlens/policy_limits.py`.
+_MARKUP_PLAN = "markup"
+_STANDARD_PLAN = "standard"
 
 __all__ = [
     "apply_escalation",
@@ -235,6 +257,169 @@ def _with_rates_named(answer: str, rates: list[str]) -> str:
     return f"{answer.rstrip()} {notice}".strip()
 
 
+# ---- the markup of a cross-currency refund -----------------------------------------------------------
+
+
+def _envelope_data(content: str) -> dict[str, Any]:
+    """The data of the envelope a tool returns, when it is a JSON object."""
+    try:
+        parsed = json.loads(content)
+    except ValueError:
+        return {}
+    if not isinstance(parsed, dict):
+        return {}
+    data = parsed.get("data")
+    return data if isinstance(data, dict) else parsed
+
+
+def _reference_rates(result: InvestigationResult) -> list[dict[str, str]]:
+    """The reference rates the run obtained, with the pair and the day each one was asked for."""
+    rates: list[dict[str, str]] = []
+    for evidence in result.evidence:
+        if evidence.source_type != "fx":
+            continue
+        data = _envelope_data(evidence.content)
+        rate = data.get("rate")
+        if not isinstance(rate, str) or not rate:
+            continue
+        rates.append(
+            {
+                "from_currency": str(data.get("from_currency", "")),
+                "to_currency": str(data.get("to_currency", "")),
+                "requested_date": str(data.get("requested_date", "")),
+                "rate_date": str(data.get("rate_date", "")),
+                "rate": rate,
+            }
+        )
+    return rates
+
+
+def _ledger_query(sql: str, params: Sequence[Any], ledger_db: Path | str | None) -> list[dict[str, Any]]:
+    """The rows of a query over the ledger, read straight from it, opened read-only.
+
+    Why it exists: the decision of the markup must not depend on the columns the model's SQL chose, so the facts
+    are read from the ledger. A missing ledger, a missing table or a broken file: no rows, and no rule.
+    """
+    path = Path(ledger_db) if ledger_db is not None else get_settings().ledger_db
+    if not path.is_file():
+        return []
+    try:
+        conn = sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)
+        try:
+            found = conn.execute(sql, params)
+            names = [d[0] for d in found.description]
+            return [dict(zip(names, row, strict=True)) for row in found.fetchall()]
+        finally:
+            conn.close()
+    except sqlite3.Error as exc:
+        log.warning("could not read the FX rows of the ledger: %s", exc)
+        return []
+
+
+def _refund_conversions(transactions: Sequence[str], ledger_db: Path | str | None) -> list[dict[str, Any]]:
+    """The refund conversions of these transactions, read from the ledger.
+
+    The charge conversion is not here: a charge is converted at the reference rate and carries no markup, so only
+    the conversion of the refund can be one.
+    """
+    if not transactions:
+        return []
+    marks = ", ".join("?" for _ in transactions)
+    return _ledger_query(
+        "SELECT transaction_id, refund_id, from_currency, to_currency, applied_rate, applied_at FROM fx_applied "
+        f"WHERE kind = 'refund' AND transaction_id IN ({marks})",
+        list(transactions),
+        ledger_db,
+    )
+
+
+def _plans_of(transactions: Sequence[str], ledger_db: Path | str | None) -> dict[str, tuple[str, str]]:
+    """The merchant and the FX plan of each transaction, read from the ledger."""
+    if not transactions:
+        return {}
+    marks = ", ".join("?" for _ in transactions)
+    rows = _ledger_query(
+        "SELECT t.id AS transaction_id, t.merchant_id, m.fx_plan FROM transactions t "
+        "JOIN merchants m ON m.id = t.merchant_id "
+        f"WHERE t.id IN ({marks})",
+        list(transactions),
+        ledger_db,
+    )
+    return {str(row["transaction_id"]): (str(row["merchant_id"]), str(row["fx_plan"])) for row in rows}
+
+
+def _reference_for(rates: Sequence[dict[str, str]], conversion: dict[str, Any]) -> Decimal | None:
+    """The reference rate of the day of this conversion and of its pair, when the run obtained it.
+
+    The rate of another day or of another pair does not decide a markup: the policy compares the applied rate with
+    the reference rate of the refund date.
+    """
+    day = str(conversion.get("applied_at", ""))[:10]
+    pair = (str(conversion.get("from_currency", "")), str(conversion.get("to_currency", "")))
+    for rate in rates:
+        if (rate["from_currency"], rate["to_currency"]) != pair:
+            continue
+        if day not in (rate["requested_date"], rate["rate_date"]):
+            continue
+        try:
+            return Decimal(rate["rate"])
+        except ArithmeticError:
+            return None
+    return None
+
+
+def _fx_markup_reasons(result: InvestigationResult, ledger_db: Path | str | None) -> list[str]:
+    """The markup of the cross-currency refunds the conversation is about, against the plan of the merchant.
+
+    Why the transactions the conversation names: a query that brings a merchant's whole refund history does not
+    make each of those refunds a reason of this case.
+
+    Why the limits are not read from the thresholds of the verifier: the limit of the plan and the tolerance are
+    the numbers of the policy, in `ledgerlens/policy_limits.py`, and the same numbers the calculator states next to
+    the markup it computes.
+    """
+    transactions = sorted(i for i in _named_ids(result) if i.startswith("TX-"))
+    if not transactions:
+        return []
+    rates = _reference_rates(result)
+    if not rates:
+        return []  # without the reference rate there is no markup to compare; that is the rule of the missing data
+    conversions = _refund_conversions(transactions, ledger_db)
+    if not conversions:
+        return []
+    plans = _plans_of(transactions, ledger_db)
+    limit = FX_MARKUP_LIMIT_PCT
+    tolerance = FX_MARKUP_TOLERANCE_PCT
+    reasons: list[str] = []
+    for conversion in conversions:
+        transaction = str(conversion.get("transaction_id", ""))
+        merchant, plan = plans.get(transaction, ("", ""))
+        if not plan:
+            continue
+        reference = _reference_for(rates, conversion)
+        if reference is None or reference <= 0:
+            continue
+        try:
+            applied = Decimal(str(conversion.get("applied_rate", "")))
+        except ArithmeticError:
+            continue
+        markup = (1 - applied / reference) * 100
+        shown = markup.quantize(Decimal("0.0001"), rounding=ROUND_HALF_EVEN)
+        refund_id = str(conversion.get("refund_id", ""))
+        if plan == _STANDARD_PLAN:
+            if markup > tolerance:
+                reasons.append(
+                    f"{merchant}: a merchant on the standard plan applied a markup of {shown}% on {refund_id} "
+                    f"({transaction}); the policy allows none [policy:{FX_STANDARD_PLAN_POLICY}]"
+                )
+        elif plan == _MARKUP_PLAN and markup > limit + tolerance:
+            reasons.append(
+                f"{merchant}: the markup of {shown}% on {refund_id} ({transaction}) is above the {limit}% limit of "
+                f"the plan [policy:{FX_MARKUP_LIMIT_POLICY}]"
+            )
+    return reasons
+
+
 # ---- escalation ---------------------------------------------------------------------------------
 
 
@@ -301,6 +486,7 @@ def escalation_reasons(
             f"reference rate for the requested currency pair {pair} does not exist ({_UNSUPPORTED_CURRENCY}), "
             f"the difference cannot be proven [policy:{_MISSING_DATA}]"
         )
+    reasons += _fx_markup_reasons(result, ledger_db)
     return list(dict.fromkeys(reasons))  # the same record coming from the query and from the ledger counts once
 
 

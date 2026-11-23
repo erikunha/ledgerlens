@@ -30,8 +30,16 @@ TOOL = {
     "calc": "calculate",
     "case": "recall_cases",
     "policy": "search_policies",
+    "fx": "get_reference_fx",
 }
-SOURCE = {"sql": "sql", "api": "ledger_api", "calc": "calc", "case": "case", "policy": "policy"}
+SOURCE = {
+    "sql": "sql",
+    "api": "ledger_api",
+    "calc": "calc",
+    "case": "case",
+    "policy": "policy",
+    "fx": "fx",
+}
 DEADLINE_POLICY = "policy:escalation-and-review#deadline-within-2-days"
 AMOUNT_POLICY = "policy:escalation-and-review#high-amount"
 
@@ -739,3 +747,185 @@ def test_the_code_the_fx_tool_answers_with_is_the_code_the_rule_reads() -> None:
     envelope = FxClient(mode="fixtures").get_reference_fx("EUR", "ARS", "2026-10-27")
     assert envelope["ok"] is False
     assert envelope["error"]["code"] == "UNSUPPORTED_CURRENCY"
+
+
+# ---- the markup of a cross-currency refund against the plan of the merchant ---------------------------
+
+MARKUP_POLICY = "policy:cross-currency-refunds#merchant-fx-markup"
+STANDARD_POLICY = "policy:cross-currency-refunds#standard-plan"
+
+
+def fx_ledger(
+    path: Path,
+    *,
+    plan: str = "markup",
+    applied: str = "5.4931",
+    merchant: str = "M-1",
+    transaction: str = "TX-1",
+) -> Path:
+    """A ledger with a merchant on a plan, one transaction and the refund conversion it got.
+
+    The charge conversion is in the ledger too, so the rule has to ignore it: a charge is converted at the
+    reference rate, with no markup, and only the refund can carry one.
+    """
+    conn = sqlite3.connect(path)
+    conn.execute("CREATE TABLE merchants (id TEXT, fx_plan TEXT)")
+    conn.execute("INSERT INTO merchants VALUES (?, ?)", (merchant, plan))
+    conn.execute("CREATE TABLE transactions (id TEXT, merchant_id TEXT)")
+    conn.execute("INSERT INTO transactions VALUES (?, ?)", (transaction, merchant))
+    conn.execute(
+        "CREATE TABLE fx_applied (transaction_id TEXT, refund_id TEXT, kind TEXT, from_currency TEXT, "
+        "to_currency TEXT, applied_rate TEXT, applied_at TEXT)"
+    )
+    conn.execute(
+        "INSERT INTO fx_applied VALUES (?, 'R-1', 'charge', 'EUR', 'BRL', '5.6679', '2026-10-15T09:12:04Z')",
+        (transaction,),
+    )
+    conn.execute(
+        "INSERT INTO fx_applied VALUES (?, 'R-1', 'refund', 'EUR', 'BRL', ?, '2026-10-20T14:30:00Z')",
+        (transaction, applied),
+    )
+    conn.commit()
+    conn.close()
+    return path
+
+
+def reference_rate(
+    rate: str = "5.6339", *, day: str = "2026-10-20", pair: tuple[str, str] = ("EUR", "BRL")
+) -> Evidence:
+    """The evidence of `get_reference_fx`, in the shape the tool returns it."""
+    from_currency, to_currency = pair
+    data = {
+        "from_cache": False,
+        "from_currency": from_currency,
+        "note": "ECB reference rate (Frankfurter v1). It is a reference, not the rate any acquirer applied.",
+        "rate": rate,
+        "rate_date": day,
+        "requested_date": day,
+        "source": "frankfurter",
+        "to_currency": to_currency,
+    }
+    identifier = f"fx:{day}:{from_currency}-{to_currency}"
+    return ev(identifier, json.dumps({"data": data, "evidence_ids": [identifier], "ok": True}))
+
+
+def refund_case(*evidence: Evidence, transaction: str = "TX-1") -> InvestigationResult:
+    """The complaint of the cross-currency refund, with the transaction named."""
+    return about(
+        f"Why was the BRL refund for {transaction} lower than the EUR payment?",
+        *evidence,
+        answer="The refund came in lower. [sql:1]",
+    )
+
+
+def test_a_markup_above_the_limit_of_the_plan_requires_review_and_names_the_policy(tmp_path: Path) -> None:
+    """The policy lets a merchant on the markup plan apply up to 3.0%; more than that goes to a person."""
+    db = fx_ledger(tmp_path / "ledger.db", plan="markup", applied="5.3000")  # a markup of 5.93%
+    out = apply_escalation(refund_case(reference_rate()), ledger_db=db)
+    assert out.requires_human_review is True and out.recommended_action == "escalate_to_human"
+    assert any(MARKUP_POLICY in item and "M-1" in item and "R-1" in item for item in out.missing_information)
+
+
+def test_a_markup_within_the_limit_of_the_plan_does_not_escalate(tmp_path: Path) -> None:
+    """The scenario S01: a markup of 2.50% on a merchant of the markup plan is the contracted one."""
+    db = fx_ledger(tmp_path / "ledger.db", plan="markup", applied="5.4931")
+    out = apply_escalation(refund_case(reference_rate()), ledger_db=db)
+    assert out.requires_human_review is False and out.missing_information == []
+
+
+def test_a_standard_plan_merchant_that_applies_a_markup_requires_review_and_names_the_other_policy(
+    tmp_path: Path,
+) -> None:
+    """The policy says a standard plan merchant applies no markup at all, and the difference must be investigated."""
+    db = fx_ledger(tmp_path / "ledger.db", plan="standard", applied="5.4931")
+    out = apply_escalation(refund_case(reference_rate()), ledger_db=db)
+    assert out.requires_human_review is True
+    assert any(STANDARD_POLICY in item and "M-1" in item for item in out.missing_information)
+
+
+def test_a_standard_plan_merchant_without_a_markup_does_not_escalate(tmp_path: Path) -> None:
+    """The applied rate is the reference rate: there is no markup, only the rounding of the rate."""
+    db = fx_ledger(tmp_path / "ledger.db", plan="standard", applied="5.6339")
+    out = apply_escalation(refund_case(reference_rate()), ledger_db=db)
+    assert out.requires_human_review is False and out.missing_information == []
+
+
+def test_without_the_reference_rate_the_markup_cannot_be_decided(tmp_path: Path) -> None:
+    """No rate, no comparison: the missing rate is the business of the rule of the missing data."""
+    db = fx_ledger(tmp_path / "ledger.db", plan="standard", applied="5.4931")
+    out = apply_escalation(refund_case(), ledger_db=db)
+    assert out.requires_human_review is False
+
+
+def test_the_rate_of_another_day_does_not_decide_the_markup(tmp_path: Path) -> None:
+    """The reference rate of the refund day decides the markup, and not the rate of another day."""
+    db = fx_ledger(tmp_path / "ledger.db", plan="standard", applied="5.4931")
+    out = apply_escalation(refund_case(reference_rate("5.4931", day="2026-10-15")), ledger_db=db)
+    assert out.requires_human_review is False
+
+
+def test_the_rate_of_another_pair_does_not_decide_the_markup(tmp_path: Path) -> None:
+    db = fx_ledger(tmp_path / "ledger.db", plan="standard", applied="5.4931")
+    out = apply_escalation(refund_case(reference_rate("5.4931", pair=("USD", "BRL"))), ledger_db=db)
+    assert out.requires_human_review is False
+
+
+def test_only_the_transaction_the_conversation_names_is_decided(tmp_path: Path) -> None:
+    """A query that brings a merchant's other refunds does not make each of them a reason.
+
+    The ledger holds two transactions of the same merchant: the one the question names, without a markup, and
+    another one, with a markup, that the conversation does not talk about.
+    """
+    conn = sqlite3.connect(tmp_path / "ledger.db")
+    conn.execute("CREATE TABLE merchants (id TEXT, fx_plan TEXT)")
+    conn.execute("INSERT INTO merchants VALUES ('M-1', 'standard')")
+    conn.execute("CREATE TABLE transactions (id TEXT, merchant_id TEXT)")
+    conn.executemany("INSERT INTO transactions VALUES (?, 'M-1')", [("TX-1",), ("TX-2",)])
+    conn.execute(
+        "CREATE TABLE fx_applied (transaction_id TEXT, refund_id TEXT, kind TEXT, from_currency TEXT, "
+        "to_currency TEXT, applied_rate TEXT, applied_at TEXT)"
+    )
+    conn.execute(
+        "INSERT INTO fx_applied VALUES ('TX-1', 'R-1', 'refund', 'EUR', 'BRL', '5.6339', '2026-10-20T14:30:00Z')"
+    )
+    conn.execute(
+        "INSERT INTO fx_applied VALUES ('TX-2', 'R-2', 'refund', 'EUR', 'BRL', '5.4931', '2026-10-20T14:30:00Z')"
+    )
+    conn.commit()
+    conn.close()
+    out = apply_escalation(refund_case(reference_rate()), ledger_db=tmp_path / "ledger.db")
+    assert out.requires_human_review is False
+    assert not any("R-2" in item for item in out.missing_information)
+
+
+def test_the_markup_of_a_standard_plan_merchant_that_the_conversation_names_is_decided(tmp_path: Path) -> None:
+    """The same ledger, with the transaction named in the answer: now the rule has something to decide."""
+    conn = sqlite3.connect(tmp_path / "ledger.db")
+    conn.execute("CREATE TABLE merchants (id TEXT, fx_plan TEXT)")
+    conn.execute("INSERT INTO merchants VALUES ('M-1', 'standard')")
+    conn.execute("CREATE TABLE transactions (id TEXT, merchant_id TEXT)")
+    conn.execute("INSERT INTO transactions VALUES ('TX-1', 'M-1')")
+    conn.execute(
+        "CREATE TABLE fx_applied (transaction_id TEXT, refund_id TEXT, kind TEXT, from_currency TEXT, "
+        "to_currency TEXT, applied_rate TEXT, applied_at TEXT)"
+    )
+    conn.execute(
+        "INSERT INTO fx_applied VALUES ('TX-1', 'R-1', 'refund', 'EUR', 'BRL', '5.4931', '2026-10-20T14:30:00Z')"
+    )
+    conn.commit()
+    conn.close()
+    result = refund_case(reference_rate()).model_copy(update={"answer": "The refund of TX-1 came in lower [sql:1]."})
+    out = apply_escalation(result, ledger_db=tmp_path / "ledger.db")
+    assert out.requires_human_review is True
+    assert any(STANDARD_POLICY in item for item in out.missing_information)
+
+
+def test_the_rule_does_not_break_with_a_missing_or_foreign_ledger(tmp_path: Path) -> None:
+    result = refund_case(reference_rate())
+    assert apply_escalation(result, ledger_db=tmp_path / "nope.db").requires_human_review is False
+    empty = tmp_path / "empty.db"
+    conn = sqlite3.connect(empty)
+    conn.execute("CREATE TABLE merchants (id TEXT, fx_plan TEXT)")
+    conn.commit()
+    conn.close()
+    assert apply_escalation(result, ledger_db=empty).requires_human_review is False
