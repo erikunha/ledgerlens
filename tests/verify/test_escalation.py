@@ -360,6 +360,11 @@ ACTION_CASES = [
         "explain_to_customer",
     ),
     (
+        "fx markup check",
+        [("calc:1", json.dumps({"operation": "fx_markup_check", "result": {"markup_pct": "2.50"}}))],
+        "explain_to_customer",
+    ),
+    (
         "net settlement",
         [("calc:1", json.dumps({"operation": "net_settlement", "result": "29992.87"}))],
         "explain_to_customer",

@@ -75,7 +75,9 @@ from ledgerlens.verify.checks import _OPEN_CHARGEBACK, _rows, load_thresholds
 
 _PAYMENT_KEYS = ("amount_minor", "requested_amount_minor", "payout_amount_minor")
 _LEDGER_TOOLS = ("query_ledger", "get_ledger_record")
-_EXPLAIN_OPERATIONS = {"fx_gap_breakdown", "net_settlement"}
+# The calculations that explain a difference to a customer: the settlement of a payout, the split of an FX gap and
+# the check of the markup of a refund in another currency.
+_EXPLAIN_OPERATIONS = {"fx_gap_breakdown", "fx_markup_check", "net_settlement"}
 _ENTITY_ID = re.compile(r"\b[A-Z]{1,3}-\d+\b")
 _CHARGEBACK_COLUMNS = ("id", "transaction_id", "amount_minor", "currency", "stage", "deadline")
 _RECORD_TABLES = {
