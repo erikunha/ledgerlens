@@ -21,8 +21,8 @@ A reader of the README, of `docs/verification_sets.md` or of a report asks what 
 cases of the verification set means. The answer names the file the 30 cases live in, says that the sweep of ADR-007
 chose the thresholds over those cases together with the 40 live sentences, and says that an accuracy over a set the
 thresholds were chosen on is a measure of the fit and not a measure of the behavior on unseen data. The reader also
-learns that no dataset of the repository is held out today, and that this is a property of the repository and not a
-caveat that a report forgot.
+learns that the set of the verification that is held out is a different set from the one of the number, and that
+this is a property of the repository and not a caveat that a report forgot.
 
 **Why this priority**: this is the honesty of every number the repository publishes. A number that cannot be read
 as more than it is worth exactly what the measurement behind it is worth.
@@ -48,7 +48,8 @@ disagree.
 
 The repository has a set of verification cases that no threshold, prompt or hyperparameter was ever chosen against,
 with different case templates, different text and different source structures from the sets of the tuning, labelled
-by a person reading the evidence. A script that tunes refuses to read it, and the refusal is a sentence and not a
+by two independent blind readings with an adjudication of the divergences, both blind to the recipe of the case
+(ADR-059). A script that tunes refuses to read it, and the refusal is a sentence and not a
 traceback. The cases that a tuning script may not read are declared in the manifest with the role that says so.
 
 **Why this priority**: without a held out set, the repository can report the fit and never the generalization, and
@@ -121,7 +122,8 @@ over a different set.
 - **FR-005**: A script that tunes the thresholds refuses to read a dataset whose role is not `tuning`, and refuses
   to run when the manifest of the disk is not the one the calibration names.
 - **FR-006**: The held out set has cases with different templates, different text and different source structures
-  from the sets of the tuning, and their labels come from a person reading the evidence.
+  from the sets of the tuning, and their labels come from two independent blind readings with an adjudication of the
+  divergences, blind to the recipe of the case (ADR-059).
 - **FR-007**: The evaluation report answers per case: the claim, the evidence, the expected verdict and the
   verdict that came out, and the aggregate sits next to the list.
 - **FR-008**: A case that has no evidence, or whose evidence contradicts itself, or that is a benign claim the

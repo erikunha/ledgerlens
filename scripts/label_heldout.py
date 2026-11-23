@@ -54,6 +54,8 @@ __all__ = [
     "LABELLED_SET_RELATIVE",
     "LABELS",
     "ORIGIN",
+    "ORIGIN_ONE_READER",
+    "ORIGIN_TWO_READERS",
     "RECIPES_RELATIVE",
     "RULE_ADR_007",
     "RULE_SELF_CONTRADICTION",
@@ -67,6 +69,7 @@ __all__ = [
     "Recipe",
     "build_labelled_set",
     "cases_path",
+    "compare_labels",
     "labels_path",
     "labelled_set_path",
     "load_cases",
@@ -84,7 +87,13 @@ __all__ = [
 LABELS: tuple[str, ...] = ("supported", "contradicted", "not_enough_evidence")
 
 # The origin of every line of the labelled set: the reading was a blind one.
-ORIGIN = "held out: blind reading v1 by one reader, ADR-053"
+# The origin that goes into every line of the labelled set. It says WHO read the cases, because a label without a
+# reader is a label without a provenance, and the reader is part of what the number over the set may claim.
+ORIGIN_ONE_READER = "held out: blind reading v1 by one reader, ADR-053"
+ORIGIN_TWO_READERS = (
+    "held out: blind reading by two independent machine readers with adjudication, ADR-059"
+)
+ORIGIN = ORIGIN_ONE_READER
 
 # The marker that opens the block of a case, so a screen can be found in the output of a session.
 SCREEN_CASE_MARKER = "CASE "
@@ -253,9 +262,15 @@ def recipes_path(root: Path) -> Path:
     return root / RECIPES_RELATIVE
 
 
-def labels_path(root: Path) -> Path:
-    """The file the reading writes, one line per case, inside the root."""
-    return root / LABELS_RELATIVE
+def labels_path(root: Path, override: Path | None = None) -> Path:
+    """The file the reading writes, one line per case, inside the root.
+
+    Why the override exists: two readers who never see each other need two files, and the comparison of the two is a
+    measurement of the noise of a label that does not depend on the recipes of the generator.
+    """
+    if override is None:
+        return root / LABELS_RELATIVE
+    return override if override.is_absolute() else root / override
 
 
 def labelled_set_path(root: Path) -> Path:
@@ -378,13 +393,13 @@ def load_recipes(root: Path) -> list[Recipe]:
     return recipes
 
 
-def load_labels(root: Path) -> list[ReaderLabel]:
+def load_labels(root: Path, override: Path | None = None) -> list[ReaderLabel]:
     """The labels the reader has given so far, in the order of the file.
 
     Why it exists: the file of the labels is what makes the session resumable. A case with a label is a case that is
     done, and a case with two labels is a file that cannot be read, so it is refused with the file and the line.
     """
-    path = labels_path(root)
+    path = labels_path(root, override)
     if not path.exists():
         return []
     labels: list[ReaderLabel] = []
@@ -518,15 +533,17 @@ def _parse_label(raw: str) -> str | None:
     return _LABEL_ALIASES.get(key)
 
 
-def read_session(root: Path, answers: Iterable[str], out: TextIO) -> int:
+def read_session(
+    root: Path, answers: Iterable[str], out: TextIO, override: Path | None = None
+) -> int:
     """Runs the reading session over the cases of the root and returns how many cases it labelled.
 
     Why it exists: this is the mode a person runs. It shows one case at a time, it saves every label as it is given,
     and it skips the cases that already carry a label, so a session that was interrupted resumes where it stopped.
     """
     cases = load_cases(root)
-    done = {label.id for label in load_labels(root)}
-    path = labels_path(root)
+    done = {label.id for label in load_labels(root, override)}
+    path = labels_path(root, override)
     typed = _Answers(answers)
     labelled = 0
     for case in cases:
@@ -629,7 +646,9 @@ def _compose_note(reader_note: str, disagreement: Disagreement | None) -> str:
     return f"{reader_note} {sentence}"
 
 
-def report_session(root: Path, out: TextIO) -> int:
+def report_session(
+    root: Path, out: TextIO, override: Path | None = None, origin: str = ORIGIN_ONE_READER
+) -> int:
     """Compares the labels of the session with the recipes and prints the disagreements.
 
     Why it exists: the count of the disagreements is a measurement this repository has never had, and every instance
@@ -637,7 +656,7 @@ def report_session(root: Path, out: TextIO) -> int:
     labelled set, so the file that the manifest will declare carries the record.
     """
     cases = load_cases(root)
-    labels = load_labels(root)
+    labels = load_labels(root, override)
     _require_complete(cases, labels, "compare the reading with the recipes")
     disagreements = _disagreements(cases, labels, load_recipes(root))
 
@@ -660,11 +679,13 @@ def report_session(root: Path, out: TextIO) -> int:
             out.write(f"  the note of the reader: {disagreement.note}\n")
             out.write("\n")
     out.write(f"\nDisagreements: {len(disagreements)} of {len(cases)}.\n")
-    build_labelled_set(root)
+    build_labelled_set(root, override, origin)
     return len(disagreements)
 
 
-def build_labelled_set(root: Path) -> Path:
+def build_labelled_set(
+    root: Path, override: Path | None = None, origin: str = ORIGIN_ONE_READER
+) -> Path:
     """Builds the labelled set of the held out set and returns the path of the file.
 
     Why it exists: the file is what the manifest of the datasets will declare with the role `held_out`. Every line
@@ -672,7 +693,7 @@ def build_labelled_set(root: Path) -> Path:
     the evidence as it was read. The recipe never overwrites the label of the reader.
     """
     cases = load_cases(root)
-    labels = load_labels(root)
+    labels = load_labels(root, override)
     _require_complete(cases, labels, "build the labelled set")
     recipes: list[Recipe] = []
     if recipes_path(root).exists():
@@ -689,7 +710,7 @@ def build_labelled_set(root: Path) -> Path:
             "evidence_ids": list(case.evidence_ids),
             "evidence": [{"id": identifier, "content": content} for identifier, content in case.evidence],
             "label": label.label,
-            "origin": ORIGIN,
+            "origin": origin,
             "note": _compose_note(label.note, disagreements.get(case.id)),
         }
         lines.append(json.dumps(record, ensure_ascii=False))
@@ -700,6 +721,42 @@ def build_labelled_set(root: Path) -> Path:
     return path
 
 
+def compare_labels(
+    root: Path, first: Path, second: Path, out: TextIO
+) -> int:
+    """Compares the labels of two readings of the same set and returns how many cases they disagree on.
+
+    Why it exists: the disagreement between two readers who never saw each other is a measurement of the noise of a
+    label that does not depend on the recipes of the generator at all. The recipes say what the writer expected; the
+    two readers say what two careful readings of the same evidence produced. The first is a property of the
+    generator, the second is a property of the rule.
+
+    Why it never opens the recipes: the point of the comparison is to know the noise of the labels without the
+    answer key anywhere near it.
+    """
+    labels_first = {label.id: label for label in load_labels(root, first)}
+    labels_second = {label.id: label for label in load_labels(root, second)}
+    cases = load_cases(root)
+    _require_complete(cases, list(labels_first.values()), f"compare the reading {first}")
+    _require_complete(cases, list(labels_second.values()), f"compare the reading {second}")
+    out.write("Two readings of the same set, compared\n")
+    out.write("=====================================\n")
+    found = 0
+    for case in cases:
+        one = labels_first[case.id]
+        two = labels_second[case.id]
+        if one.label == two.label:
+            continue
+        found += 1
+        out.write(f"{case.id}: the first reading answered {one.label}, the second answered {two.label}.\n")
+        out.write(f"  the claim: {case.claim}\n")
+        out.write(f"  the note of the first reading: {one.note}\n")
+        out.write(f"  the note of the second reading: {two.note}\n")
+        out.write("\n")
+    out.write(f"\nDisagreements between the two readings: {found} of {len(cases)}.\n")
+    return found
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """The command line of the tool: the mode, and the root of the tree of the set.
 
@@ -707,21 +764,51 @@ def main(argv: Sequence[str] | None = None) -> int:
     sentence.
     """
     parser = argparse.ArgumentParser(description="The blind reading session of the held out set.")
-    parser.add_argument("mode", choices=("read", "report", "build"), help="the mode of the tool")
+    parser.add_argument(
+        "mode",
+        choices=("read", "report", "build", "compare"),
+        help="the mode of the tool",
+    )
     parser.add_argument(
         "--root",
         default=str(PROJECT_ROOT),
         help="the root of the tree that holds the set (the project root by default)",
     )
+    parser.add_argument(
+        "--labels",
+        default=None,
+        help="the file of the labels of this reading, relative to the root (by default labels_v1.jsonl)",
+    )
+    parser.add_argument(
+        "--origin",
+        default=ORIGIN_ONE_READER,
+        help="the origin that goes into every line of the labelled set (it says who read the cases)",
+    )
+    parser.add_argument(
+        "--first",
+        default=None,
+        help="the file of the labels of the first reading, for the mode compare",
+    )
+    parser.add_argument(
+        "--second",
+        default=None,
+        help="the file of the labels of the second reading, for the mode compare",
+    )
     arguments = parser.parse_args(argv)
     root = Path(arguments.root).resolve()
+    override = Path(arguments.labels) if arguments.labels else None
     try:
         if arguments.mode == "read":
-            read_session(root, sys.stdin, sys.stdout)
+            read_session(root, sys.stdin, sys.stdout, override)
         elif arguments.mode == "report":
-            report_session(root, sys.stdout)
+            report_session(root, sys.stdout, override, arguments.origin)
+        elif arguments.mode == "compare":
+            if not arguments.first or not arguments.second:
+                print("The mode compare needs the file of the labels of the two readings.", file=sys.stderr)
+                return 1
+            compare_labels(root, Path(arguments.first), Path(arguments.second), sys.stdout)
         else:
-            path = build_labelled_set(root)
+            path = build_labelled_set(root, override, arguments.origin)
             print(f"The labelled set was written: {path}.")
     except HeldoutError as error:
         print(str(error), file=sys.stderr)

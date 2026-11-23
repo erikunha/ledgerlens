@@ -1,6 +1,6 @@
 """The manifest of the eval datasets: what each file is, how many records it has and what may be done with it.
 
-Why it exists: the repository has five JSONL datasets under `data/eval/` and, until this module, no file that said
+Why it exists: the repository has seven JSONL datasets under `data/eval/` and, until this module, no file that said
 what they were, how many records each one held, which one the thresholds had been tuned on or which one a tuning
 script was allowed to read. The numbers that the verifier and the evaluation publish come from these files, and the
 43 against 30 discrepancy of the calibration is exactly the symptom of that missing file: nobody had pinned what was
@@ -18,8 +18,9 @@ Two decisions of this module:
   record: `fingerprint_dataset` raises `ManifestError` naming the file and the line. The count of the manifest and the
   count of the disk are then computed by the same rule, so they can be compared.
 - **The role of a dataset is decided by what the repository can prove it was used for.** The conservative role wins
-  when the evidence is not clean. No dataset of this repository carries the role `held_out` today, so no result of
-  this repository may be presented as a generalization to unseen data.
+  when the evidence is not clean. Two datasets of this repository carry the role `held_out` today, the labelled set of
+  the blind reading and the answer key of the generator that wrote it, and no result over any other dataset of this
+  repository may be presented as a generalization to unseen data.
 
 The scan for an undeclared JSONL file looks at the files that sit directly in `data/eval/`. The folders below it hold
 other artifacts with their own contract: the recording of the scenario `S01` lives in `data/eval/replay/s01/` and

@@ -1,20 +1,31 @@
 # The held out set
 
-This folder holds the held out verification cases of the repository: 48 cases that nobody tuned anything against and
-that one person labelled by reading them.
+This folder holds the held out verification cases of the repository: 48 cases that nobody tuned anything against,
+whose labels come from two independent blind readings of the cases and from an adjudication of the two cases where
+the readings diverged. Neither reader ever opened the recipe of a case.
 
-Two files live here and they never meet:
+The reading is what produces the labels, and its own files are the record that it happened:
+`labels_reader_a.jsonl` and `labels_reader_b.jsonl` hold what each reader answered, one line per label, and
+`labels_adjudicated.jsonl` holds the label of each case of the set, with the reason of every decision of the
+adjudication. The label of the adjudication is the label of the set. The label the generator expected is never
+written over it.
 
-- `cases.jsonl` is the file the person reads. Every line is one case with its id, its claim and its evidence. It
+Three files live here and the key never meets the cases:
+
+- `cases.jsonl` is the file the readers read. Every line is one case with its id, its claim and its evidence. It
   holds **no label, no template name, no recipe and no id that says which template the case belongs to**. The ids run
   from `ho-001` to `ho-048` in an order that does not group the templates together.
-- `recipes.jsonl` is the file the person never sees. Every line is the recipe of one case of the other file: the
+- `recipes.jsonl` is the file the readers never see. Every line is the recipe of one case of the other file: the
   label the generator expects (`label`), the template of the case (`template`), the pair it belongs to (`pair_id`), the
   fact the pair changes (`fact_key`, `fact_value` and `differing_fact`) and, for the three controls, what makes the
   case a control (`control`).
+- the three files of the labels hold what the readers answered and what the adjudication decided, and they hold no
+  recipe and no template.
 
-The recipe is read by the blind reading session, `scripts/label_heldout.py`, which compares the label the reader
-gives with the label the recipe expects and writes every disagreement into the note of the case.
+The recipe is read by the blind reading session, `scripts/label_heldout.py`, which compares the labels with the
+recipe and writes every disagreement into the note of the case. The mode `compare` compares two readings with each
+other and never opens the recipe at all, so the divergence between the two readers is measured with no answer key
+anywhere near it.
 
 The generator is `ledgerlens/eval/heldout.py`. The cases come from the synthetic ledger of the seed 7301, which the
 simulator of the repository builds and the module reads. The module writes both files:
@@ -47,9 +58,28 @@ reading the data and not by reading a flag:
   and the claim says the customer received the money.
 
 The labels the recipes expect are the labels of the verifier: `supported`, `contradicted` and `not_enough_evidence`.
-The generator expects 18 supported, 24 contradicted and 6 without enough evidence. **The person who reads the set may
-disagree with any of them, and the disagreement is the measure of the set**: the recipe and the label are allowed to
-disagree, and each disagreement is recorded.
+The generator expects 18 supported, 24 contradicted and 6 without enough evidence. The reading is allowed to disagree
+with any of them, and **the disagreement is the measure of the set**: the recipe and the label are allowed to
+disagree, and each disagreement is recorded in the note of the case.
+
+## What the reading found
+
+The adjudicated reading answers 19 supported, 23 contradicted and 6 without enough evidence. It disagrees with the
+recipe of the generator in 2 of the 48 cases, and the two readings disagreed with each other in 2 of the 48 as well:
+
+| Count | What it is |
+|---|---|
+| 2 of 48 | the cases where the two readings diverge from each other, `ho-013` and `ho-035` |
+| 2 of 48 | the cases where the first reading and the recipe disagree, `ho-002` and `ho-013` |
+| 2 of 48 | the cases where the second reading and the recipe disagree, `ho-002` and `ho-035` |
+
+The two cases where the readings diverged are the pair whose evidence contradicts itself. The adjudication applied
+the rule that is in the header of every screen of the reading, that evidence which contradicts itself says two
+things and so says nothing, and the label of both cases is `not_enough_evidence`.
+
+The number over the set, and what it may claim, are in
+[`data/eval/report_heldout.md`](../report_heldout.md) and in
+[`docs/verification_sets.md`](../../docs/verification_sets.md).
 
 ## What the set does not hold
 
@@ -64,8 +94,17 @@ The shape of the set differs from the shape of both tuning sets, and no claim of
 tuning material than the token overlap ceiling of the module. Both properties are proved by the test of the
 generator, `tests/eval/test_heldout_generator.py`.
 
+## The blindness is a procedure and not a secret
+
+The recipes live in this folder and in the public tree, and the generator that writes them is public and
+deterministic, so anybody can rebuild the key at any time. What the procedure guarantees is narrower and it is what
+matters: the readings happened while the key was still out of the public tree, and the readers were forbidden from
+opening it. The manifest declares the key with the role `held_out`, so the guard that refuses a tuning script covers
+it as well as the labelled set.
+
 ## The folder and the manifest of the datasets
 
-The folder sits outside the scan of `data/eval/*.jsonl`, so neither file of it is a dataset of
-`data/eval/datasets.json` and the manifest does not know them. The labelled set that the sweep reads is declared by
-the coordinator, not by this folder.
+The folder sits outside the scan of `data/eval/*.jsonl`, so the files of it are not datasets of the scan. Two of
+them are declared anyway, in `data/eval/datasets.json`, with the role `held_out`: the labelled set of the reading,
+`data/eval/verification_heldout.jsonl`, and the key of the generator, `data/eval/heldout/recipes.jsonl`. The
+declaration of the key is what lets the guard of the tuning refuse a script that reads it.

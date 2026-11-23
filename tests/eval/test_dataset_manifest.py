@@ -1,6 +1,6 @@
 """The manifest of the eval datasets: what it pins and what it refuses.
 
-Why it exists: the five JSONL files under `data/eval/` are the source of every number the repository publishes,
+Why it exists: the seven JSONL files under `data/eval/` are the source of every number the repository publishes,
 and the manifest is what says which file each number comes from, how many records it has and what a tuning script
 may read. These tests cover the fingerprint of a file, the reading of the manifest file and the comparison of the
 manifest with the disk, with temporary folders for the fixtures and the real repository only for the manifest that
@@ -798,21 +798,30 @@ def test_a_manifest_that_is_a_link_outside_the_root_is_refused_and_not_read(tmp_
 # --- the manifest that ships --------------------------------------------------------------------------------
 
 
-def test_the_manifest_of_the_repository_declares_the_five_datasets() -> None:
-    """The manifest of the repository declares the five datasets with the roles the archaeology decided."""
+def test_the_manifest_of_the_repository_declares_the_seven_datasets() -> None:
+    """The manifest of the repository declares the seven datasets with the roles the archaeology decided.
+
+    Why the list has seven entries and not five: the held out set of the verification came with the blind reading
+    of ADR-059, and the answer key of the generator came with it, and the key is declared so that the guard that
+    refuses a tuning script covers it as well as the labelled set.
+    """
     manifests = load_manifests(MANIFEST_PATH)
 
     assert [m.dataset_id for m in manifests] == [
         "eval_cases",
+        "heldout_recipes",
         "policy_questions",
         "triage_cases",
+        "verification_heldout",
         "verification_live",
         "verification_set",
     ]
     assert {m.dataset_id: m.split_role for m in manifests} == {
         "eval_cases": "tuning",
+        "heldout_recipes": "held_out",
         "policy_questions": "tuning",
         "triage_cases": "tuning",
+        "verification_heldout": "held_out",
         "verification_live": "tuning",
         "verification_set": "tuning",
     }

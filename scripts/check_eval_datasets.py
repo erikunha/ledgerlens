@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Checks the manifest of the eval datasets against the datasets that are on the disk.
 
-Why it exists: the repository holds five JSONL datasets under `data/eval/` and the numbers the reports publish
+Why it exists: the repository holds seven JSONL datasets under `data/eval/` and the numbers the reports publish
 depend on them. When a dataset moves and the manifest does not move with it, the report keeps the number of the
 old file and the reader of the report has no way to tell that the data changed under the number. This script is
 the side of the triangle that closes that gap: it reads the disk, recomputes the sha256 and the record count of

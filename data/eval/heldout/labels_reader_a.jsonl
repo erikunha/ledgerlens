@@ -1,0 +1,48 @@
+{"id": "ho-001", "label": "contradicted", "note": "The evidence gives the deadline of CB-0005 as 2026-10-14, not the 2026-10-21 the claim names, although the stage won matches."}
+{"id": "ho-002", "label": "supported", "note": "The evidence records R-0127 with the reason Changed mind about the purchase and an issued_at date, so the refund was issued to the customer."}
+{"id": "ho-003", "label": "contradicted", "note": "The evidence gives the period of ST-0233 as 2026-10-19 to 2026-10-25, not up to 2026-11-01."}
+{"id": "ho-004", "label": "supported", "note": "The evidence gives CB-0005 the deadline 2026-10-14 and the stage won, which are both parts of the claim."}
+{"id": "ho-005", "label": "contradicted", "note": "The evidence gives the period of ST-0196 as 2026-10-05 to 2026-10-11, not up to 2026-10-18."}
+{"id": "ho-006", "label": "contradicted", "note": "The evidence gives the reason of R-0127 as Changed mind about the purchase, not Product returned."}
+{"id": "ho-007", "label": "contradicted", "note": "The evidence gives the period of ST-0088 as 2026-08-31 to 2026-09-06, not up to 2026-09-13."}
+{"id": "ho-008", "label": "contradicted", "note": "The evidence gives the reason of R-0122 as Product returned, not Item damaged in delivery."}
+{"id": "ho-009", "label": "contradicted", "note": "The evidence gives the period of ST-0013 as 2026-08-10 to 2026-08-16, not up to 2026-08-23."}
+{"id": "ho-010", "label": "contradicted", "note": "The evidence gives the status of TX-1466 as captured, so the claim that it was not captured says something else."}
+{"id": "ho-011", "label": "supported", "note": "The evidence shows TX-1206 captured on 2026-09-30 and the cited policy states that a refund is paid on the same business day or on the next one."}
+{"id": "ho-012", "label": "supported", "note": "The evidence gives the status of TX-0260 as charged_back."}
+{"id": "ho-013", "label": "not_enough_evidence", "note": "The cited evidence says two opposite things about ST-0130, since the row shows status paid while the cited policy says a period with a negative net gets no payout, so the evidence contradicts itself."}
+{"id": "ho-014", "label": "supported", "note": "The evidence gives the status of TX-1867 as disputed."}
+{"id": "ho-015", "label": "contradicted", "note": "The evidence gives the reason of R-0140 as Charge not recognized by the customer, not Customer cancelled the order."}
+{"id": "ho-016", "label": "supported", "note": "The evidence gives the status of TX-1338 as captured, which rules out the disputed status the claim denies."}
+{"id": "ho-017", "label": "contradicted", "note": "The evidence shows TX-0247 captured at 2026-08-18, not on 2026-08-19 as the claim says."}
+{"id": "ho-018", "label": "supported", "note": "The evidence gives the period of ST-0088 as 2026-08-31 to 2026-09-06."}
+{"id": "ho-019", "label": "contradicted", "note": "The evidence gives the status of TX-1663 as captured, so the claim that it was not captured says something else."}
+{"id": "ho-020", "label": "contradicted", "note": "The evidence gives the deadline of CB-0006 as 2026-10-31, not the 2026-11-07 the claim names."}
+{"id": "ho-021", "label": "contradicted", "note": "The evidence gives the status of TX-1338 as captured, so the claim that it was not captured says something else."}
+{"id": "ho-022", "label": "supported", "note": "The evidence gives CB-0004 the deadline 2026-11-01 and the stage evidence_submitted."}
+{"id": "ho-023", "label": "supported", "note": "The evidence gives the period of ST-0233 as 2026-10-19 to 2026-10-25."}
+{"id": "ho-024", "label": "supported", "note": "The evidence gives CB-0006 the deadline 2026-10-31 and the stage won."}
+{"id": "ho-025", "label": "supported", "note": "The evidence gives the status of TX-0133 as captured, which rules out a partial refund."}
+{"id": "ho-026", "label": "contradicted", "note": "The evidence gives the deadline of CB-0004 as 2026-11-01, not the 2026-11-08 the claim names."}
+{"id": "ho-027", "label": "contradicted", "note": "The evidence shows TX-1206 captured at 2026-09-30, not on 2026-10-01 as the claim says."}
+{"id": "ho-028", "label": "contradicted", "note": "The evidence gives the status of TX-0133 as captured, so the claim that it was not captured says something else."}
+{"id": "ho-029", "label": "contradicted", "note": "The evidence gives the reason of R-0132 as Item damaged in delivery, not Charge not recognized by the customer."}
+{"id": "ho-030", "label": "supported", "note": "The evidence gives the period of ST-0196 as 2026-10-05 to 2026-10-11."}
+{"id": "ho-031", "label": "supported", "note": "The evidence shows TX-0247 captured on 2026-08-18 and the cited policy states that a refund is paid on the same business day or on the next one."}
+{"id": "ho-032", "label": "not_enough_evidence", "note": "The claim cites no evidence at all, so nothing in the cited material says that TX-0467 was refunded."}
+{"id": "ho-033", "label": "supported", "note": "The evidence shows TX-0964 captured on 2026-09-19 and the cited policy states that a refund is paid on the same business day or on the next one."}
+{"id": "ho-034", "label": "contradicted", "note": "The evidence gives the status of TX-1867 as disputed, not failed."}
+{"id": "ho-035", "label": "not_enough_evidence", "note": "The cited evidence says two opposite things about ST-0130, since the row shows status paid while the cited policy says a period with a negative net gets no payout, so the evidence contradicts itself."}
+{"id": "ho-036", "label": "not_enough_evidence", "note": "The reason matches the evidence but the cited row never says that the case was closed by the risk team."}
+{"id": "ho-037", "label": "supported", "note": "The evidence gives CB-0003 the deadline 2026-09-30 and the stage won."}
+{"id": "ho-038", "label": "supported", "note": "The evidence gives the status of TX-1663 as captured, which rules out a refund."}
+{"id": "ho-039", "label": "not_enough_evidence", "note": "The reason matches the evidence but the cited row never says that the merchant was told of the refund."}
+{"id": "ho-040", "label": "contradicted", "note": "The evidence gives the status of TX-0260 as charged_back, not partially_refunded."}
+{"id": "ho-041", "label": "not_enough_evidence", "note": "The reason matches the evidence but the cited row never says that the acquiring bank confirmed the credit."}
+{"id": "ho-042", "label": "contradicted", "note": "The evidence gives the status of TX-0467 as refunded, not captured."}
+{"id": "ho-043", "label": "contradicted", "note": "The evidence gives the deadline of CB-0003 as 2026-09-30, not the 2026-10-07 the claim names."}
+{"id": "ho-044", "label": "supported", "note": "The evidence gives the period of ST-0013 as 2026-08-10 to 2026-08-16."}
+{"id": "ho-045", "label": "supported", "note": "The evidence gives the status of TX-1309 as partially_refunded."}
+{"id": "ho-046", "label": "contradicted", "note": "The evidence shows TX-0964 captured at 2026-09-19, not on 2026-09-20 as the claim says."}
+{"id": "ho-047", "label": "contradicted", "note": "The evidence gives the status of TX-1309 as partially_refunded, not refunded."}
+{"id": "ho-048", "label": "supported", "note": "The evidence gives the status of TX-1466 as captured, which rules out a failure."}

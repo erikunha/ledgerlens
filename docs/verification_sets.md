@@ -1,6 +1,6 @@
 # The sets of the verifier and what each number means
 
-The LedgerLens verifier works with three different sets, and the number 30 appears in two of them with different
+The LedgerLens verifier works with four different sets, and the number 30 appears in two of them with different
 meanings. A wrong citation here becomes a wrong number in the README, in the report and in the post. This document is
 the canonical place: when a number appears anywhere else, its meaning comes from here.
 
@@ -17,6 +17,9 @@ than the measurement supports.
 | 40 | Live labelled sentences, read from the evidence | `data/eval/verification_live.jsonl` | tuning | the model |
 | 70 | Denominator of the NLI calibration | 30 text plus 40 live, both tuning | tuning | the model |
 | 30 | Cases of the online evaluation, the `EC-xx` ones | `data/eval/eval_cases.jsonl` | tuning | the whole agent, with a real model and real tools |
+| 48 | Total of the held out set of the verifier | `data/eval/verification_heldout.jsonl` | held_out | 47 through the NLI, 1 by the code |
+| 47 | The part of the held out set that goes through the NLI | `data/eval/verification_heldout.jsonl`, the 47 cases with evidence | held_out | the model |
+| 24 | Cases of the held out set the verifier decided as the blind reading decided | `data/eval/verification_heldout.jsonl` | held_out | the model and the code |
 
 The two 30s are different sets and they do not add up. The first is a part of the verification set; the second is the
 set of the online evaluation.
@@ -54,6 +57,62 @@ that the NLI never sees, because the code decides them, so they enter none of th
 What the calibration **does not** measure: the 7 numeric cases and the 6 coherence cases of the verification set. Those
 are decided by code, the NLI does not see them, and they enter none of the accuracies above.
 
+## The held out set, and the first number over data nobody decided on
+
+The held out set of the verification is the set of forty eight cases that no decision of this repository was taken
+against. It was written by a generator over a synthetic ledger of a seed the rest of the repository does not use, in
+six templates that the tuning sets do not have, and it carries the three negative controls: a claim with no evidence
+at all, a claim whose evidence contradicts itself, and a benign claim that the evidence does not support.
+
+Its labels come from **two independent blind machine readings with an adjudication of the divergences**
+([ADR-059](decisions/ADR-059-the-held-out-set-is-read-by-two-blind-machines-and-adjudicated.md)). The recipe of the
+generator lives in a file neither reader opened, the id of a case does not encode its template, and the templates are
+not grouped in the file. The label of the adjudication wins over the label of the generator, and every disagreement
+is on the record, with the count of them.
+
+| Set | Dataset | Cases | Accuracy | Reading |
+|---|---|---|---|---|
+| Held out | `data/eval/verification_heldout.jsonl` | 48 | 0.500 | 24 of the 48 cases, with the denominator of the set |
+| Held out, the cases the model judged | the same file, the 47 cases with evidence | 47 | 0.489 | 23 of the 47, and one case decided by the code |
+
+The confusion matrix, with the reader in the rows and the verifier in the columns:
+
+| the reader \ the verifier | supported | contradicted | not_enough_evidence | total |
+|---|---|---|---|---|
+| supported | 10 | 0 | 9 | 19 |
+| contradicted | 2 | 10 | 11 | 23 |
+| not_enough_evidence | 2 | 0 | 4 | 6 |
+| total | 14 | 10 | 24 | 48 |
+
+**The false `supported` is 4 and the false `contradicted` is 0.** The verifier says `not_enough_evidence` for half
+of the set, 24 cases of the 48, and the blind reading said `not_enough_evidence` for six. The error of the verifier
+over unseen data is not that it is wrong in one direction: it is that it refuses to decide, and it refuses most of
+the time.
+
+**This number is the first one of this repository that is not a fit.** Every other accuracy of this document was
+measured over a `tuning` set, over the very sentences the thresholds were chosen against. This one was measured over
+a set that no decision of this repository was taken against, so it is a measure of the behaviour on unseen data, with
+its denominator and with the restriction of the role.
+
+### The three counts of the reading, and what they may claim
+
+| Count | What it is | What it is for |
+|---|---|---|
+| 2 of 48 | the cases where the two readings diverge (`ho-013` and `ho-035`) | the noise of the rule, with no answer key anywhere near it |
+| 2 of 48 | the cases where the first reading and the recipe disagree (`ho-002` and `ho-013`) | the distance between one blind reading and the expectation of the writer |
+| 2 of 48 | the cases where the second reading and the recipe disagree (`ho-002` and `ho-035`) | the same distance, measured on the other reading |
+| 24 of 48 | the adjudicated accuracy over the set | the accuracy of the verifier over the set, with its denominator |
+
+Both divergences between the two readings are the same two cases, the pair whose evidence contradicts itself: the
+row of the settlement says the payout was made and the excerpt of the schedule says a period with a negative net
+gets no payout, so the cited evidence gives two opposite answers and says nothing. The adjudication applied the rule
+that is in the header of every screen of the reading, that evidence which contradicts itself says two things and so
+says nothing, and the label is `not_enough_evidence` in both cases.
+
+**What these counts may not claim.** The reading is a machine reading, so it may share a blind spot with the model
+that the set measures, and the number cannot rule that out. The divergence between the two readers is a lower bound
+on the noise of a label, and not an upper bound. The labels are not the labels a human would have given.
+
 ## The rule of citation
 
 1. The NLI accuracy is over 70 NLI cases. Never over the 43.
@@ -66,9 +125,11 @@ are decided by code, the NLI does not see them, and they enter none of the accur
    three variants of the agent. Thirty cases show a tendency, not a significance.
 5. The NLI threshold does not fix the limitation of the model: of the supported live sentences, many stay without a
    verdict at any threshold, because the error is the model with a long premise, not the cut.
-6. Every accuracy named above is a number over a `tuning` dataset, so none of them is a generalization to unseen
-   data. A number that claims to generalize names the dataset it was measured over and the restriction that applies
-   to it, or it does not go out.
+6. Every accuracy named above, except the one over the held out set, is a number over a `tuning` dataset, so none of
+   them is a generalization to unseen data. The accuracy over the held out set, 24 of 48, is the only one that may be
+   presented as a measure over data nobody decided on, and it may be presented only with its denominator and with the
+   restriction of the role. A number that claims to generalize names the dataset it was measured over and the
+   restriction that applies to it, or it does not go out.
 
 ## Where the truth lives now
 
@@ -82,7 +143,11 @@ The three places that hold the truth about the datasets are these, and they are 
   declared dataset is missing, or when a dataset of the folder is not declared. It writes nothing when it verifies.
 - **[ADR-052](decisions/ADR-052-the-manifest-of-the-eval-datasets.md)**, the decision: what a role means, that the
   role of a dataset is decided by evidence with the conservative role winning when the evidence is not clean, and
-  that no dataset of the repository carries the role `held_out` today.
+  that the role `held_out` was empty when the record was written.
+- **[ADR-053](decisions/ADR-053-the-held-out-set-and-the-blind-labelling.md)** and
+  **[ADR-059](decisions/ADR-059-the-held-out-set-is-read-by-two-blind-machines-and-adjudicated.md)**, the decisions
+  that hold the set and its blind reading: the set that no decision was taken against, and the two readings with an
+  adjudication that labelled it.
 
 **The check is a step of the gate.** It runs in `scripts/gate.sh`, after the tests and before the export check, and it
 is in the first job of the continuous integration. A dataset that moves without the manifest moving breaks the build,
@@ -98,6 +163,9 @@ and the fix is a `--write` that updates the two fingerprints, followed by a revi
   the full sweep with the real model. It is a slow test, switched off in the normal gate.
 - `tests/eval/test_dataset_manifest.py` ties the manifest to the disk: every entry of the manifest matches the file it
   names, and no dataset of the folder is left out.
+- `scripts/measure_heldout.py` writes the number over the held out set, and `tests/verify/test_measure_heldout.py`
+  holds the shape of that report with the scripted model, so the denominators cannot move without a test noticing.
+  The report itself is [`data/eval/report_heldout.md`](../data/eval/report_heldout.md).
 
 ## The divergence this slice reconciled
 

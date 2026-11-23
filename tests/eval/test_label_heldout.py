@@ -377,3 +377,101 @@ def test_the_error_of_a_bad_line_survives_the_command_line(tool, tmp_path: Path,
     assert code == 1
     assert "Traceback" not in captured.err
     assert "cases.jsonl" in captured.err
+
+
+# ---- the two readings and the adjudication ---------------------------------------------------------------
+
+
+def _reading(root: Path, name: str, answers: list[tuple[str, str]]) -> Path:
+    """One reading of the set, written in the file of the labels that belongs to it."""
+    path = root / "data" / "eval" / "heldout" / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        "".join(
+            json.dumps({"id": identifier, "label": label, "note": note}) + "\n"
+            for identifier, label, note in answers
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_the_compare_of_two_readings_never_opens_the_recipes(tool, tmp_path: Path) -> None:
+    """The comparison of two readings works on a tree that holds no recipe at all.
+
+    Why the tree has no recipe file: the divergence between the two readers is the only measurement of the noise of
+    the rule that is made with no answer key near it, so the mode has to be able to run without the key being there.
+    A mode that opened the recipes would fail on this tree, and the test would say so.
+    """
+    root = _tree(tmp_path, _three_cases())
+    first = _reading(
+        root,
+        "labels_reader_a.jsonl",
+        [("ho-001", "supported", "one"), ("ho-002", "supported", "two"), ("ho-003", "supported", "three")],
+    )
+    second = _reading(
+        root,
+        "labels_reader_b.jsonl",
+        [("ho-001", "supported", "one"), ("ho-002", "contradicted", "two"), ("ho-003", "supported", "three")],
+    )
+    assert not (root / "data" / "eval" / "heldout" / "recipes.jsonl").exists()
+
+    out = io.StringIO()
+    found = tool.compare_labels(root, first, second, out)
+
+    assert found == 1
+    assert "ho-002" in out.getvalue()
+    assert "Disagreements between the two readings: 1 of 3." in out.getvalue()
+
+
+def test_the_compare_of_two_readings_never_reads_the_recipes_in_the_code(tool) -> None:
+    """The function that compares two readings does not name the recipes at all.
+
+    Why the source is read and not only the behaviour: the behaviour test proves that the comparison runs without
+    the key, and this one proves that it does not reach for the key on a tree that happens to have one.
+    """
+    source = SCRIPT.read_text(encoding="utf-8")
+    body = source.split("def compare_labels", 1)[1].split("def main", 1)[0]
+
+    assert "load_recipes" not in body
+    assert "recipes_path" not in body
+
+
+def test_the_compare_refuses_an_incomplete_reading_with_a_plain_sentence(tool, tmp_path: Path) -> None:
+    """One of the two readings misses a case, and the comparison says which one."""
+    root = _tree(tmp_path, _three_cases())
+    first = _reading(
+        root,
+        "labels_reader_a.jsonl",
+        [("ho-001", "supported", "one"), ("ho-002", "supported", "two"), ("ho-003", "supported", "three")],
+    )
+    second = _reading(root, "labels_reader_b.jsonl", [("ho-001", "supported", "one"), ("ho-002", "supported", "two")])
+
+    with pytest.raises(tool.HeldoutIncompleteError) as failure:
+        tool.compare_labels(root, first, second, io.StringIO())
+
+    message = str(failure.value)
+    assert "ho-003" in message
+    assert "labels_reader_b.jsonl" in message
+
+
+def test_the_build_writes_the_origin_of_the_two_readings_in_every_line(tool, tmp_path: Path) -> None:
+    """Every line of the labelled set says that the label came from the two readings and the adjudication.
+
+    Why the origin is on every line and not only on the file: a line without a provenance is a label without a
+    reader, and the reader is part of what the number over the set may claim.
+    """
+    root = _tree(tmp_path, _three_cases())
+    _reading(
+        root,
+        "labels_adjudicated.jsonl",
+        [("ho-001", "supported", "one"), ("ho-002", "supported", "two"), ("ho-003", "supported", "three")],
+    )
+
+    path = tool.build_labelled_set(root, Path("data/eval/heldout/labels_adjudicated.jsonl"), tool.ORIGIN_TWO_READERS)
+    records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+    assert len(records) == 3
+    assert {record["origin"] for record in records} == {tool.ORIGIN_TWO_READERS}
+    assert tool.ORIGIN_TWO_READERS != tool.ORIGIN_ONE_READER
+    assert "ADR-059" in tool.ORIGIN_TWO_READERS
