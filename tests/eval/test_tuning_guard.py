@@ -11,6 +11,7 @@ the roles and not about the disk, so the guard has to answer without touching th
 
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import replace
 from pathlib import Path
@@ -18,6 +19,7 @@ from pathlib import Path
 import pytest
 
 from ledgerlens.eval.manifest import (
+    HELD_OUT_RESERVED_DIGESTS,
     HELD_OUT_RESERVED_PATHS,
     TUNING_ROLE,
     EvalDatasetManifest,
@@ -403,3 +405,60 @@ def test_the_sweep_refuses_a_dataset_that_may_not_be_tuned_against(tmp_path_fact
         nli_cases(root, tampered)
 
     assert "reserved for the held out set" in str(caught.value)
+
+
+def test_a_copy_of_the_held_out_set_under_another_name_is_refused() -> None:
+    """A file with the bytes of the held out set is refused under any name and with any role.
+
+    Why the digest and not only the path: a path names a file and a copy of the file under another name has
+    another path, so the reservation by path alone stops at the name. The bytes are the same under any name, and
+    the digest of the entry is what the check of the datasets compares with the file on the disk, so a copy that
+    the check accepts carries the digest of the set and is refused here.
+
+    Why the digest of the answer key is in the same list: the key of the generator is the same kind of thing. A
+    copy of it under another name and declared as tuning material is the same cheat with a different name.
+    """
+    manifests = list(_manifest_with_roles())
+    copy = EvalDatasetManifest(
+        dataset_id="another_name",
+        path="data/eval/another_name.jsonl",
+        sha256=HELD_OUT_RESERVED_DIGESTS[0],
+        records_count=48,
+        source="A copy of the labelled set of the blind reading under another name.",
+        labeling_version="v1",
+        split_role=TUNING_ROLE,
+        scenario_seed=7301,
+        contamination_policy=POLICY,
+    )
+    manifests.append(copy)
+
+    assert may_be_tuned_against("another_name", manifests) is True, "the copy is what the cheat needs"
+
+    with pytest.raises(TuningRefusal) as caught:
+        require_tuning_path("data/eval/another_name.jsonl", manifests)
+
+    message = str(caught.value)
+    assert "digest of the held out set" in message
+    assert message.endswith(".")
+
+
+def test_the_reserved_digests_are_the_digests_of_the_set_and_of_the_key() -> None:
+    """The reserved digests are the digests of the two files that may never be tuning material.
+
+    Why the test reads the disk and not a constant: the digest of the labelled set is the digest of the file of
+    the tree, and the digest of the key is the digest of the file that the generator writes. If either of them
+    moves, the reservation has to move with it, and the test is what says so.
+    """
+    manifest_entries = load_manifests(ROOT / "data" / "eval" / "datasets.json")
+    labelled = next(entry for entry in manifest_entries if entry.dataset_id == "verification_heldout")
+
+    assert labelled.sha256 in HELD_OUT_RESERVED_DIGESTS, (
+        "the digest of the labelled set of the reading is not reserved: a copy of it under another name would pass"
+    )
+
+    key = ROOT / "data" / "eval" / "heldout" / "recipes.jsonl"
+    if key.exists():
+        digest = hashlib.sha256(key.read_bytes()).hexdigest()
+        assert digest in HELD_OUT_RESERVED_DIGESTS, (
+            "the digest of the answer key of the generator is not reserved: a copy of it under another name would pass"
+        )

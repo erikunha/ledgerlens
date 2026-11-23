@@ -42,12 +42,12 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from ledgerlens.eval.manifest import (  # noqa: E402  (the path is set up before the import)
-    HELD_OUT_RESERVED_PATHS,
     MANIFEST_RELATIVE,
     TUNING_ROLE,
     ManifestError,
     TuningRefusal,
     load_manifests,
+    require_tuning_path,
     safe_text,
     verify_manifests,
 )
@@ -227,16 +227,12 @@ def _pin(manifest_path: Path, manifests: Sequence[Any]) -> dict[str, Any]:
     The pin is the record of the calibration, so a pin that named the held out set would be a record that says the
     thresholds were chosen over it.
     """
-    tuning = [entry for entry in manifests if entry.split_role == TUNING_ROLE]
-    reserved = [
-        entry for entry in tuning if Path(entry.path).as_posix() in HELD_OUT_RESERVED_PATHS
-    ]
-    if reserved:
-        raise TuningRefusal(
-            "the manifest declares as tuning material a dataset that is reserved for the held out set: "
-            + ", ".join(entry.path for entry in reserved)
-            + ". The role of an entry is data and the reservation is code, so the pin refuses to name it."
-        )
+    # The same door as the sweep of the thresholds: the path of the file and the digest of the entry. A copy of
+    # the set or of the answer key under another name carries the same digest, and the pin refuses to name it.
+    for entry in manifests:
+        if entry.split_role != TUNING_ROLE:
+            continue
+        require_tuning_path(entry.path, manifests)
     digest = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
     return {
         "tuning_manifest_sha256": digest,

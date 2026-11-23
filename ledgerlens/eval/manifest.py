@@ -1,6 +1,6 @@
 """The manifest of the eval datasets: what each file is, how many records it has and what may be done with it.
 
-Why it exists: the repository has seven JSONL datasets under `data/eval/` and, until this module, no file that said
+Why it exists: the repository has six JSONL datasets under `data/eval/` and, until this module, no file that said
 what they were, how many records each one held, which one the thresholds had been tuned on or which one a tuning
 script was allowed to read. The numbers that the verifier and the evaluation publish come from these files, and the
 43 against 30 discrepancy of the calibration is exactly the symptom of that missing file: nobody had pinned what was
@@ -103,6 +103,16 @@ TUNING_ROLE = "tuning"
 # line of JSON away, while this constant is code that a reader reviews. A path that is reserved here stays
 # refused whatever role the manifest gives it, so the role of the entry cannot unlock the file it names.
 HELD_OUT_RESERVED_PATHS: tuple[str, ...] = ("data/eval/verification_heldout.jsonl",)
+
+# The digests that are reserved for the held out set and for the answer key of the generator that wrote it.
+# Why the digests and not only the paths: a path names a file and a copy of the file under another name has
+# another path, so a reservation by path alone stops at the name. The bytes of the set and of the key are the
+# same under any name, and the digest is what the manifest has to declare for the file to be a dataset at all:
+# a copy that the check of the datasets accepts carries the digest of the set, and the digest is reserved here.
+HELD_OUT_RESERVED_DIGESTS: tuple[str, ...] = (
+    "e8dbcdfbc3f75eafbd3cd3c6d88da5641175cec93b4a48109073c80438924212",
+    "39720b7261521b911f1b6fb969afb8a59e97c963dc1933c1539a0b19de55ca30",
+)
 
 # The folder of the datasets, relative to the project root, and the manifest file relative to it. They are relative
 # so that a check over another root reads that root and not this one.
@@ -896,8 +906,13 @@ def require_tuning_path(path: str | Path, manifests: Sequence[EvalDatasetManifes
     unlocked by editing the data. The reservation lives in the code, where a reader reviews it, and it holds
     whatever role the manifest gives the path.
 
-    Raises `TuningRefusal` when the path is reserved, when no entry names the path, or when the entry that names it
-    may not be tuned against.
+    Why a reserved digest is refused: a path names a file and a copy of the file under another name has another
+    path, so the reservation by path alone stops at the name. The bytes are the same under any name, and the
+    digest of the entry is what the check of the datasets compares with the file on the disk, so a copy that the
+    check accepts carries the digest of the set and is refused here.
+
+    Raises `TuningRefusal` when the path is reserved, when the digest of the entry is reserved, when no entry
+    names the path, or when the entry that names it may not be tuned against.
     """
     wanted = Path(path).as_posix()
     entry = next((manifest for manifest in manifests if manifest.path == wanted), None)
@@ -916,6 +931,12 @@ def require_tuning_path(path: str | Path, manifests: Sequence[EvalDatasetManifes
             f"The path '{safe_text(wanted)}' is reserved for the held out set, so it may not be tuned against "
             f"whatever role the manifest gives it: only the datasets with the role '{TUNING_ROLE}' may be tuned "
             f"against."
+        )
+    if entry.sha256 in HELD_OUT_RESERVED_DIGESTS:
+        raise TuningRefusal(
+            f"The dataset '{safe_text(entry.dataset_id)}' has the digest of the held out set or of the answer key "
+            f"of the generator that wrote it, so it may not be tuned against under any name and with any role: "
+            f"only the datasets with the role '{TUNING_ROLE}' may be tuned against."
         )
     return entry
 
