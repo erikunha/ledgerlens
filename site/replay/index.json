@@ -75,10 +75,10 @@
     "status": "Recorded"
   },
   {
-    "bundle_digest": "e89522757e5aca88869b2ad14ef320440449e957217656b0be3e5f8de131d6d4",
+    "bundle_digest": "e16ceb63657a74be29e62b3f20462888aefb8863a9748947db5bdff25673bd06",
     "bundle_path": "s04",
     "capture_kind": "scripted_fixture",
-    "code_sha": "20c01362cecc9e18203dfe5856c63cf73c1cd09c",
+    "code_sha": "5631d857f0d4722d9e4b72a57b7411c93876bfac",
     "concepts": [
       "read_only_ledger_query"
     ],
@@ -93,7 +93,7 @@
     "id": "S04",
     "ledger_sha256": "6ccaead16f4d5e2f89adec2d76e6b3632c44c5674aa9b90216f1dc9c91002fd8",
     "name": "unknown_id",
-    "provenance_sha256": "be1254e8243e76598b4a77a11e477c957f33b3de857eed62c441ee35ee91fc4e",
+    "provenance_sha256": "8e6cf1b278b10440f7f9e971e80c64334e1181e350f093db05e89b5f510e0af5",
     "question": "What is the status of TX-9999?",
     "status": "Recorded"
   },
