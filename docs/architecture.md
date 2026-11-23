@@ -300,7 +300,7 @@ Time and cost were not measured: the model is scripted. The debugging argument (
 
 ## 7. The live mode: bring your own key
 
-The demo runs with no key at all: the model is scripted, the data comes from the sample and the replay works offline. The live mode is the opt-in branch of it, where a visitor runs a real case with a key of their own provider. In this milestone the branch is server side: the facade and the coordinator exist, and the pages that consume them do not ([ADR-035](decisions/ADR-035-the-facade-of-the-live-mode.md)).
+The demo runs with no key at all: the model is scripted, the data comes from the sample and the replay works offline. The live mode is the opt-in branch of it, where a visitor runs a real case with a key of their own provider. In this milestone the branch is server side: the facade and the coordinator exist, and the pages that consume them were delivered with them in R3 ([ADR-035](decisions/ADR-035-the-facade-of-the-live-mode.md), superseded by [ADR-066](decisions/ADR-066-the-pages-of-the-live-mode-exist-and-the-readme-was-the-one-that-was-wrong.md)).
 
 Three things hold that branch together: the lifecycle of the credential, the enforcement of the budget and the ledger of the visitor. The vault holds the secret, the coordinator holds the run, the branch layer holds the ledger, and none of them reads a global setting.
 

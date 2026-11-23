@@ -244,7 +244,7 @@ is `ledgerlens/eval/run.py:772`. The way to cite a rule of the world next to a p
 
 **What the evidence says.** This is the strongest thing the repository owns, and the place where the published claim
 and the work in flight disagreed. The manifest declares the rule and applies it to itself: five datasets carry the role
-`tuning` and two carry the role `held_out`, and the policy says that no result over a tuning dataset may be presented
+`tuning` and one carries the role `held_out`, and the policy says that no result over a tuning dataset may be presented
 as a generalization to unseen data (`data/eval/datasets.json:4`). The decision behind it says the same in
 words: the role that makes a number look better is never the one that wins
 (`docs/decisions/ADR-052-the-manifest-of-the-eval-datasets.md:75`).
@@ -253,7 +253,7 @@ The report publishes the missed target in the open: the trajectory of the full a
 the declared equivalence, neither meeting the minimum of 0.80 (`data/eval/report_online.md:29` to `:33`). The verifier
 block publishes 1.00 of accuracy over the 43 records of the verification set (`data/eval/report_online.md:41` to `:45`),
 and the README says what that number is: a measure over the data the thresholds were chosen on, and not over unseen
-data (`README.md:180`).
+data (`README.md:215`).
 
 **What the programme did about it, and this is the first time the story changes.** The owner decided that the reading
 would not be done by his hand, and the record that says so is
@@ -529,20 +529,22 @@ does not name its set, its role, its denominator and its hardware
 **The question the audit asked.** The site, the demo, the README, the claims a stranger reads.
 
 **What the evidence says.** The English README is strong. The value proposition is in the first paragraph
-(`README.md:9`), the results table names its datasets (`README.md:169`), and the trajectory goal that was missed is
-stated in the results themselves (`README.md:179`).
+(`README.md:9`), the results section names its datasets and the set each number was measured over (`README.md:206` to
+`:218`), and the trajectory goal that was missed is stated in the results themselves (`README.md:214`).
 
-The largest discoverability failure is structural. The public site is never mentioned in either README: the demo
-section heads "Demo app (Streamlit)" (`README.md:112`), the only demo command is the Streamlit one
-(`README.md:119`), and the outgoing links contain no `apps/web` and no npm command. The site is real
-and tracked (`apps/web/app/page.tsx:18`), and its own README gives the commands a stranger needs
-(`apps/web/README.md:29`). A stranger who wants the recorded demo has to find `docs/demo.md` and `docs/frontend.md` by
-hand.
+The public site is in both READMEs. Each one has a section of its own for it, with the commands that build it and
+serve it and the routes a visitor opens (`README.md:130` to `:153`, `README.pt-BR.md:132` to `:155`), and each one
+links the README of the folder (`README.md:153`). The site is real and tracked (`apps/web/app/page.tsx:18`), and its
+own README gives the commands a stranger needs (`apps/web/README.md:29`).
 
-The documentation set had no index: `docs/` held seven top level Markdown files and no `README.md`, and
-`docs/decisions/` held no index either. A reachability traversal from the README reached 45 of the 169 Markdown
-files, and the 124 it did not reach include the whole design pack and 44 of the records. The link check, over 245
-local links, found two broken targets, one of them a real defect (`docs/v3/README.md:64`).
+What is left of the discoverability failure of the first edition is the place of the section and not its absence: the
+site is described under the quickstart (`README.md:98`), so a visitor that reads only the first screen of the README
+(`README.md:9`) does not learn that it exists.
+
+The documentation set had no index when the first edition was written: `docs/` held seven top level Markdown files and
+no `README.md`, and `docs/decisions/` held no index either. A reachability traversal from the README reached 45 of the
+169 Markdown files, and the 124 it did not reach include the whole design pack and 44 of the records. The link check,
+over 245 local links, found two broken targets, one of them a real defect (`docs/v3/README.md:64`).
 
 **What the programme did about it.** The index exists and it is generated, not written by hand:
 [`docs/README.md`](README.md) lists every Markdown file under `docs/` with what it holds, and
@@ -552,11 +554,13 @@ produced by `scripts/build_docs_index.py`. The sentence of the AI agent now exis
 reviews the cases that need review", and every surface that answers a person carries it. That is section 9.
 
 The evaluation asset is strong in substance and weak in findability, and it is stated as a negative. The Portuguese
-README has drifted from the English one: the whole live mode section is missing (`README.md:134` to `:165`), and the
-rule of parity states that a translation that lags behind its source is a defect
-(`docs/decisions/ADR-016-brazilian-portuguese-translation-layer.md:35`). And the demo is honestly labelled and measures
-nothing about itself: the mode is on every page (`apps/web/app/(public)/replay/page.tsx:66`) and the footer states the
-limitation (`apps/web/features/shell/AppShell.tsx:84`), with no instrumentation anywhere in `apps/web`.
+README is in parity with the English one: it carries the live mode section (`README.pt-BR.md:169` to `:202`) beside
+the English one (`README.md:167` to `:200`), and the rule of parity states that a translation that lags behind its
+source is a defect (`docs/decisions/ADR-016-brazilian-portuguese-translation-layer.md:35`). The parity is checked in
+its shape by a test (`tests/eval/test_readme_parity.py`), and a sentence that says the opposite in one of the two
+languages passes that test. And the demo is honestly labelled and measures nothing about itself: the mode is on every
+page (`apps/web/app/(public)/replay/page.tsx:66`) and the footer states the limitation
+(`apps/web/features/shell/AppShell.tsx:84`), with no instrumentation anywhere in `apps/web`.
 
 ```mermaid
 flowchart LR
@@ -565,18 +569,22 @@ flowchart LR
   DOCS --> PACK["The design pack"]
   README --> NUM["The results table"] --> VER["docs/verification_sets.md"]
   README --> EVAL["docs/evaluation.md"]
-  SITE["The public site, apps/web"] -.->|"never mentioned in the README"| README
-  style SITE stroke-dasharray: 5 5
+  SITE["The public site, apps/web"] -->|"a section of the quickstart"| README
 ```
 
 ![The public surface](assets/readiness/08-public-surface.png)
 
 **The gaps, ranked.**
 
-1. **The public site is invisible from the root README.** The highest visibility per line changed, and it is the first
-   thing to do.
-2. **The documentation set has no index**, so a reader who asks where something is cannot answer in one hop.
-3. **The Portuguese README has drifted from the English one.** The rule exists and nothing enforces it.
+1. **The public site is a section of the quickstart and not of the first screen.** The two READMEs describe it, with
+   the commands that build it and the routes a visitor opens (`README.md:130` to `:153`), and the first paragraph of
+   the README (`README.md:9`) does not name it.
+2. **The index of the documentation exists and the gate keeps it honest,** but the one line it gives for a decision
+   record is its status and its date (`docs/README.md`), and not the sentence that decides, so a reader who looks for
+   the record that governs a question finds a row and has to open the file.
+3. **The parity of the two READMEs is checked in its shape and not in its prose.** The test of the parity
+   (`tests/eval/test_readme_parity.py`) compares the headings and the bullets of the limitations, and a sentence that
+   says the opposite in one of the two languages passes it.
 4. **The evaluation asset is stated as a negative and is invisible to a reader who searches for it.**
 5. **The demo measures nothing about itself.** No count of visits, no completion, no error counter.
 6. **The published evidence is five scenarios deep.** The catalog holds five cards (`site/replay/index.json`), and
@@ -604,7 +612,7 @@ market before that date (the Commission guidelines on the transparency obligatio
 **What the surfaces did about it.** Until the record of 23 November 2026 nothing in the product said anything about the
 origin of the answer: a search of `app/`, `apps/web/`, the two READMEs and `docs/` for the usual claims of an AI
 assistant returned no match, and the one disclosure the repository carried was about the key and the billing
-(`README.md:155` to `:163`). The decision is
+(`README.md:190` to `:198`). The decision is
 [ADR-060](decisions/ADR-060-the-surfaces-that-answer-a-person-carry-the-sentence-of-the-ai-agent.md), accepted on
 23 November 2026, and the reason it is good is worth naming: the product has three stacks, so a sentence written by
 hand in each surface would drift, and the drift would be invisible until a reader of the site saw a promise the demo
@@ -657,7 +665,7 @@ person decided when they disagreed. The repository measures how often the flag g
 (`ledgerlens/eval/manifest.py:20` to `:22`), the bundle carries a digest per file (`site/replay/s01/manifest.json:9`),
 and the dependencies are locked and the base image pinned by digest (`Dockerfile:7` and `:12`). What is not pinned is
 what decides the answer: the embedding model is a mutable reference (`ledgerlens/embeddings.py:18`), and the chat model
-is a provider alias (`README.md:132`) that this repository cannot pin by hash because it does not hold the bytes. There
+is a provider alias (`README.md:165`) that this repository cannot pin by hash because it does not hold the bytes. There
 is no signature, no bill of materials in a machine readable format and no dependency scan among the steps of the gate
 (`scripts/gate.sh:10` to `:38`). The two pins that matter to the reader of a number are the pin of the calibration and
 the lock of the sources, and the lock is the file the third condition of the ECB is missing from, which is section 12.

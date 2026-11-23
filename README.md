@@ -166,7 +166,7 @@ Copy `.env.example` to `.env`, fill in the keys (`OPENAI_API_KEY` and, for trace
 
 ## Live mode: bring your own key
 
-The demo runs with no key at all. The live mode is the opt-in branch of it: the visitor runs a real case with a key of their own provider, inside a hard budget, and everything else keeps working exactly as before. In this milestone the branch is server side: the routes exist and the pages that consume them do not ([ADR-035](docs/decisions/ADR-035-the-facade-of-the-live-mode.md)).
+The demo runs with no key at all. The live mode is the opt-in branch of it: the visitor runs a real case with a key of their own provider, inside a hard budget, and everything else keeps working exactly as before. In this milestone the branch is server side and it is complete: the routes and the pages that consume them were delivered in R3 ([ADR-035](docs/decisions/ADR-035-the-facade-of-the-live-mode.md), [ADR-066](docs/decisions/ADR-066-the-pages-of-the-live-mode-exist-and-the-readme-was-the-one-that-was-wrong.md)).
 
 The demo of the visitor is served by one command, with the origin of the site declared so that the browser of the visitor may call it:
 
@@ -206,7 +206,7 @@ Online evaluation: 30 cases, three runs of each variant, `gpt-4.1-mini` at tempe
 | Variant | Correctness | Groundedness | Tool trajectory (equivalent, unordered) | Explanation (LLM judge) | Sent to human review (of 30) |
 |---|---|---|---|---|---|
 | A: chain with no tools | 0.17 [0.17, 0.17] | 0.00 | 0.00 | 0.70 [0.69, 0.72] | 30.0 |
-| B: ReAct agent | 0.55 [0.51, 0.58] | 0.00 | 0.64 [0.57, 0.70] | 0.83 [0.80, 0.87] | 29.0 [28, 30] |
+| B: ReAct agent | 0.55 [0.51, 0.58] | 0.00 | 0.68 [0.60, 0.73] | 0.83 [0.80, 0.87] | 29.0 [28, 30] |
 | C: full agent with verifier | 0.82 [0.79, 0.85] | 0.74 [0.71, 0.76] | 0.73 [0.73, 0.73] | 0.79 [0.77, 0.81] | 9.3 [8, 10] |
 
 - The full agent (C) gets the facts right far more often than the tool-free chain (A) and the ReAct agent (B), and it is the only variant whose answers are grounded in cited evidence.

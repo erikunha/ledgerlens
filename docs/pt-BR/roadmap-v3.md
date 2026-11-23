@@ -62,15 +62,19 @@ O `TraceEvent` público é o contrato de `contracts/schemas/trace-event.schema.j
 
 A especificação está em [`specs/001-r1-public-replay/`](../../specs/001-r1-public-replay/).
 
-| ID | Tarefa | Estado |
-|---|---|---|
-| LL-V3-R1-01 | Shell Next.js e tokens de design responsivos | pendente |
-| LL-V3-R1-02 | Galeria de cenários sem autenticação, com procedência | pendente |
-| LL-V3-R1-03 | Renderizar o trace gravado, passo a passo | pendente |
-| LL-V3-R1-04 | Explorador de registros de pagamento | pendente |
-| LL-V3-R1-05 | Inspetor vinculado de afirmação, veredito e evidência | pendente |
-| LL-V3-R1-06 | Explorador de arquitetura com âncoras na fonte | pendente |
-| LL-V3-R1-07 | Testes automatizados de acessibilidade e mobile | pendente |
+| ID | Tarefa | Evidência | Estado |
+|---|---|---|---|
+| LL-V3-R1-01 | Shell Next.js e tokens de design responsivos | [`specs/001-r1-public-replay/tasks.md`](../../specs/001-r1-public-replay/tasks.md) | feito |
+| LL-V3-R1-02 | Galeria de cenários sem autenticação, com procedência | [`specs/001-r1-public-replay/tasks.md`](../../specs/001-r1-public-replay/tasks.md) | feito |
+| LL-V3-R1-03 | Renderizar o trace gravado, passo a passo | [`specs/001-r1-public-replay/tasks.md`](../../specs/001-r1-public-replay/tasks.md) | feito |
+| LL-V3-R1-04 | Explorador de registros de pagamento | [`specs/001-r1-public-replay/tasks.md`](../../specs/001-r1-public-replay/tasks.md) | feito |
+| LL-V3-R1-05 | Inspetor vinculado de afirmação, veredito e evidência | [`specs/001-r1-public-replay/tasks.md`](../../specs/001-r1-public-replay/tasks.md) | feito |
+| LL-V3-R1-06 | Explorador de arquitetura com âncoras na fonte | [`specs/001-r1-public-replay/tasks.md`](../../specs/001-r1-public-replay/tasks.md) | feito |
+| LL-V3-R1-07 | Testes automatizados de acessibilidade e mobile | [`specs/001-r1-public-replay/tasks.md`](../../specs/001-r1-public-replay/tasks.md) | feito |
+
+Toda tarefa da especificação do release está marcada: 90 das 90 tarefas de
+[`specs/001-r1-public-replay/tasks.md`](../../specs/001-r1-public-replay/tasks.md), e o estado de uma linha desta
+tabela segue as tarefas da especificação e não o calendário do plano.
 
 O frontend consome esquemas de API versionados e nunca reimplementa uma regra de domínio. O Python continua sendo a
 autoridade.
@@ -79,15 +83,18 @@ autoridade.
 
 A especificação está em [`specs/002-r2-visitor-sandbox/`](../../specs/002-r2-visitor-sandbox/).
 
-| ID | Tarefa | Estado |
-|---|---|---|
-| LL-V3-R2-01 | Comandos de mutação tipados para o sandbox | pendente |
-| LL-V3-R2-02 | Fork do snapshot base imutável por sessão | pendente |
-| LL-V3-R2-03 | Append e projeção idempotentes | pendente |
-| LL-V3-R2-04 | Pré-visualização e diff das mutações | pendente |
-| LL-V3-R2-05 | Recalcular o oráculo do cenário após a mutação | pendente |
-| LL-V3-R2-06 | Reset, consistência de hash e tempo de vida | pendente |
-| LL-V3-R2-07 | Isolamento ponta a ponta entre dois visitantes, e o caso de conflito | pendente |
+| ID | Tarefa | Evidência | Estado |
+|---|---|---|---|
+| LL-V3-R2-01 | Comandos de mutação tipados para o sandbox | [`specs/002-r2-visitor-sandbox/tasks.md`](../../specs/002-r2-visitor-sandbox/tasks.md) | feito |
+| LL-V3-R2-02 | Fork do snapshot base imutável por sessão | [`specs/002-r2-visitor-sandbox/tasks.md`](../../specs/002-r2-visitor-sandbox/tasks.md) | feito |
+| LL-V3-R2-03 | Append e projeção idempotentes | [`specs/002-r2-visitor-sandbox/tasks.md`](../../specs/002-r2-visitor-sandbox/tasks.md) | feito |
+| LL-V3-R2-04 | Pré-visualização e diff das mutações | [`specs/002-r2-visitor-sandbox/tasks.md`](../../specs/002-r2-visitor-sandbox/tasks.md) | feito |
+| LL-V3-R2-05 | Recalcular o oráculo do cenário após a mutação | [`specs/002-r2-visitor-sandbox/tasks.md`](../../specs/002-r2-visitor-sandbox/tasks.md) | feito |
+| LL-V3-R2-06 | Reset, consistência de hash e tempo de vida | [`specs/002-r2-visitor-sandbox/tasks.md`](../../specs/002-r2-visitor-sandbox/tasks.md) | feito |
+| LL-V3-R2-07 | Isolamento ponta a ponta entre dois visitantes, e o caso de conflito | [`specs/002-r2-visitor-sandbox/tasks.md`](../../specs/002-r2-visitor-sandbox/tasks.md) | feito |
+
+Toda tarefa da especificação do release está marcada: 82 das 82 tarefas de
+[`specs/002-r2-visitor-sandbox/tasks.md`](../../specs/002-r2-visitor-sandbox/tasks.md).
 
 A base pública é imutável: cada visitante recebe um branch isolado e pode resetar de forma determinística. Nada escreve
 direto na tabela de domínio; um evento é escrito e o projetor recalcula.
@@ -96,15 +103,20 @@ direto na tabela de domínio; um evento é escrito e o projetor recalcula.
 
 A especificação está em [`specs/003-r3-bring-your-own-key/`](../../specs/003-r3-bring-your-own-key/).
 
-| ID | Tarefa | Estado |
-|---|---|---|
-| LL-V3-R3-01 | Registro de provedores e a lista de capacidades testadas | pendente |
-| LL-V3-R3-02 | Handle efêmero de segredo, com o caminho de exclusão | pendente |
-| LL-V3-R3-03 | Coordenador de execução com orçamento estrito | pendente |
-| LL-V3-R3-04 | Server-sent events tipados e cancelamento | pendente |
-| LL-V3-R3-05 | Seletor de modelo e um consentimento transparente | pendente |
-| LL-V3-R3-06 | Teste de conformidade de tool calling para o provedor | pendente |
-| LL-V3-R3-07 | Sanitização da chave e do trace em caso de falha | pendente |
+| ID | Tarefa | Evidência | Estado |
+|---|---|---|---|
+| LL-V3-R3-01 | Registro de provedores e a lista de capacidades testadas | [`specs/003-r3-bring-your-own-key/tasks.md`](../../specs/003-r3-bring-your-own-key/tasks.md) | feito |
+| LL-V3-R3-02 | Handle efêmero de segredo, com o caminho de exclusão | [`specs/003-r3-bring-your-own-key/tasks.md`](../../specs/003-r3-bring-your-own-key/tasks.md) | feito |
+| LL-V3-R3-03 | Coordenador de execução com orçamento estrito | [`specs/003-r3-bring-your-own-key/tasks.md`](../../specs/003-r3-bring-your-own-key/tasks.md) | feito |
+| LL-V3-R3-04 | Server-sent events tipados e cancelamento | [`specs/003-r3-bring-your-own-key/tasks.md`](../../specs/003-r3-bring-your-own-key/tasks.md) | feito |
+| LL-V3-R3-05 | Seletor de modelo e um consentimento transparente | [`specs/003-r3-bring-your-own-key/tasks.md`](../../specs/003-r3-bring-your-own-key/tasks.md) | feito |
+| LL-V3-R3-06 | Teste de conformidade de tool calling para o provedor | [`specs/003-r3-bring-your-own-key/tasks.md`](../../specs/003-r3-bring-your-own-key/tasks.md) | feito |
+| LL-V3-R3-07 | Sanitização da chave e do trace em caso de falha | [`specs/003-r3-bring-your-own-key/tasks.md`](../../specs/003-r3-bring-your-own-key/tasks.md) | feito |
+
+Toda tarefa da especificação do release está marcada: 87 das 87 tarefas de
+[`specs/003-r3-bring-your-own-key/tasks.md`](../../specs/003-r3-bring-your-own-key/tasks.md). As páginas do modo ao vivo
+foram entregues neste release
+([ADR-066](../decisions/ADR-066-the-pages-of-the-live-mode-exist-and-the-readme-was-the-one-that-was-wrong.md)).
 
 O BYOK só chega depois que os testes de isolamento por sessão e os testes de sanitização estiverem verdes. A chave fica
 no servidor, na sessão, e desaparece na saída.

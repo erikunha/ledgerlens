@@ -60,15 +60,19 @@ The public `TraceEvent` is the contract of `contracts/schemas/trace-event.schema
 
 The specification is in [`specs/001-r1-public-replay/`](../specs/001-r1-public-replay/).
 
-| ID | Task | State |
-|---|---|---|
-| LL-V3-R1-01 | Next.js shell and responsive design tokens | pending |
-| LL-V3-R1-02 | Zero-auth scenario gallery, with provenance | pending |
-| LL-V3-R1-03 | Render the recorded trace, step by step | pending |
-| LL-V3-R1-04 | Payment record explorer | pending |
-| LL-V3-R1-05 | Linked claim, verdict and evidence inspector | pending |
-| LL-V3-R1-06 | Architecture explorer with source anchors | pending |
-| LL-V3-R1-07 | Automated accessibility and mobile tests | pending |
+| ID | Task | Evidence | State |
+|---|---|---|---|
+| LL-V3-R1-01 | Next.js shell and responsive design tokens | [`specs/001-r1-public-replay/tasks.md`](../specs/001-r1-public-replay/tasks.md) | done |
+| LL-V3-R1-02 | Zero-auth scenario gallery, with provenance | [`specs/001-r1-public-replay/tasks.md`](../specs/001-r1-public-replay/tasks.md) | done |
+| LL-V3-R1-03 | Render the recorded trace, step by step | [`specs/001-r1-public-replay/tasks.md`](../specs/001-r1-public-replay/tasks.md) | done |
+| LL-V3-R1-04 | Payment record explorer | [`specs/001-r1-public-replay/tasks.md`](../specs/001-r1-public-replay/tasks.md) | done |
+| LL-V3-R1-05 | Linked claim, verdict and evidence inspector | [`specs/001-r1-public-replay/tasks.md`](../specs/001-r1-public-replay/tasks.md) | done |
+| LL-V3-R1-06 | Architecture explorer with source anchors | [`specs/001-r1-public-replay/tasks.md`](../specs/001-r1-public-replay/tasks.md) | done |
+| LL-V3-R1-07 | Automated accessibility and mobile tests | [`specs/001-r1-public-replay/tasks.md`](../specs/001-r1-public-replay/tasks.md) | done |
+
+Every task of the specification of the release is checked: 90 of the 90 tasks of
+[`specs/001-r1-public-replay/tasks.md`](../specs/001-r1-public-replay/tasks.md), and the state of a row of this table
+follows the tasks of the specification and not the calendar of the plan.
 
 The frontend consumes versioned API schemas and never reimplements a domain rule. Python stays the authority.
 
@@ -76,15 +80,18 @@ The frontend consumes versioned API schemas and never reimplements a domain rule
 
 The specification is in [`specs/002-r2-visitor-sandbox/`](../specs/002-r2-visitor-sandbox/).
 
-| ID | Task | State |
-|---|---|---|
-| LL-V3-R2-01 | Typed mutation commands for the sandbox | pending |
-| LL-V3-R2-02 | Fork the immutable base snapshot per session | pending |
-| LL-V3-R2-03 | Idempotent append and projection | pending |
-| LL-V3-R2-04 | Preview and diff of the mutations | pending |
-| LL-V3-R2-05 | Recompute the scenario oracle after the mutation | pending |
-| LL-V3-R2-06 | Reset, hash consistency and time to live | pending |
-| LL-V3-R2-07 | End to end isolation between two visitors, and the conflict case | pending |
+| ID | Task | Evidence | State |
+|---|---|---|---|
+| LL-V3-R2-01 | Typed mutation commands for the sandbox | [`specs/002-r2-visitor-sandbox/tasks.md`](../specs/002-r2-visitor-sandbox/tasks.md) | done |
+| LL-V3-R2-02 | Fork the immutable base snapshot per session | [`specs/002-r2-visitor-sandbox/tasks.md`](../specs/002-r2-visitor-sandbox/tasks.md) | done |
+| LL-V3-R2-03 | Idempotent append and projection | [`specs/002-r2-visitor-sandbox/tasks.md`](../specs/002-r2-visitor-sandbox/tasks.md) | done |
+| LL-V3-R2-04 | Preview and diff of the mutations | [`specs/002-r2-visitor-sandbox/tasks.md`](../specs/002-r2-visitor-sandbox/tasks.md) | done |
+| LL-V3-R2-05 | Recompute the scenario oracle after the mutation | [`specs/002-r2-visitor-sandbox/tasks.md`](../specs/002-r2-visitor-sandbox/tasks.md) | done |
+| LL-V3-R2-06 | Reset, hash consistency and time to live | [`specs/002-r2-visitor-sandbox/tasks.md`](../specs/002-r2-visitor-sandbox/tasks.md) | done |
+| LL-V3-R2-07 | End to end isolation between two visitors, and the conflict case | [`specs/002-r2-visitor-sandbox/tasks.md`](../specs/002-r2-visitor-sandbox/tasks.md) | done |
+
+Every task of the specification of the release is checked: 82 of the 82 tasks of
+[`specs/002-r2-visitor-sandbox/tasks.md`](../specs/002-r2-visitor-sandbox/tasks.md).
 
 The public base is immutable: each visitor gets an isolated branch and can reset deterministically. Nothing writes
 directly to the domain table; an event is written and the projector recomputes.
@@ -93,15 +100,19 @@ directly to the domain table; an event is written and the projector recomputes.
 
 The specification is in [`specs/003-r3-bring-your-own-key/`](../specs/003-r3-bring-your-own-key/).
 
-| ID | Task | State |
-|---|---|---|
-| LL-V3-R3-01 | Provider registry and the list of tested capabilities | pending |
-| LL-V3-R3-02 | Ephemeral secret handle, with the delete path | pending |
-| LL-V3-R3-03 | Run coordinator with a strict budget | pending |
-| LL-V3-R3-04 | Typed server-sent events and cancellation | pending |
-| LL-V3-R3-05 | Model picker and a transparent consent | pending |
-| LL-V3-R3-06 | Tool calling conformance test for the provider | pending |
-| LL-V3-R3-07 | Redaction of the key and of the trace under failure | pending |
+| ID | Task | Evidence | State |
+|---|---|---|---|
+| LL-V3-R3-01 | Provider registry and the list of tested capabilities | [`specs/003-r3-bring-your-own-key/tasks.md`](../specs/003-r3-bring-your-own-key/tasks.md) | done |
+| LL-V3-R3-02 | Ephemeral secret handle, with the delete path | [`specs/003-r3-bring-your-own-key/tasks.md`](../specs/003-r3-bring-your-own-key/tasks.md) | done |
+| LL-V3-R3-03 | Run coordinator with a strict budget | [`specs/003-r3-bring-your-own-key/tasks.md`](../specs/003-r3-bring-your-own-key/tasks.md) | done |
+| LL-V3-R3-04 | Typed server-sent events and cancellation | [`specs/003-r3-bring-your-own-key/tasks.md`](../specs/003-r3-bring-your-own-key/tasks.md) | done |
+| LL-V3-R3-05 | Model picker and a transparent consent | [`specs/003-r3-bring-your-own-key/tasks.md`](../specs/003-r3-bring-your-own-key/tasks.md) | done |
+| LL-V3-R3-06 | Tool calling conformance test for the provider | [`specs/003-r3-bring-your-own-key/tasks.md`](../specs/003-r3-bring-your-own-key/tasks.md) | done |
+| LL-V3-R3-07 | Redaction of the key and of the trace under failure | [`specs/003-r3-bring-your-own-key/tasks.md`](../specs/003-r3-bring-your-own-key/tasks.md) | done |
+
+Every task of the specification of the release is checked: 87 of the 87 tasks of
+[`specs/003-r3-bring-your-own-key/tasks.md`](../specs/003-r3-bring-your-own-key/tasks.md). The pages of the live mode
+were delivered in this release ([ADR-066](decisions/ADR-066-the-pages-of-the-live-mode-exist-and-the-readme-was-the-one-that-was-wrong.md)).
 
 BYOK only comes after the per-session isolation tests and the redaction tests are green. The key stays on the server,
 in the session, and disappears at the exit.

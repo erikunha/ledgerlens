@@ -73,4 +73,5 @@ by hand: run `uv run python scripts/build_docs_index.py` and commit the result.
 | 063 | [ADR-063: The path of the machine of the owner is not a decision and is not published](ADR-063-the-path-of-the-machine-of-the-owner-is-not-a-decision-and-is-not-published.md) | accepted | 2026-11-23 |
 | 064 | [ADR-064: The sentences that assert the blindness of the reading as a fact are superseded](ADR-064-the-sentences-that-assert-the-blindness-of-the-reading-as-a-fact-are-superseded.md) | accepted | 2026-11-23 |
 | 065 | [ADR-065: The reservation of the held out set follows the case and not only the file](ADR-065-the-reservation-of-the-held-out-set-follows-the-case-and-not-only-the-file.md) | accepted | 2026-11-23 |
+| 066 | [ADR-066: The pages of the live mode exist and the README was the one that was wrong](ADR-066-the-pages-of-the-live-mode-exist-and-the-readme-was-the-one-that-was-wrong.md) | accepted | 2026-11-23 |
 | 067 | [ADR-067: The measurement of the held out set is published without its answer key](ADR-067-the-measurement-of-the-held-out-set-is-published-without-its-answer-key.md) | accepted | 2026-11-23 |

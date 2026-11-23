@@ -168,7 +168,7 @@ Copie `.env.example` para `.env`, preencha as chaves (`OPENAI_API_KEY` e, para t
 
 ## Modo ao vivo: traga a sua própria chave
 
-A demonstração funciona sem nenhuma chave. O modo ao vivo é o ramo que você escolhe ativar: o visitante roda um caso real com uma chave do próprio provedor, dentro de um orçamento rígido, e todo o resto continua funcionando exatamente como antes. Neste marco, o ramo é do lado do servidor: as rotas existem e as páginas que as consomem ainda não ([ADR-035](docs/decisions/ADR-035-the-facade-of-the-live-mode.md)).
+A demonstração funciona sem nenhuma chave. O modo ao vivo é o ramo que você escolhe ativar: o visitante roda um caso real com uma chave do próprio provedor, dentro de um orçamento rígido, e todo o resto continua funcionando exatamente como antes. Neste marco o ramo é do lado do servidor e está completo: as rotas e as páginas que as consomem foram entregues no R3 ([ADR-035](docs/decisions/ADR-035-the-facade-of-the-live-mode.md), [ADR-066](docs/decisions/ADR-066-the-pages-of-the-live-mode-exist-and-the-readme-was-the-one-that-was-wrong.md)).
 
 A demonstração do visitante é servida por um comando, com a origem do site declarada para que o navegador do visitante possa chamá-lo:
 
@@ -208,7 +208,7 @@ Avaliação online: 30 casos, três execuções de cada variante, `gpt-4.1-mini`
 | Variante | Corretude | Groundedness | Trajetória de ferramentas (equivalente, sem ordem) | Explicação (juiz LLM) | Enviadas para revisão humana (de 30) |
 |---|---|---|---|---|---|
 | A: chain sem ferramentas | 0.17 [0.17, 0.17] | 0.00 | 0.00 | 0.70 [0.69, 0.72] | 30.0 |
-| B: agente ReAct | 0.55 [0.51, 0.58] | 0.00 | 0.64 [0.57, 0.70] | 0.83 [0.80, 0.87] | 29.0 [28, 30] |
+| B: agente ReAct | 0.55 [0.51, 0.58] | 0.00 | 0.68 [0.60, 0.73] | 0.83 [0.80, 0.87] | 29.0 [28, 30] |
 | C: agente completo com verificador | 0.82 [0.79, 0.85] | 0.74 [0.71, 0.76] | 0.73 [0.73, 0.73] | 0.79 [0.77, 0.81] | 9.3 [8, 10] |
 
 - O agente completo (C) acerta os fatos com muito mais frequência que a chain sem ferramentas (A) e o agente ReAct (B), e é a única variante cujas respostas estão ancoradas em evidência citada.
