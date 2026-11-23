@@ -1,7 +1,7 @@
 {
   "artifacts": {
     "events.jsonl": "c9f0d8481a7eaa7a2e044b694bae4609b7aecf5ca423b48d0c182f131b423ff9",
-    "ledger.json": "a28ad06a9dc41656d553c1f12c62b84bac731b55dcdb9fbfeabb67a4744b368d",
+    "ledger.json": "6a53cb7a6c8f3dc3e8f78705c2bc6c6ee1b3535bc2595b44c0d1ffed069d280d",
     "manifest.json": "38f74aa459df9423b182c3fe327b05e852b85c2dde22d29e09c216910ebfbd77"
   },
   "bundle_digest": "38f74aa459df9423b182c3fe327b05e852b85c2dde22d29e09c216910ebfbd77",

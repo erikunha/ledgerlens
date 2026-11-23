@@ -24,7 +24,7 @@
           "rows": [
             {
               "amount_major": "215.00",
-              "amount_minor": 21500,
+              "amount_minor": "21500",
               "currency": "USD",
               "deadline": "2026-11-09",
               "id": "CB-0310",

@@ -35,6 +35,7 @@ import sqlite3
 import subprocess
 import sys
 import tempfile
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -197,6 +198,60 @@ def _first_customer(ledger: Path) -> str:
     return str(row[0])
 
 
+# The table of the ledger that holds each kind of id, by the prefix of the id.
+_TABLE_OF_PREFIX = {"TX": "transactions", "R": "refunds", "CB": "chargebacks", "ST": "settlements"}
+
+
+def _visible_records(account_db: Path, ids: Sequence[str]) -> int:
+    """How many of the ids of the scenario the ledger of the account shows.
+
+    Why it matters: the ledger of a customer holds the payments of that customer and no settlement, and the ledger
+    of a merchant holds the payouts and no payment of another merchant. A recording that signs in as the wrong kind
+    of account reads nothing, and then the answer of the recording is a claim with no evidence behind it.
+    """
+    connection = sqlite3.connect(f"file:{account_db}?mode=ro", uri=True)
+    try:
+        seen = 0
+        for identifier in ids:
+            table = _TABLE_OF_PREFIX.get(identifier.split("-", 1)[0])
+            if table is None:
+                continue
+            row = connection.execute(f"SELECT 1 FROM {table} WHERE id = ?", (identifier,)).fetchone()
+            seen += 1 if row is not None else 0
+        return seen
+    finally:
+        connection.close()
+
+
+def _account_that_holds(manifest: dict, scenario_id: str, base: Path, work_root: Path) -> str:
+    """The account of the scenario whose ledger shows the records the question is about.
+
+    Why the account is chosen by what the ledger shows and not by the order of the manifest: the scenario S08 names
+    a customer and a merchant, and the question is about the payout of the merchant. Signing in as the customer
+    reads nothing, and the recording would publish an answer with no evidence behind it.
+
+    Why the fallback exists: the scenario S04 is about an identifier that is not in the ledger, so no account shows
+    anything, and the run still needs an account to sign in. The first customer of the ledger is used and the note
+    of the bundle says which account it was.
+    """
+    scenario = demo.scenario_of(manifest, scenario_id)
+    ids = [
+        identifier
+        for key in ("transaction_ids", "refund_ids", "chargeback_ids", "settlement_ids")
+        for identifier in scenario["ids"].get(key, [])
+    ]
+    best_account = ""
+    best_seen = -1
+    for index, account_id in enumerate(demo.accounts_of(manifest, scenario_id)):
+        candidate = scoped_ledger(base, account_id, work_root / f"candidate-{index}.db")
+        seen = _visible_records(candidate, ids)
+        if seen > best_seen:
+            best_account, best_seen = account_id, seen
+    if best_seen > 0:
+        return best_account
+    return _first_customer(base)
+
+
 def capture(scenario_id: str, out: Path, root: Path = ROOT) -> Path:
     """Runs the planted scenario in deterministic mode and writes the bundle.
 
@@ -215,8 +270,7 @@ def capture(scenario_id: str, out: Path, root: Path = ROOT) -> Path:
         work_root = Path(work)
         base = work_root / "ledger.db"
         build_ledger(SimConfig(source="sample"), base).conn.close()
-        if account_id is None:
-            account_id = _first_customer(base)
+        account_id = _account_that_holds(manifest, scenario_id, base, work_root)
         account_db = scoped_ledger(base, account_id, work_root / "account.db")
 
         model, query_model, triage_model = (ScriptedChatModel(script=[]) for _ in range(3))

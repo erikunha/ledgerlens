@@ -61,6 +61,15 @@ def _scenario(manifest: dict[str, Any], scenario_id: str) -> dict[str, Any]:
     return next(s for s in manifest["scenarios"] if s["id"] == scenario_id)
 
 
+def scenario_of(manifest: dict[str, Any], scenario_id: str) -> dict[str, Any]:
+    """The scenario of the manifest, by its identifier.
+
+    Why it exists: the capture of a recorded scenario needs the ids the scenario names, and the ids of the records
+    are what says which account of the scenario holds them.
+    """
+    return _scenario(manifest, scenario_id)
+
+
 def planted(manifest: dict[str, Any]) -> list[Planted]:
     q = {s["id"]: s["questions"][0] for s in manifest["scenarios"]}
     return [

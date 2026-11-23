@@ -148,6 +148,25 @@ def ledger_reads_from_events(events: list[dict[str, Any]]) -> list[dict[str, Any
     return reads
 
 
+def _text_of(value: Any) -> str:
+    """The text of a value of a row, in the form the published artifact carries.
+
+    Why the text and not the value: the published artifact is read by the browser, and the contract of the browser
+    is that every value of a row is a string. A number written as a number is a file the browser refuses, and a
+    panel that says `Invalid input: expected string, received number` is a panel that shows no ledger at all.
+
+    Why this is not a repair of the value: the value does not change, the form of the value in the published file
+    does. The artifact never repairs a value (ADR-045), and a number written as its own text is the same number.
+    The recording keeps the original form, so nothing is lost.
+
+    Why the JSON form and not a hand written one: the JSON text of a value is the text of the value for every
+    kind of value, and it does not invent a form for the kinds that have no text of their own.
+    """
+    if isinstance(value, str):
+        return value
+    return json.dumps(value, ensure_ascii=False)
+
+
 def _read_of(event: dict[str, Any], outputs: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
     """One read of the ledger, as the artifact publishes it.
 
@@ -156,10 +175,10 @@ def _read_of(event: dict[str, Any], outputs: dict[str, Any], data: dict[str, Any
     the read, and a value that the recording wrote as an object keeps its own names.
     """
     columns = [str(column) for column in (data.get("columns") or [])]
-    rows: list[dict[str, Any]] = []
+    rows: list[dict[str, str]] = []
     for row in data.get("rows") or []:
         if isinstance(row, dict):
-            rows.append({str(key): value for key, value in row.items()})
+            rows.append({str(key): _text_of(value) for key, value in row.items()})
         elif isinstance(row, list):
             # A row with more values than the read declares columns is a recording that says something the artifact
             # cannot publish without repairing it, and the artifact never repairs a value. The read is refused with
@@ -169,7 +188,7 @@ def _read_of(event: dict[str, Any], outputs: dict[str, Any], data: dict[str, Any
                     f"the read of the sequence {event.get('seq')} declares {len(columns)} columns and one of its rows "
                     f"carries {len(row)} values: the artifact never repairs a value"
                 )
-            rows.append({column: value for column, value in zip(columns, row, strict=True)})
+            rows.append({column: _text_of(value) for column, value in zip(columns, row, strict=True)})
     evidence_ids = outputs.get("evidence_ids")
     evidence_id = ""
     if isinstance(evidence_ids, list) and evidence_ids:

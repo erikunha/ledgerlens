@@ -24,7 +24,7 @@
           "rows": [
             {
               "amount_major": "49.90",
-              "amount_minor": 4990,
+              "amount_minor": "4990",
               "captured_at": "2026-10-05T14:03:12Z",
               "card_fingerprint": "fp_d7f33ce5911d",
               "currency": "USD",
@@ -33,7 +33,7 @@
             },
             {
               "amount_major": "49.90",
-              "amount_minor": 4990,
+              "amount_minor": "4990",
               "captured_at": "2026-10-05T14:03:50Z",
               "card_fingerprint": "fp_d7f33ce5911d",
               "currency": "USD",

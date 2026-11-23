@@ -472,3 +472,46 @@ def test_the_records_of_a_read_are_the_identifiers_the_statement_named():
 
     assert len(reads) == 1
     assert reads[0]["records"] == ["TX-9999"]
+
+
+# --- the contract of the published artifact ---------------------------------------------------------------
+
+
+def test_the_values_of_a_row_are_published_as_text(artifact: dict) -> None:
+    """Every value of a row of a read is text, because the contract of the browser says so.
+
+    Why the test exists: the published artifact is read by the browser, and the schema of the browser types the
+    values of a row as strings. An artifact that carries a number is a file the browser refuses, and the panel of
+    the ledger shows the reason of the refusal instead of the ledger.
+
+    Why the value is not lost: the text of a number is the number, and the recording keeps the original form.
+    """
+    for account in artifact["accounts"]:
+        for read in account["reads"]:
+            for row in read["rows"]:
+                for key, value in row.items():
+                    assert isinstance(value, str), (
+                        f"the value of {key} of a read of {artifact['scenario']} is a {type(value).__name__} and not "
+                        "text: the browser refuses the artifact"
+                    )
+
+
+def test_every_published_artifact_carries_text_in_every_row_of_every_read() -> None:
+    """The artifacts that the tree publishes pass the contract of the browser.
+
+    Why the files of the tree and not a fixture: the defect this test closes was in the published files, and a test
+    over a fixture would not have found it. The files are the ones the site serves.
+    """
+    published = sorted((ROOT / "data" / "eval" / "replay" / "ledger").glob("*.json"))
+    assert published, "the tree publishes no artifact of the ledger"
+
+    offenders: list[str] = []
+    for path in published:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        for account in data.get("accounts", []):
+            for read in account.get("reads", []):
+                for row in read.get("rows", []):
+                    for key, value in row.items():
+                        if not isinstance(value, str):
+                            offenders.append(f"{path.name}: {key} is a {type(value).__name__}")
+    assert offenders == [], "a published artifact carries a value that is not text: " + "; ".join(offenders)

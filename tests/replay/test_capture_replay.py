@@ -136,6 +136,23 @@ def test_an_untracked_file_does_not_block_the_capture(tmp_path: Path):
     assert capture_replay.dirty_paths(repository, None) == []
 
 
+def test_the_capture_signs_in_as_the_account_that_holds_the_records_of_the_question(tmp_path: Path):
+    """A question about the payout of a merchant is recorded with the merchant signed in.
+
+    Why the account is not the first of the scenario: the scenario S08 names a customer and a merchant, and the
+    question is about the payout of the merchant. Signing in as the customer reads nothing, and the recording
+    would publish an answer that cites evidence the run never saw.
+    """
+    repository = _tiny_repository(tmp_path / "repository")
+    out = tmp_path / "bundle"
+
+    capture_replay.capture("S08", out, root=repository)
+
+    manifest, _ = load_bundle(out)
+    assert "M-03" in manifest.note
+    assert "C-0900" not in manifest.note
+
+
 def test_the_capture_of_a_scenario_that_names_no_account_uses_the_first_customer(tmp_path: Path):
     """A scenario whose question is about an id that does not exist still runs, on the first customer.
 

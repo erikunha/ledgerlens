@@ -43,9 +43,9 @@
       "seed": 42
     },
     "id": "S02",
-    "ledger_sha256": "a28ad06a9dc41656d553c1f12c62b84bac731b55dcdb9fbfeabb67a4744b368d",
+    "ledger_sha256": "6a53cb7a6c8f3dc3e8f78705c2bc6c6ee1b3535bc2595b44c0d1ffed069d280d",
     "name": "duplicate_charge",
-    "provenance_sha256": "e240bb3fabbe12104a4992e2dcdbebd63ca307d9999b28dcb3d9e5f67d0e9dca",
+    "provenance_sha256": "e0de932cba4f7ec5a77eadaa9019cb603af0fa460a5e68f7a3a570319fd78b1d",
     "question": "Customer C-0733 was charged twice for the same amount, TX-2051 and TX-2052. Was it a duplicate charge?",
     "status": "Recorded"
   },
@@ -68,9 +68,9 @@
       "seed": 42
     },
     "id": "S03",
-    "ledger_sha256": "cc51e2b93a2ef4eb2b506f7229413cfdc3da41753b0b00b67a8134335e9189f2",
+    "ledger_sha256": "bccfee637b873fa291cc20a66cc99528dfaa6334c3c655f2495b52f5a751cd5d",
     "name": "chargeback_near_deadline",
-    "provenance_sha256": "4739603ba5a7f1a761cb7baeff22ea90e94b7aa4006aa09022966986c3c5cd03",
+    "provenance_sha256": "57121542628143fe541c30bbddbda71131bf0d62b964a144519d4766956091e4",
     "question": "What is the deadline for dispute CB-0310 and what do we need to do?",
     "status": "Recorded"
   },
