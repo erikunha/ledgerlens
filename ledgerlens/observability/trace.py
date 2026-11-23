@@ -27,8 +27,10 @@ A LangChain run with no known parent (triage, the agent) goes under the explicit
 `inputs` and `outputs` go through `compact`: long texts and long lists are cut with a marker ("…+12 rows",
 "…+340 chars") and anything that looks like an API key becomes `[REDACTED]` (`redact`). The cut of a list follows
 the kind of the list: the number of the records of a result may be cut, and the fields of one record and the names
-of its columns are never cut, because they are what the answer cites. Model prompts and responses enter the trace,
-already cut, because the trace stays in the session of the person who asked.
+of its columns are never cut, because they are what the answer cites. The answer of the run is the one text that
+keeps a limit of its own, because the claims of the run are extracted from it and a cut answer takes them away
+(ADR-076). Model prompts and responses enter the trace, already cut, because the trace stays in the session of the
+person who asked.
 
 `create_agent` runs each tool in a thread of its executor, so `on_event` may be called from another thread: whoever
 draws should receive the spans on a queue and draw on its own thread. The emitter calls `on_event` under a lock, and
@@ -64,6 +66,13 @@ HIDDEN_TAG = "langsmith:hidden"  # LangGraph's mark for the graph's internal run
 MAX_TEXT = 600  # characters of a text before the cut
 MAX_ITEMS = 8  # items of a list before the cut
 MAX_DEPTH = 6  # nesting levels before the value becomes text
+
+# The answer of the run is the one text the cut does not take away, and the limit of it is far above the answer of
+# a real run: the claims are extracted from the answer, and a cut answer takes the claims away, so the bundle would
+# publish the label of a claim that the code cannot rebuild from the published evidence (ADR-076). The limit is a
+# limit and not an absence of one: a text that passes it is cut with the marker, like every other text.
+MAX_ANSWER = 16000
+ANSWER_KEY = "answer"
 
 # The keys whose list holds the records of a result and the names of its columns. They are the contract the
 # tools of the ledger answer with and the contract the verifier reads, so the rule of the cut is written here
@@ -154,7 +163,9 @@ def compact(value: Any, *, key: str = "", depth: int = 0, unit: str | None = Non
     if value is None or isinstance(value, (bool, int, float)):
         return value
     text = redact(str(value))
-    return text if len(text) <= MAX_TEXT else f"{text[:MAX_TEXT]}…+{len(text) - MAX_TEXT} chars"
+    # The answer of the run gets a limit of its own, because the claims of the run are extracted from it (ADR-076).
+    limit = MAX_ANSWER if key == ANSWER_KEY else MAX_TEXT
+    return text if len(text) <= limit else f"{text[:limit]}…+{len(text) - limit} chars"
 
 
 def _compact_list(value: list[Any] | tuple[Any, ...], *, key: str, depth: int, unit: str) -> list[Any]:
