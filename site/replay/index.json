@@ -26,10 +26,10 @@
     "status": "Recorded"
   },
   {
-    "bundle_digest": "38f74aa459df9423b182c3fe327b05e852b85c2dde22d29e09c216910ebfbd77",
+    "bundle_digest": "0eb4cdbb54928c7144f03494a4b3411ae978e9fd7837568a275c4d128fdcf45f",
     "bundle_path": "s02",
     "capture_kind": "scripted_fixture",
-    "code_sha": "beaadf187c6bdeb809fbec018e9b0792a6ea8c17",
+    "code_sha": "cbbbfd6150cf26b80b8cf0a006ee4492a945f48f",
     "concepts": [
       "read_only_ledger_query",
       "policy_retrieval"
@@ -45,7 +45,7 @@
     "id": "S02",
     "ledger_sha256": "6a53cb7a6c8f3dc3e8f78705c2bc6c6ee1b3535bc2595b44c0d1ffed069d280d",
     "name": "duplicate_charge",
-    "provenance_sha256": "e0de932cba4f7ec5a77eadaa9019cb603af0fa460a5e68f7a3a570319fd78b1d",
+    "provenance_sha256": "0a405fa927c3c6db63fa85faac21de6bbe614a468934d868b2a772f7d84d2884",
     "question": "Customer C-0733 was charged twice for the same amount, TX-2051 and TX-2052. Was it a duplicate charge?",
     "status": "Recorded"
   },
