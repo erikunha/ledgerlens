@@ -15,6 +15,7 @@ temporary folder, so the real repository of the machine is never written to and 
 from __future__ import annotations
 
 import importlib.util
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -22,6 +23,7 @@ from pathlib import Path
 import pytest
 
 from ledgerlens.replay.bundle import load_bundle
+from ledgerlens.replay.verdict import differences
 from ledgerlens.run_context import POLICY_VERSION
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -207,3 +209,72 @@ def test_the_capture_refuses_to_run_in_a_folder_that_is_not_a_repository(tmp_pat
         capture_replay.capture("S01", tmp_path / "bundle", root=tmp_path)
 
     assert "working tree" in str(refused.value)
+
+
+def _case_id_of(bundle_dir: Path) -> str:
+    """The id of the case the recording wrote, read from the bundle.
+
+    Why the span of the memory and not the store of the machine: the bundle is what the repository publishes,
+    and the id of the case is what the reader of the bundle sees.
+    """
+    for line in (bundle_dir / "events.jsonl").read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        payload = json.loads(line).get("payload") or {}
+        if payload.get("name") == "CaseMemory.write_case":
+            outputs = payload.get("outputs") or {}
+            if outputs.get("case_id"):
+                return str(outputs["case_id"])
+    return ""
+
+
+def test_two_captures_of_the_same_scenario_write_the_same_case(tmp_path: Path):
+    """Two captures of the same scenario write the same case, so the published bundle is reproducible.
+
+    Why the id of the case matters: the bundle names the case the run wrote, and a reader who wants to find
+    that case again has to be able to. The id used to come from a counter over a store that lives outside the
+    repository, so two captures of the same commit gave two different ids, and the same commit published two
+    different bundles.
+
+    Why the id names the scenario: a counter is a number of one afternoon of one machine, and a number of that
+    kind cannot be looked up. The scenario is in the bundle, and the case that names it can.
+    """
+    first = _tiny_repository(tmp_path / "first")
+    second = _tiny_repository(tmp_path / "second")
+
+    capture_replay.capture("S01", tmp_path / "first-bundle", root=first)
+    capture_replay.capture("S01", tmp_path / "second-bundle", root=second)
+
+    assert _case_id_of(tmp_path / "first-bundle") == "CASE-S01"
+    assert _case_id_of(tmp_path / "first-bundle") == _case_id_of(tmp_path / "second-bundle")
+
+
+def test_a_fresh_capture_publishes_a_verdict_that_its_own_evidence_reaches(tmp_path: Path):
+    """The bundle a capture writes now carries the evidence that sustains the verdict it shows.
+
+    Why this test and not only the one over the published set: the published set is captured by the release,
+    and this one proves the rule of the capture itself, on a bundle the test writes in a throwaway repository.
+    The scenario S11 is the one with the reference rate in fault, and its answer cites the rate the ledger
+    applied: a bundle that cuts that rate away publishes a verdict that nobody can redo.
+    """
+    repository = _tiny_repository(tmp_path / "repository")
+    out = tmp_path / "bundle"
+
+    capture_replay.capture("S11", out, root=repository)
+
+    assert differences(out) == [], "the verdict of the fresh capture is not reachable from its own evidence"
+
+    events = [
+        json.loads(line)
+        for line in (out / "events.jsonl").read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    evidence = ""
+    for event in events:
+        payload = event.get("payload") or {}
+        outputs = payload.get("outputs") or {}
+        if payload.get("run_type") == "tool" and outputs.get("ok"):
+            evidence += json.dumps(outputs.get("data") or {}, ensure_ascii=False)
+
+    assert "5.4931" in evidence, "the fresh capture does not publish the rate the answer cites"
+    assert "2026-10-20" in evidence, "the fresh capture does not publish the day the answer cites"

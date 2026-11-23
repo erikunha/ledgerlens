@@ -48,10 +48,11 @@ sys.path.insert(0, str(ROOT))
 from ledgerlens import demo  # noqa: E402  (the offline environment is set up before the import)
 from ledgerlens.agents.integrator import build_integrator, investigate  # noqa: E402
 from ledgerlens.api.accounts import scoped_ledger  # noqa: E402
+from ledgerlens.memory.long_term import CaseMemory, scenario_case_id  # noqa: E402
 from ledgerlens.observability.trace_event import InMemoryTraceSink, TraceEventStream  # noqa: E402
 from ledgerlens.offline import ScriptedChatModel  # noqa: E402
 from ledgerlens.replay.bundle import bundle_digest, write_bundle  # noqa: E402
-from ledgerlens.run_context import POLICY_VERSION  # noqa: E402
+from ledgerlens.run_context import POLICY_VERSION, RunContext  # noqa: E402
 from ledgerlens.sim.config import SimConfig  # noqa: E402
 from ledgerlens.sim.pipeline import build_ledger  # noqa: E402
 from ledgerlens.tools.fx import FxClient  # noqa: E402
@@ -285,6 +286,19 @@ def capture(scenario_id: str, out: Path, root: Path = ROOT) -> Path:
         account_db = scoped_ledger(base, account_id, work_root / "account.db")
 
         model, query_model, triage_model = (ScriptedChatModel(script=[]) for _ in range(3))
+        # The memory of the capture lives in the folder of the capture and names its case after the scenario.
+        # Why: the id of the case used to come from a counter over the store of the machine, so two captures of
+        # the same commit wrote two different cases and the published bundle was not reproducible. The store of
+        # the capture is its own, so the capture never writes into the store of the machine either.
+        context = RunContext(
+            run_id=f"replay-{scenario_id.lower()}",
+            session_id=f"replay-{scenario_id.lower()}",
+            mode="deterministic_sandbox",
+            account_id=account_id,
+            snapshot_sha256=_sha256(account_db),
+            memory_dir=work_root / "memory",
+        )
+        memory = CaseMemory(context.resolve_memory_dir(), case_id=scenario_case_id(scenario_id))
         agent = build_integrator(
             model,
             db_path=account_db,
@@ -295,6 +309,8 @@ def capture(scenario_id: str, out: Path, root: Path = ROOT) -> Path:
                 fault=SCENARIO_FX_FAULT.get(scenario_id, False),
                 sleep=lambda _: None,
             ),
+            run_context=context,
+            case_memory=memory,
         )
         triage_model.script.append(demo.offline_triage(question, manifest, scenario_id))
         script = demo.offline_script(question, manifest, scenario_id)
