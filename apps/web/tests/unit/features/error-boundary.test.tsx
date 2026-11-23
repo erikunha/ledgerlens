@@ -266,4 +266,16 @@ describe("the boundaries of the site", () => {
       "/replay",
     );
   });
+
+  it("names the other rooms of the site in the page that is not published", () => {
+    // It proves that the page of 404 describes the site that it is a page of: the site publishes
+    // the sandbox, the live mode and the tour of the architecture, and a page of 404 that names
+    // only the catalog sends a visitor who wanted one of the other rooms nowhere.
+    renderCase(<SiteNotFound />);
+
+    const failure = screen.getByRole("alert");
+    expect(within(failure).getByText(/sandbox/i)).toBeInTheDocument();
+    expect(within(failure).getByText(/live mode/i)).toBeInTheDocument();
+    expect(within(failure).getByText(/architecture/i)).toBeInTheDocument();
+  });
 });

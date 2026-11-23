@@ -24,13 +24,18 @@ import { SiteFailure } from "./error";
  *
  * The page says that the address is not one of the published ones and it leads the visitor to the
  * catalog of the scenarios, which is the way into the recorded demo.
+ *
+ * Why the page names the four rooms of the site: the site publishes more than the catalog and the
+ * recorded runs, and a page of 404 that names only the catalog describes a smaller site than the
+ * one the visitor is in. A visitor who followed an address of the sandbox or of the tour has to
+ * read that those rooms exist and where they are.
  */
 export default function SiteNotFound(): ReactElement {
   return (
     <div className="mx-auto flex w-full max-w-content flex-col gap-8 px-6 py-12">
       <SiteFailure
         title="This page is not published"
-        reason="The site publishes the catalog of the scenarios and the recorded run of every scenario of the catalog. This address is not one of them."
+        reason="The site publishes the catalog of the scenarios, the sandbox of the visitor, the live mode and the tour of the architecture. This address is not one of them."
         hint="The catalog of the scenarios is the way into the recorded demo, and it needs no key and no network."
       >
         <Link className={buttonClasses("ghost", "sm")} href="/replay">

@@ -219,4 +219,37 @@ describe("the route of the sandbox", () => {
     expect(recorded).toHaveAttribute("href", "/replay");
     expect(live).toHaveAttribute("href", "/live");
   });
+
+  it("shows the concepts that the scenario demonstrates", async () => {
+    // It proves that the card shows the concepts of the scenario, because the concepts are part of
+    // what the catalog publishes and a card that throws them away is a card that hides what the
+    // scenario demonstrates.
+    renderPage();
+
+    await screen.findByRole("button", { name: /open the branch of S01/i });
+
+    expect(screen.getByText("read_only_ledger_query")).toBeInTheDocument();
+    expect(screen.getByText("policy_retrieval")).toBeInTheDocument();
+  });
+
+  it("shows a skeleton while the catalog is being read", async () => {
+    // It proves that the page says that it is loading while it loads, because a page that shows a
+    // title over nothing reads as a broken page.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        () =>
+          new Promise<Response>(() => {
+            // the reading of the catalog never finishes
+          }),
+      ),
+    );
+
+    render(<SandboxPage />);
+
+    const skeleton = await screen.findByRole("status", {
+      name: "The catalog of the scenarios is being read",
+    });
+    expect(skeleton).toBeInTheDocument();
+  });
 });

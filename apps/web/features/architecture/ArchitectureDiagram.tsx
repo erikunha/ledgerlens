@@ -108,11 +108,15 @@ function ArchitecturePicture({
   readonly selectedNodeId: string | null;
 }): ReactElement {
   return (
+    /*
+     * The picture carries no attribute of height: "auto" is not a length that a browser accepts, and
+     * the attribute made every visit of the page log an error in the console of the browser. The
+     * viewBox and the class of the picture draw the picture, and the browser needs no height.
+     */
     <svg
       aria-label="The picture of the architecture of the recorded demo"
       className="h-auto w-full max-w-lg text-foreground"
       data-architecture-picture="true"
-      height="auto"
       preserveAspectRatio="xMidYMid meet"
       role="group"
       viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`}

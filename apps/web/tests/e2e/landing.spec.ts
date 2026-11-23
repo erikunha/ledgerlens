@@ -58,6 +58,22 @@ function cardOf(page: Page, title: string): Locator {
     .locator("xpath=ancestor::div[contains(@class, 'rounded-lg')][1]");
 }
 
+/**
+ * The six subsystems of the tour of the architecture, in the order of the run.
+ *
+ * Why the labels are written here: the tour is a room of the site, and a visitor who reaches it has
+ * to find the six subsystems there. The labels are a fact of the repository, and the case has to
+ * name them itself, the way the suite of the tour names them.
+ */
+const SUBSYSTEMS = [
+  "Query guard",
+  "Scoped ledger copy",
+  "Decimal calculator",
+  "Deterministic simulator",
+  "Verifier",
+  "Trace recorder",
+] as const;
+
 test("the home page shows the title of the site and says that the money of the demo is simulated", async ({
   page,
 }) => {
@@ -120,5 +136,29 @@ test("the link of each card of the demo goes to the room of that mode", async ({
     await link.click();
     await expect(page).toHaveURL(new RegExp(`${room.route}$`));
     await expect(page.getByRole("heading", { level: 1, name: room.heading })).toBeVisible();
+  }
+});
+
+test("the header leads the visitor to the tour of the architecture", async ({ page }) => {
+  await page.goto("/");
+
+  // The tour of the architecture is a room of the site, and the header of the site is the place
+  // where every room is reachable from any page.
+  const navigation = page.getByRole("navigation", { name: "The rooms of the demo" });
+  const link = navigation.getByRole("link", { name: "Architecture" });
+  await expect(link).toHaveAttribute("href", "/engineering");
+
+  // The visitor who presses the link lands in the tour.
+  await link.click();
+  await expect(page).toHaveURL(new RegExp("/engineering$"));
+  await expect(
+    page.getByRole("heading", { level: 1, name: "The architecture of the recorded demo" }),
+  ).toBeVisible();
+
+  // The tour shows the six subsystems of the run, so the visitor finds what the room promises. The
+  // tour shows them twice, once as the twin of the picture and once as the list of their code, so
+  // the case looks for the first of the two and not for one of them.
+  for (const subsystem of SUBSYSTEMS) {
+    await expect(page.getByRole("heading", { name: subsystem }).first()).toBeVisible();
   }
 });

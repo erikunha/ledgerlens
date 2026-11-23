@@ -34,6 +34,7 @@ import type { ReactElement } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button, buttonClasses } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { Table } from "@/components/ui/Table";
 import type { TableColumn } from "@/components/ui/Table";
 import { BranchPanel } from "@/features/sandbox/BranchPanel";
@@ -229,6 +230,18 @@ function SandboxRoom(): ReactElement {
               : "The catalog of the scenarios could not be read."}
         </p>
 
+        {/*
+          The catalog is read in the browser, and the reading takes a moment. The placeholder of the
+          reading is on the screen while it lasts, because a section with no case in it reads as a
+          catalog with no case in it.
+        */}
+        {status === "idle" || status === "loading" ? (
+          <div className="flex flex-col gap-3">
+            <Skeleton className="h-24 w-full" label="The catalog of the scenarios is being read" />
+            <Skeleton className="h-24 w-full" />
+          </div>
+        ) : null}
+
         <ul className="flex flex-col gap-3">
           {scenarios.map((scenario) => (
             <li key={scenario.id}>
@@ -252,6 +265,19 @@ function SandboxRoom(): ReactElement {
                     )}
                     {scenario.status === undefined ? null : <Badge>{scenario.status}</Badge>}
                   </div>
+                  {/*
+                    The concepts of the scenario are part of what the catalog publishes (FR-003), and a
+                    card that throws them away hides what the scenario demonstrates. They are words and
+                    not a tint, so a reader that does not see the badge reads the concept all the same.
+                  */}
+                  {scenario.concepts !== undefined && scenario.concepts.length > 0 ? (
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <span className="text-xs text-text-subtle">concepts:</span>
+                      {scenario.concepts.map((concept) => (
+                        <Badge key={concept}>{concept}</Badge>
+                      ))}
+                    </div>
+                  ) : null}
                 </CardContent>
               </Card>
             </li>

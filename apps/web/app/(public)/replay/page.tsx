@@ -28,6 +28,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { buttonClasses } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { loadScenarioCatalog } from "@/lib/api/replay";
 import { ScenarioCatalogProvider, useScenarioCatalog } from "@/lib/api/provider";
 import { scenarioPath } from "@/lib/state/urlState";
@@ -57,7 +58,11 @@ export default function ReplayPage() {
  * points to a route that may not exist.
  */
 function ReplayCatalog() {
-  const { scenarios, error } = useScenarioCatalog();
+  const { scenarios, error, status } = useScenarioCatalog();
+
+  // The catalog is read in the browser, and the reading takes a moment. The placeholder of the
+  // reading is on the screen while it lasts, because a title over nothing reads as a broken page.
+  const isReading = status === "idle" || status === "loading";
 
   return (
     <div className="mx-auto flex w-full max-w-content flex-col gap-8 px-6 py-12">
@@ -82,6 +87,14 @@ function ReplayCatalog() {
         <div role="alert" className="rounded-lg border border-danger/40 bg-danger-light p-4">
           <p className="text-sm text-danger-dark">{error}</p>
         </div>
+      ) : null}
+
+      {isReading ? (
+        <section className="flex flex-col gap-4" aria-label="The scenarios being read">
+          <Skeleton className="h-6 w-48" label="The catalog of the scenarios is being read" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </section>
       ) : null}
 
       {scenarios.length > 0 ? (
@@ -112,6 +125,20 @@ function ReplayCatalog() {
                       ) : null}
                       {scenario.status ? <Badge>{scenario.status}</Badge> : null}
                     </div>
+                    {/*
+                      The concepts of the scenario are part of what the catalog publishes (FR-003),
+                      and a card that throws them away hides what the scenario demonstrates. They are
+                      words and not a tint, so a reader that does not see the badge reads the concept
+                      all the same.
+                    */}
+                    {scenario.concepts && scenario.concepts.length > 0 ? (
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <span className="text-xs text-text-subtle">concepts:</span>
+                        {scenario.concepts.map((concept) => (
+                          <Badge key={concept}>{concept}</Badge>
+                        ))}
+                      </div>
+                    ) : null}
                   </CardContent>
                 </Card>
               </li>

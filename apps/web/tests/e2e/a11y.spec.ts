@@ -1,6 +1,10 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
+// The list of the pages of the site and the way of opening them live in one module, so that the
+// suite of the console walks exactly the pages this suite scans.
+import { PAGES_UNDER_TEST, openThePage, waitForThePageToSettle } from "./pages-under-test";
+
 /**
  * The end to end suite of the accessibility of the public site.
  *
@@ -12,15 +16,23 @@ import { expect, test, type Page } from "@playwright/test";
  * the industry what a person would really trip on.
  *
  * Why the pages are the ones of the public site: a visitor only ever sees the landing, the catalog,
- * the replay of a scenario, the sandbox and the live mode, and the replay has five sections that the
- * visitor opens one at a time. A section that is closed is not in the page, so each of the five is
- * scanned on its own. The replay is scanned once more with the drawer of a tool call open, because
- * a window of the page is only a part of the page while it is open, and the drawer is the part that
- * a visitor of the recording opens (ADR-048).
+ * the replay of a scenario, the sandbox, the live mode and the tour of the architecture, and the
+ * replay has five sections that the visitor opens one at a time. A section that is closed is not in
+ * the page, so each of the five is scanned on its own. The replay is scanned once more with the
+ * drawer of a tool call open, because a window of the page is only a part of the page while it is
+ * open, and the drawer is the part that a visitor of the recording opens (ADR-048).
+ *
+ * Why the list of the pages lives in a module of its own: the suite of the console walks exactly
+ * the same pages, and a second list would be a second truth about which pages of the site exist.
  *
  * Why the suite never switches a rule off: a rule that is off hides a real problem from the people
  * who read the site. If a rule of the design tokens has to be off, the comment of the call says which
  * one and why, and the rule stays on for every other page.
+ *
+ * Why the case fails on the violations of a critical or a serious impact: FR-035 asks the scan to
+ * report zero critical and zero serious violations on every page of the feature, and those are the
+ * impacts that stop a visitor from reading the page. Every rule of axe stays on, and the message of
+ * a failed case names every violation that the scan found, whatever its impact.
  *
  * The suite runs against the static export served as plain files, exactly as the files arrive in a
  * browser, in the two engines and the two viewports of the design package.
@@ -43,24 +55,6 @@ type AxeResults = Awaited<ReturnType<AxeBuilder["analyze"]>>;
 type AxeViolation = AxeResults["violations"][number];
 
 /**
- * One page of the public site that the suite scans.
- */
-interface PageUnderTest {
-  /** The name of the page, the way the title of the case names it. */
-  readonly name: string;
-  /** The path of the page in the export, with the query string of the page when it has one. */
-  readonly path: string;
-  /**
-   * The waits that tell the suite the page has finished drawing what it draws.
-   *
-   * Why the wait may open a window: a page that carries a drawer is only the page the visitor
-   * reads when the drawer is open, so the wait of that page opens the drawer of a call before the
-   * scan of the page.
-   */
-  readonly settle: (page: Page) => Promise<void>;
-}
-
-/**
  * The label of the tab of the replay and the heading of the section it opens.
  *
  * Why the label and the heading travel together: the section of the replay is only in the page when
@@ -74,38 +68,6 @@ const REPLAY_SECTIONS = [
   { label: "Decision", heading: "The decision of the recording" },
   { label: "Provenance", heading: "The provenance of the recording" },
 ] as const;
-
-/**
- * Waits until the page has no request of its own in flight.
- *
- * Why the wait: the sandbox and the live mode read the catalogue of the scenarios from the backend
- * of the demo, and the answer arrives after the page has already drawn its shell. A scan that ran in
- * the middle of that answer would report the state of a page that nobody ever sees.
- *
- * Why the failure is tolerated: a page that never settles is a page that is still waiting for
- * something, and the wait of the page itself is the one that has to fail when that happens.
- */
-async function waitForThePageToSettle(page: Page): Promise<void> {
-  try {
-    await page.waitForLoadState("networkidle", { timeout: 10_000 });
-  } catch {
-    // The page has already drawn what it draws, and the wait of the page is the one that reports the
-    // page that never settles.
-  }
-}
-
-/**
- * Opens the page and waits for the mark that tells the suite the page has drawn its content.
- *
- * Why the mark is a piece of content and not a sleep: the content of the page is the thing the
- * visitor reads, and a scan of a page that has not drawn it yet would say nothing about the page
- * the visitor really gets.
- */
-async function openThePage(page: Page, pageUnderTest: PageUnderTest): Promise<void> {
-  await page.goto(pageUnderTest.path);
-  await pageUnderTest.settle(page);
-  await waitForThePageToSettle(page);
-}
 
 /**
  * Turns the violations of axe into a message a person can act on.
@@ -140,7 +102,18 @@ function describeViolations(violations: readonly AxeViolation[]): string {
 }
 
 /**
- * Scans the page with axe and fails the case when the page has a violation.
+ * The impacts of the violations that stop a visitor from using the page.
+ *
+ * Why the two impacts and not every impact: FR-035 asks the scan to report zero critical and zero
+ * serious violations on every page of the feature, and those are the impacts that stop a person
+ * from reading the page. A violation of a smaller impact is a defect of the page too, and the
+ * message of a failed case names every violation that the scan found, whatever its impact, so
+ * nothing is hidden.
+ */
+const BLOCKING_IMPACTS: readonly string[] = ["critical", "serious"];
+
+/**
+ * Scans the page with axe and fails the case when the page has a violation of a blocking impact.
  *
  * Why the scan is the whole document and not a piece of it: the shell of the site carries the skip
  * link, the landmarks and the footer, and those are part of the page the visitor reads.
@@ -151,110 +124,19 @@ function describeViolations(violations: readonly AxeViolation[]): string {
 async function expectNoViolation(page: Page, name: string): Promise<void> {
   const results = await new AxeBuilder({ page }).analyze();
 
+  const blocking = results.violations.filter((violation) =>
+    BLOCKING_IMPACTS.includes(violation.impact ?? ""),
+  );
+
   expect(
-    results.violations,
-    `the page "${name}" has ${results.violations.length} accessibility violation(s) found by axe:\n${describeViolations(
+    blocking,
+    `the page "${name}" has ${blocking.length} accessibility violation(s) of a critical or a serious impact found by axe:\n${describeViolations(
+      blocking,
+    )}\n\nThe scan found ${results.violations.length} violation(s) in total:\n${describeViolations(
       results.violations,
     )}`,
   ).toHaveLength(0);
 }
-
-/**
- * Moves the recording of the replay to its last position, the way a visitor does.
- *
- * Why the recording has to move: the table of the calls of the tools shows the calls that already
- * happened, so the visitor has to walk the recording before the calls are on the screen, and the
- * drawer opens about one of those calls.
- *
- * Why the keyboard of the slider: the control is a range input, so the visitor moves it with the
- * keys. The End key moves it to the last event, and the arrow key is the fallback for an engine
- * that does not honor the End key on a slider.
- */
-async function moveTheRecordingToItsEnd(page: Page): Promise<void> {
-  const position = page.getByLabel("Position of the recording");
-  const last = await position.getAttribute("max");
-  expect(last, "the slider of the recording must name the last position").not.toBeNull();
-
-  await position.focus();
-  await position.press("End");
-  if ((await position.inputValue()) !== last) {
-    for (let step = 0; step < 60 && (await position.inputValue()) !== last; step += 1) {
-      await position.press("ArrowRight");
-    }
-  }
-  await expect(position).toHaveValue(last as string);
-}
-
-/**
- * The pages of the public site, and the wait of each one of them.
- *
- * Why the wait of the replay names the manifest of the capture: the manifest arrives with the
- * bundle of the scenario, and the ledger of the recording arrives with the same bundle, so the
- * moment the manifest is on the screen is the moment every panel of the replay has its content.
- */
-const PAGES_UNDER_TEST: readonly PageUnderTest[] = [
-  {
-    name: "the landing page",
-    path: "/",
-    settle: async (page: Page) => {
-      await expect(
-        page.getByRole("heading", {
-          level: 1,
-          name: "Evidence-first payment investigation, with a trace you can read",
-        }),
-      ).toBeVisible();
-    },
-  },
-  {
-    name: "the catalog of the scenarios",
-    path: "/replay",
-    settle: async (page: Page) => {
-      await expect(page.getByRole("heading", { name: "The scenarios" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "S01 - fx_markup_refund" })).toBeVisible();
-    },
-  },
-  {
-    name: "the sandbox of the visitor",
-    path: "/sandbox",
-    settle: async (page: Page) => {
-      await expect(page.getByRole("heading", { level: 1, name: "The sandbox of the visitor" })).toBeVisible();
-      await expect(page.getByRole("region", { name: "The published scenarios" })).toBeVisible();
-    },
-  },
-  {
-    name: "the live mode",
-    path: "/live",
-    settle: async (page: Page) => {
-      await expect(page.getByRole("heading", { level: 1, name: "Live mode" })).toBeVisible();
-      await expect(page.getByRole("heading", { name: "The model of the run" })).toBeVisible();
-    },
-  },
-  {
-    /*
-     * Why this page is scanned with the drawer open: the drawer of a tool call is a window of the
-     * page, and the page that the visitor reads is the page with the window open. The drawer is
-     * built on the primitive of the sheet, so it is a dialog of Radix with its own portal, its own
-     * landmark and its own focus trap, and the scan has to see it (ADR-048, decisions 1 and 8).
-     */
-    name: "the replay of S01 with the drawer of a call open",
-    path: "/replay/scenario/S01?tab=execution",
-    settle: async (page: Page) => {
-      const recordedRun = page.getByRole("region", { name: "The recorded run" });
-      await expect(recordedRun).toBeVisible();
-      await expect(recordedRun.getByText("mode: deterministic_sandbox")).toBeVisible();
-
-      await moveTheRecordingToItsEnd(page);
-
-      const calls = page.getByRole("table", { name: "The calls of the tools of the recorded run" });
-      await expect(calls.getByRole("rowheader", { name: "query_ledger" })).toBeVisible();
-
-      // The trigger of the drawer is the button of the row header of the table of the calls, and
-      // the drawer opens about the call of that row (ADR-048, decision 2).
-      await calls.getByRole("rowheader").first().getByRole("button").click();
-      await expect(page.getByRole("dialog")).toBeVisible();
-    },
-  },
-];
 
 for (const pageUnderTest of PAGES_UNDER_TEST) {
   test(`${pageUnderTest.name} has no accessibility violation`, async ({ page }) => {
@@ -262,6 +144,34 @@ for (const pageUnderTest of PAGES_UNDER_TEST) {
     await expectNoViolation(page, pageUnderTest.name);
   });
 }
+
+/**
+ * The navigation of the rooms of the demo in the header of the site.
+ *
+ * Why the case is here: the header is the only place where the visitor reaches the four rooms of the
+ * site, and a navigation that carries no landmark and no name is a navigation that a reader of a
+ * screen reader cannot jump to and cannot tell apart from another one.
+ *
+ * Why the case counts the links of the navigation: the navigation is the way into the rooms, and a
+ * navigation that lost a room is a room that the visitor cannot reach from any page.
+ */
+test("the header carries a navigation landmark that names the rooms of the demo", async ({ page }) => {
+  await page.goto("/");
+
+  const navigation = page.getByRole("navigation", { name: "The rooms of the demo" });
+  await expect(navigation).toBeVisible();
+
+  // The four rooms of the site are the four links of the navigation.
+  await expect(navigation.getByRole("link")).toHaveCount(4);
+
+  // The room the visitor is in is the one that is marked, and the mark is an attribute and not a
+  // colour, so a reader that does not see the colour still hears where the visitor is.
+  await page.goto("/replay");
+  await expect(navigation.getByRole("link", { name: "Recorded demo" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+});
 
 for (const section of REPLAY_SECTIONS) {
   test(`the replay of S01 has no accessibility violation in the section of ${section.label}`, async ({

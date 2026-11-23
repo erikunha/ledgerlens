@@ -81,6 +81,38 @@ function renderPage(catalog: unknown): void {
   );
 }
 
+/**
+ * Renders the page of the catalog while the catalog is still being read.
+ *
+ * Why the loader never answers: the case has to see the page in the state that the visitor sees
+ * between the first drawing and the answer of the reading, and the only way to hold that state is a
+ * reading that never finishes.
+ */
+function renderPageWhileTheCatalogIsBeingRead(): void {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(
+      () =>
+        new Promise<Response>(() => {
+          // the reading of the catalog never finishes
+        }),
+    ),
+  );
+
+  const loader = vi.fn(
+    () =>
+      new Promise<never>(() => {
+        // the reading of the catalog never finishes
+      }),
+  );
+
+  render(
+    <ScenarioCatalogProvider loader={loader}>
+      <ReplayPage />
+    </ScenarioCatalogProvider>,
+  );
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -115,5 +147,38 @@ describe("the page of the catalog of the scenarios", () => {
     expect(await screen.findByText(/did not pass the contract/)).toBeInTheDocument();
     expect(screen.queryByText("S01 - fx_markup_refund")).toBeNull();
     expect(screen.queryByRole("link", { name: "S01 - fx_markup_refund" })).toBeNull();
+  });
+
+  it("shows the concepts that the scenario demonstrates", async () => {
+    // It proves that the card shows the concepts of the scenario, because the concepts are part of
+    // what the catalog publishes and a card that throws them away is a card that hides what the
+    // scenario demonstrates.
+    renderPage([PUBLISHED_CARD]);
+
+    await screen.findByRole("heading", { name: "The scenarios" });
+
+    expect(screen.getByText("read_only_ledger_query")).toBeInTheDocument();
+    expect(screen.getByText("policy_retrieval")).toBeInTheDocument();
+  });
+
+  it("shows a skeleton while the catalog is being read", async () => {
+    // It proves that the page says that it is loading while it loads, because a page that shows a
+    // title over nothing reads as a broken page.
+    renderPageWhileTheCatalogIsBeingRead();
+
+    const skeleton = await screen.findByRole("status", {
+      name: "The catalog of the scenarios is being read",
+    });
+    expect(skeleton).toBeInTheDocument();
+  });
+
+  it("shows no skeleton once the catalog is read", async () => {
+    // It proves that the placeholder of the reading goes away when the cards of the scenarios are
+    // on the screen, so the visitor never reads a page that is half drawn.
+    renderPage([PUBLISHED_CARD]);
+
+    await screen.findByRole("heading", { name: "The scenarios" });
+
+    expect(screen.queryByRole("status", { name: "The catalog of the scenarios is being read" })).toBeNull();
   });
 });
