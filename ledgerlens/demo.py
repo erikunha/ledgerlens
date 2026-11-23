@@ -196,14 +196,13 @@ def _s01(truth: dict[str, Any]) -> tuple[list[AIMessage], list[str]]:
     answer = (
         f"The payment came to BRL {truth['charge_brl']} and the refund to BRL {truth['refund_brl']}, "
         f"a difference of BRL {truth['gap_brl']}. [sql:1, calc:1] "
-        f"Of that, BRL {truth['rate_move_brl']} is the movement of the reference rate between the two dates and "
-        f"BRL {truth['markup_brl']} is the markup over the reference rate of the refund date. [calc:1] "
+        f"Of that, BRL {truth['rate_move_brl']} is the movement of the rate between the two dates and "
+        f"BRL {truth['markup_brl']} is the markup over the reference rate. [calc:1] "
         f"The reference rate on 2026-10-20 was {truth['reference_rate_refund_date']}. [fx:2026-10-20:EUR-BRL] "
-        f"The markup was {markup_pct}% of that reference rate, below the {limit}% the plan of the merchant allows. "
-        "[calc:1] "
+        f"The markup was {markup_pct}% of that rate, below the {limit}% the plan allows. [calc:1] "
         "Lumen Travel GmbH (M-17) is on the markup plan. [sql:1] "
-        f"At the reference rate of the refund date the refund would have been BRL {at_reference}, so the BRL "
-        f"{truth['markup_brl']} in between is the markup of the plan and not an error. [calc:1]"
+        f"At the reference rate the refund would have been BRL {at_reference}, so the BRL {truth['markup_brl']} in "
+        "between is the markup of the plan and not an error. [calc:1]"
     )
     return [*calls, text_message(answer)], [FX_SQL]
 

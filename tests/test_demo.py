@@ -136,6 +136,23 @@ def test_every_scenario_the_page_offers_has_a_script_with_the_tools_the_dataset_
         assert called == scenario["expected_tools"], item.scenario
 
 
+def test_the_answer_of_every_scripted_case_fits_in_the_trace_without_the_cut() -> None:
+    """The answer of a case has to arrive whole in the recording.
+
+    Why it matters: the trace cuts a text of more than 600 characters, and the cut takes the citation of the last
+    sentence with it. A published answer that was cut loses the evidence of its last claim, and a verdict that
+    nobody can redo from the published evidence is a claim nobody can check.
+    """
+    from ledgerlens.observability.trace import MAX_TEXT
+
+    for item in demo.planted(MANIFEST):
+        script = demo.offline_script(item.question, MANIFEST, item.scenario)
+        assert script is not None, item.scenario
+        messages, _ = script
+        answer = str(messages[-1].content)
+        assert len(answer) <= MAX_TEXT, f"the answer of {item.scenario} is cut in the trace"
+
+
 def test_the_scenario_that_shares_a_question_has_a_script_of_its_own() -> None:
     """The scenario S11 asks the question of the scenario S01 and only the run differs, so the scripts differ.
 
