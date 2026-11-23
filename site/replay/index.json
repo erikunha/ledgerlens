@@ -98,10 +98,10 @@
     "status": "Recorded"
   },
   {
-    "bundle_digest": "b56acdabc0ac567bc14e0b225ee51b2204197c92d8553562b89a0cf8d117e979",
+    "bundle_digest": "98905065c5da9d0840dbd35f1ee3ee889cb4e0830766ae4bbf817412986f86a2",
     "bundle_path": "s08",
     "capture_kind": "scripted_fixture",
-    "code_sha": "beaadf187c6bdeb809fbec018e9b0792a6ea8c17",
+    "code_sha": "65a736bdcdba8a41f230a3f9013926d7bc31f3d4",
     "concepts": [
       "read_only_ledger_query",
       "policy_retrieval",
@@ -116,9 +116,9 @@
       "seed": 42
     },
     "id": "S08",
-    "ledger_sha256": "308b2bfe9c865bd9b1d3cf4d368e75f3d1d25bac669f1af908bbe99aef3c6f38",
+    "ledger_sha256": "37996d019939f02859572e3a4b14f4187afb023ac664a02e8fd93d4a2cbd7e9e",
     "name": "settlement_arithmetic",
-    "provenance_sha256": "f2417e3c0fd33acb28db4037cc9bd8b506bb8171eae85c46d9396d187320d1fe",
+    "provenance_sha256": "75c15825f6986c4482d1fe8d0498e1fc84bd6c9b26bc5b6fcdba744d26c96515",
     "question": "How was payout ST-0044 for merchant M-03 calculated and when is it paid?",
     "status": "Recorded"
   }
