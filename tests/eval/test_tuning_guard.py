@@ -21,6 +21,7 @@ import pytest
 from ledgerlens.eval.manifest import (
     HELD_OUT_RESERVED_DIGESTS,
     HELD_OUT_RESERVED_PATHS,
+    HELD_OUT_RESERVED_RECORD_DIGESTS,
     TUNING_ROLE,
     EvalDatasetManifest,
     ManifestError,
@@ -461,4 +462,61 @@ def test_the_reserved_digests_are_the_digests_of_the_set_and_of_the_key() -> Non
         digest = hashlib.sha256(key.read_bytes()).hexdigest()
         assert digest in HELD_OUT_RESERVED_DIGESTS, (
             "the digest of the answer key of the generator is not reserved: a copy of it under another name would pass"
+        )
+
+
+def test_a_copy_of_the_set_with_other_bytes_and_a_lying_manifest_is_refused(tmp_path: Path) -> None:
+    """The bytes of the file are the truth, and the records are what the sweep reads.
+
+    Why the case writes a copy with a newline at the end and a manifest that lies about its digest: the reservation
+    by the digest of the bytes stops at the newline, and the declaration of the manifest can be a lie, so a guard
+    that believes the declaration is a guard that a declaration opens. The guard that knows the root reads the file.
+    """
+    datasets = tmp_path / "data" / "eval"
+    datasets.mkdir(parents=True)
+    copy = datasets / "another_name.jsonl"
+    copy.write_text((ROOT / "data" / "eval" / "verification_heldout.jsonl").read_text(encoding="utf-8") + "\n")
+    manifests = list(_manifest_with_roles())
+    manifests.append(
+        EvalDatasetManifest(
+            dataset_id="another_name",
+            path="data/eval/another_name.jsonl",
+            sha256="0" * 64,  # the manifest lies about the digest of the file
+            records_count=48,
+            source="A copy of the labelled set with a newline at the end.",
+            labeling_version="v1",
+            split_role=TUNING_ROLE,
+            scenario_seed=7301,
+            contamination_policy=POLICY,
+        )
+    )
+
+    with pytest.raises(TuningRefusal) as caught:
+        require_tuning_path("data/eval/another_name.jsonl", manifests, tmp_path)
+
+    message = str(caught.value)
+    assert "holds the bytes or the records" in message
+    assert message.endswith(".")
+
+
+def test_the_reserved_record_digests_are_the_digests_of_the_set_and_of_the_key() -> None:
+    """The reservation follows the records, because what the sweep reads is the records.
+
+    Why the test reads the disk: a copy of the set with a newline at the end has other bytes and the same records,
+    and the reservation has to catch it. The digest of the records of a file is the digest of its records read and
+    written back in the canonical form of the repository.
+    """
+    for name in ("data/eval/verification_heldout.jsonl", "data/eval/heldout/recipes.jsonl"):
+        path = ROOT / name
+        if not path.exists():
+            continue
+        records = [
+            json.loads(line)
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        canonical = json.dumps(records, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+        assert digest in HELD_OUT_RESERVED_RECORD_DIGESTS, (
+            f"the digest of the records of {name} is not reserved: a copy of it with other bytes would pass"
         )

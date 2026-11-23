@@ -215,7 +215,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             entry = require_tuning_dataset(dataset_id, manifests)
             # The door of the path: the role of an entry is a field of a JSON file, and the reservation of the
             # held out set lives in the code, so the path is asked as well.
-            require_tuning_path(entry.path, manifests)
+            require_tuning_path(entry.path, manifests, root)
         except TuningRefusal as exc:
             return _refuse(str(exc))
 

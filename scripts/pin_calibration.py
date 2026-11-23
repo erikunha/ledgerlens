@@ -216,7 +216,7 @@ def _set_key(text: str, key: str, value: Any) -> str:
 # --- the pin ----------------------------------------------------------------------------------------------
 
 
-def _pin(manifest_path: Path, manifests: Sequence[Any]) -> dict[str, Any]:
+def _pin(manifest_path: Path, manifests: Sequence[Any], root: Path) -> dict[str, Any]:
     """The pin of the calibration, computed from the disk.
 
     Why it exists: the pin is what the calibration was measured over, and the only honest source of it is the
@@ -232,7 +232,7 @@ def _pin(manifest_path: Path, manifests: Sequence[Any]) -> dict[str, Any]:
     for entry in manifests:
         if entry.split_role != TUNING_ROLE:
             continue
-        require_tuning_path(entry.path, manifests)
+        require_tuning_path(entry.path, manifests, root)
     digest = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
     return {
         "tuning_manifest_sha256": digest,
@@ -306,7 +306,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 1
 
     try:
-        pin = _pin(manifest_path, manifests)
+        pin = _pin(manifest_path, manifests, root)
     except TuningRefusal as exc:
         print(f"pin_calibration: {safe_text(exc)}", file=sys.stderr)
         return 1

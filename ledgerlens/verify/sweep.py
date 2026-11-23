@@ -179,7 +179,7 @@ def nli_cases(root: Path, manifests: Sequence[EvalDatasetManifest]) -> tuple[Nli
         if entry.split_role != TUNING_ROLE:
             continue
         require_tuning_dataset(entry.dataset_id, manifests)  # the door, for the case the role of the entry changed
-        require_tuning_path(entry.path, manifests)  # the door of the path, for the case the role of the file changed
+        require_tuning_path(entry.path, manifests, root)  # the door of the path, for the case the file changed
         for row in _rows(root / entry.path):
             case = _case(entry.dataset_id, row, limit)
             if case is not None:

@@ -114,6 +114,15 @@ HELD_OUT_RESERVED_DIGESTS: tuple[str, ...] = (
     "39720b7261521b911f1b6fb969afb8a59e97c963dc1933c1539a0b19de55ca30",
 )
 
+# The digests of the records of the same two files, with the records of a JSONL file read and written back in the
+# canonical form of the repository. Why the records and not only the bytes: a copy of the set with a newline at the
+# end has other bytes and the same records, and a reservation by the bytes alone stops at that newline. What the
+# sweep reads is the records, so the reservation follows the records.
+HELD_OUT_RESERVED_RECORD_DIGESTS: tuple[str, ...] = (
+    "7f7be52d636391bbb566c1d921b754fd255a4acb3ac056fd2d7d2601b24c547b",
+    "5b736b9c7956bb15eb2505a6d1682972ba1d6ace3db945245beefcc650243c1e",
+)
+
 # The folder of the datasets, relative to the project root, and the manifest file relative to it. They are relative
 # so that a check over another root reads that root and not this one.
 EVAL_DIR_RELATIVE = Path("data") / "eval"
@@ -891,7 +900,45 @@ def require_tuning_dataset(dataset_id: str, manifests: Sequence[EvalDatasetManif
     return entry
 
 
-def require_tuning_path(path: str | Path, manifests: Sequence[EvalDatasetManifest]) -> EvalDatasetManifest:
+def _digest_of(path: Path) -> str | None:
+    """The digest of the bytes of a file, or None when the file cannot be read.
+
+    Why the file and not the manifest: the digest that the manifest declares can be a lie, and a guard that believes
+    a declaration is a guard that a declaration opens.
+    """
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError:
+        return None
+
+
+def _records_digest_of(path: Path) -> str | None:
+    """The digest of the records of a JSONL file, independent of the bytes that hold them.
+
+    Why the records and not only the bytes: a copy of the set with a newline at the end has other bytes and the same
+    records, and a reservation by the bytes alone stops at that newline. What the sweep reads is the records.
+    """
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return None
+    records: list[object] = []
+    for line in text.splitlines():
+        if not line.strip():
+            continue
+        try:
+            records.append(json.loads(line))
+        except json.JSONDecodeError:
+            return None
+    canonical = json.dumps(records, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def require_tuning_path(
+    path: str | Path,
+    manifests: Sequence[EvalDatasetManifest],
+    root: Path | None = None,
+) -> EvalDatasetManifest:
     """The entry of the dataset a path names, when it may be tuned against, and a refusal when it may not.
 
     Why it exists next to the guard of the name: a tuning script that opens a file by its path does not pass
@@ -910,6 +957,10 @@ def require_tuning_path(path: str | Path, manifests: Sequence[EvalDatasetManifes
     path, so the reservation by path alone stops at the name. The bytes are the same under any name, and the
     digest of the entry is what the check of the datasets compares with the file on the disk, so a copy that the
     check accepts carries the digest of the set and is refused here.
+
+    Why the root is an argument and not always read: the declaration of the manifest can be a lie, and the bytes of
+    the file are the truth, so a caller that knows the root gets the check of the file itself. The callers of the
+    sweep know the root, and a caller that does not still gets the check of the declaration.
 
     Raises `TuningRefusal` when the path is reserved, when the digest of the entry is reserved, when no entry
     names the path, or when the entry that names it may not be tuned against.
@@ -938,12 +989,27 @@ def require_tuning_path(path: str | Path, manifests: Sequence[EvalDatasetManifes
             f"of the generator that wrote it, so it may not be tuned against under any name and with any role: "
             f"only the datasets with the role '{TUNING_ROLE}' may be tuned against."
         )
+    if root is not None:
+        # The declaration of the manifest can be a lie, and the bytes of the file are the truth. The digest of the
+        # bytes and the digest of the records are both checked, because a copy with a newline at the end has other
+        # bytes and the same records.
+        on_disk = root / wanted
+        digest = _digest_of(on_disk)
+        records = _records_digest_of(on_disk)
+        if digest in HELD_OUT_RESERVED_DIGESTS or records in HELD_OUT_RESERVED_RECORD_DIGESTS:
+            raise TuningRefusal(
+                f"The file '{safe_text(wanted)}' holds the bytes or the records of the held out set or of the answer "
+                f"key of the generator that wrote it, so it may not be tuned against under any name and with any "
+                f"role: only the datasets with the role '{TUNING_ROLE}' may be tuned against."
+            )
     return entry
 
 
 __all__ = [
     "EVAL_DIR_RELATIVE",
+    "HELD_OUT_RESERVED_DIGESTS",
     "HELD_OUT_RESERVED_PATHS",
+    "HELD_OUT_RESERVED_RECORD_DIGESTS",
     "MANIFEST_PATH",
     "MANIFEST_RELATIVE",
     "SPLIT_ROLES",
