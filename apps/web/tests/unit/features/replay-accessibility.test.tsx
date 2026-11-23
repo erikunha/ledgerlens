@@ -246,7 +246,7 @@ async function seekToTheEvent(seq: number): Promise<void> {
   fireEvent.change(slider, { target: { value: String(seq - 1) } });
 
   await waitFor(() => {
-    expect(screen.getByText(`Event ${seq} of 57.`)).toBeInTheDocument();
+    expect(screen.getByText(`Event ${seq} of ${EVENTS.length}.`)).toBeInTheDocument();
   });
 }
 
@@ -469,7 +469,7 @@ describe("the preference for less motion", () => {
     // The region does not carry the counter of the events any more: it announces the step of the run, and the
     // recording never moved, so it says nothing at all. The counter stays visible in the page as ordinary text.
     expect(screen.getByRole("status").textContent).toBe("");
-    expect(screen.getByText("Event 1 of 57.")).toBeInTheDocument();
+    expect(screen.getByText(`Event 1 of ${EVENTS.length}.`)).toBeInTheDocument();
   });
 
   it("lets the recording play when the visitor did not ask for less motion", async () => {
@@ -600,7 +600,7 @@ describe("the live region of the reader", () => {
     slider.focus();
     fireEvent.change(slider, { target: { value: "15" } });
 
-    await waitFor(() => expect(screen.getByText("Event 16 of 57.")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(`Event 16 of ${EVENTS.length}.`)).toBeInTheDocument());
     expect(document.activeElement).not.toBe(region);
   });
 
@@ -617,7 +617,7 @@ describe("the live region of the reader", () => {
     expect(region.textContent).not.toMatch(/Event/);
 
     // The counter of the events stays visible in the page, as ordinary text and outside the region.
-    expect(screen.getByText("Event 16 of 57.")).toBeInTheDocument();
+    expect(screen.getByText(`Event 16 of ${EVENTS.length}.`)).toBeInTheDocument();
   });
 
   it("does not change its text when the recording moves inside a step", async () => {

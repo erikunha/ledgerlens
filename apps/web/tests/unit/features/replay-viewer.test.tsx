@@ -351,7 +351,7 @@ describe("the reader of the recorded run", () => {
 
     const recordedRun = await findLoadedRun();
     expect(within(recordedRun).getByText("The recording has no call of a tool yet.")).toBeInTheDocument();
-    expect(within(recordedRun).getByText(/Event \d+ of 57\./)).toBeInTheDocument();
+    expect(within(recordedRun).getByText(new RegExp(`Event \\d+ of ${EVENTS.length}\\.`))).toBeInTheDocument();
     expect(within(recordedRun).getByText(/The status of the run is:/)).toBeInTheDocument();
   });
 
@@ -365,7 +365,7 @@ describe("the reader of the recorded run", () => {
     fireEvent.change(slider, { target: { value: last ?? String(EVENTS.length - 1) } });
 
     await waitFor(() => {
-      expect(screen.getByText(/Event 57 of 57\./)).toBeInTheDocument();
+      expect(screen.getByText(new RegExp(`Event ${EVENTS.length} of ${EVENTS.length}\\.`))).toBeInTheDocument();
     });
     expect(screen.getByText(/The status of the run is:/)).toBeInTheDocument();
   });
