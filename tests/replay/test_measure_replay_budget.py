@@ -70,24 +70,27 @@ def test_the_published_set_is_inside_the_budget_the_specification_declares(
 
     assert problems == []
     assert files
-    assert len(scenarios) == 1
-    scenario = scenarios[0]
-    assert scenario.slug == "s01"
-    assert 0 < scenario.compressed < measure_replay_budget.BUDGET_BYTES
+    assert [scenario.slug for scenario in scenarios] == ["s01", "s02", "s03", "s04", "s08"]
+    for scenario in scenarios:
+        assert 0 < scenario.compressed < measure_replay_budget.BUDGET_BYTES
 
     assert measure_replay_budget.main(["--site", str(PUBLISHED)]) == 0
     assert capsys.readouterr().err == ""
 
 
 def test_the_number_of_events_of_the_recording_is_the_number_the_manifest_declares():
-    """The recording holds the 57 events its manifest declares, and the measurement counts them."""
+    """Each recording holds the number of events its manifest declares, and the measurement counts them.
+
+    Why every scenario and not only the first: the site publishes five, and a check that only counted the events of
+    the first one would let a recording of the other four carry a number nobody verified.
+    """
     _files, scenarios, problems = measure_replay_budget.measure(PUBLISHED)
 
     assert problems == []
-    assert len(scenarios) == 1
-    scenario = scenarios[0]
-    assert scenario.events == 57
-    assert scenario.declared_events == 57
+    assert len(scenarios) == 5
+    for scenario in scenarios:
+        assert scenario.events > 0
+        assert scenario.events == scenario.declared_events
 
 
 def test_the_measurement_exits_with_one_when_the_budget_is_tightened(

@@ -579,15 +579,19 @@ def test_the_script_exits_1_when_the_disk_differs_and_0_when_it_matches(
 
 
 def test_the_artifacts_published_in_the_repository_match_the_bundle():
-    """The published artifacts are the ones the bundle says, so the gate can prove they never drifted."""
-    files = build_export([CANONICAL])
+    """The published artifacts are the ones the bundles say, so the gate can prove they never drifted.
+
+    Why every bundle and not only the first: the site publishes five scenarios, and a check that only looked at
+    the first one would let the other four drift without anyone noticing.
+    """
+    files = build_export(discover_bundles(ROOT / "data" / "eval" / "replay"))
     assert check_export(files, PUBLISHED) == []
 
 
 def test_a_folder_of_bundles_gives_one_scenario_per_bundle():
     """A folder with bundle folders inside it gives one scenario for each of them."""
     found = discover_bundles(ROOT / "data" / "eval" / "replay")
-    assert [path.name for path in found] == ["s01"]
+    assert [path.name for path in found] == ["s01", "s02", "s03", "s04", "s08"]
 
     assert discover_bundles(CANONICAL) == [CANONICAL]
 
@@ -620,7 +624,7 @@ def test_the_cross_check_finds_no_difference_in_the_set_the_export_publishes(
     assert capsys.readouterr().err == ""
 
     # The artifacts of the repository were only read, so they still match the bundle they claim to show.
-    assert check_export(build_export([CANONICAL]), PUBLISHED) == []
+    assert check_export(build_export(discover_bundles(ROOT / "data" / "eval" / "replay")), PUBLISHED) == []
 
 
 def test_the_cross_check_refuses_a_file_that_is_missing(

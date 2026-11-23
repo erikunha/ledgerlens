@@ -1,0 +1,88 @@
+{
+  "accounts": [
+    {
+      "id": "C-0900",
+      "kind": "customer",
+      "name": "Fernanda Lima Duarte",
+      "reads": [
+        {
+          "columns": [
+            "id",
+            "merchant_id",
+            "period_start",
+            "period_end",
+            "currency",
+            "gross_minor",
+            "gross_major",
+            "refunds_minor",
+            "…+8 items"
+          ],
+          "evidence_id": "sql:1",
+          "records": [
+            "ST-0044"
+          ],
+          "row_count": 0,
+          "rows": [],
+          "seq": 19,
+          "sql": "SELECT * FROM (SELECT * FROM settlements WHERE id = 'ST-0044') LIMIT 50",
+          "tool": "query_ledger",
+          "truncated": false
+        }
+      ],
+      "rows": [
+        {
+          "amount": "640.00",
+          "at": "2026-09-02T12:00:00Z",
+          "currency": "BRL",
+          "id": "TX-2083",
+          "kind": "transaction",
+          "status": "disputed"
+        },
+        {
+          "amount": "910.00",
+          "at": "2026-09-04T09:30:00Z",
+          "currency": "BRL",
+          "id": "TX-2084",
+          "kind": "transaction",
+          "status": "disputed"
+        },
+        {
+          "amount": "1250.00",
+          "at": "2026-10-06T14:00:00Z",
+          "currency": "BRL",
+          "id": "TX-2081",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "640.00",
+          "at": "2026-10-07T10:00:00Z",
+          "currency": "BRL",
+          "id": "CB-0311",
+          "kind": "chargeback",
+          "status": "opened"
+        },
+        {
+          "amount": "780.50",
+          "at": "2026-10-08T16:30:00Z",
+          "currency": "BRL",
+          "id": "TX-2082",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "910.00",
+          "at": "2026-10-09T10:00:00Z",
+          "currency": "BRL",
+          "id": "CB-0312",
+          "kind": "chargeback",
+          "status": "opened"
+        }
+      ]
+    }
+  ],
+  "page_size": 50,
+  "scenario": "S08",
+  "schema_version": "1",
+  "snapshot_sha256": "52d487332523155fc46a24c7b67897ae409748b00cebbd4279cf8b08610931f6"
+}

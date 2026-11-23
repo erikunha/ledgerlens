@@ -24,5 +24,102 @@
     "provenance_sha256": "3f01acae2460d7dc93c46aa06dd9c2afc477124ec7045ec8a1bc420254738166",
     "question": "Why was the BRL refund for TX-2048 lower than the EUR payment?",
     "status": "Recorded"
+  },
+  {
+    "bundle_digest": "38f74aa459df9423b182c3fe327b05e852b85c2dde22d29e09c216910ebfbd77",
+    "bundle_path": "s02",
+    "capture_kind": "scripted_fixture",
+    "code_sha": "beaadf187c6bdeb809fbec018e9b0792a6ea8c17",
+    "concepts": [
+      "read_only_ledger_query",
+      "policy_retrieval"
+    ],
+    "data_origin": "UCI Online Retail II",
+    "data_origin_detail": {
+      "dataset": "UCI Online Retail II",
+      "kind": "public-derived",
+      "license": "CC BY 4.0",
+      "reference": "https://doi.org/10.24432/C5CG6D",
+      "seed": 42
+    },
+    "id": "S02",
+    "ledger_sha256": "a28ad06a9dc41656d553c1f12c62b84bac731b55dcdb9fbfeabb67a4744b368d",
+    "name": "duplicate_charge",
+    "provenance_sha256": "e240bb3fabbe12104a4992e2dcdbebd63ca307d9999b28dcb3d9e5f67d0e9dca",
+    "question": "Customer C-0733 was charged twice for the same amount, TX-2051 and TX-2052. Was it a duplicate charge?",
+    "status": "Recorded"
+  },
+  {
+    "bundle_digest": "4675d803770bbc65350b4a700c7729b7b363f217fdb937f6af1a7e8687cf5b68",
+    "bundle_path": "s03",
+    "capture_kind": "scripted_fixture",
+    "code_sha": "beaadf187c6bdeb809fbec018e9b0792a6ea8c17",
+    "concepts": [
+      "read_only_ledger_query",
+      "policy_retrieval",
+      "human_review"
+    ],
+    "data_origin": "UCI Online Retail II",
+    "data_origin_detail": {
+      "dataset": "UCI Online Retail II",
+      "kind": "public-derived",
+      "license": "CC BY 4.0",
+      "reference": "https://doi.org/10.24432/C5CG6D",
+      "seed": 42
+    },
+    "id": "S03",
+    "ledger_sha256": "cc51e2b93a2ef4eb2b506f7229413cfdc3da41753b0b00b67a8134335e9189f2",
+    "name": "chargeback_near_deadline",
+    "provenance_sha256": "4739603ba5a7f1a761cb7baeff22ea90e94b7aa4006aa09022966986c3c5cd03",
+    "question": "What is the deadline for dispute CB-0310 and what do we need to do?",
+    "status": "Recorded"
+  },
+  {
+    "bundle_digest": "26535a26b5e4cce038c018cee1ad7025540d03f532865d668d905e42917a82e8",
+    "bundle_path": "s04",
+    "capture_kind": "scripted_fixture",
+    "code_sha": "39f6e92fee2e0f0384c9b5629b25ab4b0325667b",
+    "concepts": [
+      "read_only_ledger_query"
+    ],
+    "data_origin": "UCI Online Retail II",
+    "data_origin_detail": {
+      "dataset": "UCI Online Retail II",
+      "kind": "public-derived",
+      "license": "CC BY 4.0",
+      "reference": "https://doi.org/10.24432/C5CG6D",
+      "seed": 42
+    },
+    "id": "S04",
+    "ledger_sha256": "6ccaead16f4d5e2f89adec2d76e6b3632c44c5674aa9b90216f1dc9c91002fd8",
+    "name": "unknown_id",
+    "provenance_sha256": "164a2d9700066330d8b0183a40fe898b40949f0f29fffa2b1e17a643c7520326",
+    "question": "What is the status of TX-9999?",
+    "status": "Recorded"
+  },
+  {
+    "bundle_digest": "b56acdabc0ac567bc14e0b225ee51b2204197c92d8553562b89a0cf8d117e979",
+    "bundle_path": "s08",
+    "capture_kind": "scripted_fixture",
+    "code_sha": "beaadf187c6bdeb809fbec018e9b0792a6ea8c17",
+    "concepts": [
+      "read_only_ledger_query",
+      "policy_retrieval",
+      "decimal_calculation"
+    ],
+    "data_origin": "UCI Online Retail II",
+    "data_origin_detail": {
+      "dataset": "UCI Online Retail II",
+      "kind": "public-derived",
+      "license": "CC BY 4.0",
+      "reference": "https://doi.org/10.24432/C5CG6D",
+      "seed": 42
+    },
+    "id": "S08",
+    "ledger_sha256": "308b2bfe9c865bd9b1d3cf4d368e75f3d1d25bac669f1af908bbe99aef3c6f38",
+    "name": "settlement_arithmetic",
+    "provenance_sha256": "f2417e3c0fd33acb28db4037cc9bd8b506bb8171eae85c46d9396d187320d1fe",
+    "question": "How was payout ST-0044 for merchant M-03 calculated and when is it paid?",
+    "status": "Recorded"
   }
 ]

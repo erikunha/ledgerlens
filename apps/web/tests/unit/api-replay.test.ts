@@ -185,8 +185,8 @@ describe("the client of the static artifacts", () => {
     if (!Array.isArray(catalog)) {
       throw new Error(`the loader refused the published catalog: ${catalog.error}`);
     }
-    expect(catalog).toHaveLength(1);
-    expect(catalog[0]?.id).toBe("S01");
+    expect(catalog).toHaveLength(5);
+    expect(catalog.map((card) => card.id)).toEqual(["S01", "S02", "S03", "S04", "S08"]);
     expect(catalog[0]?.question).toBe("Why was the BRL refund for TX-2048 lower than the EUR payment?");
   });
 

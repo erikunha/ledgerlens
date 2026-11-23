@@ -36,7 +36,12 @@ uv run python scripts/export_replay_site.py --check
 # what it downloads and nobody compares the two copies. The check reads the disk, writes nothing, and refuses with
 # a readable reason and a non zero exit code, so the gate stops on the reason and not on a traceback.
 echo "== replay digests (offline)"
-uv run python scripts/verify_replay_digests.py
+# Every published scenario is cross checked, and not only the first one: a scenario that the site publishes and
+# that nobody checks is a scenario that can drift without anyone noticing.
+for bundle in data/eval/replay/s*; do
+  slug="$(basename "$bundle")"
+  uv run python scripts/verify_replay_digests.py --bundle "$bundle" --published "site/replay/$slug"
+done
 
 # The published payload must stay inside the budget the specification declares (SC-004), and the number of events
 # must agree with the manifest. The check reads the disk, writes nothing, and refuses with a readable reason and a
