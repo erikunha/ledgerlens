@@ -142,6 +142,14 @@ npm run preview     # serve a exportação como arquivos simples, em http://loca
 
 Os dois comandos que produzem o site e o servem são `npm run build` e `npm run preview`. O site precisa do Node 24 e de mais nada.
 
+As duas rotas que chegam ao backend, o sandbox e o modo ao vivo, precisam do backend da demonstração rodando em outro terminal, com a origem deste site declarada para que o navegador possa chamá-lo:
+
+```bash
+LEDGERLENS_CORS_ORIGINS=http://localhost:3000 uv run ledgerlens-demo --port 8010
+```
+
+`LEDGERLENS_CORS_ORIGINS` recebe uma lista separada por vírgulas das origens exatas do navegador, e o backend só envia os cabeçalhos de CORS para as origens dessa lista. Este site é servido em `http://localhost:3000`, então é essa a origem a declarar. Sem ela o navegador bloqueia as chamadas e a página mostra `NETWORK_ERROR` em vez do catálogo dos modelos.
+
 A metade gravada do site serve os artefatos gravados do repositório e não chama ninguém, então funciona sem chave, sem conta e sem rede. O visitante abre três rotas: `/replay`, o catálogo dos cenários publicados; `/replay/scenario/<id>`, uma investigação gravada, por exemplo `/replay/scenario/S01`; e `/sandbox`, o sandbox do visitante, onde um caso publicado é bifurcado em um branch privado da sessão. O sandbox é a única rota que chega ao backend da demonstração, e ela não precisa de chave. Uma quarta rota, `/live`, é o modo ao vivo e precisa de uma chave do próprio visitante. O tour da arquitetura está em `/engineering`.
 
 [`apps/web/README.md`](apps/web/README.md) traz os comandos, os testes e as regras da pasta. [`docs/frontend.md`](docs/frontend.md) traz as três salas do site e o contrato da URL dele.
@@ -162,11 +170,13 @@ Copie `.env.example` para `.env`, preencha as chaves (`OPENAI_API_KEY` e, para t
 
 A demonstração funciona sem nenhuma chave. O modo ao vivo é o ramo que você escolhe ativar: o visitante roda um caso real com uma chave do próprio provedor, dentro de um orçamento rígido, e todo o resto continua funcionando exatamente como antes. Neste marco, o ramo é do lado do servidor: as rotas existem e as páginas que as consomem ainda não ([ADR-035](docs/decisions/ADR-035-the-facade-of-the-live-mode.md)).
 
-A demonstração do visitante é servida por um comando:
+A demonstração do visitante é servida por um comando, com a origem do site declarada para que o navegador do visitante possa chamá-lo:
 
 ```bash
-uv run ledgerlens-demo --port 8010
+LEDGERLENS_CORS_ORIGINS=http://localhost:3000 uv run ledgerlens-demo --port 8010
 ```
+
+A origem do site é `http://localhost:3000`, a origem deste README, e o backend só envia os cabeçalhos de CORS para as origens que a implantação declara em `LEDGERLENS_CORS_ORIGINS`. O nome da variável, a lista das origens exatas e a recusa do wildcard estão em [docs/frontend.md](docs/frontend.md).
 
 Esse comando serve a aplicação ligada da demonstração: o modo ao vivo e o sandbox do visitante em uma só aplicação, sobre um único emissor de sessão, um único repositório de branches, uma única camada de branches e um único cofre de credenciais, de modo que o branch que o sandbox bifurca é o branch que a execução ao vivo lê ([ADR-039](docs/decisions/ADR-039-the-wired-application-of-the-demo.md)). O visitante vê um cookie e uma sessão nas duas fachadas. As duas fachadas sozinhas são dois visitantes com um emissor cada, e a fábrica simples do `uvicorn` ainda serve um modo ao vivo sem camada de branches, que recusa toda execução com `503 BRANCH_LAYER_MISSING`. [O início rápido do modo ao vivo](specs/003-r3-bring-your-own-key/quickstart.md) mostra o fluxo inteiro, com as respostas reais.
 

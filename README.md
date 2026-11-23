@@ -140,6 +140,14 @@ npm run preview     # serves the export as plain files, on http://localhost:3000
 
 The two commands that produce the site and serve it are `npm run build` and `npm run preview`. The site needs Node 24 and nothing else.
 
+The two routes that reach the backend, the sandbox and the live mode, need the backend of the demo running in another terminal, with the origin of this site declared so that the browser may call it:
+
+```bash
+LEDGERLENS_CORS_ORIGINS=http://localhost:3000 uv run ledgerlens-demo --port 8010
+```
+
+`LEDGERLENS_CORS_ORIGINS` takes a comma separated list of the exact origins of the browser, and the backend sends the CORS headers only to the origins of that list. This site is served on `http://localhost:3000`, so that is the origin to declare. Without it the browser blocks the calls and the page reports `NETWORK_ERROR` instead of the catalogue of the models.
+
 The recorded half of the site serves the recorded artifacts of the repository and calls nobody, so it works with no key, no account and no network. A visitor opens three routes: `/replay`, the catalog of the published scenarios; `/replay/scenario/<id>`, one recorded investigation, for example `/replay/scenario/S01`; and `/sandbox`, the sandbox of the visitor, where a published case is forked into a private branch of the session. The sandbox is the one route that reaches the backend of the demo, and it needs no key. A fourth route, `/live`, is the live mode and it needs a key of your own. The tour of the architecture is at `/engineering`.
 
 [`apps/web/README.md`](apps/web/README.md) has the commands, the tests and the rules of the folder. [`docs/frontend.md`](docs/frontend.md) has the three rooms of the site and the contract of its URL.
@@ -160,11 +168,13 @@ Copy `.env.example` to `.env`, fill in the keys (`OPENAI_API_KEY` and, for trace
 
 The demo runs with no key at all. The live mode is the opt-in branch of it: the visitor runs a real case with a key of their own provider, inside a hard budget, and everything else keeps working exactly as before. In this milestone the branch is server side: the routes exist and the pages that consume them do not ([ADR-035](docs/decisions/ADR-035-the-facade-of-the-live-mode.md)).
 
-The demo of the visitor is served by one command:
+The demo of the visitor is served by one command, with the origin of the site declared so that the browser of the visitor may call it:
 
 ```bash
-uv run ledgerlens-demo --port 8010
+LEDGERLENS_CORS_ORIGINS=http://localhost:3000 uv run ledgerlens-demo --port 8010
 ```
+
+The origin of the site is `http://localhost:3000`, the origin of this README, and the backend sends the CORS headers only to the origins that the deployment declares in `LEDGERLENS_CORS_ORIGINS`. The name of the variable, the list of the exact origins and the refusal of the wildcard are in [docs/frontend.md](docs/frontend.md).
 
 That command serves the wired application of the demo: the live mode and the sandbox of the visitor in one application, over one session issuer, one store of branches, one branch layer and one vault of the credentials, so the branch that the sandbox forks is the branch that the live run reads ([ADR-039](docs/decisions/ADR-039-the-wired-application-of-the-demo.md)). The visitor sees one cookie and one session over the two facades. The two facades alone are two visitors with an issuer each, and the plain factory of `uvicorn` still serves a live mode without a branch layer, which refuses every run with `503 BRANCH_LAYER_MISSING`. [The quickstart of the live mode](specs/003-r3-bring-your-own-key/quickstart.md) shows the whole flow, with the real answers.
 
