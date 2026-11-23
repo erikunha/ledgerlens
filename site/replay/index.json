@@ -50,10 +50,10 @@
     "status": "Recorded"
   },
   {
-    "bundle_digest": "4675d803770bbc65350b4a700c7729b7b363f217fdb937f6af1a7e8687cf5b68",
+    "bundle_digest": "0325097d2da122f0bef4027102f6d48e1941d2c5c18a3548ccbfe455bb560a60",
     "bundle_path": "s03",
     "capture_kind": "scripted_fixture",
-    "code_sha": "beaadf187c6bdeb809fbec018e9b0792a6ea8c17",
+    "code_sha": "64ddc2aacc27e4c36ba52406509295f65d16a163",
     "concepts": [
       "read_only_ledger_query",
       "policy_retrieval",
@@ -70,7 +70,7 @@
     "id": "S03",
     "ledger_sha256": "bccfee637b873fa291cc20a66cc99528dfaa6334c3c655f2495b52f5a751cd5d",
     "name": "chargeback_near_deadline",
-    "provenance_sha256": "57121542628143fe541c30bbddbda71131bf0d62b964a144519d4766956091e4",
+    "provenance_sha256": "815ddefec4d392ad1361a9d0879c812003618089fdf7825ddcfec54d75ec4e81",
     "question": "What is the deadline for dispute CB-0310 and what do we need to do?",
     "status": "Recorded"
   },
