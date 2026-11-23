@@ -2,9 +2,10 @@
 """The blind reading session of the held out set: the modes read, report and build.
 
 Why it exists: ADR-053 decides that the labels of the held out set come from one person who reads the cases one at a
-time, blind to the recipe of each case, and that the label of the reader wins over the recipe. This script is the
-instrument of that reading: it shows one case at a time, it shows the evidence the way the model will read it, it
-saves every label as the reading goes so an interrupted session is never lost, and it compares the labels with the
+time, instructed to be blind to the recipe of each case, and that the label of the reader wins over the recipe. This
+script is the instrument of that reading: it shows one case at a time, it shows the evidence the way the model will
+read it, it saves every label as the reading goes so an interrupted session is never lost, and it compares the labels
+with the
 recipes after the reading so that every disagreement is on the record.
 
 Three modes:
@@ -476,7 +477,7 @@ def render_screen(case: Case) -> str:
     """The screen of one case: the rule, the claim, the evidence as the model reads it and the three labels.
 
     Why it exists: the screen is everything the reader sees of the case. It never holds the recipe, the template, the
-    expected label, the pair, the case before or the case after, because the reading is blind.
+    expected label, the pair, the case before or the case after, because the reading was blind by procedure.
     """
     lines: list[str] = []
     lines.append("=" * 78)

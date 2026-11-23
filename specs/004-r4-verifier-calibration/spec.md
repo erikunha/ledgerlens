@@ -48,7 +48,8 @@ disagree.
 
 The repository has a set of verification cases that no threshold, prompt or hyperparameter was ever chosen against,
 with different case templates, different text and different source structures from the sets of the tuning, labelled
-by two independent blind readings with an adjudication of the divergences, both blind to the recipe of the case
+by two independent blind readings with an adjudication of the divergences, each one instructed to be blind to the
+recipe of the case
 (ADR-059). A script that tunes refuses to read it, and the refusal is a sentence and not a
 traceback. The cases that a tuning script may not read are declared in the manifest with the role that says so.
 
@@ -123,7 +124,7 @@ over a different set.
   to run when the manifest of the disk is not the one the calibration names.
 - **FR-006**: The held out set has cases with different templates, different text and different source structures
   from the sets of the tuning, and their labels come from two independent blind readings with an adjudication of the
-  divergences, blind to the recipe of the case (ADR-059).
+  divergences, each reading instructed to be blind to the recipe of the case (ADR-059, ADR-064).
 - **FR-007**: The evaluation report answers per case: the claim, the evidence, the expected verdict and the
   verdict that came out, and the aggregate sits next to the list.
 - **FR-008**: A case that has no evidence, or whose evidence contradicts itself, or that is a benign claim the

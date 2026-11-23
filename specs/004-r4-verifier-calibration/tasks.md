@@ -129,11 +129,11 @@ disjoint files so that they can be worked on in parallel.
   `tests/eval/test_label_heldout.py`, one that compares two readings on a tree that holds no recipe at all, one that
   reads the source of the comparison and finds no path to the key, one that refuses an incomplete reading naming the
   missing case, and one that holds the origin of ADR-059 in every line of the labelled set
-- [x] T147 Run the first reading: a fresh session, blind to the recipes, over the forty eight cases of
+- [x] T147 Run the first reading: a fresh session, instructed to be blind to the recipes, over the forty eight cases of
   `data/eval/heldout/cases.jsonl`, writing `data/eval/heldout/labels_reader_a.jsonl` - **DELIVERED**: the reading
   answered 19 supported, 23 contradicted and 6 without enough evidence, and the file holds the note of the reader in
   every one of the 48 lines
-- [x] T148 Run the second reading: another fresh session, blind to the recipes and blind to the first reading, over the
+- [x] T148 Run the second reading: another fresh session, instructed to be blind to the recipes and blind to the first reading, over the
   same cases, writing `data/eval/heldout/labels_reader_b.jsonl` - **DELIVERED**: the reading answered 20 supported,
   24 contradicted and 4 without enough evidence, and it diverged from the first reading in 2 of the 48 cases
 - [x] T149 Compare the two readings with the mode `compare` and adjudicate every case where they diverge into

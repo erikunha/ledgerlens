@@ -7,9 +7,9 @@ recipe of each case in a second file, and it proves, before anybody reads a sent
 the tuning material, that no case names a record of the tuning material, that the pairs of the set differ by one
 fact, and that the recipes are not in the file the person reads.
 
-The split is the point of the module. The generator writes the cases. One person reads the labels, blind to the
-recipe of each case. The recipe and the label are allowed to disagree, and the disagreement counts: it is the
-measure of the set.
+The split is the point of the module. The generator writes the cases. One person reads the labels, instructed to be
+blind to the recipe of each case. The recipe and the label are allowed to disagree, and the disagreement counts: it is
+the measure of the set.
 
 What the module holds:
 

@@ -20,8 +20,8 @@ So the sentences are of two kinds. Some of them describe the instruction, which 
 told, and they are true. The others describe what the sessions did, which the repository cannot prove: the transcripts
 of the sessions are part of the local notes of the owner, and the local notes stay out of git.
 
-An accepted record is not edited: a change of an accepted decision is a new record (`AGENTS.md:20`). The decisions
-themselves did not move. What moved is the world they were taken in, and what the repository can prove about it.
+An accepted record is not edited: a change of an accepted decision is a new record. The decisions themselves did
+not move. What moved is the world they were taken in, and what the repository can prove about it.
 
 ## Decision
 
