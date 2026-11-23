@@ -91,16 +91,32 @@ EXPECTED_READ = {
     "seq": 19,
     "tool": "query_ledger",
     "sql": (
-        "SELECT * FROM (SELECT kind, applied_rate, applied_at FROM fx_applied "
-        "WHERE transaction_id = 'TX-2048' ORDER BY applied_at) LIMIT 50"
+        "SELECT * FROM (SELECT f.kind, f.applied_rate, f.applied_at, m.id AS merchant_id, "
+        "m.name AS merchant_name, m.fx_plan FROM fx_applied AS f JOIN transactions AS t "
+        "ON t.id = f.transaction_id JOIN merchants AS m ON m.id = t.merchant_id "
+        "WHERE f.transaction_id = 'TX-2048' ORDER BY f.applied_at) LIMIT 50"
     ),
-    "columns": ["kind", "applied_rate", "applied_at"],
+    "columns": ["kind", "applied_rate", "applied_at", "merchant_id", "merchant_name", "fx_plan"],
     "row_count": 2,
     "truncated": False,
     "records": ["TX-2048"],
     "rows": [
-        {"kind": "charge", "applied_rate": "5.6679", "applied_at": "2026-10-15T09:12:04Z"},
-        {"kind": "refund", "applied_rate": "5.4931", "applied_at": "2026-10-20T14:30:00Z"},
+        {
+            "kind": "charge",
+            "applied_rate": "5.6679",
+            "applied_at": "2026-10-15T09:12:04Z",
+            "merchant_id": "M-17",
+            "merchant_name": "Lumen Travel GmbH",
+            "fx_plan": "markup",
+        },
+        {
+            "kind": "refund",
+            "applied_rate": "5.4931",
+            "applied_at": "2026-10-20T14:30:00Z",
+            "merchant_id": "M-17",
+            "merchant_name": "Lumen Travel GmbH",
+            "fx_plan": "markup",
+        },
     ],
 }
 
@@ -229,7 +245,7 @@ def test_the_reads_of_the_artifact_are_the_reads_of_the_recording(artifact: dict
     assert read["seq"] == 19
     assert read["tool"] == "query_ledger"
     assert read["sql"] == EXPECTED_READ["sql"]
-    assert read["columns"] == ["kind", "applied_rate", "applied_at"]
+    assert read["columns"] == EXPECTED_READ["columns"]
     assert read["row_count"] == 2
     assert read["truncated"] is False
     assert read["records"] == ["TX-2048"]

@@ -9,7 +9,10 @@
           "columns": [
             "kind",
             "applied_rate",
-            "applied_at"
+            "applied_at",
+            "merchant_id",
+            "merchant_name",
+            "fx_plan"
           ],
           "evidence_id": "sql:1",
           "records": [
@@ -20,16 +23,22 @@
             {
               "applied_at": "2026-10-15T09:12:04Z",
               "applied_rate": "5.6679",
-              "kind": "charge"
+              "fx_plan": "markup",
+              "kind": "charge",
+              "merchant_id": "M-17",
+              "merchant_name": "Lumen Travel GmbH"
             },
             {
               "applied_at": "2026-10-20T14:30:00Z",
               "applied_rate": "5.4931",
-              "kind": "refund"
+              "fx_plan": "markup",
+              "kind": "refund",
+              "merchant_id": "M-17",
+              "merchant_name": "Lumen Travel GmbH"
             }
           ],
           "seq": 19,
-          "sql": "SELECT * FROM (SELECT kind, applied_rate, applied_at FROM fx_applied WHERE transaction_id = 'TX-2048' ORDER BY applied_at) LIMIT 50",
+          "sql": "SELECT * FROM (SELECT f.kind, f.applied_rate, f.applied_at, m.id AS merchant_id, m.name AS merchant_name, m.fx_plan FROM fx_applied AS f JOIN transactions AS t ON t.id = f.transaction_id JOIN merchants AS m ON m.id = t.merchant_id WHERE f.transaction_id = 'TX-2048' ORDER BY f.applied_at) LIMIT 50",
           "tool": "query_ledger",
           "truncated": false
         }

@@ -83,11 +83,11 @@ def test_the_canonical_bundle_opens_and_its_hashes_match():
         assert hashlib.sha256((CANONICAL / name).read_bytes()).hexdigest() == digest
 
 
-def test_the_canonical_bundle_opens_with_its_fifty_seven_events():
-    """The versioned S01 recording opens whole: fifty seven events, every one of them a deterministic sandbox."""
+def test_the_canonical_bundle_opens_with_its_sixty_events():
+    """The versioned S01 recording opens whole: sixty events, every one of them a deterministic sandbox."""
     manifest, events = load_bundle(CANONICAL)
-    assert len(events) == 57
-    assert manifest.events == 57
+    assert len(events) == 60
+    assert manifest.events == 60
     assert {event.mode for event in events} == {"deterministic_sandbox"}
 
 
