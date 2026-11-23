@@ -29,19 +29,23 @@ commit that first carried each one, so a reader can check that the labels did no
 
 | the file | its sha256 | the commit that first carried it |
 | --- | --- | --- |
-| `data/eval/heldout/cases.jsonl` | `790425b3988984b9e6f00d1af3e7c06bcdc56de9c29973a22bbb6fc1ec89f844` | `50956b1` |
-| `data/eval/heldout/labels_reader_a.jsonl` | `222d8411fa596ddf139e33d897b899c86d8692002e1f18e80a6173c9854a19ba` | `56bff5c` |
-| `data/eval/heldout/labels_reader_b.jsonl` | `3153de3ffad5af26c0ff6fb0d6d4bf6f3b04de13f31947133b272aac34da1149` | `56bff5c` |
-| `data/eval/heldout/labels_adjudicated.jsonl` | `09113557a540a153357cf405f68b5846e87c94cca28b8beadb9057bbc73764e2` | `56bff5c` |
-| `data/eval/verification_heldout.jsonl` | `e8dbcdfbc3f75eafbd3cd3c6d88da5641175cec93b4a48109073c80438924212` | `56bff5c` |
+| `data/eval/heldout/cases.jsonl` | `790425b3988984b9e6f00d1af3e7c06bcdc56de9c29973a22bbb6fc1ec89f844` | `b72cc65` |
+| `data/eval/heldout/labels_reader_a.jsonl` | `222d8411fa596ddf139e33d897b899c86d8692002e1f18e80a6173c9854a19ba` | `0c86a06` |
+| `data/eval/heldout/labels_reader_b.jsonl` | `3153de3ffad5af26c0ff6fb0d6d4bf6f3b04de13f31947133b272aac34da1149` | `0c86a06` |
+| `data/eval/heldout/labels_adjudicated.jsonl` | `09113557a540a153357cf405f68b5846e87c94cca28b8beadb9057bbc73764e2` | `0c86a06` |
+| `data/eval/verification_heldout.jsonl` | `e8dbcdfbc3f75eafbd3cd3c6d88da5641175cec93b4a48109073c80438924212` | `0c86a06` |
 
-A reader recomputes a digest with `shasum -a 256 data/eval/heldout/labels_reader_a.jsonl` and compares it.
+A reader recomputes a digest with `shasum -a 256 data/eval/heldout/labels_reader_a.jsonl` and compares it. The
+commit of the last column is the one that first carried the file, and a reader finds it with `git log --diff-filter=A
+-- data/eval/heldout/labels_reader_a.jsonl`.
 
 ## What a reader can check about the blindness itself
 
-The answer key of the generator was on the disk of the owner during the reading: it had been committed to the
-local branch on 2026-11-22 at 20:23, eleven hours before the first session started. It was never in the published
-tree, because the public branch never carried it, and it is not published now.
+The answer key of the generator was on the disk of the owner during the reading: the generator writes it next to
+the cases and the owner ran the generator before the readings, so the file was there on 2026-11-23 at 07:31, when the
+first session started. It was never in the published tree, because the public branch never carried it, and it is not
+published now: the branch was rewritten before the push, no commit of the published history carries it and the object
+of the key was pruned from the repository.
 
 So the blindness of the reading is a procedure and not an absence, and the repository cannot prove that the three
 sessions obeyed the instruction they received. The transcripts of the sessions are part of the local notes of the

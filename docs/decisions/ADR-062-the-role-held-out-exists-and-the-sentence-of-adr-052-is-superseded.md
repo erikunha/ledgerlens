@@ -75,9 +75,12 @@ The generator of the set, `ledgerlens/eval/heldout.py`, is public, and it is det
 ledger and the same bytes, which `tests/eval/test_heldout_generator.py` proves. Anybody can rebuild the key of the set
 from the public tree, with the seed 7301 that the manifest declares.
 
-So the blindness of the reading was a procedure and not a secret. The two readers did not open the key because the
-procedure forbade it, and not because the key was out of reach. This is the honest shape of the claim, and it is the
-shape ADR-059 already gave it: the reading was blind in the only sense that a procedure can be blind.
+So the blindness of the reading was a procedure and not a secret. The two readers were told not to open the key, and
+the repository cannot prove that they did not, because the key was on the disk of the owner while they read. What the
+labels show is that the readings are not a copy of the key: each of the two readings disagrees with it in two of the
+forty eight cases, and a reading that had the key open would have agreed with it everywhere. This is the honest shape
+of the claim, and it is the shape ADR-059 already gave it: the reading was blind in the only sense that a procedure can
+be blind.
 
 ### The sentence of ADR-059 that the reading made false
 

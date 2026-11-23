@@ -87,10 +87,11 @@ disjoint files so that they can be worked on in parallel.
   the answer key before the cases were read without it
 - [x] T099 Declare the held out set in `data/eval/datasets.json` with the role `held_out`, with the sha256 and the
   count of the file, and commit the manifest BEFORE any threshold is chosen against it - **DELIVERED**: the manifest
-  declares two datasets with the role `held_out`, the labelled set `data/eval/verification_heldout.jsonl` and the answer
-  key of the generator `data/eval/heldout/recipes.jsonl`, so the guard that refuses a tuning script covers the key as
-  well as the set. No threshold was chosen against either of them: the pin of the calibration was rewritten after the
-  manifest moved and names the same five tuning datasets as before
+  declares the labelled set `data/eval/verification_heldout.jsonl` with the role `held_out`, and the guard that refuses
+  a tuning script covers it. The answer key of the generator was declared with it and is not published any more
+  (ADR-062): the tree does not carry a key, and the guard refuses the path of the key and the digest of the set. No
+  threshold was chosen against either of them: the pin of the calibration was rewritten after the manifest moved and
+  names the same five tuning datasets as before
 - [x] T100 Add to `ledgerlens/eval/manifest.py` the guard that refuses to tune against a dataset whose role is not
   `tuning`, with a readable reason and a non zero exit code, and the test that proves it - **DELIVERED**: the guard
   is `may_be_tuned_against` and `require_tuning_dataset` in `ledgerlens/eval/manifest.py`, with the exception

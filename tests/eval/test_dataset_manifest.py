@@ -1,6 +1,6 @@
 """The manifest of the eval datasets: what it pins and what it refuses.
 
-Why it exists: the seven JSONL files under `data/eval/` are the source of every number the repository publishes,
+Why it exists: the six JSONL files under `data/eval/` are the source of every number the repository publishes,
 and the manifest is what says which file each number comes from, how many records it has and what a tuning script
 may read. These tests cover the fingerprint of a file, the reading of the manifest file and the comparison of the
 manifest with the disk, with temporary folders for the fixtures and the real repository only for the manifest that

@@ -15,7 +15,7 @@ The reading is what produces the labels, and its own files are the record that i
 adjudication. The label of the adjudication is the label of the set. The label the generator expected is never
 written over it.
 
-The files of this folder and the key never meet:
+The files of this folder and the key do not meet in the tree, and the readings did not copy the key:
 
 - `cases.jsonl` is the file the readers read. Every line is one case with its id, its claim and its evidence. It
   holds **no label, no template name, no recipe and no id that says which template the case belongs to**. The ids run

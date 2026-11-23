@@ -266,8 +266,9 @@ The two readings are on the disk. `data/eval/heldout/labels_reader_a.jsonl` and
 `data/eval/heldout/labels_reader_b.jsonl` carry forty eight lines each, and they disagree on exactly two cases:
 `ho-013` and `ho-035`. The adjudication decided both by the rule that evidence which contradicts itself says nothing,
 so the label of the set is 19 supported, 23 contradicted and 6 without enough evidence. The labelled set
-`data/eval/verification_heldout.jsonl` is built and the manifest declares it, and the key of the generator, with the
-role `held_out` as well.
+`data/eval/verification_heldout.jsonl` is built and the manifest declares it with the role `held_out`. The key of the
+generator was declared with it and is not published any more (ADR-062): the tree does not carry a key, and the guard
+refuses the path of the key and the digest of the set.
 
 **The number over the set is published, and it is the least flattering number of this repository.** The verifier gets
 24 of the 48 cases right (0,500), 23 of the 47 that go through the NLI model and one that the code decides. The false
