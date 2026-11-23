@@ -69,7 +69,8 @@ disjoint files so that they can be worked on in parallel.
   claim with no evidence, a claim whose evidence contradicts itself and a benign claim the evidence does not support
   - **DELIVERED**: the generator `ledgerlens/eval/heldout.py` writes the blind file `data/eval/heldout/cases.jsonl`
   with the forty eight cases over the synthetic ledger of the seed 7301, in six templates of eight instances each,
-  and the recipes live in `data/eval/heldout/recipes.jsonl`, a file the reader never opens. The three negative
+  and the recipes live in `data/eval/heldout/recipes.jsonl`, a file the readers were forbidden to open and that the
+  tree does not publish (ADR-062). The three negative
   controls are there: the case with no evidence, the case whose evidence contradicts itself and the benign claim the
   evidence does not support. The file the manifest will declare is built by the reading of T098, so that no file of
   this repository carries a label that a machine wrote
