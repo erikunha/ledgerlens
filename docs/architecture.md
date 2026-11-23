@@ -190,14 +190,14 @@ sequenceDiagram
   T-->>G: Triage (refund_discrepancy, TX-2048, 5-step plan)
   G->>L: recall_cases(M-17)
   L-->>G: CASE-0001 (markup of about 2.5%)
-  G->>L: query_ledger(TX-2048 and refunds)
-  L-->>G: rows (EUR 100.00; BRL 549.31; rate 5.4931)
+  G->>L: query_ledger(TX-2048, its refunds and the plan of the merchant)
+  L-->>G: rows (EUR 100.00; BRL 549.31; rate 5.4931; plan markup)
   G->>L: search_policies(cross-currency refund)
   L-->>G: policy passages
   G->>L: get_reference_fx(EUR, BRL, 2026-10-20)
   L-->>G: 5.6339 (ECB, date 2026-10-20)
-  G->>L: calculate(fx_gap_breakdown)
-  L-->>G: gap 17.48 = 3.40 market + 14.08 markup
+  G->>L: calculate(fx_markup_check, plan markup)
+  L-->>G: gap 17.48 = 3.40 market + 14.08 markup; limit 3.00; within the limit
   G-->>V: answer + evidence
   V->>V: NLI on text claims; numbers through calculate; coherence
   V-->>S: InvestigationResult with verdicts
