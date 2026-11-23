@@ -116,9 +116,9 @@
       "seed": 42
     },
     "id": "S08",
-    "ledger_sha256": "37996d019939f02859572e3a4b14f4187afb023ac664a02e8fd93d4a2cbd7e9e",
+    "ledger_sha256": "03c31bf26a1c3f3115caf4631be8c5a55f3bd44ce85fa41737632b3d2c35ef26",
     "name": "settlement_arithmetic",
-    "provenance_sha256": "75c15825f6986c4482d1fe8d0498e1fc84bd6c9b26bc5b6fcdba744d26c96515",
+    "provenance_sha256": "dcee0f00b16a358ff8263bd62dec5d889fc30e81d72584f7ace1b8396c6d6982",
     "question": "How was payout ST-0044 for merchant M-03 calculated and when is it paid?",
     "status": "Recorded"
   }

@@ -621,7 +621,7 @@
         {
           "amount": "0.00",
           "at": "2026-10-07T11:38:00Z",
-          "currency": null,
+          "currency": "BRL",
           "id": "R-0179",
           "kind": "refund",
           "status": "rejected"

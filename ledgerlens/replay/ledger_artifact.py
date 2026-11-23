@@ -382,13 +382,36 @@ def _movements_of(ledger_db: Path) -> list[dict[str, Any]]:
 
     Why the rule of the branch layer: the table of the recorded demo and the table of the branch of the sandbox render
     one row, so the shape of the row is written in one place and the interface reads one row.
+
+    Why the currency of a refund that was never paid out is the currency that was asked back: the row of the branch
+    layer carries the currency of the payout, and a refund that was rejected has no payout and so has no currency of
+    a payout. The published file types every value as text and its contract asks for a currency that is not empty,
+    so the row carries the currency of the refund, which is the currency of the money that was asked back.
+
+    Why every value is text: the contract of the published file is the contract of the browser, and the browser types
+    the values of a row as text. A value that is not text is a file the browser refuses, and a panel that shows the
+    reason of the refusal is a panel that shows no ledger at all.
     """
     try:
         with closing(open_ledger(ledger_db)) as conn:
             rows = {table: dump_rows(conn, table) for table in _MOVEMENT_TABLES}
     except (OSError, sqlite3.Error) as exc:
         raise LedgerArtifactError(f"the ledger {ledger_db} cannot be read: {exc}") from exc
-    return list(_ledger_items(_LedgerRows(rows)))
+    items = list(_ledger_items(_LedgerRows(rows)))
+    requested = {
+        str(row.get("id")): str(row.get("requested_currency") or "")
+        for row in rows.get("refunds", [])
+    }
+    published: list[dict[str, Any]] = []
+    for item in items:
+        currency = str(item.get("currency") or "") or requested.get(str(item.get("id")), "")
+        published.append(
+            {
+                str(key): _text_of(currency if key == "currency" else value)
+                for key, value in item.items()
+            }
+        )
+    return published
 
 
 @contextmanager

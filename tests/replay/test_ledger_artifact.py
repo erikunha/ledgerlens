@@ -496,13 +496,17 @@ def test_the_values_of_a_row_are_published_as_text(artifact: dict) -> None:
                     )
 
 
-def test_every_published_artifact_carries_text_in_every_row_of_every_read() -> None:
+def test_every_published_artifact_carries_text_in_every_row() -> None:
     """The artifacts that the tree publishes pass the contract of the browser.
 
     Why the files of the tree and not a fixture: the defect this test closes was in the published files, and a test
     over a fixture would not have found it. The files are the ones the site serves.
+
+    Why every row and not only the rows of the reads: the movements of the account are rows too, and the currency of
+    a refund that was never paid out was published as nothing, which the browser refuses like it refuses a number.
     """
     published = sorted((ROOT / "data" / "eval" / "replay" / "ledger").glob("*.json"))
+    published += sorted((ROOT / "site" / "replay").glob("*/ledger.json"))
     assert published, "the tree publishes no artifact of the ledger"
 
     offenders: list[str] = []
@@ -513,5 +517,31 @@ def test_every_published_artifact_carries_text_in_every_row_of_every_read() -> N
                 for row in read.get("rows", []):
                     for key, value in row.items():
                         if not isinstance(value, str):
-                            offenders.append(f"{path.name}: {key} is a {type(value).__name__}")
+                            offenders.append(f"{path.name}: a read has {key} that is a {type(value).__name__}")
+            for row in account.get("rows", []):
+                for key, value in row.items():
+                    if not isinstance(value, str):
+                        offenders.append(f"{path.name}: a movement has {key} that is a {type(value).__name__}")
+                    if key == "currency" and not value:
+                        offenders.append(f"{path.name}: a movement has a currency that is empty")
     assert offenders == [], "a published artifact carries a value that is not text: " + "; ".join(offenders)
+
+
+def test_the_currency_of_a_refund_that_was_never_paid_out_is_the_currency_asked_back() -> None:
+    """A movement that never moved money still names the currency of the money that was asked back.
+
+    Why it matters: the currency of the row of the branch layer is the currency of the payout, and a refund that was
+    rejected has no payout. The published file asks for a currency that is not empty, and the currency of the refund
+    is the currency of the transaction that was refunded.
+
+    Why the artifact of the scenario S08 and not a fixture: the account of the merchant of S08 is the one that holds
+    the rejected refund, and the published artifact is the file that the site reads.
+    """
+    data = json.loads((ROOT / "data" / "eval" / "replay" / "ledger" / "s08.json").read_text(encoding="utf-8"))
+    movements = data["accounts"][0]["rows"]
+    rejected = [row for row in movements if row["kind"] == "refund" and row["status"] == "rejected"]
+
+    assert rejected, "the account of the merchant holds no rejected refund to prove the rule"
+    for row in rejected:
+        assert row["currency"], f"the rejected refund {row['id']} has no currency in the published artifact"
+        assert row["amount"] == "0.00", f"the rejected refund {row['id']} claims an amount that was not paid"
