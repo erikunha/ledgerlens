@@ -1,9 +1,9 @@
 [
   {
-    "bundle_digest": "a207e0814f856decc6bddedaf74aa02195a0134cbd923004b08bc1f1e1b3afa1",
+    "bundle_digest": "2696a9a056dd821c449ecf82e325c1f6b655330717774585fe058795a6995738",
     "bundle_path": "s01",
     "capture_kind": "scripted_fixture",
-    "code_sha": "6169bbb4e6c81d363eb5e6e1748c83e5805e3ca6",
+    "code_sha": "9a2b44cb47a68d37fa9659c32b2e8bc867ff54aa",
     "concepts": [
       "read_only_ledger_query",
       "policy_retrieval",
@@ -21,7 +21,7 @@
     "id": "S01",
     "ledger_sha256": "049e84ca6753121918beb7daa3401b7e26d814940f103111dba834ec787e5ebf",
     "name": "fx_markup_refund",
-    "provenance_sha256": "9ac9fca203d17a2c405b635ec0e5db17663033525c061eef6e781f654e990898",
+    "provenance_sha256": "f576bac9863f538f9c01e3ab85edd2a6a193e58f032bc84802e6377b55b8c6b1",
     "question": "Why was the BRL refund for TX-2048 lower than the EUR payment?",
     "status": "Recorded"
   },
