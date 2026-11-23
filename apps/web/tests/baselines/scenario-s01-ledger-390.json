@@ -1,0 +1,98 @@
+{
+  "view": "the recording of S01, the tab of the ledger",
+  "route": "/replay/scenario/S01",
+  "width": 390,
+  "decidedBy": "ADR-051",
+  "tolerance": 8,
+  "clientWidth": 390,
+  "boxes": [
+    {
+      "id": "banner",
+      "role": "banner",
+      "name": "LedgerLens",
+      "title": "",
+      "left": 0,
+      "width": 390
+    },
+    {
+      "id": "main",
+      "role": "main",
+      "name": "",
+      "title": "Recorded demo",
+      "left": 0,
+      "width": 390
+    },
+    {
+      "id": "contentinfo",
+      "role": "contentinfo",
+      "name": "",
+      "title": "",
+      "left": 0,
+      "width": 390
+    },
+    {
+      "id": "container",
+      "role": "generic",
+      "name": "",
+      "title": "Recorded demo",
+      "left": 0,
+      "width": 390
+    },
+    {
+      "id": "scenario",
+      "role": "generic",
+      "name": "",
+      "title": "S01 - Why was the BRL refund for TX-2048 lower than the EUR payment?",
+      "left": 24,
+      "width": 342
+    },
+    {
+      "id": "run",
+      "role": "region",
+      "name": "The recorded run",
+      "title": "The ledger of the recording",
+      "left": 24,
+      "width": 342
+    },
+    {
+      "id": "tabs",
+      "role": "tablist",
+      "name": "The sections of the replay",
+      "title": "",
+      "left": 24,
+      "width": 342
+    },
+    {
+      "id": "panel",
+      "role": "generic",
+      "name": "",
+      "title": "The ledger of the recording",
+      "left": 24,
+      "width": 342
+    },
+    {
+      "id": "ledger-panel",
+      "role": "region",
+      "name": "The ledger of the account C-0412",
+      "title": "The ledger of the account C-0412",
+      "left": 24,
+      "width": 342
+    },
+    {
+      "id": "ledger-controls",
+      "role": "generic",
+      "name": "",
+      "title": "",
+      "left": 41,
+      "width": 308
+    },
+    {
+      "id": "ledger-pagination",
+      "role": "generic",
+      "name": "",
+      "title": "",
+      "left": 41,
+      "width": 308
+    }
+  ]
+}

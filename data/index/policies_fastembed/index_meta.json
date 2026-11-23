@@ -5,5 +5,6 @@
   "metric": "l2 on unit vectors",
   "chunk_size": 800,
   "chunk_overlap": 100,
-  "built_on": "2026-11-08"
+  "built_on": "2026-11-23",
+  "corpus_sha256": "3150062902e6af48e25fcd4283d04f4dc524c2a883fe47531cf05916b5b1d9cc"
 }

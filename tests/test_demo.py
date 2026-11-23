@@ -9,6 +9,7 @@ way a portal does.
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 
 from ledgerlens import demo
@@ -21,6 +22,7 @@ from ledgerlens.schemas import (
     Triage,
     Verdict,
 )
+from ledgerlens.verify.checks import verify_result
 
 MANIFEST = demo.load_manifest()
 
@@ -112,7 +114,56 @@ def test_each_account_is_offered_its_questions_and_an_unknown_id() -> None:
         "How was payout ST-0044 for merchant M-03 calculated and when is it paid?",
         demo.UNKNOWN_ID_QUESTION,
     ]
-    assert demo.account_questions("C-0600", MANIFEST) == [demo.UNKNOWN_ID_QUESTION]
+    # the customer of the scenario S07 is offered the question of that scenario, and the id that is not on any statement
+    assert demo.account_questions("C-0600", MANIFEST) == [
+        "Is refund R-0720 for TX-2030 correct? Is there any difference?",
+        demo.UNKNOWN_ID_QUESTION,
+    ]
+
+
+def test_every_scenario_the_page_offers_has_a_script_with_the_tools_the_dataset_declares() -> None:
+    """The tool calls of a scripted run are the tools the dataset says the scenario uses.
+
+    Why the dataset and not the script: the dataset is the ground truth of the scenario, and a script that drifted
+    from it would record a run that never happened.
+    """
+    for item in demo.planted(MANIFEST):
+        scenario = demo.scenario_of(MANIFEST, item.scenario)
+        script = demo.offline_script(item.question, MANIFEST, item.scenario)
+        assert script is not None, item.scenario
+        messages, _ = script
+        called = [call["name"] for message in messages for call in message.tool_calls]
+        assert called == scenario["expected_tools"], item.scenario
+
+
+def test_the_scenario_that_shares_a_question_has_a_script_of_its_own() -> None:
+    """The scenario S11 asks the question of the scenario S01 and only the run differs, so the scripts differ.
+
+    Why it matters: the capture names the scenario it records, and a capture that ran the script of another scenario
+    would publish a failure as a success.
+    """
+    question = demo.scenario_of(MANIFEST, "S01")["questions"][0]
+    assert demo.scenario_of(MANIFEST, "S11")["questions"] == [question]
+
+    first, _ = demo.offline_script(question, MANIFEST, "S01")
+    second, _ = demo.offline_script(question, MANIFEST, "S11")
+    assert first != second
+    assert [call["name"] for message in second for call in message.tool_calls] == ["query_ledger", "get_reference_fx"]
+    assert "549.31" in second[-1].content  # what the ledger shows, and nothing the source could not give
+    assert "566.79" not in second[-1].content  # the amount in BRL is not in the ledger without the rate of the day
+
+
+def test_the_truth_of_a_scenario_carries_the_truth_of_the_scenario_it_is_based_on() -> None:
+    """The scenario S11 is the scenario S01 with the source in fault, so it knows the amounts of the base scenario.
+
+    Why the dataset decides: the dataset says which base a scenario has, so the merge follows the data and not the
+    code, and a scenario without a base keeps only its own truth.
+    """
+    truth = demo._truth_of(MANIFEST, "S11")
+    assert truth["base_scenario"] == "S01"
+    assert truth["refund_brl"] == "549.31"  # from the base scenario
+    assert truth["missing_rate"] == "EUR-BRL 2026-10-20"  # from the scenario itself
+    assert "charge_brl" not in demo._truth_of(MANIFEST, "S07")
 
 
 def test_the_context_names_the_account_and_the_line() -> None:
@@ -295,3 +346,41 @@ def test_the_account_card_figures() -> None:
         ("Last payout", "BRL 29,992.87"),
         ("Open disputes", "0"),
     ]
+
+
+def test_the_answer_of_the_unknown_id_is_supported_by_the_query_that_found_nothing() -> None:
+    """The answer of the scenario S04 is supported by the ledger that found nothing, so the case needs no person.
+
+    Why it matters: the bundle of the scenario S04 is published with the verdict of the verifier, and the dataset
+    says the case needs no human. A sentence that the verifier cannot support turns the case into an escalation,
+    and the published catalogue would show a case the product hands to a person and that the dataset says it does
+    not.
+    """
+    manifest = demo.load_manifest()
+    scenario = next(item for item in manifest["scenarios"] if item["id"] == "S04")
+    script = demo.offline_script(scenario["questions"][0], manifest, "S04")
+
+    assert script is not None
+    messages, _ = script
+    answer = str(messages[-1].content)
+    evidence = _evidence(
+        "sql:1",
+        "sql",
+        json.dumps(
+            {
+                "sql": "SELECT id, status FROM transactions WHERE id = 'TX-9999'",
+                "columns": ["id", "status"],
+                "row_count": 0,
+                "rows": [],
+            }
+        ),
+        "transactions",
+    )
+    result = _result(question=scenario["questions"][0], answer=answer, evidence=[evidence])
+
+    verified = verify_result(result)
+
+    assert [verdict.label for verdict in verified.verdicts] == ["supported"]
+    assert verified.missing_information == []
+    assert not verified.requires_human_review, "the dataset says the case needs no human."
+    assert scenario["requires_human_review"] is False

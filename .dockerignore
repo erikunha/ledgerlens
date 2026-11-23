@@ -1,0 +1,23 @@
+# The image of the application carries no secret: the keys of the reader live in `.env`, and `.env` is out
+# of the image. The example stays, because it names the variables without their values.
+.env
+.env.*
+!.env.example
+
+# The state of the machine of the author never enters the image.
+.git
+.gitignore
+.venv
+.pytest_cache
+.ruff_cache
+**/__pycache__
+**/*.pyc
+
+# The tree of the frontend is not part of the image of the Python: the export of the site is served from
+# the host by the compose file, and the tree of the frontend has its own toolchain.
+apps/web/node_modules
+apps/web/.next
+apps/web/out
+
+# The runtime material of the repository is written by the process at run time, never baked in it.
+data/runtime

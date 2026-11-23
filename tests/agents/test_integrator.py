@@ -227,6 +227,29 @@ def test_s11_the_answer_names_the_rate_the_source_could_not_give(
     assert result.requires_human_review is True and result.recommended_action == S11["expected_action"]
 
 
+def test_an_exception_inside_a_tool_becomes_data_and_the_result_goes_to_a_human(
+    ledger_db: Path, index_root: Path, cases: CaseMemory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The tool layer is not the only wall: an exception that escapes it is reported as data, not raised."""
+
+    def boom(*args: object, **kwargs: object) -> None:
+        raise RuntimeError("the index file is corrupt")
+
+    monkeypatch.setattr("ledgerlens.tools.policies.load_policy_index", boom)
+    script = [
+        tool_call_message("search_policies", {"query": "refund window", "transform": "none"}),
+        text_message("I could not read the policies, so I cannot answer the question."),
+    ]
+    agent = integrator_for(ledger_db, index_root, cases, script, verifier=lambda r, *, nli=None: r)
+
+    result = investigate(agent, "How many days do I have to ask for a refund?", thread_id="t-tool-raise")
+
+    assert isinstance(result, InvestigationResult)
+    assert result.tool_trace[0].ok is False and result.tool_trace[0].error_code == "TOOL_FAILED"
+    assert any("TOOL_FAILED" in item for item in result.missing_information)
+    assert result.requires_human_review is True
+
+
 def test_an_error_followed_by_a_success_is_not_missing(ledger_db: Path, index_root: Path, cases: CaseMemory) -> None:
     script = [
         tool_call_message("get_ledger_record", {"kind": "transaction", "id": "TX-9"}),  # malformed id: INVALID_ID

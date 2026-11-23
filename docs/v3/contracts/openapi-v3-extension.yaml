@@ -1,0 +1,181 @@
+openapi: 3.1.0
+info:
+  title: LedgerLens Lab v3 Research APIs
+  version: 0.0.0-proposed
+  description: >-
+    Proposed sandbox-only extension. No production implementation is claimed.
+    All financial data is synthetic or sanitized. Authorization and scope
+    are checked server-side even when a route is public.
+servers:
+  - url: /api
+paths:
+  /v3/capabilities:
+    get:
+      operationId: listCapabilities
+      summary: List planned and verified capabilities with honest status
+      responses:
+        '200':
+          description: Capability catalog
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  capabilities:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+  /v3/replays/{replay_id}:
+    get:
+      operationId: getReplay
+      summary: Get a sanitised immutable replay bundle
+      parameters:
+        - name: replay_id
+          in: path
+          required: true
+          schema: {type: string, maxLength: 128}
+      responses:
+        '200':
+          description: Public replay (never a live model call)
+          content:
+            application/json:
+              schema: {type: object, additionalProperties: true}
+        '404': {description: Replay does not exist}
+  /v3/branches:
+    post:
+      operationId: createSandboxBranch
+      summary: Create isolated synthetic-data branch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [scenario_id]
+              properties:
+                scenario_id: {type: string, maxLength: 80}
+              additionalProperties: false
+      responses:
+        '201':
+          description: Isolated branch metadata
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [branch_id, revision, base_hash]
+                properties:
+                  branch_id: {type: string}
+                  revision: {type: integer, minimum: 0}
+                  base_hash: {type: string, pattern: '^[a-f0-9]{64}$'}
+                additionalProperties: false
+        '429': {description: Visitor quota exceeded}
+  /v3/branches/{branch_id}/mutations:
+    post:
+      operationId: applySandboxMutation
+      summary: Atomically apply a typed sandbox-only event
+      parameters:
+        - name: branch_id
+          in: path
+          required: true
+          schema: {type: string}
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: {type: string, maxLength: 128}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expected_revision, mutation_type, payload]
+              properties:
+                expected_revision: {type: integer, minimum: 0}
+                mutation_type: {type: string, enum: [override_fx_rate, change_refund_amount, revise_policy, move_deadline, inject_tool_fault]}
+                payload: {type: object, additionalProperties: true}
+              additionalProperties: false
+      responses:
+        '200': {description: Mutation applied once with new revision}
+        '409': {description: Stale revision or snapshot conflict}
+        '422': {description: Domain invariant violated}
+        '403': {description: Branch ownership mismatch}
+  /v3/branches/{branch_id}/reset:
+    post:
+      operationId: resetSandboxBranch
+      summary: Reset branch to original synthetic scenario
+      parameters:
+        - name: branch_id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200': {description: Original base hash restored}
+        '403': {description: Branch ownership mismatch}
+  /v3/runs/{run_id}/evidence:
+    get:
+      operationId: getEvidenceGraph
+      summary: Get versioned claim-to-evidence graph
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200': {description: Redacted and scoped claim-to-source graph}
+        '403': {description: Run not accessible by visitor}
+  /v3/economics/compute:
+    post:
+      operationId: computeEconomics
+      summary: Simulated cost/review and risk model with assumptions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                experiment_id: {type: string}
+                assumptions: {type: object, additionalProperties: true}
+              required: [experiment_id, assumptions]
+              additionalProperties: false
+      responses:
+        '200': {description: Proposed EconomicRun v3 with provenance}
+        '422': {description: Unknown costs, invalid money or incomparable sample}
+  /v3/reviews/{review_id}/decision:
+    post:
+      operationId: decideSandboxReview
+      summary: Simulated reviewer decision (never a real payment)
+      parameters:
+        - name: review_id
+          in: path
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expected_revision, decision, reason]
+              properties:
+                expected_revision: {type: integer, minimum: 0}
+                decision: {type: string, enum: [approve_sandbox, reject, request_evidence, escalate]}
+                reason: {type: string, maxLength: 2048}
+              additionalProperties: false
+      responses:
+        '200': {description: Versioned sandbox review event}
+        '403': {description: Reviewer does not own the branch}
+        '409': {description: Stale review version or invalid transition}
+  /v3/proofs/{artifact_id}:
+    get:
+      operationId: getPublicProof
+      summary: Get redacted, immutable portfolio proof artifact
+      parameters:
+        - name: artifact_id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200': {description: Shareable artifact with source, method, limitations}
+        '404': {description: No published verified artifact}

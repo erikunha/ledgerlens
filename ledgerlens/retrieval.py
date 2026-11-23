@@ -1,8 +1,9 @@
 """Retrieval: splits the policies into excerpts, builds the FAISS index and loads the ready index.
 
 Why it exists: the agent answers rule questions ("how many days to ask for a refund?") by finding the right
-policy excerpts instead of memorizing them. This is the only place in the project that talks to FAISS, so
-switching vector libraries touches one file.
+policy excerpts instead of memorizing them. This module owns the index of the POLICIES. It is not the only
+place of the project that talks to FAISS: the case memory keeps its own vectors
+(`ledgerlens/memory/long_term.py`), and ADR-056 decides the two vector sites and the protocol they share.
 
 Two separate moments, on purpose
 -------------------------------------
@@ -11,8 +12,9 @@ Two separate moments, on purpose
     BUILD (scripts/build_index.py, once)              LOAD (the search_policies tool, always)
     data/policies/*.md                               data/index/policies_<embedding>/
       -> load_policy_documents (excerpts + metadata)   -> checks index_meta.json against the active embedding
-      -> embeddings.embed_documents                    -> FAISS.load_local
-      -> FAISS + index_meta.json on disk               -> similarity_search_with_score
+      -> embeddings.embed_documents                    -> and against the corpus of the policies
+      -> FAISS + index_meta.json on disk               -> FAISS.load_local
+                                                       -> similarity_search_with_score
 
 The tool never rebuilds the index: if it does not exist, it says how to build it.
 
@@ -24,12 +26,16 @@ section heading, so the excerpt explains itself when read outside the document.
 Distance: vectors are normalized (length 1) when they go into the index and into the query, so
 FAISS L2 distance orders the same as cosine similarity. Lower is closer.
 
-Compatibility: each index carries `index_meta.json` with the embedding name and the dimension. The loader
-refuses an index from another embedding, because neighbors from another vector space would be wrong without warning.
+Compatibility: each index carries `index_meta.json` with the embedding name, the dimension and the digest of
+the corpus it was built from. The loader refuses an index from another embedding, because neighbors from
+another vector space would be wrong without warning, and it refuses an index from another corpus, because
+the text it would answer with is the text of a version of the policies that is not on the disk. Both
+refusals happen before the store is opened.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from datetime import UTC, datetime
@@ -52,6 +58,25 @@ INDEX_FILES = ("index.faiss", "index.pkl", META_FILE)
 METRIC = "l2 on unit vectors"
 BUILD_HINT = "run `uv run python scripts/build_index.py` to build it"
 
+__all__ = [
+    "BUILD_HINT",
+    "CHUNK_OVERLAP",
+    "CHUNK_SIZE",
+    "INDEX_FILES",
+    "META_FILE",
+    "METRIC",
+    "POLICIES_DIR",
+    "IndexMismatch",
+    "IndexStale",
+    "IndexUnavailable",
+    "build_policy_index",
+    "corpus_digest",
+    "index_dir_for",
+    "load_policy_documents",
+    "load_policy_index",
+    "search_policy_index",
+]
+
 _HEADING = re.compile(r"^(#{2,3})\s+(.*?)\s*(?:\{#([A-Za-z0-9_-]+)\})?\s*$")
 _FRONT_MATTER = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
 
@@ -62,6 +87,10 @@ class IndexUnavailable(RuntimeError):
 
 class IndexMismatch(RuntimeError):
     """The index was built with another embedding (or another dimension) than the active one."""
+
+
+class IndexStale(RuntimeError):
+    """The index was built from another corpus, or it does not say which corpus it was built from."""
 
 
 def _front_matter(text: str, source: Path) -> tuple[dict[str, str], str]:
@@ -136,11 +165,46 @@ def index_dir_for(index_root: Path | str, embeddings: Embeddings) -> Path:
     return Path(index_root) / f"policies_{provider}"
 
 
-def build_policy_index(documents: list[Document], embeddings: Embeddings, index_dir: Path | str) -> dict[str, Any]:
+def corpus_digest(policies_dir: Path | str = POLICIES_DIR) -> str:
+    """The sha256 of the corpus of the policies: the value the meta of the index carries as `corpus_sha256`.
+
+    What goes into it, so that a reader can reproduce it by hand:
+
+    - the files are the `*.md` files of the folder and nothing else (no subfolder, no other extension);
+    - they are taken in the order of their name, never in the order the disk lists them;
+    - the bytes of a file are the bytes on the disk, read as they are (no translation of the line endings);
+    - one line per file: the name of the file, a colon, the sha256 of its bytes, and a line feed;
+    - the digest is the sha256 of that text, read as UTF-8.
+
+    The name of the file is in the text, so a rename moves the digest as well as an edit. The bytes are in
+    the text, and not the parsed excerpts, so a change of the splitter does not move the digest (the chunk
+    size and the overlap are in the meta already). The same corpus gives the same digest on every platform,
+    because the text is built from the names, from the bytes and from a line feed.
+    """
+    folder = Path(policies_dir)
+    lines = [
+        f"{path.name}:{hashlib.sha256(path.read_bytes()).hexdigest()}"
+        for path in sorted(folder.glob("*.md"), key=lambda path: path.name)
+    ]
+    canonical = "".join(f"{line}\n" for line in lines)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def build_policy_index(
+    documents: list[Document],
+    embeddings: Embeddings,
+    index_dir: Path | str,
+    *,
+    policies_dir: Path | str = POLICIES_DIR,
+) -> dict[str, Any]:
     """Generates the vectors, writes the FAISS index and `index_meta.json` in `index_dir`. Returns the meta.
 
     Only `scripts/build_index.py` calls this. The FAISS ids are the `chunk_id`s, so rebuilding with the
     same vectors gives the same bytes (no random uuid in `index.pkl`).
+
+    `policies_dir` is the folder the documents were read from: the meta carries the digest of that corpus,
+    so the loader can refuse an index that describes another corpus. The default is the folder of the
+    repository, which is the corpus every caller of this function reads today.
     """
     store = FAISS.from_documents(
         documents, embeddings, ids=[d.metadata["chunk_id"] for d in documents], normalize_L2=True
@@ -156,13 +220,23 @@ def build_policy_index(documents: list[Document], embeddings: Embeddings, index_
         "chunk_size": CHUNK_SIZE,
         "chunk_overlap": CHUNK_OVERLAP,
         "built_on": datetime.now(UTC).date().isoformat(),
+        "corpus_sha256": corpus_digest(policies_dir),
     }
     (folder / META_FILE).write_text(json.dumps(meta, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return meta
 
 
-def load_policy_index(index_dir: Path | str, embeddings: Embeddings) -> FAISS:
-    """Loads the ready index. Raises `IndexUnavailable` or `IndexMismatch`; never builds anything."""
+def load_policy_index(
+    index_dir: Path | str,
+    embeddings: Embeddings,
+    *,
+    policies_dir: Path | str = POLICIES_DIR,
+) -> FAISS:
+    """Loads the ready index. Raises `IndexUnavailable`, `IndexMismatch` or `IndexStale`; never builds anything.
+
+    The corpus is compared before the store is opened: an index built from another corpus answers with the
+    text of a version of the policies that is not on the disk, so it refuses instead of answering.
+    """
     folder = Path(index_dir)
     absent = [name for name in INDEX_FILES if not (folder / name).is_file()]
     if absent:
@@ -173,6 +247,19 @@ def load_policy_index(index_dir: Path | str, embeddings: Embeddings) -> FAISS:
     except (ValueError, KeyError, TypeError):
         raise IndexUnavailable(f"{META_FILE} in {folder} is unreadable; {BUILD_HINT}") from None
 
+    built_digest = meta.get("corpus_sha256") if isinstance(meta, dict) else None
+    if not isinstance(built_digest, str) or not built_digest:
+        raise IndexStale(
+            f"the policy index in {folder} does not carry the digest of the corpus it was built from; "
+            f"rebuild it ({BUILD_HINT})"
+        )
+    current_digest = corpus_digest(policies_dir)
+    if built_digest != current_digest:
+        raise IndexStale(
+            f"the policy index in {folder} was built from another corpus: the index says '{built_digest}' "
+            f"and the policies in {policies_dir} hash to '{current_digest}'; rebuild it ({BUILD_HINT})"
+        )
+
     active = embedding_id(embeddings)
     if built_with != active:
         raise IndexMismatch(
@@ -180,8 +267,9 @@ def load_policy_index(index_dir: Path | str, embeddings: Embeddings) -> FAISS:
             f"rebuild it with the active embedding ({BUILD_HINT})"
         )
     # The index is ours: it was written by `build_policy_index` and is only read from `data/index/`. FAISS keeps
-    # the excerpt text in a pickle, and LangChain requires this consent to open it. This is the only
-    # place in the project that gives it; never point this function at an outside file.
+    # the excerpt text in a pickle, and LangChain requires this consent to open it. This is the only place in the
+    # project that gives it for the policy index (the case memory gives it for its own index); never point this
+    # function at an outside file.
     store = FAISS.load_local(str(folder), embeddings, allow_dangerous_deserialization=True, normalize_L2=True)
     if store.index.d != dimension:
         raise IndexMismatch(f"the index has {store.index.d} dimensions but {META_FILE} says {dimension}")

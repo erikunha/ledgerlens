@@ -22,6 +22,12 @@ Two rules the code makes visible:
 Where it lives: the `cases.jsonl` file in the runtime folder and the FAISS index `cases_index/`. The seeded file
 `data/seed/cases.jsonl` is the source of the first case (`CASE-0001`, scenario S12) and is loaded while the
 runtime file does not exist yet.
+
+The id of a case is the one the caller fixed, when it fixed one, and the next of the counter of the store
+otherwise. A caller that fixes it names the case after what the case is about: the capture of a scenario fixes
+the id to the scenario (`CASE-S11`), so two captures of the same scenario write the same case and the published
+bundle names a case that a reader can find again. A counter over a store gives a different id on every capture,
+and the id of a published case would be a number of one afternoon of one machine.
 """
 
 from __future__ import annotations
@@ -39,6 +45,14 @@ from langchain_core.embeddings import Embeddings
 
 from ledgerlens.config import PROJECT_ROOT, get_embeddings
 from ledgerlens.embeddings import embedding_id
+
+__all__ = [
+    "CaseIdTaken",
+    "CaseIndexMismatch",
+    "CaseIndexUnavailable",
+    "CaseMemory",
+    "scenario_case_id",
+]
 
 SEED_PATH = PROJECT_ROOT / "data" / "seed" / "cases.jsonl"
 RUNTIME_FILE = "cases.jsonl"
@@ -65,6 +79,23 @@ class CaseIndexMismatch(RuntimeError):
     """The case index was built with another embedding, so the neighbors would be wrong."""
 
 
+class CaseIdTaken(RuntimeError):
+    """The store already holds the case the caller fixed, so writing it again would duplicate a case."""
+
+
+def scenario_case_id(scenario: str) -> str:
+    """The id of the case of a scenario: `CASE-S11`.
+
+    Why it exists: the case of a capture has to be the same on every capture of the same scenario, so that the
+    published bundle names a case a reader can find again. The id of a counter over a store is a number of one
+    afternoon of one machine, and such a number cannot be looked up.
+
+    Why the shape of the id: the prefix says what the case is, and the scenario says which one it is, so the id
+    of a case of the catalog never collides with the id of a case of the product, which counts.
+    """
+    return f"CASE-{scenario.strip().upper()}"
+
+
 class CaseMemory:
     """The project's cases: verified writes, a FAISS index and search with an entity filter."""
 
@@ -74,12 +105,20 @@ class CaseMemory:
         *,
         embeddings: Embeddings | None = None,
         seed_path: Path | str = SEED_PATH,
+        case_id: str | None = None,
     ) -> None:
+        """The cases of one store: the runtime folder, the seed and the id the cases get.
+
+        Why the id may be fixed by the caller: the capture of a scenario fixes it to the scenario, so two
+        captures of the same scenario write the same case. With no fixed id the memory counts the cases of its
+        store, as it always did.
+        """
         self.runtime_dir = Path(runtime_dir)
         self.runtime_file = self.runtime_dir / RUNTIME_FILE
         self.index_dir = self.runtime_dir / INDEX_DIR
         self._embeddings = embeddings
         self._seed_path = Path(seed_path)
+        self._case_id = case_id
         self._index: FAISS | None = None
 
     # --- leitura ----------------------------------------------------------------------------
@@ -151,13 +190,22 @@ class CaseMemory:
 
         Returns `{"written": False, "reason": ...}` when the investigation cannot become memory, and
         `{"written": True, "case_id": ...}` when it saved.
+
+        The id of the case is the one the caller fixed, when it fixed one, and the next of the counter of the
+        store otherwise. A fixed id that the store already holds is refused: two cases with the same id would
+        make the memory of the store unreadable.
         """
         reason = _refusal_reason(result)
         if reason is not None:
             return {"written": False, "reason": reason}
 
+        records = self.records()
+        case_id = self._case_id or _next_case_id(records)
+        if self._case_id is not None and any(str(record.get("case_id")) == case_id for record in records):
+            raise CaseIdTaken(f"the store of {self.runtime_dir} already holds the case {case_id}")
+
         record = {
-            "case_id": _next_case_id(self.records()),
+            "case_id": case_id,
             "kind": kind,
             "session_id": result.session_id,
             "created_at": datetime.now(UTC).isoformat(),

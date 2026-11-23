@@ -1,0 +1,192 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/ledgerlens/spec/scenario-mutation.schema.json",
+  "$comment": "Design contract, not deployed implementation.",
+  "title": "ScenarioMutationRequest",
+  "description": "Constrained, ephemeral sandbox actions. All events apply only to visitor-owned simulated ledgers.",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "refund.apply_fx_adjustment"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "refund_id": {
+              "type": "string",
+              "pattern": "^R-[0-9]{4}$"
+            },
+            "applied_rate": {
+              "type": "string",
+              "pattern": "^[0-9]+(?:\\.[0-9]{1,8})?$"
+            },
+            "effective_at": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "required": [
+            "refund_id",
+            "applied_rate",
+            "effective_at"
+          ],
+          "additionalProperties": false
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "kind",
+        "data"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "payment.simulate_duplicate"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "transaction_id": {
+              "type": "string",
+              "pattern": "^TX-[0-9]{4}$"
+            },
+            "elapsed_seconds": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 300
+            }
+          },
+          "required": [
+            "transaction_id",
+            "elapsed_seconds"
+          ],
+          "additionalProperties": false
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "kind",
+        "data"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "chargeback.change_deadline"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "chargeback_id": {
+              "type": "string",
+              "pattern": "^CB-[0-9]{4}$"
+            },
+            "new_deadline": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          "required": [
+            "chargeback_id",
+            "new_deadline"
+          ],
+          "additionalProperties": false
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "kind",
+        "data"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "tool.fx_outage"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "error_code": {
+              "type": "string",
+              "enum": [
+                "UPSTREAM_UNAVAILABLE"
+              ]
+            }
+          },
+          "required": [
+            "enabled",
+            "error_code"
+          ],
+          "additionalProperties": false
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "kind",
+        "data"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "record.inject_untrusted_note"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "record_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300
+            }
+          },
+          "required": [
+            "record_id",
+            "text"
+          ],
+          "additionalProperties": false
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "kind",
+        "data"
+      ],
+      "additionalProperties": false
+    }
+  ]
+}

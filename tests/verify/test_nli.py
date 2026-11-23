@@ -145,6 +145,7 @@ def test_the_real_model_is_loaded_once_and_moved_to_the_cpu(monkeypatch: pytest.
     import types
 
     moves: list[str] = []
+    asked: list[tuple[str, str | None]] = []
 
     class FakeModel:
         config = types.SimpleNamespace(id2label={0: "entailment", 1: "neutral", 2: "contradiction"})
@@ -163,20 +164,30 @@ def test_the_real_model_is_loaded_once_and_moved_to_the_cpu(monkeypatch: pytest.
         def __call__(self, premise: str, hypothesis: str, **kw: object) -> dict:
             return {}
 
+    def tokenizer_of(mid: str, revision: str | None = None) -> FakeTokenizer:
+        asked.append((mid, revision))
+        return FakeTokenizer()
+
+    def model_of(mid: str, revision: str | None = None) -> FakeModel:
+        asked.append((mid, revision))
+        return FakeModel()
+
     torch = types.ModuleType("torch")
     threads: list[int] = []
     torch.set_num_threads = threads.append  # type: ignore[attr-defined]
     torch.no_grad = lambda: __import__("contextlib").nullcontext()  # type: ignore[attr-defined]
     transformers = types.ModuleType("transformers")
-    transformers.AutoTokenizer = types.SimpleNamespace(from_pretrained=lambda mid: FakeTokenizer())  # type: ignore[attr-defined]
+    transformers.AutoTokenizer = types.SimpleNamespace(from_pretrained=tokenizer_of)  # type: ignore[attr-defined]
     transformers.AutoModelForSequenceClassification = types.SimpleNamespace(  # type: ignore[attr-defined]
-        from_pretrained=lambda mid: FakeModel()
+        from_pretrained=model_of
     )
     monkeypatch.setitem(sys.modules, "torch", torch)
     monkeypatch.setitem(sys.modules, "transformers", transformers)
-    scores = HuggingFaceNli("any/model").predict("p", "h")
+    scores = HuggingFaceNli(nli.MODEL_ID).predict("p", "h")
     assert moves == ["cpu"] and threads == [1]
     assert scores["entailment"] > 0.9
+    # the weights are the ones the calibration pinned, so the measurement of one day is the measurement of another
+    assert asked and all(revision == nli.nli_revision(nli.MODEL_ID) for _, revision in asked)
 
 
 @pytest.mark.slow

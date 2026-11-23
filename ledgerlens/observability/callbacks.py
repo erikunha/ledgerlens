@@ -9,7 +9,8 @@ Privacy and secrets:
 - The full text of a prompt or an answer is never written: only counts and sizes
   (`message_count`, `prompt_chars`, `output_chars`). Prompts carry customer data.
 - Chain inputs write only the keys. Tool inputs write a short, already filtered excerpt.
-- Everything that is text goes through `redact`, which wipes API keys (`sk-...`, `lsv2_...`, `Bearer ...`).
+- Everything that is text goes through `redact`, which wipes API keys (`sk-...`, `lsv2_...`, `Bearer ...`,
+  `ghp_...`, `AKIA...`, `AIza...`).
 
 Interface: `JsonlCallbackHandler(sink)`, where `sink` is an open text file or a `Path`
 (the file is created and lines are appended). Pass the handler in `config={"callbacks": [handler]}`.
@@ -31,8 +32,12 @@ from uuid import UUID
 
 from langchain_core.callbacks import BaseCallbackHandler
 
-# Key patterns: OpenAI (sk-), LangSmith (lsv2_) and the Authorization header (Bearer).
-_SECRET = re.compile(r"sk-[A-Za-z0-9_\-]{8,}|lsv2_[A-Za-z0-9_\-]+|Bearer\s+[A-Za-z0-9._~+/=\-]+")
+# Key patterns: OpenAI (sk-), LangSmith (lsv2_), the Authorization header (Bearer), GitHub tokens (ghp_),
+# AWS access key ids (AKIA) and Google API keys (AIza).
+_SECRET = re.compile(
+    r"sk-[A-Za-z0-9_\-]{8,}|lsv2_[A-Za-z0-9_\-]+|Bearer\s+[A-Za-z0-9._~+/=\-]+"
+    r"|ghp_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_\-]{20,}"
+)
 _MAX_FIELD = 200  # maximum size of a written input or error excerpt
 
 

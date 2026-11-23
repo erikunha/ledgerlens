@@ -1,0 +1,51 @@
+{
+  "schema_version": "3",
+  "run_id": "run-s01-01",
+  "branch_id": "branch-guest-001",
+  "snapshot_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "account_scope": "C-0412",
+  "steps": [
+    {
+      "step_id": "S1",
+      "role": "ledger_investigator",
+      "dependencies": [],
+      "allowed_tools": [
+        "query_ledger",
+        "get_ledger_record"
+      ],
+      "max_calls": 3
+    },
+    {
+      "step_id": "S2",
+      "role": "fx_specialist",
+      "dependencies": [
+        "S1"
+      ],
+      "allowed_tools": [
+        "get_reference_fx"
+      ],
+      "max_calls": 2
+    },
+    {
+      "step_id": "S3",
+      "role": "verifier",
+      "dependencies": [
+        "S1",
+        "S2"
+      ],
+      "allowed_tools": [
+        "calculate"
+      ],
+      "max_calls": 2
+    }
+  ],
+  "budget": {
+    "model_calls": 12,
+    "tool_calls": 12,
+    "max_usd": "0.25",
+    "deadline_ms": 60000,
+    "max_parallel": 2
+  },
+  "status": "proposed",
+  "review_required": false
+}

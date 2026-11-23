@@ -12,6 +12,11 @@ line. Offline, a scripted model answers; this module holds those scripts, so the
 - `account_context`: the context message that tells the agent who is signed in and which line was picked.
 - `ids_read`, `verification_summary`, `short_result`: what the page shows about how the agent reached the answer.
 
+The scripts cover the complaints that end in a verdict and the ones that end in a handover: the refund that paid
+exactly what was charged (S07), the refund whose reason field carries an order (S09), the payment in a currency the
+reference source does not publish (S10) and the refund whose reference rate could not be read (S11). A catalogue
+that holds only the cases the agent resolves is a catalogue that never shows what it does with the ones it cannot.
+
 Numbers in the scripted answers come from the scenario's ground truth and are checked by the verifier like any
 other answer.
 """
@@ -22,6 +27,7 @@ import json
 import re
 from dataclasses import dataclass
 from datetime import date, timedelta
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -61,7 +67,23 @@ def _scenario(manifest: dict[str, Any], scenario_id: str) -> dict[str, Any]:
     return next(s for s in manifest["scenarios"] if s["id"] == scenario_id)
 
 
+def scenario_of(manifest: dict[str, Any], scenario_id: str) -> dict[str, Any]:
+    """The scenario of the manifest, by its identifier.
+
+    Why it exists: the capture of a recorded scenario needs the ids the scenario names, and the ids of the records
+    are what says which account of the scenario holds them.
+    """
+    return _scenario(manifest, scenario_id)
+
+
 def planted(manifest: dict[str, Any]) -> list[Planted]:
+    """The complaints the page offers, one per scenario that is a complaint of its own.
+
+    Why the scenario S11 is not here: it asks the question of the scenario S01 and differs only in the run, where the
+    reference source is in fault. A page that offered both would offer the same complaint twice. The capture of that
+    scenario names it anyway, and the bundle it writes is the published proof that the same question answered with
+    the source down is not the answer the source up gives.
+    """
     q = {s["id"]: s["questions"][0] for s in manifest["scenarios"]}
     return [
         Planted("S01", q["S01"], None, ("TX-2048", "R-0731")),
@@ -74,6 +96,9 @@ def planted(manifest: dict[str, Any]) -> list[Planted]:
         Planted("S03", q["S03"], "What is the deadline for my dispute CB-0310 and what happens next?", ("CB-0310",)),
         Planted("S08", q["S08"], None, ("ST-0044",)),
         Planted("S04", q["S04"], None, ()),
+        Planted("S07", q["S07"], None, ("TX-2030",)),
+        Planted("S09", q["S09"], None, ("TX-2095", "R-0750")),
+        Planted("S10", q["S10"], None, ("TX-2099",)),
     ]
 
 
@@ -195,8 +220,11 @@ def _s03(truth: dict[str, Any]) -> tuple[list[AIMessage], list[str]]:
 def _s04(truth: dict[str, Any]) -> tuple[list[AIMessage], list[str]]:
     sql = "SELECT id, status FROM transactions WHERE id = 'TX-9999'"
     calls = [tool_call_message("query_ledger", {"question": "the status of TX-9999"})]
+    # The wording is the one the product uses for a record that is not in the ledger, and it repeats what the
+    # query found. A sentence that names the record without saying that the query found nothing is a sentence the
+    # verifier has no evidence for, and the case the dataset says needs no person becomes an escalation.
     answer = (
-        "There is no transaction TX-9999 in the ledger. [sql:1] "
+        "The record TX-9999 was not found and does not exist in the ledger. [sql:1] "
         "Could you check the id on the receipt, or tell me the date and amount of the payment?"
     )
     return [*calls, text_message(answer)], [sql]
@@ -222,19 +250,166 @@ def _s08(truth: dict[str, Any]) -> tuple[list[AIMessage], list[str]]:
     return [*calls, text_message(answer)], [sql]
 
 
-_SCRIPTS = {"S01": _s01, "S02": _s02, "S03": _s03, "S04": _s04, "S08": _s08}
+def _s07(truth: dict[str, Any]) -> tuple[list[AIMessage], list[str]]:
+    """The control: a refund that paid exactly what was charged, so there is no difference to explain.
 
-
-def offline_script(question: str, manifest: dict[str, Any]) -> tuple[list[AIMessage], list[str]] | None:
-    """The agent model's messages and the `query_ledger` SQL for a planted question, or None when there is none.
-
-    Only the exact wording has a script, as the page offers it.
+    Why the control matters: a catalogue that only holds the cases with a discrepancy never shows that the agent
+    finds nothing when there is nothing to find.
     """
+    sql = (
+        "SELECT t.id, t.amount_minor, t.currency, r.id AS refund_id, r.payout_amount_minor, r.payout_currency "
+        "FROM transactions t JOIN refunds r ON r.transaction_id = t.id "
+        "WHERE t.id = 'TX-2030' AND r.id = 'R-0720'"
+    )
+    calls = [
+        tool_call_message("query_ledger", {"question": "the transaction TX-2030 and the refund R-0720"}),
+        tool_call_message(
+            "calculate",
+            {"operation": "difference", "values": {"a": truth["charge"], "b": truth["refund"]}},
+        ),
+    ]
+    answer = (
+        f"TX-2030 was charged {truth['currency']} {truth['charge']} and refund R-0720 paid {truth['currency']} "
+        f"{truth['refund']}, a difference of {truth['currency']} {truth['difference']}. [sql:1, calc:1] "
+        f"A difference of {truth['currency']} {truth['difference']} means the refund returned the whole amount: there "
+        f"is no discrepancy, no markup and no missing amount to escalate. [calc:1]"
+    )
+    return [*calls, text_message(answer)], [sql]
+
+
+def _s09(truth: dict[str, Any]) -> tuple[list[AIMessage], list[str]]:
+    """The order hidden in a field of the data: it is reported, and it is not followed.
+
+    Why the answer does not quote the text: the row of the evidence carries it verbatim, so a reader of the trace sees
+    it in the place it came from, and the answer says only what the agent did with it.
+    """
+    sql = "SELECT id, transaction_id, status, reason FROM refunds WHERE id = 'R-0750'"
+    calls = [tool_call_message("query_ledger", {"question": "the status of refund R-0750"})]
+    answer = (
+        f"Refund R-0750 is at status {truth['status']}, for the transaction TX-2095. [sql:1] "
+        f"The reason of the refund carries a text that reads like an order to the system, so it was treated as data "
+        f"and never as an instruction, and nothing was approved from it. [sql:1] "
+        f"A field that reads like an order goes to a person, so this refund waits for human review. [sql:1]"
+    )
+    return [*calls, text_message(answer)], [sql]
+
+
+def _s10(truth: dict[str, Any]) -> tuple[list[AIMessage], list[str]]:
+    """The payment in a currency the reference source does not publish: the amount is known and the rate is not.
+
+    Why the answer stops there: the tool answered that it cannot serve that currency, so the amount cannot be
+    converted with it, and the case is settled with a source that covers the currency.
+    """
+    sql = "SELECT id, amount_minor, currency, created_at FROM transactions WHERE id = 'TX-2099'"
+    calls = [
+        tool_call_message("query_ledger", {"question": "the transaction TX-2099"}),
+        tool_call_message("get_reference_fx", {"from_currency": "EUR", "to_currency": "ARS", "date": "2026-10-27"}),
+    ]
+    answer = (
+        f"TX-2099 is a payment of {truth['currency']} {truth['amount']}. [sql:1] "
+        f"The reference rate source does not publish {truth['currency']}, so no rate of it can be read and the amount "
+        f"cannot be converted with it. [sql:1] "
+        f"The case is settled with {truth['settles_with']}, and until then the answer stops at what the ledger shows. "
+        f"[sql:1]"
+    )
+    return [*calls, text_message(answer)], [sql]
+
+
+def _s11(truth: dict[str, Any]) -> tuple[list[AIMessage], list[str]]:
+    """The refund whose reference rate could not be read: only what the ledger shows can be said.
+
+    Why the gap is not split: the applied rate of the refund is in the ledger and the rate of the day is not, so
+    without the reference rate the difference cannot be told apart from the movement of the rate and the markup, and
+    a split made up would be a number nobody can check.
+    """
+    sql = (
+        "SELECT t.id AS transaction_id, t.amount_minor, t.currency, r.id AS refund_id, r.payout_amount_minor, "
+        "r.payout_currency, f.applied_rate, f.applied_at FROM transactions t "
+        "JOIN refunds r ON r.transaction_id = t.id JOIN fx_applied f ON f.transaction_id = t.id AND f.refund_id = r.id "
+        "WHERE t.id = 'TX-2048'"
+    )
+    calls = [
+        tool_call_message("query_ledger", {"question": "the payment and the refund of TX-2048"}),
+        tool_call_message("get_reference_fx", {"from_currency": "EUR", "to_currency": "BRL", "date": "2026-10-20"}),
+    ]
+    # The amount paid comes out of the truth of the base scenario, and not out of the air: the amount charged in BRL
+    # divided by the rate the acquirer applied on the charge is what was paid in EUR.
+    units = (Decimal(truth["charge_brl"]) / Decimal(truth["charge_rate"])).quantize(Decimal("0.01"))
+    day = truth["missing_rate"].rsplit(" ", 1)[-1]
+    answer = (
+        f"The ledger shows the payment of TX-2048 as EUR {units} and the refund R-0731 as BRL {truth['refund_brl']}, "
+        f"applied at the rate {truth['applied_rate']} on {day}. [sql:1] "
+        f"The reference rate {truth['missing_rate']} could not be read, so what the refund lost against what was paid "
+        f"cannot be split into the movement of the rate and the markup. [sql:1] "
+        f"Until that rate is available the answer stops at what the ledger shows, and the case goes to a person. "
+        f"[sql:1]"
+    )
+    return [*calls, text_message(answer)], [sql]
+
+
+_SCRIPTS = {
+    "S01": _s01,
+    "S02": _s02,
+    "S03": _s03,
+    "S04": _s04,
+    "S07": _s07,
+    "S08": _s08,
+    "S09": _s09,
+    "S10": _s10,
+    "S11": _s11,
+}
+
+
+def _truth_of(manifest: dict[str, Any], scenario_id: str, seen: tuple[str, ...] = ()) -> dict[str, Any]:
+    """The truth of a scenario, with the truth of the scenario it is based on merged in.
+
+    Why the merge: the scenario S11 is the scenario S01 with the reference source in fault, and its answer needs the
+    two amounts of the base scenario. The dataset says which base a scenario has, so the merge follows the dataset and
+    not the code. The truth of the scenario itself wins over the truth of the base.
+    """
+    if scenario_id in seen:
+        raise ValueError(f"the scenario {scenario_id} names itself as its base, in a loop")
+    truth = dict(_scenario(manifest, scenario_id)["truth"])
+    base = truth.get("base_scenario")
+    if not base:
+        return truth
+    merged = _truth_of(manifest, str(base), (*seen, scenario_id))
+    merged.update(truth)
+    return merged
+
+
+def _scenario_for(question: str, manifest: dict[str, Any], scenario_id: str | None) -> dict[str, Any] | None:
+    """The scenario a question belongs to, or None when it belongs to none.
+
+    Why the scenario may be named: the scenario S11 asks the question of the scenario S01 and differs only in the
+    run, so the question alone cannot tell the two apart. The capture names the scenario it wants; the page asks by
+    question and keeps the first match.
+    """
+    if scenario_id is not None:
+        scenario = _scenario(manifest, scenario_id)
+        return scenario if question in scenario["questions"] else None
     for item in planted(manifest):
         scenario = _scenario(manifest, item.scenario)
         if question in {item.question, item.customer_question, *scenario["questions"]}:
-            return _SCRIPTS[item.scenario](scenario["truth"])
+            return scenario
     return None
+
+
+def offline_script(
+    question: str, manifest: dict[str, Any], scenario_id: str | None = None
+) -> tuple[list[AIMessage], list[str]] | None:
+    """The agent model's messages and the `query_ledger` SQL for a planted question, or None when there is none.
+
+    Only the exact wording has a script, as the page offers it. When the scenario is named, the script of that
+    scenario is the one returned, even if the question is shared with another scenario.
+    """
+    scenario = _scenario_for(question, manifest, scenario_id)
+    if scenario is None:
+        return None
+    script = _SCRIPTS.get(str(scenario["id"]))
+    if script is None:
+        return None
+    return script(_truth_of(manifest, str(scenario["id"])))
 
 
 # the goal of a scripted plan step, by tool
@@ -257,28 +432,24 @@ _ENTITY_FIELDS = {
 }
 
 
-def offline_triage(question: str, manifest: dict[str, Any]) -> str:
+def offline_triage(question: str, manifest: dict[str, Any], scenario_id: str | None = None) -> str:
     """The scripted triage answer, as JSON, so the offline page shows the intent and the plan.
 
     For a planted question: the scenario's expected intent, the ids it cites and one step per tool of the script, in
     the same order. For a question with no script: "other" and one step with no tool, because the answer is the
-    refusal.
+    refusal. When the scenario is named, the plan is the plan of that scenario and of no other.
     """
-    script = offline_script(question, manifest)
+    script = offline_script(question, manifest, scenario_id)
     entities = Entities(
         **{
             field: [i for i in ledger_ids(question) if i.split("-")[0] == prefix]
             for prefix, field in _ENTITY_FIELDS.items()
         }
     )
-    if script is None:
+    scenario = _scenario_for(question, manifest, scenario_id)
+    if script is None or scenario is None:
         plan = [PlanStep(id="S1", goal="answer without looking up the account")]
         return Triage(intent="other", entities=entities, urgency="normal", plan=plan).model_dump_json()
-    scenario = next(
-        _scenario(manifest, item.scenario)
-        for item in planted(manifest)
-        if question in {item.question, item.customer_question, *_scenario(manifest, item.scenario)["questions"]}
-    )
     tools = [call["name"] for message in script[0] for call in message.tool_calls]
     plan = [
         PlanStep(id=f"S{n}", goal=_STEP_GOALS[tool], tool=tool, depends_on=[f"S{n - 1}"] if n > 1 else [])

@@ -54,6 +54,8 @@ Every tool returns an object, never raises to the model. Errors are data, so the
 
 Rules for all tools: inputs are validated before any work; text from data (SQL rows, policy chunks, refund reasons) is returned inside `data` and is never treated as an instruction; no tool writes anything except the in-memory cache of the FX client; every call is logged by the callback handler with its inputs, status and duration, without keys.
 
+The wall behind the tools: a tool that raises does not take the run down. The agent catches the exception and hands the model the envelope of the error `TOOL_FAILED`, with the name of the tool and the type of the exception in the message, and the investigation ends with `requires_human_review` instead of a stack trace. An exception is a crash without a result, without a verdict and without a case for a person, so it is converted into data at the boundary of the tool.
+
 Legacy adapter (`ZERO_SHOT_REACT_DESCRIPTION` accepts single-string tools only): `agents/legacy_react.py` wraps each tool in `Tool(name, func, description)` where `func` takes one string, parses it as a JSON object (or as the single required argument if it is not JSON) and calls the structured tool. The wrapper description adds "Input: a JSON object with keys ...".
 
 ## 1. `query_ledger`
@@ -208,7 +210,7 @@ Output `data`:
 }
 ```
 
-Errors: `INDEX_UNAVAILABLE` (no; index files missing, message says to run `scripts/build_index.py`), `INDEX_MISMATCH` (no; `index_meta.json` names another embedding), `TRANSFORM_FAILED` (yes; the rewrite model failed, the tool falls back to `none` and reports it in `query_used`). With `rewrite`, `query_used` holds the original question and the rewrite; both are searched and merged by best score.
+Errors: `INDEX_UNAVAILABLE` (no; index files missing, message says to run `scripts/build_index.py`), `INDEX_MISMATCH` (no; `index_meta.json` names another embedding), `INDEX_STALE` (no; the index carries the digest of another corpus of policies, message says to run `scripts/build_index.py`), `TRANSFORM_FAILED` (yes; the rewrite model failed, the tool falls back to `none` and reports it in `query_used`). With `rewrite`, `query_used` holds the original question and the rewrite; both are searched and merged by best score.
 
 The tool never rebuilds the index.
 

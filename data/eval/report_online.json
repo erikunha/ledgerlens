@@ -719,7 +719,7 @@
       "variant": "A"
     },
     {
-      "answer": "I cannot confirm the exact details of the duplicate charge detection rule without access to the specific policies or system documentation. Generally, a duplicate charge detection rule is designed to identify and prevent multiple charges for the same transaction within a certain time frame or based on matching transaction attributes (such as amount, merchant, and timestamp). The specifics—such as the time window, criteria for matching, and actions taken when duplicates are detected—vary by organization and system.",
+      "answer": "I cannot confirm the exact details of the duplicate charge detection rule without access to the specific policies or system documentation. Generally, a duplicate charge detection rule is designed to identify and prevent multiple charges for the same transaction within a certain time frame or based on matching transaction attributes (such as amount, merchant, and timestamp). The specifics, such as the time window, criteria for matching, and actions taken when duplicates are detected, vary by organization and system.",
       "case": "EC-26",
       "expected_tools": [
         "search_policies"

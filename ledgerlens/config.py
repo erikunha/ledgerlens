@@ -12,6 +12,17 @@ raised again with every known key replaced by `[redacted]`.
 
 Configurable paths: the ledger database (`LEDGERLENS_LEDGER_DB`) and the vector index folder
 (`LEDGERLENS_INDEX_DIR`). Both default to `data/`.
+
+The sandbox store: `LEDGERLENS_SANDBOX_DATABASE_URL` names the database of the branches. It is empty by default, and
+an empty url means the file backed store.
+
+The limits of the sandbox: `LEDGERLENS_SANDBOX_SESSION_BRANCH_CAP` is the number of live branches one session may
+hold, `LEDGERLENS_SANDBOX_RATE_LIMIT_REQUESTS` is the number of requests one session may make in the window, and
+`LEDGERLENS_SANDBOX_RATE_LIMIT_WINDOW_SECONDS` is the length of that window (ADR-047).
+
+The limits of one branch: `LEDGERLENS_SANDBOX_MAX_COMMITTED_MUTATIONS` is the number of the mutations a branch may
+commit and `LEDGERLENS_SANDBOX_MAX_EVENTS` is the number of the events its log may hold. Their defaults are the limits
+of the branch layer, so a deployment that declares nothing keeps the limits of today.
 """
 
 from __future__ import annotations
@@ -58,6 +69,30 @@ class Settings(BaseModel):
     runtime_dir: Path = PROJECT_ROOT / "data" / "runtime"
     ledger_db: Path = PROJECT_ROOT / "data" / "ledger.db"
     index_dir: Path = PROJECT_ROOT / "data" / "index"
+    # The life of a sandbox branch: one hour of idleness and four hours in absolute terms. The folder of the file
+    # backed store is `runtime_dir / "sandbox"`, so it stays out of git with the rest of the runtime material.
+    sandbox_branch_idle_ttl_seconds: int = 3600
+    sandbox_branch_absolute_ttl_seconds: int = 14400
+    # The url of the database of the sandbox store. Empty means the file backed store, which is the one the fast
+    # unit tests use. The url points at the container of `docker-compose.yml`.
+    sandbox_database_url: str | None = None
+    # The cap of the LIVE branches of one session. A branch that is already dead does not count, and a fork of a
+    # scenario the session already holds creates no branch, so it is never refused by the cap (ADR-047).
+    sandbox_session_branch_cap: int = 5
+    # The rate of the requests of one session, in a sliding window. The limit is per process: a deployment with more
+    # than one worker allows that many times the quota (ADR-047).
+    sandbox_rate_limit_requests: int = 120
+    sandbox_rate_limit_window_seconds: int = 60
+    # The resources of one branch (FR-025). The mutations of a branch are the ones that were committed, and an undone
+    # mutation stays counted, because the revision goes back and the count of the committed mutations does not. The
+    # events of a branch are counted against its log, and the marker of an undo is an event of that log.
+    # The two defaults are the limits of the branch layer, so a deployment that declares nothing keeps them.
+    sandbox_max_committed_mutations: int = 20
+    sandbox_max_events: int = 200
+    # The origins of the browser that may call the backend from another origin, with the cookie of the session. The
+    # list is empty by default: a deployment that declares no origin installs no CORS at all, and the backend
+    # answers exactly as it answers today (ADR-040).
+    cors_origins: tuple[str, ...] = ()
 
     def secrets(self) -> list[str]:
         """The key values held, for redaction. Never log this list."""
@@ -77,6 +112,21 @@ def _text(value: str | None) -> str | None:
 def _secret(value: str | None) -> SecretStr | None:
     value = _text(value)
     return SecretStr(value) if value else None
+
+
+def _origins(value: str | None) -> tuple[str, ...]:
+    """The origins of the CORS, read from a comma separated list of exact origins.
+
+    Why the wildcard is refused: a wildcard with credentials is illegal in the Fetch specification, and it would let
+    any site of the internet drive the API with the session of the visitor (ADR-040).
+    """
+    origins = tuple(part.strip() for part in (value or "").split(",") if part.strip())
+    if any("*" in origin for origin in origins):
+        raise ConfigError(
+            "LEDGERLENS_CORS_ORIGINS must name the exact origins of the browser, and never the wildcard, because a "
+            "wildcard with credentials is illegal and would let any site drive the API with the session of the visitor"
+        )
+    return origins
 
 
 def _redact(text: str, settings: Settings) -> str:
@@ -103,6 +153,15 @@ def get_settings(env: Mapping[str, str] | None = None) -> Settings:
     runtime_dir = _text(values.get("LEDGERLENS_RUNTIME_DIR"))
     ledger_db = _text(values.get("LEDGERLENS_LEDGER_DB"))
     index_dir = _text(values.get("LEDGERLENS_INDEX_DIR"))
+    idle_ttl = _text(values.get("LEDGERLENS_SANDBOX_BRANCH_IDLE_TTL_SECONDS"))
+    absolute_ttl = _text(values.get("LEDGERLENS_SANDBOX_BRANCH_ABSOLUTE_TTL_SECONDS"))
+    sandbox_database_url = _text(values.get("LEDGERLENS_SANDBOX_DATABASE_URL"))
+    session_branch_cap = _text(values.get("LEDGERLENS_SANDBOX_SESSION_BRANCH_CAP"))
+    rate_limit_requests = _text(values.get("LEDGERLENS_SANDBOX_RATE_LIMIT_REQUESTS"))
+    rate_limit_window = _text(values.get("LEDGERLENS_SANDBOX_RATE_LIMIT_WINDOW_SECONDS"))
+    max_committed_mutations = _text(values.get("LEDGERLENS_SANDBOX_MAX_COMMITTED_MUTATIONS"))
+    max_events = _text(values.get("LEDGERLENS_SANDBOX_MAX_EVENTS"))
+    cors_origins = _text(values.get("LEDGERLENS_CORS_ORIGINS"))
     settings = Settings(
         offline=_flag(values.get("LEDGERLENS_OFFLINE")),
         model=_text(values.get("LEDGERLENS_MODEL")),
@@ -116,6 +175,15 @@ def get_settings(env: Mapping[str, str] | None = None) -> Settings:
         **({"runtime_dir": Path(runtime_dir)} if runtime_dir else {}),
         **({"ledger_db": Path(ledger_db)} if ledger_db else {}),
         **({"index_dir": Path(index_dir)} if index_dir else {}),
+        **({"sandbox_branch_idle_ttl_seconds": int(idle_ttl)} if idle_ttl else {}),
+        **({"sandbox_branch_absolute_ttl_seconds": int(absolute_ttl)} if absolute_ttl else {}),
+        **({"sandbox_database_url": sandbox_database_url} if sandbox_database_url else {}),
+        **({"sandbox_session_branch_cap": int(session_branch_cap)} if session_branch_cap else {}),
+        **({"sandbox_rate_limit_requests": int(rate_limit_requests)} if rate_limit_requests else {}),
+        **({"sandbox_rate_limit_window_seconds": int(rate_limit_window)} if rate_limit_window else {}),
+        **({"sandbox_max_committed_mutations": int(max_committed_mutations)} if max_committed_mutations else {}),
+        **({"sandbox_max_events": int(max_events)} if max_events else {}),
+        **({"cors_origins": _origins(cors_origins)} if cors_origins else {}),
     )
     log.debug("settings loaded: %r", settings)
     return settings

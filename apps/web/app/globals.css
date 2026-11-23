@@ -1,0 +1,194 @@
+/**
+ * The global stylesheet of the public site.
+ *
+ * The custom properties below are the CSS form of the design tokens that live in
+ * `lib/design/tokens.ts`. The two are kept in step by the unit test
+ * `tests/unit/tokens.test.ts`, which reads this file and fails when a value drifts.
+ *
+ * The rules that follow are the ones the design package asks for: a visible focus ring, a
+ * skip link that only shows when it is focused, a code pane that is the only horizontally
+ * scrollable area of the page, and a reduced motion fallback.
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* the spacing scale, in 4 pixel steps */
+    --ll-space-0: 0px;
+    --ll-space-1: 4px;
+    --ll-space-2: 8px;
+    --ll-space-3: 12px;
+    --ll-space-4: 16px;
+    --ll-space-5: 20px;
+    --ll-space-6: 24px;
+    --ll-space-8: 32px;
+    --ll-space-10: 40px;
+    --ll-space-12: 48px;
+    --ll-space-16: 64px;
+    --ll-space-20: 80px;
+    --ll-space-24: 96px;
+
+    /* the neutral palette */
+    --ll-neutral-0: #ffffff;
+    --ll-neutral-50: #f8fafc;
+    --ll-neutral-100: #f1f5f9;
+    --ll-neutral-200: #e2e8f0;
+    --ll-neutral-300: #cbd5e1;
+    --ll-neutral-400: #94a3b8;
+    --ll-neutral-500: #64748b;
+    --ll-neutral-600: #475569;
+    --ll-neutral-700: #334155;
+    --ll-neutral-800: #1e293b;
+    --ll-neutral-900: #0f172a;
+
+    /* the semantic surfaces and texts */
+    --ll-color-background: #ffffff;
+    --ll-color-surface: #f8fafc;
+    --ll-color-surface-muted: #f1f5f9;
+    --ll-color-border: #e2e8f0;
+    --ll-color-border-strong: #cbd5e1;
+    --ll-color-text: #0f172a;
+    --ll-color-text-muted: #475569;
+    --ll-color-text-subtle: #64748b;
+    --ll-color-success-light: #dcfce7;
+    --ll-color-success: #15803d;
+    --ll-color-success-dark: #166534;
+    --ll-color-danger-light: #fee2e2;
+    --ll-color-danger: #dc2626;
+    --ll-color-danger-dark: #b91c1c;
+    --ll-color-warning-light: #fef3c7;
+    --ll-color-warning: #d97706;
+    --ll-color-warning-dark: #b45309;
+
+    /* the typefaces */
+    --ll-font-sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif;
+    --ll-font-mono: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
+
+    /* the type scale */
+    --ll-text-xs: 12px;
+    --ll-leading-xs: 16px;
+    --ll-text-sm: 14px;
+    --ll-leading-sm: 20px;
+    --ll-text-base: 16px;
+    --ll-leading-base: 24px;
+    --ll-text-lg: 18px;
+    --ll-leading-lg: 28px;
+    --ll-text-xl: 20px;
+    --ll-leading-xl: 28px;
+    --ll-text-2xl: 24px;
+    --ll-leading-2xl: 32px;
+    --ll-text-3xl: 30px;
+    --ll-leading-3xl: 38px;
+    --ll-text-4xl: 36px;
+    --ll-leading-4xl: 44px;
+
+    /* the radii */
+    --ll-radius-none: 0px;
+    --ll-radius-sm: 2px;
+    --ll-radius-default: 4px;
+    --ll-radius-md: 6px;
+    --ll-radius-lg: 8px;
+    --ll-radius-full: 9999px;
+
+    /* the breakpoints */
+    --ll-breakpoint-sm: 640px;
+    --ll-breakpoint-md: 768px;
+    --ll-breakpoint-lg: 1024px;
+    --ll-breakpoint-xl: 1280px;
+    --ll-breakpoint-2xl: 1440px;
+
+    /* the shadows */
+    --ll-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+    --ll-shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+    --ll-shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.12);
+  }
+
+  html {
+    /* the whole interface is a single column until the design package says otherwise */
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--ll-color-background);
+    color: var(--ll-color-text);
+    font-family: var(--ll-font-sans);
+    font-size: var(--ll-text-base);
+    line-height: var(--ll-leading-base);
+    /* the page itself never scrolls sideways, only the code pane does */
+    overflow-x: hidden;
+  }
+
+  /* the focus ring is always visible, and it never relies on the colour alone */
+  :focus-visible {
+    outline: 2px solid var(--ll-color-text);
+    outline-offset: 2px;
+  }
+
+  code,
+  kbd,
+  samp,
+  pre {
+    font-family: var(--ll-font-mono);
+  }
+}
+
+@layer components {
+  /* the skip link stays out of the way until a keyboard user reaches it */
+  .ll-skip-link {
+    position: absolute;
+    left: var(--ll-space-2);
+    top: var(--ll-space-2);
+    z-index: 100;
+    transform: translateY(-200%);
+    border-radius: var(--ll-radius-default);
+    background-color: var(--ll-color-text);
+    color: var(--ll-color-background);
+    padding: var(--ll-space-2) var(--ll-space-4);
+    font-size: var(--ll-text-sm);
+    font-weight: 600;
+    transition: transform 120ms ease-out;
+  }
+
+  .ll-skip-link:focus {
+    transform: translateY(0);
+  }
+
+  /* the code pane is the only area of the page that scrolls sideways */
+  .ll-code-pane {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    /* the pane is an item of a flex column, and without this it would stretch the drawer instead
+       of scrolling inside it (ADR-048) */
+    min-width: 0;
+  }
+}
+
+@layer utilities {
+  /* visually hidden, still read by a screen reader */
+  .ll-visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+}
+
+/* the reduced motion preference turns every transition off */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

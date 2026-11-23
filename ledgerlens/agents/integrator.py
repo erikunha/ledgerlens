@@ -31,6 +31,19 @@ What each part does and what it leaves to another:
   ledger date. The follow-up names the day, says to read the payment or refund date in the ledger, ask for its FX
   rate and redo the calculation. A plan step and such a date in the same turn share a single follow-up. The verifier
   still checks the date of the final answer (`fx_date_origin`).
+- **The wall behind the tools**: the tools of the contract return the error envelope instead of raising, but a
+  bug in a tool must not take the run down with it. An exception that escapes a tool becomes the `TOOL_FAILED`
+  envelope, carried to the model as the result of that call, so the model reports what it could not get and the
+  investigation ends with a result that goes to a human (`requires_human_review`), not with a stack trace.
+- **The ceiling of the turn**: the loop of the agent has a limit, and the limit is the budget of the turn
+  (`ledgerlens/agents/budget.py`, ADR-054). The caps live in the `RunBudget` of the run context
+  (`SHIPPED_RUN_BUDGET`), the coordinator of the run context enforces them and the graph of the agent gets a
+  `recursion_limit` computed from them. Every path that reaches the graph carries that limit, also the one
+  that calls the integrator outside `investigate`. The follow-up spends what the turn has left and never gets a
+  ceiling of its own. A turn that a cap cuts is a result and not an exception: the cap that stopped it is named
+  in the missing information and the result goes to a human. A turn that nobody gave a cap of the calls of the
+  models is not cut by a cap that nobody gave: the ceiling of the graph stops it and the sentence says so. What
+  the turn spent travels in the trace.
 - **Assembled result**: only what is known without judging. The trace (`tool_trace`) and the evidence come from
   the turn's tool messages; `claims`, `verdicts` and `coherence` come out empty and passing because they are the
   verifier's job, which also decides `recommended_action`. Here `requires_human_review` already goes up when a tool
@@ -55,7 +68,7 @@ import json
 import logging
 import time
 import typing
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from functools import partial
@@ -64,6 +77,7 @@ from typing import Any
 from uuid import UUID
 
 from langchain.agents import create_agent
+from langchain.agents.middleware import ToolCallRequest, ToolErrorMiddleware
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.embeddings import Embeddings
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -71,14 +85,29 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, System
 from langchain_core.runnables import Runnable
 from langchain_core.tools import BaseTool
 from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.errors import GraphRecursionError
 
+from ledgerlens.agents.budget import (
+    GRAPH_STEPS,
+    BudgetReservationMiddleware,
+    TurnBudget,
+    cap_sentence,
+    caps_of,
+    derived_recursion_limit,
+    recursion_limit_for,
+    shipped_turn_budget,
+    usage_of,
+)
 from ledgerlens.agents.modern import DEFAULT_SYSTEM_PROMPT, build_investigation_tools
+from ledgerlens.byok.budget import BudgetExceededError
 from ledgerlens.chains.parsers import TriageError
 from ledgerlens.chains.triage import build_triage_declarative
 from ledgerlens.config import get_chat_model, get_settings
 from ledgerlens.memory.long_term import CaseMemory
 from ledgerlens.observability.trace import OnEvent, Tracer, langsmith_url, review_reasons, summary_line
+from ledgerlens.run_context import SHIPPED_RUN_BUDGET, RunBudget, RunContext
 from ledgerlens.schemas import Coherence, Evidence, InvestigationResult, PlanStep, ToolCallRecord, Triage, VerdictLabel
+from ledgerlens.tools.envelope import error
 from ledgerlens.tools.fx import FxClient
 from ledgerlens.tools.policies import build_search_policies_tool
 
@@ -119,6 +148,20 @@ _SOURCE_BY_PREFIX = {
 # Field that identifies an item inside `data["results"]`, per tool (policy search and case search).
 _ITEM_KEY = {"search_policies": "chunk_id", "recall_cases": "case_id"}
 
+# The code of an exception that escaped a tool. The tools of the contract return the error envelope themselves,
+# so this is the last wall: the run ends with a result for a human, not with a stack trace.
+TOOL_FAILED = "TOOL_FAILED"
+
+
+def _tool_failure_content(exc: Exception, request: ToolCallRequest) -> str:
+    """The error envelope of an exception that escaped a tool, as the text the model reads.
+
+    The model gets the failure as the result of the call, so it can report what is missing instead of
+    making something up, and the assembled result names the code in `missing_information`.
+    """
+    name = str(request.tool_call.get("name", "the tool"))
+    return json.dumps(error(TOOL_FAILED, f"{name} failed: {type(exc).__name__}: {exc}", False), ensure_ascii=False)
+
 
 def _default_verifier(
     result: InvestigationResult, *, nli: Any = None, ledger_db: Path | str | None = None
@@ -137,11 +180,43 @@ def default_verifier_for(db_path: Path | str | None) -> Verifier:
     return partial(_default_verifier, ledger_db=db_path)
 
 
+def _caps_of_turn(context: Any) -> RunBudget:
+    """The caps of the turn that a call carries: the caps of its ceiling, or the caps of the shipped paths.
+
+    The ceiling of the turn travels with the call as its context, because that is where the caps live
+    (ADR-054). A call that carries no ceiling gets the caps of the shipped paths.
+    """
+    return context.caps if isinstance(context, TurnBudget) else SHIPPED_RUN_BUDGET
+
+
+def _with_step_limit(config: Any, caps: RunBudget) -> Any:
+    """The configuration of a call with the ceiling of the steps of the graph.
+
+    The limit never goes above the one the caps derive and never loosens a limit that the configuration
+    already carries: a caller that brought a smaller limit keeps it (ADR-054).
+    """
+    limit = recursion_limit_for(caps)
+    if config is None:
+        return {"recursion_limit": limit}
+    if not isinstance(config, Mapping):
+        return config
+    brought = config.get("recursion_limit")
+    if isinstance(brought, int) and not isinstance(brought, bool) and brought <= limit:
+        return config
+    return {**config, "recursion_limit": limit}
+
+
 @dataclass
 class Integrator:
     """The assembled agent: the `create_agent` graph plus the verifier and the case memory.
 
-    `invoke` passes through to the graph, so this object works where a LangChain agent is expected.
+    `invoke` passes through to the graph and adds the ceiling of the steps of the graph to the configuration
+    of the call, so every path that reaches the graph is limited (ADR-054).
+
+    `counts_calls` says whether this integrator reserves the calls of the turn against its own coordinator
+    (ADR-054). It is True for the integrator that `build_integrator` builds, whose graph carries the
+    reservation. It is False for an integrator whose graph was built elsewhere, because then the side that
+    holds the provider is the one that counts.
     """
 
     graph: Any
@@ -150,10 +225,32 @@ class Integrator:
     case_memory: CaseMemory | None = None
     triage: Runnable | None = None
     system_prompt: str = INTEGRATOR_SYSTEM_PROMPT
+    run_context: RunContext | None = None
+    counts_calls: bool = False
     _metadata: dict[str, Any] = field(default_factory=dict, repr=False)
 
     def invoke(self, payload: Any, config: Any = None, **kwargs: Any) -> Any:
+        """Runs the graph, with the ceiling of the turn when the caller did not bring one.
+
+        Every path that reaches the graph carries a limit of the steps: the one the caps of the turn derive
+        (the caps of the shipped paths when the caller brought none), so no way of reaching the graph is
+        unbounded (ADR-054).
+
+        The limit never goes above the derived one and never loosens a limit the configuration already
+        carries: a caller that brought a smaller limit keeps it.
+        """
+        if "context" not in kwargs:
+            kwargs["context"] = shipped_turn_budget(owner="integrator" if self.counts_calls else "none")
+        config = _with_step_limit(config, _caps_of_turn(kwargs.get("context")))
         return self.graph.invoke(payload, config, **kwargs)
+
+    def identity(self) -> dict[str, str]:
+        """The identity of the execution this agent belongs to, empty when there is no context.
+
+        The identity is kept on the agent so that the trace, the result and the replay bundle can all say whose
+        execution it was, without the caller having to carry it around.
+        """
+        return self.run_context.identity() if self.run_context is not None else {}
 
 
 def build_integrator(
@@ -170,6 +267,7 @@ def build_integrator(
     policy_model: BaseChatModel | None = None,
     triage_model: BaseChatModel | None = None,
     system_prompt: str = INTEGRATOR_SYSTEM_PROMPT,
+    run_context: RunContext | None = None,
 ) -> Integrator:
     """Builds the integrator. With no arguments, everything follows the configuration (offline mode, `data/`).
 
@@ -178,8 +276,15 @@ def build_integrator(
     at the end of a fully supported investigation. `policy_model` rewrites the `search_policies` question (without
     it, the tool uses the configured model), which lets the temperature be fixed and the rewrite be scripted.
     `triage_model` reads the question and writes the plan that goes to the agent (without it, the configured model).
+    `run_context` is the identity and the scope of the execution; with it, the case memory lives in the session
+    folder instead of the global folder of the configuration.
     """
-    memory = case_memory or CaseMemory(get_settings().runtime_dir, embeddings=embeddings)
+    # Without a context the memory stays in the global folder of the configuration, as it always was. With a context it
+    # lives in the session folder: one visitor does not see the memory of another.
+    memory = case_memory or CaseMemory(
+        run_context.resolve_memory_dir() if run_context is not None else get_settings().runtime_dir,
+        embeddings=embeddings,
+    )
     tools = build_investigation_tools(
         query_model=query_model,
         db_path=db_path,
@@ -195,6 +300,9 @@ def build_integrator(
         model or get_chat_model(),
         tools=tools,
         system_prompt=system_prompt,
+        # The reservation comes first: it is the outermost layer, so a cap that is reached stops the turn
+        # instead of becoming the error of a tool that the model would read and work around (ADR-054).
+        middleware=[BudgetReservationMiddleware(), ToolErrorMiddleware(_tool_failure_content)],
         checkpointer=checkpointer if checkpointer is not None else InMemorySaver(),
     )
     return Integrator(
@@ -204,6 +312,8 @@ def build_integrator(
         case_memory=memory,
         triage=build_triage_declarative(triage_model or get_chat_model()),
         system_prompt=system_prompt,
+        run_context=run_context,
+        counts_calls=True,
     )
 
 
@@ -214,6 +324,7 @@ def investigate(
     thread_id: str,
     context: str | None = None,
     on_event: OnEvent | None = None,
+    budget: TurnBudget | None = None,
 ) -> InvestigationResult:
     """Asks the integrator a question and returns the verified result.
 
@@ -224,24 +335,54 @@ def investigate(
     by span while it happens (`ledgerlens.observability.trace`): the root `investigate`, triage, the agent with each
     model and tool call, the single follow-up, verification and escalation. It may be called from a thread of the
     tools' executor. Without it, nothing changes.
+
+    `budget` is the ceiling of the turn (ADR-054). Without it the turn carries the ceiling of the shipped paths
+    (12 calls of a model, 16 calls of a tool, 120 seconds) and the integrator counts them. A caller that brings
+    its own coordinator is the one that counts, because the side that holds the provider is the one that
+    reserves.
     """
     trace = Tracer(on_event)
     root = trace.begin("investigate", "chain", {"question": question, "thread_id": thread_id, "context": context})
+    turn = budget or turn_budget_for(agent)
     try:
-        result = _investigate(agent, question, thread_id, context, trace)
+        result = _investigate(agent, question, thread_id, context, trace, turn)
     except Exception as exc:
         trace.finish(root, error=f"{type(exc).__name__}: {exc}")
         raise
-    close_trace(trace, root, result)
+    usage = _usage_of_turn(turn)
+    close_trace(trace, root, result, usage=usage, caps=caps_of(turn.caps))
     return result
 
 
+def turn_budget_for(agent: Integrator) -> TurnBudget:
+    """The ceiling of a turn that nobody bounded: the caps of the shipped paths.
+
+    An integrator whose graph was built elsewhere (the live path builds its own graph over the wrapped tools)
+    counts nothing, because the side that holds the provider is the one that counts there (ADR-054).
+    """
+    return shipped_turn_budget(owner="integrator" if agent.counts_calls else "none")
+
+
+def _usage_of_turn(turn: TurnBudget) -> dict[str, Any]:
+    """What the turn spent against what it was allowed, in the shape the trace carries.
+
+    Nothing is recorded when nobody counted: the numbers of a turn that no coordinator saw would be a lie.
+    """
+    return {} if turn.owner == "none" else usage_of(turn.coordinator)
+
+
 def _investigate(
-    agent: Integrator, question: str, thread_id: str, context: str | None, trace: Tracer
+    agent: Integrator, question: str, thread_id: str, context: str | None, trace: Tracer, turn: TurnBudget
 ) -> InvestigationResult:
-    config = {"configurable": {"thread_id": thread_id}}
+    # The limit of the steps of the graph comes from the cap of the calls of the models, so the graph and the
+    # budget stop a turn that loops at the same place (ADR-054). A turn that was given no cap of the calls
+    # gets the backstop of the product, which is a ceiling of the graph and not a cap of the run.
+    config = {
+        "configurable": {"thread_id": thread_id},
+        "recursion_limit": recursion_limit_for(turn.caps),
+    }
     first_turn = not agent.graph.get_state(config).values.get("messages")
-    triage = run_triage(agent.triage, question, config=traced("triage", trace))
+    triage = run_triage(agent.triage, question, config=traced("triage", trace), turn=turn)
     if (asked := clarification_to_ask(triage, first_turn)) is not None:
         agent.graph.update_state(config, {"messages": [HumanMessage(question), AIMessage(asked)]})
         return clarification_result(question, thread_id, triage, asked)
@@ -252,28 +393,109 @@ def _investigate(
     messages: list[BaseMessage] = [SystemMessage(plan_message(plan))] if plan else []
     if context:
         messages.append(SystemMessage(context))
-    state = agent.invoke({"messages": [*messages, HumanMessage(question)]}, run_config)
-    turn = _this_turn(state["messages"])
-    result = _assemble(question, thread_id, turn, timer.durations_ms, triage=plan)
+    try:
+        state = agent.invoke({"messages": [*messages, HumanMessage(question)]}, run_config, context=turn)
+    except BudgetExceededError as exc:
+        if turn.owner != "integrator":
+            # The ceiling is the caller's, so the refusal is the caller's to handle: the live path fails the run
+            # with the cap named (ADR-054, section 7).
+            raise
+        return _cut_turn(agent, question, thread_id, config, turn, exc.cap, timer, plan, trace)
+    except GraphRecursionError:
+        # The graph ran out of steps: the cut is the cap of the calls of the models when the caller gave
+        # one, and the ceiling of the graph when it gave none (ADR-054).
+        return _cut_turn(agent, question, thread_id, config, turn, _graph_cut(turn.caps), timer, plan, trace)
+    turn_messages = _this_turn(state["messages"])
+    result = _assemble(question, thread_id, turn_messages, timer.durations_ms, triage=plan)
 
     asked = uncalled_steps(plan, result.tool_trace)
     days = fx_days_to_redo(question, result.evidence, result.tool_trace)
     if asked or days:
         text = followup_message(asked, days=days)
         span = trace.begin("plan_followup", "chain", {"asked": asked, "fx_days": days, "message": text})
-        extra = _ask_for_missing_tools(agent, text, len(state["messages"]), run_config)
+        cut_by = turn.cut_by()
+        extra: list[BaseMessage] | None = None
+        if cut_by is not None:
+            # The ceiling of the turn is spent: the follow-up does not run, and the answer that already exists
+            # stands (ADR-054).
+            log.info("the cap '%s' stopped the turn, the follow-up does not run", cut_by)
+        else:
+            try:
+                extra = _ask_for_missing_tools(agent, text, len(state["messages"]), run_config, turn)
+            except BudgetExceededError as exc:
+                # The follow-up spends what the turn has left; a turn whose ceiling is gone does not get a
+                # fresh allowance (ADR-054).
+                cut_by = exc.cap
         result = _assemble(
             question,
             thread_id,
-            turn + (extra or []),
+            turn_messages + (extra or []),
             timer.durations_ms,
             triage=plan,
             asked=asked,
             fx_asked=days,
             ask_failed=extra is None,
+            cut_by=cut_by,
+            caps=turn.caps,
         )
-        trace.finish(span, outputs={"failed": extra is None, "plan_deviations": result.plan_deviations})
+        trace.finish(
+            span,
+            outputs={"failed": extra is None, "cut_by": cut_by, "plan_deviations": result.plan_deviations},
+        )
     return finish(agent, result, trace=trace)
+
+
+def _graph_cut(caps: RunBudget) -> str:
+    """The name of the cut when the graph ran out of steps.
+
+    A cap that the caller gave names the cut, because the limit of the graph came from it. When the caller
+    gave no cap of the calls of the models, the cut is the ceiling of the graph and not a cap of the run:
+    naming a cap that nobody gave would be a lie (ADR-054).
+    """
+    return "max_model_calls" if derived_recursion_limit(caps) is not None else GRAPH_STEPS
+
+
+def _cut_turn(
+    agent: Integrator,
+    question: str,
+    thread_id: str,
+    config: dict[str, Any],
+    turn: TurnBudget,
+    cap: str,
+    timer: _ToolTimer,
+    plan: Triage | None,
+    trace: Tracer,
+) -> InvestigationResult:
+    """The result of a turn that a cap cut: the answer that exists, the tools that ran and the cap that stopped it.
+
+    A cap is not a crash: the turn comes back as a result that goes to a human, and the cap that stopped it is
+    named in the missing information (ADR-054).
+    """
+    log.warning("the cap '%s' stopped the turn of the session %s", cap, thread_id)
+    result = _assemble(
+        question,
+        thread_id,
+        _messages_of(agent, config),
+        timer.durations_ms,
+        triage=plan,
+        cut_by=cap,
+        caps=turn.caps,
+    )
+    return finish(agent, result, trace=trace)
+
+
+def _messages_of(agent: Integrator, config: dict[str, Any]) -> list[BaseMessage]:
+    """The messages the turn has so far, read from the checkpointer after a cut.
+
+    A turn that a cap cut did not end with a state, so the messages come from the checkpoint of the thread:
+    what ran is what the trace says and what the answer that exists says.
+    """
+    try:
+        state = agent.graph.get_state(config)
+    except Exception as exc:  # the checkpoint is a courtesy: the result without it is still a result
+        log.warning("could not read the state of the thread after the cut: %s: %s", type(exc).__name__, exc)
+        return []
+    return _this_turn(list(state.values.get("messages") or []))
 
 
 def traced(run_name: str, trace: Tracer, *handlers: BaseCallbackHandler) -> dict[str, Any]:
@@ -281,8 +503,19 @@ def traced(run_name: str, trace: Tracer, *handlers: BaseCallbackHandler) -> dict
     return {"run_name": run_name, "callbacks": [*handlers, *trace.handlers()]}
 
 
-def close_trace(trace: Tracer, root: str, result: InvestigationResult) -> None:
-    """Closes the trace root with the summary and, with LangSmith on, the URLs of the runs sent to it."""
+def close_trace(
+    trace: Tracer,
+    root: str,
+    result: InvestigationResult,
+    *,
+    usage: dict[str, Any] | None = None,
+    caps: dict[str, Any] | None = None,
+) -> None:
+    """Closes the trace root with the summary and, with LangSmith on, the URLs of the runs sent to it.
+
+    `usage` is what the turn spent and `caps` is what it was allowed, so a reader of the trace sees the two
+    together (ADR-054).
+    """
     if not trace.enabled:
         return
     tokens = trace.tokens()
@@ -296,18 +529,31 @@ def close_trace(trace: Tracer, root: str, result: InvestigationResult) -> None:
         "tokens": tokens,
         "summary": summary_line(result, trace.elapsed_ms(root), tokens),
     }
+    if usage:
+        outputs["usage"] = usage
+    if caps:
+        outputs["budget"] = caps
     trace.finish(root, outputs=outputs, **({"langsmith": urls} if urls else {}))
 
 
 def _ask_for_missing_tools(
-    agent: Integrator, text: str, seen: int, run_config: dict[str, Any]
+    agent: Integrator, text: str, seen: int, run_config: dict[str, Any], turn: TurnBudget
 ) -> list[BaseMessage] | None:
     """The messages the follow-up `text` produced (from the follow-up on), or `None` if the call failed.
 
     A network or quota failure here cannot erase the answer the turn already had, so it only goes to the log.
+    A cap that is reached is not a failure of the follow-up: it goes up, so the result says which cap stopped
+    the turn (ADR-054).
     """
     try:
-        state = agent.invoke({"messages": [HumanMessage(text)]}, run_config)
+        state = agent.invoke({"messages": [HumanMessage(text)]}, run_config, context=turn)
+    except BudgetExceededError:
+        if turn.owner != "integrator":
+            # The ceiling is the caller's: the follow-up fails like any other failure of the follow-up and the
+            # answer that already existed stands.
+            log.warning("the plan follow-up failed, the first answer stands: the budget of the run is exhausted")
+            return None
+        raise
     except Exception as exc:  # the follow-up is an extra: the earlier answer still stands
         log.warning("the plan follow-up failed, the first answer stands: %s: %s", type(exc).__name__, exc)
         return None
@@ -359,14 +605,25 @@ def finish(agent: Any, result: InvestigationResult, *, trace: Tracer | None = No
 # --- triage -------------------------------------------------------------------------------------
 
 
-def run_triage(triage: Runnable | None, question: str, *, config: dict[str, Any] | None = None) -> Triage | None:
+def run_triage(
+    triage: Runnable | None,
+    question: str,
+    *,
+    config: dict[str, Any] | None = None,
+    turn: TurnBudget | None = None,
+) -> Triage | None:
     """The question's `Triage`, or `None` if there is no triage or it failed. A failure does not stop the question.
 
-    `config` goes to the triage call (the run name and the trace callbacks)."""
+    `config` goes to the triage call (the run name and the trace callbacks). `turn` is the ceiling of the turn:
+    the triage is a call of a model, so it is reserved like any other one (ADR-054)."""
     if triage is None:
         return None
     try:
+        if turn is not None:
+            turn.reserve_model_call("triage")
         out = triage.invoke({"complaint": question}, config)
+    except BudgetExceededError:
+        raise
     except Exception as exc:  # network, quota or exhausted script: the agent answers with no plan, as before triage
         log.warning("triage failed, the agent runs without a plan: %s: %s", type(exc).__name__, exc)
         return None
@@ -593,12 +850,17 @@ def _assemble(
     asked: list[PlanStep] | None = None,
     fx_asked: list[str] | None = None,
     ask_failed: bool = False,
+    cut_by: str | None = None,
+    caps: RunBudget | None = None,
 ) -> InvestigationResult:
     """Builds the turn's result: trace, evidence and what was missing, without judging the answer.
 
     `asked` are the steps whose tool the code asked the agent for after the first answer; the follow-up
     goes into `plan_deviations`, and `ask_failed` says the follow-up call did not complete. `fx_asked` are the FX
     days with no origin in the ledger that the follow-up pointed out.
+
+    `cut_by` names the cap that stopped the turn (ADR-054). The cap goes into the missing information with its
+    value and the result goes to a human, because a turn that ran out of ceiling is not an answer.
     """
     results = {m.tool_call_id: m for m in turn if isinstance(m, ToolMessage)}
     calls = [call for m in turn if isinstance(m, AIMessage) for call in m.tool_calls]
@@ -649,6 +911,9 @@ def _assemble(
             failures[tool] = f"{tool} ({failure.get('code', 'UNKNOWN')}): {failure.get('message', '')}".strip()
 
     answers = [m for m in turn if isinstance(m, AIMessage) and not m.tool_calls]
+    missing = list(failures.values())
+    if cut_by is not None:
+        missing.append(cap_sentence(cut_by, caps))
     return InvestigationResult(
         session_id=thread_id,
         question=question,
@@ -658,9 +923,9 @@ def _assemble(
         evidence=evidence,
         verdicts=[],
         coherence=Coherence(passed=True),
-        missing_information=list(failures.values()),
-        recommended_action="none",
-        requires_human_review=bool(failures) or not evidence,
+        missing_information=missing,
+        recommended_action="escalate_to_human" if cut_by is not None else "none",
+        requires_human_review=bool(failures) or not evidence or cut_by is not None,
         tool_trace=trace,
         plan_deviations=plan_deviations(triage, trace)
         + (followup_notes(asked, trace, failed=ask_failed) if asked else [])

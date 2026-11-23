@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ledgerlens:v3:review-task",
+  "title": "LedgerLens v3 review-task",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "3"
+    },
+    "review_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "branch_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "snapshot_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "queued",
+        "assigned",
+        "in_review",
+        "approved_for_sandbox",
+        "rejected",
+        "request_more_evidence",
+        "escalated",
+        "cancelled"
+      ]
+    },
+    "reasons": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "evidence_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "recommended_action": {
+      "type": "string",
+      "minLength": 1
+    },
+    "actor_type": {
+      "const": "simulated_analyst"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "decision_note": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "review_id",
+    "run_id",
+    "branch_id",
+    "snapshot_hash",
+    "status",
+    "reasons",
+    "evidence_ids",
+    "recommended_action",
+    "actor_type",
+    "updated_at",
+    "decision_note"
+  ],
+  "additionalProperties": false
+}

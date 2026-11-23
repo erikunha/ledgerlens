@@ -13,6 +13,13 @@ One rule does not come from the rows but from the trace: the reference rate the 
 difference cannot be proven, so the case goes to a person, and the answer says which rate was missing
 (`EUR-BRL 2026-10-20`), because a model writes "I could not get the rate" without saying which one.
 
+A second rule also comes from the trace: the currency pair the source does not publish at all
+(`UNSUPPORTED_CURRENCY` in `get_reference_fx`, with no later call that got it). The source answered and the rate
+does not exist, so the amount cannot be converted and the difference cannot be proven; the case goes to a person
+and the reason names the pair that was asked for (`EUR/ARS 2026-10-27`). Both FX rules anchor the policy rule
+that decided them (`policy:escalation-and-review#missing-data`), so the reader sees the rule and not only the
+symptom.
+
 `recommended_action` comes from the same evidence, in order: human review beats everything; an action already
 chosen is kept; then duplicate charge, ambiguous request or empty lookup, rejected refund and, last, an
 explanation when there is a calculation, a settlement or a recalled case. With none of these, `none`.
@@ -63,6 +70,19 @@ _RECORD_TABLES = {
     "C": "customers",
 }
 _MAX_RECORDS = 200  # per table: the conversation cites few records, and the model's query already has a LIMIT
+# The policy rule the two FX rules answer to. A rate that could not be obtained and a currency pair the source
+# does not publish are both missing data, and the rule that decided has to be readable in the reason.
+_MISSING_DATA = "escalation-and-review#missing-data"
+_UPSTREAM_UNAVAILABLE = "UPSTREAM_UNAVAILABLE"
+_UNSUPPORTED_CURRENCY = "UNSUPPORTED_CURRENCY"
+
+__all__ = [
+    "apply_escalation",
+    "derive_action",
+    "escalation_reasons",
+    "unavailable_rates",
+    "unpublished_rates",
+]
 
 log = logging.getLogger(__name__)
 
@@ -164,11 +184,14 @@ def _deadline_rows(
     return chargebacks + _ledger_chargebacks(missing, ledger_db)
 
 
-# ---- reference rate unavailable -----------------------------------------------------------------
+# ---- reference rate unavailable or not published ------------------------------------------------------
 
 
-def unavailable_rates(result: InvestigationResult) -> list[str]:
-    """The rates the FX source did not give, such as `EUR-BRL 2026-10-20`, in the order they failed.
+def _failed_rates(result: InvestigationResult, error_code: str, separator: str) -> list[str]:
+    """The rates of the `get_reference_fx` calls that failed with this code, in the order they failed.
+
+    The label is the pair and the day, joined by `separator`: the dash of the pair the source did not give
+    (`EUR-BRL 2026-10-20`) and the slash of the pair it does not publish (`EUR/ARS 2026-10-27`).
 
     A rate asked for again and obtained later does not count as missing.
     """
@@ -176,12 +199,29 @@ def unavailable_rates(result: InvestigationResult) -> list[str]:
     for call in result.tool_trace:
         if call.tool != "get_reference_fx":
             continue
-        rate = f"{call.input.get('from_currency')}-{call.input.get('to_currency')} {call.input.get('date')}"
+        rate = f"{call.input.get('from_currency')}{separator}{call.input.get('to_currency')} {call.input.get('date')}"
         if call.ok:
             missing.pop(rate, None)
-        elif call.error_code == "UPSTREAM_UNAVAILABLE":
+        elif call.error_code == error_code:
             missing[rate] = None
     return list(missing)
+
+
+def unavailable_rates(result: InvestigationResult) -> list[str]:
+    """The rates the FX source did not give, such as `EUR-BRL 2026-10-20`, in the order they failed.
+
+    A rate asked for again and obtained later does not count as missing.
+    """
+    return _failed_rates(result, _UPSTREAM_UNAVAILABLE, "-")
+
+
+def unpublished_rates(result: InvestigationResult) -> list[str]:
+    """The currency pairs the FX source does not publish, such as `EUR/ARS 2026-10-27`, in the order they failed.
+
+    The source answered and there is no rate for the pair at all, which is not the same fault as a source that
+    did not answer. A pair asked for again and obtained later does not count as missing.
+    """
+    return _failed_rates(result, _UNSUPPORTED_CURRENCY, "/")
 
 
 def _with_rates_named(answer: str, rates: list[str]) -> str:
@@ -252,7 +292,15 @@ def escalation_reasons(
                 )
 
     for rate in unavailable_rates(result):
-        reasons.append(f"reference rate {rate} unavailable (UPSTREAM_UNAVAILABLE), the difference cannot be proven")
+        reasons.append(
+            f"reference rate {rate} unavailable ({_UPSTREAM_UNAVAILABLE}), the difference cannot be proven "
+            f"[policy:{_MISSING_DATA}]"
+        )
+    for pair in unpublished_rates(result):
+        reasons.append(
+            f"reference rate for the requested currency pair {pair} does not exist ({_UNSUPPORTED_CURRENCY}), "
+            f"the difference cannot be proven [policy:{_MISSING_DATA}]"
+        )
     return list(dict.fromkeys(reasons))  # the same record coming from the query and from the ledger counts once
 
 

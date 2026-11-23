@@ -1,0 +1,758 @@
+{
+  "accounts": [
+    {
+      "id": "M-17",
+      "kind": "merchant",
+      "name": "Lumen Travel GmbH",
+      "reads": [
+        {
+          "columns": [
+            "transaction_id",
+            "amount_minor",
+            "amount_major",
+            "currency",
+            "refund_id",
+            "payout_amount_minor",
+            "payout_amount_major",
+            "payout_currency",
+            "applied_rate",
+            "applied_at"
+          ],
+          "evidence_id": "sql:1",
+          "records": [
+            "TX-2048"
+          ],
+          "row_count": 1,
+          "rows": [
+            {
+              "amount_major": "100.00",
+              "amount_minor": "10000",
+              "applied_at": "2026-10-20T14:30:00Z",
+              "applied_rate": "5.4931",
+              "currency": "EUR",
+              "payout_amount_major": "549.31",
+              "payout_amount_minor": "54931",
+              "payout_currency": "BRL",
+              "refund_id": "R-0731",
+              "transaction_id": "TX-2048"
+            }
+          ],
+          "seq": 19,
+          "sql": "SELECT * FROM (SELECT t.id AS transaction_id, t.amount_minor, t.currency, r.id AS refund_id, r.payout_amount_minor, r.payout_currency, f.applied_rate, f.applied_at FROM transactions AS t JOIN refunds AS r ON r.transaction_id = t.id JOIN fx_applied AS f ON f.transaction_id = t.id AND f.refund_id = r.id WHERE t.id = 'TX-2048') LIMIT 50",
+          "tool": "query_ledger",
+          "truncated": false
+        }
+      ],
+      "rows": [
+        {
+          "amount": "204.34",
+          "at": "2026-08-10T10:53:00Z",
+          "currency": "EUR",
+          "id": "TX-0003",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "625.35",
+          "at": "2026-08-10T14:51:00Z",
+          "currency": "EUR",
+          "id": "TX-0018",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "393.80",
+          "at": "2026-08-11T09:36:00Z",
+          "currency": "EUR",
+          "id": "TX-0026",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "6.96",
+          "at": "2026-08-11T11:44:00Z",
+          "currency": "EUR",
+          "id": "TX-0030",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "98.85",
+          "at": "2026-08-11T16:23:00Z",
+          "currency": "EUR",
+          "id": "TX-0045",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "485.96",
+          "at": "2026-08-12T09:47:00Z",
+          "currency": "EUR",
+          "id": "TX-0049",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "75.16",
+          "at": "2026-08-13T13:31:00Z",
+          "currency": "EUR",
+          "id": "TX-0080",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "1868.08",
+          "at": "2026-08-14T12:55:00Z",
+          "currency": "EUR",
+          "id": "TX-0099",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "193.16",
+          "at": "2026-08-18T13:27:00Z",
+          "currency": "EUR",
+          "id": "TX-0148",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "877.66",
+          "at": "2026-08-18T15:01:00Z",
+          "currency": "EUR",
+          "id": "TX-0154",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "272.66",
+          "at": "2026-08-19T13:52:00Z",
+          "currency": "EUR",
+          "id": "TX-0171",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "701.73",
+          "at": "2026-08-20T15:54:00Z",
+          "currency": "EUR",
+          "id": "TX-0197",
+          "kind": "transaction",
+          "status": "partially_refunded"
+        },
+        {
+          "amount": "539.05",
+          "at": "2026-08-21T09:53:00Z",
+          "currency": "EUR",
+          "id": "TX-0201",
+          "kind": "transaction",
+          "status": "partially_refunded"
+        },
+        {
+          "amount": "1472.07",
+          "at": "2026-08-22T12:36:00Z",
+          "currency": "EUR",
+          "id": "TX-0243",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "370.17",
+          "at": "2026-08-25T14:12:00Z",
+          "currency": "EUR",
+          "id": "TX-0290",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "780.87",
+          "at": "2026-08-25T15:35:00Z",
+          "currency": "EUR",
+          "id": "TX-0293",
+          "kind": "transaction",
+          "status": "partially_refunded"
+        },
+        {
+          "amount": "127.55",
+          "at": "2026-08-26T12:26:00Z",
+          "currency": "EUR",
+          "id": "TX-0312",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "1017.54",
+          "at": "2026-08-28T12:00:00Z",
+          "currency": "EUR",
+          "id": "TX-0356",
+          "kind": "transaction",
+          "status": "partially_refunded"
+        },
+        {
+          "amount": "12.45",
+          "at": "2026-09-01T10:37:00Z",
+          "currency": "GBP",
+          "id": "R-0040",
+          "kind": "refund",
+          "status": "paid"
+        },
+        {
+          "amount": "770.09",
+          "at": "2026-09-01T11:34:00Z",
+          "currency": "EUR",
+          "id": "TX-0420",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "378.26",
+          "at": "2026-09-02T10:15:00Z",
+          "currency": "EUR",
+          "id": "TX-0437",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "49.81",
+          "at": "2026-09-03T14:33:00Z",
+          "currency": "GBP",
+          "id": "R-0047",
+          "kind": "refund",
+          "status": "paid"
+        },
+        {
+          "amount": "38.42",
+          "at": "2026-09-04T10:53:00Z",
+          "currency": "EUR",
+          "id": "TX-0498",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "170.99",
+          "at": "2026-09-05T08:49:00Z",
+          "currency": "EUR",
+          "id": "TX-0524",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "374.57",
+          "at": "2026-09-05T09:10:00Z",
+          "currency": "EUR",
+          "id": "TX-0525",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "298.48",
+          "at": "2026-09-05T11:43:00Z",
+          "currency": "EUR",
+          "id": "TX-0535",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "1045.61",
+          "at": "2026-09-05T15:26:00Z",
+          "currency": "EUR",
+          "id": "TX-0547",
+          "kind": "transaction",
+          "status": "partially_refunded"
+        },
+        {
+          "amount": "788.79",
+          "at": "2026-09-08T11:14:00Z",
+          "currency": "EUR",
+          "id": "TX-0569",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "1474.17",
+          "at": "2026-09-08T14:37:00Z",
+          "currency": "EUR",
+          "id": "TX-0586",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "1.22",
+          "at": "2026-09-08T16:54:00Z",
+          "currency": "GBP",
+          "id": "R-0071",
+          "kind": "refund",
+          "status": "paid"
+        },
+        {
+          "amount": "315.91",
+          "at": "2026-09-09T13:34:00Z",
+          "currency": "EUR",
+          "id": "TX-0609",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "70.66",
+          "at": "2026-09-11T12:12:00Z",
+          "currency": "EUR",
+          "id": "R-0086",
+          "kind": "refund",
+          "status": "paid"
+        },
+        {
+          "amount": "15.87",
+          "at": "2026-09-11T12:18:00Z",
+          "currency": "GBP",
+          "id": "R-0088",
+          "kind": "refund",
+          "status": "paid"
+        },
+        {
+          "amount": "251.90",
+          "at": "2026-09-11T16:17:00Z",
+          "currency": "EUR",
+          "id": "TX-0664",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "1271.68",
+          "at": "2026-09-12T15:26:00Z",
+          "currency": "EUR",
+          "id": "TX-0685",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "315.39",
+          "at": "2026-09-14T12:06:00Z",
+          "currency": "EUR",
+          "id": "TX-0690",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "332.02",
+          "at": "2026-09-16T14:44:00Z",
+          "currency": "EUR",
+          "id": "TX-0748",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "2618.15",
+          "at": "2026-09-24T10:02:00Z",
+          "currency": "EUR",
+          "id": "TX-0880",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "1864.36",
+          "at": "2026-09-24T10:03:00Z",
+          "currency": "EUR",
+          "id": "TX-0881",
+          "kind": "transaction",
+          "status": "partially_refunded"
+        },
+        {
+          "amount": "2117.70",
+          "at": "2026-09-24T10:29:00Z",
+          "currency": "EUR",
+          "id": "TX-0882",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "379.42",
+          "at": "2026-09-24T11:14:00Z",
+          "currency": "EUR",
+          "id": "TX-0885",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "704.22",
+          "at": "2026-09-24T13:47:00Z",
+          "currency": "EUR",
+          "id": "TX-0898",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "256.25",
+          "at": "2026-09-25T10:40:00Z",
+          "currency": "EUR",
+          "id": "TX-0911",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "208.01",
+          "at": "2026-09-28T12:45:00Z",
+          "currency": "EUR",
+          "id": "TX-0974",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "369.39",
+          "at": "2026-09-28T15:11:00Z",
+          "currency": "EUR",
+          "id": "TX-0989",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "349.98",
+          "at": "2026-09-30T15:17:00Z",
+          "currency": "EUR",
+          "id": "TX-1034",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "0.00",
+          "at": "2026-10-01T16:16:00Z",
+          "currency": "EUR",
+          "id": "R-0146",
+          "kind": "refund",
+          "status": "rejected"
+        },
+        {
+          "amount": "206.02",
+          "at": "2026-10-01T17:30:00Z",
+          "currency": "EUR",
+          "id": "TX-1062",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "572.74",
+          "at": "2026-10-07T10:29:00Z",
+          "currency": "EUR",
+          "id": "TX-1189",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "15.27",
+          "at": "2026-10-07T12:25:00Z",
+          "currency": "GBP",
+          "id": "R-0182",
+          "kind": "refund",
+          "status": "paid"
+        },
+        {
+          "amount": "231.25",
+          "at": "2026-10-08T12:00:00Z",
+          "currency": "EUR",
+          "id": "TX-1230",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "132.71",
+          "at": "2026-10-08T13:50:00Z",
+          "currency": "EUR",
+          "id": "TX-1239",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "222.02",
+          "at": "2026-10-08T15:30:00Z",
+          "currency": "EUR",
+          "id": "TX-1243",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "128.01",
+          "at": "2026-10-09T08:06:00Z",
+          "currency": "EUR",
+          "id": "TX-1251",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "314.72",
+          "at": "2026-10-09T15:04:00Z",
+          "currency": "EUR",
+          "id": "TX-1274",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "176.06",
+          "at": "2026-10-10T17:13:00Z",
+          "currency": "EUR",
+          "id": "TX-1318",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "165.24",
+          "at": "2026-10-13T09:21:00Z",
+          "currency": "EUR",
+          "id": "TX-1352",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "0.00",
+          "at": "2026-10-13T12:03:00Z",
+          "currency": "EUR",
+          "id": "R-0216",
+          "kind": "refund",
+          "status": "rejected"
+        },
+        {
+          "amount": "1215.04",
+          "at": "2026-10-14T14:57:00Z",
+          "currency": "EUR",
+          "id": "TX-1401",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "100.00",
+          "at": "2026-10-15T09:12:00Z",
+          "currency": "EUR",
+          "id": "TX-2048",
+          "kind": "transaction",
+          "status": "refunded"
+        },
+        {
+          "amount": "293.09",
+          "at": "2026-10-15T11:31:00Z",
+          "currency": "EUR",
+          "id": "TX-1417",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "527.85",
+          "at": "2026-10-19T15:00:00Z",
+          "currency": "EUR",
+          "id": "TX-1553",
+          "kind": "transaction",
+          "status": "partially_refunded"
+        },
+        {
+          "amount": "1309.37",
+          "at": "2026-10-20T12:20:00Z",
+          "currency": "EUR",
+          "id": "TX-1567",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "549.31",
+          "at": "2026-10-20T14:05:00Z",
+          "currency": "BRL",
+          "id": "R-0731",
+          "kind": "refund",
+          "status": "paid"
+        },
+        {
+          "amount": "225.96",
+          "at": "2026-10-20T17:33:00Z",
+          "currency": "EUR",
+          "id": "TX-1588",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "256.15",
+          "at": "2026-10-21T08:54:00Z",
+          "currency": "EUR",
+          "id": "TX-1590",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "10.76",
+          "at": "2026-10-22T13:53:00Z",
+          "currency": "GBP",
+          "id": "R-0272",
+          "kind": "refund",
+          "status": "paid"
+        },
+        {
+          "amount": "4.12",
+          "at": "2026-10-22T13:54:00Z",
+          "currency": "GBP",
+          "id": "R-0273",
+          "kind": "refund",
+          "status": "paid"
+        },
+        {
+          "amount": "47.15",
+          "at": "2026-10-23T18:05:00Z",
+          "currency": "EUR",
+          "id": "TX-1703",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "0.00",
+          "at": "2026-10-26T12:44:00Z",
+          "currency": "EUR",
+          "id": "R-0275",
+          "kind": "refund",
+          "status": "rejected"
+        },
+        {
+          "amount": "358.61",
+          "at": "2026-10-27T13:58:00Z",
+          "currency": "EUR",
+          "id": "TX-1769",
+          "kind": "transaction",
+          "status": "partially_refunded"
+        },
+        {
+          "amount": "0.00",
+          "at": "2026-10-27T14:31:00Z",
+          "currency": "EUR",
+          "id": "R-0281",
+          "kind": "refund",
+          "status": "rejected"
+        },
+        {
+          "amount": "361.48",
+          "at": "2026-10-28T13:15:00Z",
+          "currency": "EUR",
+          "id": "TX-1806",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "1154.71",
+          "at": "2026-10-28T13:59:00Z",
+          "currency": "EUR",
+          "id": "TX-1812",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "75.00",
+          "at": "2026-10-30T10:40:00Z",
+          "currency": "EUR",
+          "id": "TX-2061",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "49.47",
+          "at": "2026-10-30T13:41:00Z",
+          "currency": "EUR",
+          "id": "TX-1873",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "1018.49",
+          "at": "2026-10-31T09:19:00Z",
+          "currency": "EUR",
+          "id": "TX-1893",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "97.58",
+          "at": "2026-10-31T11:38:00Z",
+          "currency": "EUR",
+          "id": "TX-1901",
+          "kind": "transaction",
+          "status": "refunded"
+        },
+        {
+          "amount": "79.30",
+          "at": "2026-10-31T11:42:00Z",
+          "currency": "GBP",
+          "id": "R-0307",
+          "kind": "refund",
+          "status": "paid"
+        },
+        {
+          "amount": "155.14",
+          "at": "2026-10-31T11:43:00Z",
+          "currency": "EUR",
+          "id": "TX-1902",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "16.73",
+          "at": "2026-10-31T14:02:00Z",
+          "currency": "EUR",
+          "id": "TX-1917",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "187.25",
+          "at": "2026-11-02T13:20:00Z",
+          "currency": "EUR",
+          "id": "TX-1943",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "1017.26",
+          "at": "2026-11-03T13:13:00Z",
+          "currency": "EUR",
+          "id": "TX-1962",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "862.70",
+          "at": "2026-11-04T16:35:00Z",
+          "currency": "EUR",
+          "id": "TX-2014",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "26.39",
+          "at": "2026-11-05T12:24:00Z",
+          "currency": "GBP",
+          "id": "R-0333",
+          "kind": "refund",
+          "status": "paid"
+        },
+        {
+          "amount": "382.44",
+          "at": "2026-11-05T14:39:00Z",
+          "currency": "EUR",
+          "id": "TX-2045",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "413.28",
+          "at": "2026-11-05T14:52:00Z",
+          "currency": "EUR",
+          "id": "TX-2046",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "248.87",
+          "at": "2026-11-06T17:24:00Z",
+          "currency": "EUR",
+          "id": "TX-2098",
+          "kind": "transaction",
+          "status": "captured"
+        }
+      ]
+    }
+  ],
+  "page_size": 50,
+  "scenario": "S11",
+  "schema_version": "1",
+  "snapshot_sha256": "d31cca53c2ed05f99b47b1e0df207ffd73f25204b42085b98407d8d99ca83147"
+}

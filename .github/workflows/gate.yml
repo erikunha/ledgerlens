@@ -2,7 +2,9 @@ name: gate
 
 on:
   push:
-    branches: [main]
+    # The work of the v3 cycle goes straight into feature/v3, with no pull request, so the branch is listed here.
+    # Without it the gate of this repository would never run for the work that is actually being made.
+    branches: [main, feature/v3]
   pull_request:
   workflow_dispatch:
 
@@ -17,19 +19,59 @@ jobs:
   gate:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # The container of the sandbox store. The image is the one of `docker-compose.yml`, so the suite of the store
+    # runs against the same database as the local run.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: ledgerlens
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: ledgerlens_sandbox
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U ledgerlens -d ledgerlens_sandbox"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
     env:
       LEDGERLENS_OFFLINE: "1"
+      LEDGERLENS_SANDBOX_DATABASE_URL: postgresql://ledgerlens@127.0.0.1:5433/ledgerlens_sandbox
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           enable-cache: true
       - name: Cache local models (fastembed)
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/fastembed
           key: fastembed-${{ hashFiles('ledgerlens/embeddings.py', 'ledgerlens/config.py') }}
       - name: Install locked dependencies
         run: uv sync --frozen --extra dev --extra app --extra api
+      - name: Apply the schema of the sandbox store
+        run: uv run python scripts/apply_sandbox_schema.py
       - name: Gate (ruff, pytest offline)
         run: bash scripts/gate.sh
+
+  # The gate of the frontend. It is a second job and not a step of the job above, because the two gates have two
+  # toolchains and two caches, and because scripts/gate.sh must keep running where Node is absent.
+  # The job does not install the dependencies of the frontend: the install belongs to scripts/gate_web.sh, so that the
+  # gate is runnable alone on a machine that has nothing. The cache of npm stays here, because the cache is what
+  # makes the install of the gate fast.
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          # The version of Node is pinned exactly, because a major alone lets the runner resolve whatever it has.
+          # The frontend declares the floor of the major in its engines (24.0.0) and the install of the gate is strict
+          # about it, so a machine with another major fails loudly at the install and not in the middle of the build.
+          node-version: 24.22.3
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Gate (typecheck, lint, vitest, next build)
+        run: bash scripts/gate_web.sh

@@ -1,0 +1,34 @@
+# the installed packages
+node_modules/
+
+# the output of the build and of the static export
+.next/
+out/
+
+# the copy of the published artifacts of the recorded demo, made by the build of the frontend.
+# The folder is not tracked: the source of truth is site/replay at the root of the repository (ADR-042).
+public/replay/
+
+# the output of the tests
+coverage/
+playwright-report/
+test-results/
+blob-report/
+.playwright/
+
+# the cache of the type checker
+*.tsbuildinfo
+
+# the file that Next.js generates with the types of the routes. It is written by the build and it is not source.
+next-env.d.ts
+
+# the local environment, which never carries a secret into the export
+.env
+.env.*
+!.env.example
+
+# the editors
+.DS_Store
+.idea/
+.vscode/
+*.swp

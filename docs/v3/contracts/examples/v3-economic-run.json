@@ -1,0 +1,25 @@
+{
+  "schema_version": "3",
+  "experiment_id": "ECO-01",
+  "snapshot_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "mode": "deterministic_sandbox",
+  "case_count": 10,
+  "correct_count": 8,
+  "total_model_usd": "0.80",
+  "total_compute_usd": "0.00",
+  "total_review_usd": "15.00",
+  "total_error_usd": "0.00",
+  "total_usd": "15.80",
+  "cost_per_correct_usd": "1.975",
+  "money_provenance": "assumed",
+  "assumptions": {
+    "loaded_hourly_usd": "45.00",
+    "mean_review_minutes": "2.00",
+    "error_loss_assumptions": "No actual losses modeled. Review expense is hypothetical."
+  },
+  "compared_against": null,
+  "comparable": false,
+  "notes": [
+    "All figures are illustrative, not measured production costs."
+  ]
+}

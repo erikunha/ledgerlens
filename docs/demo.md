@@ -1,5 +1,20 @@
 # Demo recording
 
+The site of the demo and the local run of its two modes are in [docs/frontend.md](frontend.md). The recorded run is
+below.
+
+## The local run
+
+The two modes of the site, in two terminals:
+
+```bash
+LEDGERLENS_CORS_ORIGINS=http://localhost:3000 uv run ledgerlens-demo --port 8010
+cd apps/web && npm run dev
+```
+
+The recorded demo is the first half of the site and it calls nobody. The live mode is the second half and it calls the
+backend above.
+
 - Date of the run: 2026-11-11.
 - Mode: online (`LEDGERLENS_OFFLINE=0`). Model `gpt-4.1-mini` (`LEDGERLENS_MODEL`), live exchange rates from Frankfurter, real NLI in the verifier.
 - File: [`ledgerlens_demo.mp4`](img/ledgerlens_demo.mp4), 28 s, 3024x1890, 30 fps, H.264, no audio. sha256 `9a891e787bc7b35baf10ac33a84c654e3be47d415f04ae812a0cd7292773a574`.

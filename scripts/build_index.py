@@ -10,7 +10,8 @@ What it does, in order:
   1. reads the documents in data/policies/*.md and splits them into excerpts (`ledgerlens.retrieval`);
   2. generates the vectors with the active embedding: the local fastembed model offline (`LEDGERLENS_OFFLINE=1`
      or default) or OpenAI (`LEDGERLENS_EMBEDDINGS=openai`, needs a key);
-  3. writes index.faiss, index.pkl and index_meta.json in the embedding's folder.
+  3. writes index.faiss, index.pkl and index_meta.json in the embedding's folder. The meta carries the digest
+     of the corpus it was built from, so the gate can tell a stale index from the index of the disk.
 
 Running it again replaces the files in the same folder. The default target folder comes from LEDGERLENS_INDEX_DIR
 (default data/index/). Exit code 0 on success, 1 if the policies do not exist or are empty.
@@ -34,7 +35,9 @@ def build(policies_dir: Path, index_root: Path) -> tuple[Path, dict]:
         raise FileNotFoundError(f"no policy documents (*.md) in {policies_dir}")
     embeddings = get_embeddings()
     folder = index_dir_for(index_root, embeddings)
-    return folder, build_policy_index(documents, embeddings, folder)
+    # The corpus folder goes with the documents: the meta carries the digest of that corpus, so the loader and
+    # the gate can tell an index of another corpus from the index of this one.
+    return folder, build_policy_index(documents, embeddings, folder, policies_dir=policies_dir)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -48,7 +51,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (FileNotFoundError, ValueError, ConfigError) as exc:
         print(f"build_index: {exc}", file=sys.stderr)
         return 1
-    print(f"{folder}: {meta['chunks']} chunks, {meta['dimension']} dimensions, embedding {meta['embedding']}")
+    print(
+        f"{folder}: {meta['chunks']} chunks, {meta['dimension']} dimensions, embedding {meta['embedding']}, "
+        f"corpus {meta['corpus_sha256'][:12]}"
+    )
     return 0
 
 

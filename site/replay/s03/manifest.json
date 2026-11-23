@@ -1,0 +1,18 @@
+{
+  "bundle_schema_version": "1",
+  "capture_kind": "scripted_fixture",
+  "code_sha": "b1f82288772dc465b38a1b85f6bb66b17fc5429e",
+  "created_at": "2026-11-23T18:03:05+00:00",
+  "events": 41,
+  "files": {
+    "events.jsonl": "14a99f9e218fa7ab8aa3f730c3cc1dcdf7dafd41fffa6da9b5034ffa97fa27bf"
+  },
+  "mode": "deterministic_sandbox",
+  "model_profile": "scripted-fixture",
+  "note": "Deterministic execution of the scenario S03, account C-0291, with the scripted model and the recorded exchange rate. This is not a live execution and it calls no model.",
+  "policy_version": "policies-v1",
+  "recorded_at": "2026-11-23T18:03:05+00:00",
+  "run_id": "replay-s03",
+  "scenario": "S03",
+  "snapshot_sha256": "cc73222856d4d21516935d6fa9d55104fdfafbaf92622a7fdae8e7f3b8425f24"
+}

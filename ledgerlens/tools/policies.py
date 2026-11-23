@@ -5,10 +5,13 @@ in the database. The tool turns the question into a vector, finds the closest ex
 with their id (`policy:<document>#<section>`) for the agent to cite. The returned text is reference material: an
 excerpt that said "ignore the instructions" would only be text, never an order.
 
-Two rules that do not bend:
+Four rules that do not bend:
 - The tool only LOADS the index. `scripts/build_index.py` builds it. With no index, the
   `INDEX_UNAVAILABLE` error says which command to run.
 - The index must come from the active embedding. Another embedding gives `INDEX_MISMATCH`, not wrong results.
+- The index must describe the policies of the repository. Another corpus gives `INDEX_STALE`, not wrong results.
+- The tool never raises to the model. A search that fails (the embedder, the index) is the
+  `INDEX_SEARCH_FAILED` error, and the agent reports it as missing information.
 
 Query transforms (`transform`), for when the question and the excerpt use different words:
 - `none`: the question goes as it came (the baseline).
@@ -38,6 +41,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from ledgerlens.config import get_chat_model, get_embeddings, get_settings
 from ledgerlens.retrieval import (
     IndexMismatch,
+    IndexStale,
     IndexUnavailable,
     index_dir_for,
     load_policy_index,
@@ -160,6 +164,8 @@ def build_search_policies_tool(
             return error("INDEX_UNAVAILABLE", str(exc), False)
         except IndexMismatch as exc:
             return error("INDEX_MISMATCH", str(exc), False)
+        except IndexStale as exc:
+            return error("INDEX_STALE", str(exc), False)
 
         queries, used = [query], "none"
         if transform != "none":
@@ -173,7 +179,11 @@ def build_search_policies_tool(
                     type(exc).__name__,
                     exc,
                 )
-        runs = [search_policy_index(index, q, k) for q in queries]
+        try:
+            runs = [search_policy_index(index, q, k) for q in queries]
+        except Exception as exc:  # the embedder or the index failed: the model gets the error, not a crash
+            log.warning("the policy search failed (%s: %s)", type(exc).__name__, exc)
+            return error("INDEX_SEARCH_FAILED", f"the policy search failed: {type(exc).__name__}: {exc}", False)
         found = runs[0] if len(runs) == 1 else _merge(runs, k)
         results = [{field: hit[field] for field in _RESULT_FIELDS} for hit in found]
         log.info(

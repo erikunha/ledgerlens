@@ -1,6 +1,6 @@
 # LedgerLens cognitive architecture
 
-This document covers the anatomy of the agent, its type and maturity level, the planning design, and the choice between imperative and declarative composition. The tools are in `docs/tools.md`.
+This document covers the anatomy of the agent, its type and maturity level, the planning design, the choice between imperative and declarative composition, and the live mode in which the visitor brings a key of their own. The tools are in `docs/tools.md`. The recorded demo of the first public release is in [the quickstart of the release](../specs/001-r1-public-replay/quickstart.md), where a reader finds how to install the repository, how to capture the recording, how to publish the artifacts the site reads and how to run the two gates of the repository.
 
 ## 1. Anatomy of the agent
 
@@ -298,6 +298,188 @@ Time and cost were not measured: the model is scripted. The debugging argument (
 
 **Decision:** LCEL for linear sequences (prompt, model, parser), because the flow is visible on one line and `batch` and `stream` come from the composition itself. `@chain` where there is flow control: the repair with a single retry (it is in `make_repairing_parser`), the choice between verifying with NLI or with code, and the assembly of the `InvestigationResult`. The full imperative version of triage stays for comparison; the rest of the code reuses the declarative one. The legacy agent and the integrator use each one's own API and are not rewritten in LCEL.
 
+## 7. The live mode: bring your own key
+
+The demo runs with no key at all: the model is scripted, the data comes from the sample and the replay works offline. The live mode is the opt-in branch of it, where a visitor runs a real case with a key of their own provider. In this milestone the branch is server side: the facade and the coordinator exist, and the pages that consume them were delivered with them in R3 ([ADR-035](decisions/ADR-035-the-facade-of-the-live-mode.md), superseded by [ADR-066](decisions/ADR-066-the-pages-of-the-live-mode-exist-and-the-readme-was-the-one-that-was-wrong.md)).
+
+Three things hold that branch together: the lifecycle of the credential, the enforcement of the budget and the ledger of the visitor. The vault holds the secret, the coordinator holds the run, the branch layer holds the ledger, and none of them reads a global setting.
+
+### 7.1 The routes
+
+The live mode is a facade of its own (`ledgerlens/api/byok.py`, `create_app`), with a router of its own and a session issuer of its own, and it answers eleven routes:
+
+| Route | What it answers |
+|---|---|
+| `POST /v1/sessions` | a session of the live flow, with the capability `live_agent` |
+| `DELETE /v1/sessions/current` | the end of the session: it drops the credentials of that session |
+| `POST /v1/credentials` | the handle of the accepted key, with the provider and the expiry |
+| `POST /v1/credentials/forget` | whether there was a key to forget |
+| `GET /v1/models` | the catalogue of the models the visitor may pick |
+| `GET /v1/models/{profile_id}` | the price of a model, with its provenance and the day it was verified |
+| `POST /v1/live-runs` | the identifier of a run that starts |
+| `GET /v1/live-runs/{run_id}` | the state of a run, its answer and the reason it ended |
+| `GET /v1/live-runs/{run_id}/events` | the trace of a run, as a stream of server sent events |
+| `POST /v1/live-runs/{run_id}/cancel` | the end of a run, and whether the cancellation was a best effort |
+| `GET /v1/live-runs/{run_id}/cost` | what the run consumed, with the two costs apart |
+
+The route of the run never accepts a raw key: its body carries the handle of a credential and nothing else, and it is checked against the published contract `specs/003-r3-bring-your-own-key/contracts/live-run-request.schema.json` before the route reads anything. A run of another session is refused with the answer of a run that does not exist (`_own_run`), and a handle of another session is refused with the answer of a handle that never existed.
+
+The repository serves the demo with the wired application of the demo (`ledgerlens/api/wiring.py`, `build_wired_app`) and the console script `ledgerlens-demo`, and the command is one: `uv run ledgerlens-demo --port 8010`. The wired application mounts the two routers of the demo in one application over one session issuer, one store of branches, one base resolver, one branch layer, one vault of the credentials and one runtime folder, so the visitor is one visitor over the two facades (the section [the wired application](#75-the-wired-application-of-the-demo) says how).
+
+### 7.2 The lifecycle of the credential
+
+| Link | What happens | Where it is held |
+|---|---|---|
+| The key arrives | The visitor posts the provider and the key. The key lives in the memory of the process and nowhere else: no file, no database, no log, no trace, no URL, and it never travels back to the client | `accept_credential` in `ledgerlens/api/byok.py`; `CredentialVault.accept` in `ledgerlens/byok/vault.py` |
+| The handle | The vault answers with a handle that is opaque and random, never derived from the secret, and bound to the session of the visitor. It carries the provider, the creation and the expiry, and never the secret | `CredentialVault._new_handle` and `CredentialHandle.to_public_dict` in `ledgerlens/byok/vault.py` |
+| A handle of another session | It is refused with the same message as a handle that never existed, so a visitor cannot learn that the handle of another session exists | `CredentialVault.resolve`; `CredentialUnknown` in `ledgerlens/byok/errors.py` |
+| The death of the credential | The visitor forgets it, the session ends, the time to live passes, the vault is full, the server restarts, or the provider refuses the key too many times | `CredentialVault.forget`, `forget_session`, `_sweep_locked`, `_make_room_locked` and `record_failure` in `ledgerlens/byok/vault.py` |
+| The time to live | It is the smaller of the life of the vault and the life the session has left, and never less than a second, so a credential never outlives the session that holds it | `_the_time_to_live_of_a_credential` in `ledgerlens/api/byok.py` |
+| The secret of a credential that is gone | The vault does not keep it. While a run lives, the coordinator holds the secret of that run in the memory of the process, scrubs everything it writes with it at every depth of a payload, and releases it when the run ends | `LiveRunCoordinator._run_the_case` and `_RunSecret` in `ledgerlens/api/live_run.py` |
+| The endpoint of the provider | It is an allowlist of published endpoints, and a link-local or a loopback address is refused in public mode | `ALLOWED_ENDPOINTS` and `endpoint_verdict` in `ledgerlens/byok/adapter.py` |
+
+```mermaid
+stateDiagram-v2
+  [*] --> Received: the key arrives in POST /v1/credentials
+  Received --> HandleActive: the vault answers with an opaque handle
+  HandleActive --> RunReserved: the route of the run takes the handle
+  RunReserved --> RunInProgress: the coordinator holds the secret of the run
+  RunInProgress --> Gone: the run ends and releases the secret
+  HandleActive --> Gone: the visitor forgets it
+  HandleActive --> Gone: the session ends
+  HandleActive --> Gone: the time to live passes
+  HandleActive --> Gone: the vault is full
+  HandleActive --> Gone: the provider refuses the key too many times
+  HandleActive --> Gone: the server restarts
+  Gone --> [*]
+```
+
+The vault is bounded and it forgets on its own: it holds at most 64 credentials, the oldest one is dropped when it is full, a credential lives at most an hour by default, and a sweeper thread drops the expired ones of a vault that nobody touches. The vault lives in the memory of the process, so a restart of the server empties it. A provider that refuses the key is the only failure that counts against the credential: a rate limit or an upstream failure is a bad day of the provider and never drops a key that works.
+
+The disclosure travels in headers and not in the body, because the published contract of the handle accepts no other field:
+
+| Header | What it says |
+|---|---|
+| `X-LedgerLens-Key-Storage` | the key is not stored: it lives in the memory of the server and the credential is dropped when the session ends |
+| `X-LedgerLens-Billing-Disclosure` | your provider may charge you for the calls of this run |
+| `X-LedgerLens-Key-Erasure` | the memory of the machine cannot be guaranteed to be erased: the server drops the key when the credential ends, but no runtime can promise that no copy of the text of the key survives in the memory of the interpreter or in a swap of the operating system |
+
+The answer of the session, the answer of the credential and the answer of the start of the run carry `Cache-Control: no-store` with `Pragma: no-cache` and `Expires: 0`, because an answer that holds a handle is not to be kept anywhere. The stream of the events carries `Cache-Control: no-store` alone. The other answers of a run, which are the state, the cancellation and the cost, carry none of the three, and neither do the answers that hold no key and spend nothing, which are the catalogue of the models, the price of a model, the forgetting of a key and the end of the session. The header of the erasure is on every answer that describes a run.
+
+The live mode is refused while the product runs offline: the routes that take a key or make a provider call answer `503` with the code `LIVE_MODE_OFFLINE` and a message that names the reason, and the replay and the sandbox keep working exactly as before (`_refuse_when_offline` in `ledgerlens/api/byok.py`).
+
+### 7.3 The enforcement of the budget
+
+The caps of the request are the budget of the run. `RunLimits` reads them, `_budget_of` turns them into the `RunBudget` of the `RunContext` of the run (`ledgerlens/run_context.py`), and the coordinator is the only thing that enforces them (`BudgetCoordinator` in `ledgerlens/byok/budget.py`). The interface can ask for a budget; it cannot raise it.
+
+| Cap | What it holds |
+|---|---|
+| `max_model_calls` | the calls of the models of the run, whatever the model is |
+| `max_tool_calls` | the calls of the tools |
+| `max_input_tokens` | the tokens of the input, on the plan of the run |
+| `max_output_tokens` | the tokens of the output, on what the provider reported |
+| `max_wall_seconds` | the wall clock of the run |
+| `max_estimated_usd` | the money |
+
+One run, with the facade (`ledgerlens/api/byok.py`), the coordinator (`ledgerlens/api/live_run.py`), the budget (`ledgerlens/byok/budget.py`) and the provider:
+
+```mermaid
+sequenceDiagram
+  participant Vi as Visitor
+  participant Fa as Facade
+  participant Co as Coordinator
+  participant Bu as Budget
+  participant Pr as Provider
+  Vi->>Fa: POST /v1/live-runs with the handle and the caps
+  Fa->>Co: start(plan)
+  Co->>Bu: reserve_model_call (the calls and the tokens)
+  Co->>Bu: the guard of the money (the worst case of the run)
+  Bu-->>Co: the call is allowed
+  Co->>Pr: the call, with the key of the run
+  Pr-->>Co: the answer and the tokens it counted
+  Co->>Bu: record_model_usage (the observed tokens)
+  Co-->>Vi: the answer, the trace and the cost report
+```
+
+Four rules hold the budget:
+
+1. **Six caps can stop a run, and the plan of the output of a call never stops it early.** The plan of the output tokens of a call is never more than the headroom that the cap of the output tokens leaves (`_planned_output_of_the_next_call` in `ledgerlens/api/live_run.py`), so the run reaches the last call the visitor asked for. The caps that stop a run are the cap of the calls of the models, the cap of the calls of the tools, the cap of the input tokens, the cap of the output tokens, the cap of the wall clock and the cap of the money. A run that would break one of them stops at once, and the answer names the cap that stopped it: `BudgetExceededError.cap` becomes the `cut_by` of the report.
+2. **The money is checked before the call, against the worst case that the caps allow.** `_guard_the_money_of_the_run` prices the call that is about to happen with the cap of the output tokens of the run, multiplies it by the calls that the cap of the calls still allows, adds what the run has already committed, and refuses the run when that passes the cap. The check does not trust the plan of the call, because the plan is clamped by the headroom and a clamp makes the money of the call look small. A run without a cap of the calls stops before the provider is called, because a cap of the money bounds a run only when the number of the calls is bounded.
+3. **The observed cost and the estimated cost are two numbers.** The observed cost is what the provider counted and the estimated cost is what the run planned, and the report carries them apart (`CostReport` in `ledgerlens/byok/budget.py`). When the registry has no verified price for a model of the run, neither of them is a number, the report says that the price is unknown and no amount appears anywhere. A run that called no model shows no amount either, because a zero would read as "the model was free".
+4. **A call of a tool reserves one call of the budget of the run, exactly like a call of the model.** `ModelCaller.call_tool` reserves it, and the run stops when the cap of the tools is reached.
+
+A call whose model differs from the model of the run is refused before anything is reserved, because a run that compared two models under one identifier would make its own trace lie. The cancellation stops the calls that have not started: the caller of the provider reads the flag before every call and raises `RunCancelled`. A call that is already at the provider cannot be stopped, and the run says so: the answer of the route of the cancellation calls it a best effort, and the flag travels with the run and with the trace.
+
+Every run carries the mode `live_agent`, and a replay is never labelled live. Whatever happens, the run ends with exactly one terminal event, `run.completed`, `run.failed` or `run.cancelled`, and the trace of the run lives in the memory of the process: no file, no log, no telemetry, and therefore no place where the key could land.
+
+### 7.4 The ledger of the visitor
+
+The run reads the ledger of the visitor and never the ledger of the configuration. The branch is forked in the sandbox, the branch layer materializes its state in a file of the run, and the tools of the agent read that file. The file holds the rows of the account of the visitor and the counterparties of the transactions of that account, and no row of another account, so the name of a third party is on the disk of the server for the length of the run and the file goes away when the run ends. The ledger of the configuration, which holds the rows of every account of the repository, is never read by the live path ([ADR-038](decisions/ADR-038-the-live-run-reads-the-ledger-of-the-branch-of-the-visitor.md)).
+
+| Step | What happens | Where it is held |
+|---|---|---|
+| The request names the branch | The body carries the id of the branch, the revision it is at and the account of the branch, and the route reads them before the run starts | `LiveRunRequest` in `ledgerlens/api/byok.py` |
+| The branch layer resolves it | The ownership of the branch, its expiry, the account, the revision and the proof of its own state, in that order. No provider is called before every one of them passed, so a refused run spends no money of the visitor | `BranchLayer.ledger_view` in `ledgerlens/sandbox/branch.py` |
+| The state is materialized | A copy of the projected connection of the branch, in a file of the run. The file holds the rows of the account of the branch and the counterparties of the transactions of that account, and no row of another account. The file is written only when every check passed, so a refused branch leaves no file behind | `materialize` in `ledgerlens/sandbox/ledger_view.py` |
+| The agent reads that file | The case of the demo takes the path of the view of the plan and gives it to the tools of the agent. A run with no ledger of the visitor is a refusal and never a fallback | `DemoCase._options_of_the_run` in `ledgerlens/api/live_case.py` |
+| The file goes away | The run removes the file of the ledger and the folder that holds it when it ends, on every path | `_remove_the_ledger_of_the_run` in `ledgerlens/api/live_run.py` |
+| The trace names the ledger | The first event of the run carries the branch, the revision and the canonical hash of the state that was read | the payload of `run.started` in `ledgerlens/api/live_run.py` |
+
+```mermaid
+sequenceDiagram
+  participant Vi as Visitor
+  participant Fa as Live facade
+  participant Br as Branch layer
+  participant Ca as Case of the demo
+  participant To as Tools of the agent
+  Vi->>Fa: POST /v1/live-runs with the branch, the revision and the account
+  Fa->>Br: ledger_view(session, branch, account, revision)
+  Br-->>Fa: the view (the path, the revision, the hash)
+  Fa->>Ca: the run, with the view in the plan
+  Ca->>To: the tools read the file of the branch
+  To-->>Ca: the rows of the account and its counterparties
+```
+
+The refusals of the branch keep the codes of the contract of the sandbox, so the two facades cannot disagree about what a branch holds, and the visitor reads the same answers in the sandbox and in the live mode. None of them repeats a value the visitor sent.
+
+| Refusal | Status | Code |
+|---|---|---|
+| The deployment has no branch layer | 503 | `BRANCH_LAYER_MISSING` |
+| The id is not a branch of this session, and a branch of another session is the same answer | 404 | `NOT_FOUND` |
+| The branch outlived its time to live | 409 | `BRANCH_EXPIRED` |
+| The branch cannot prove its own state | 409 | `HASH_MISMATCH` |
+| The account of the request is not the account of the branch | 422 | `ACCOUNT_MISMATCH` |
+| The branch is at another revision than the one the request expected | 409 | `REVISION_MOVED` |
+
+The live facade takes the branch layer as a dependency, exactly like the vault and the session issuer, and it never goes looking for one. An application built without a branch layer refuses every run that names a branch with the code `BRANCH_LAYER_MISSING`, and it never answers with the ledger of the configuration, because that fallback would hand the model the rows of every account of the repository.
+
+The deployment wires one session issuer, one store of branches and one branch layer for the two facades, so the branch that the sandbox forks is the branch that the live run reads. ADR-035 is not changed by that: the two facades keep their own issuer by default and the wiring stays a decision of the deployment. The repository writes that deployment down, and [the quickstart of the live mode](../specs/003-r3-bring-your-own-key/quickstart.md) shows the one command that serves it.
+
+### 7.5 The wired application of the demo
+
+The demo has two facades: the sandbox of the visitor (`ledgerlens/api/sandbox.py`) and the live mode (`ledgerlens/api/byok.py`). A live run reads the ledger of the branch of the visitor, so the two facades have to be the same visitor for a live case to mean anything (ADR-038). The repository wires them in one application, and the wiring is a deployment written down in the code, not a program the reader of the quickstart has to copy (ADR-039).
+
+| Piece | What it is |
+|---|---|
+| The factory | `build_wired_app` in `ledgerlens/api/wiring.py`: it builds one issuer, one store of branches, one base resolver, one branch layer, one vault of the credentials and one runtime folder, and it mounts the two routers of the demo in one application |
+| The command | `ledgerlens-demo` in `pyproject.toml`, and it is `uv run ledgerlens-demo --port 8010`. It takes `--host` and `--port`, the way `ledgerlens-api` takes them |
+| The session | `POST /v1/sessions` is the route of the live mode, because that answer is the superset: the same three fields, the capability of the live mode, the disclosure of the storage, the disclosure of the erasure and the no-store headers |
+| The end of the session | `DELETE /v1/sessions/current` is the route of the sandbox, because that one is complete: it deletes the branches of the session, it purges the memory of the case and it drops the credentials of the session, the sandbox being given the shared vault |
+| The refusals | The wired application installs the handlers of the refusals on itself, because an included router brings its routes and its lifespan and nothing else. A refusal is the resource `Error` of the contract and never a `500`, and the message is scrubbed with the vault |
+
+```mermaid
+flowchart TB
+  V["Visitor<br/>one cookie jar"] -->|"POST /v1/sessions"| W["Wired application<br/>ledgerlens-demo, port 8010"]
+  V -->|"POST /v1/sandboxes"| W
+  V -->|"POST /v1/live-runs"| W
+  ISS["Session issuer<br/>one key file"] --> W
+  W --> L["Branch layer<br/>one store, one base resolver"]
+  W --> VLT["Vault of the credentials<br/>one vault"]
+  L -->|"the state of the branch"| W
+```
+
+The two facades alone are still two visitors, each one with its own issuer, and the plain factory of uvicorn is not touched either: it still serves a live mode without a branch layer and it still refuses every run with `503 BRANCH_LAYER_MISSING` and a readable reason. The wired application is one visitor because the factory gives the two facades the same issuer, and that is a decision of the deployment that ADR-035 allows.
+
 ## Terms used
 
 - **Agent**: a language model in a loop that picks actions, runs tools and observes the results.
@@ -313,3 +495,9 @@ Time and cost were not measured: the model is scripted. The debugging argument (
 - **Prompt injection**: input text that tries to give orders to the model; the defense is to treat it as data.
 - **Span**: one run in a trace (a chain, a model call, a tool call or a check), with its inputs, outputs and latency.
 - **Run tree**: the spans of one request, nested by which run started which.
+- **Live mode**: the branch of the demo in which a visitor runs a real case with a key of their own provider; its mode label is `live_agent`.
+- **Credential handle**: the opaque and random token that stands for a key in the vault; it carries the provider and the expiry and never the secret.
+- **Credential vault**: the in-process memory that maps a handle to a secret; bounded, expiring, and bound to the session that owns the handle.
+- **Budget of a run**: the caps a run carries: the calls of the models, the calls of the tools, the tokens, the wall clock and the money. A run that would break one of them stops at once and names the cap that stopped it.
+- **Branch of the visitor**: a private copy of a published case, owned by one session, that holds the rows of one account, the counterparties of the transactions of that account and the mutations of that visitor. It is the only truth of the visitor, and the live run reads it and never the ledger of the configuration.
+- **View of the ledger**: the state of one branch materialized in a file the tools of the agent can read, with the branch, the revision and the canonical hash of that state. The file holds the rows of the account of the visitor and the counterparties of the transactions of that account. It lives in the plan of the run and the file goes away when the run ends.

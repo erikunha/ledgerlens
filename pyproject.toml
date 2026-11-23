@@ -36,6 +36,12 @@ verify = [
 api = [
     "fastapi>=0.162",
     "uvicorn>=0.30",
+    # The driver of the sandbox store. It comes with the binary wheel, so the container needs no compiler.
+    "psycopg[binary]>=3.2",
+    # The check of the shape of a request against the published contract. The routes of the sandbox and of the live
+    # mode need it, so it belongs to the extra of the api. The extra of the development installs it as well, because
+    # the suite of the repository imports it.
+    "jsonschema>=4.23",
 ]
 app = [
     "streamlit>=1.67",
@@ -43,12 +49,16 @@ app = [
 dev = [
     "pytest>=8.3",
     "ruff>=0.8",
+    # The suite of the repository imports jsonschema, so a contributor who syncs only this extra keeps it.
     "jsonschema>=4.23",
 ]
 
 [project.scripts]
 ledgerlens-sim = "ledgerlens.sim.cli:main"
 ledgerlens-api = "ledgerlens.api.ledger_service:main"
+# The demo of the visitor: the sandbox of the branch and the live mode as one visitor, over one issuer, one store
+# and one vault (ADR-039). The name is not the one of `ledgerlens-api`, which serves the internal ledger API.
+ledgerlens-demo = "ledgerlens.api.wiring:main"
 
 [build-system]
 requires = ["hatchling"]
