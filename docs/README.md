@@ -105,6 +105,7 @@ and one line that says what the file holds.
 - [ADR-071: The wall and the ceiling of the loop are in every path, and the cut is named to the visitor](decisions/ADR-071-the-wall-and-the-ceiling-of-the-loop-are-in-every-path-and-the-cut-is-named-to-the-visitor.md): Status: accepted. Date: 2026-11-24.
 - [ADR-072: A currency the reference source does not publish is missing data, and the case goes to a person](decisions/ADR-072-a-currency-the-reference-source-does-not-publish-is-missing-data-and-the-case-goes-to-a-person.md): Status: accepted. Date: 2026-11-24.
 - [ADR-073: The published bundle carries the evidence its verdict was computed on, and it is reproducible](decisions/ADR-073-the-published-bundle-carries-the-evidence-its-verdict-was-computed-on-and-it-is-reproducible.md): Status: accepted. Date: 2026-11-24.
+- [ADR-074: A case ends in a decision, and the decision belongs to the code](decisions/ADR-074-a-case-ends-in-a-decision-and-the-decision-belongs-to-the-code.md): Status: accepted. Date: 2026-11-24.
 - [Decision records](decisions/README.md): Every decision that restricts the future of the work is a record in this folder, and this index lists them in the order of their number, with their status...
 
 ## docs/pt-BR
