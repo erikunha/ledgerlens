@@ -500,16 +500,28 @@ export function collectVerdicts(spans: readonly SpanState[]): VerdictSummary[] {
 }
 
 /**
+ * The shape of a decimal number written as text: digits, with an optional sign and an optional point.
+ *
+ * Why the shape is checked: the panel of the amounts shows money and percentages, and a word is neither. The check
+ * is the same on both sides of the platform, where the calculator never writes a word as a number.
+ */
+const DECIMAL_TEXT = /^-?\d+(\.\d+)?$/;
+
+/**
  * Reads an amount as the decimal text it is, keeping the text exactly as the recording wrote it.
  *
  * Only the text branch counts. A JSON number of money is already a binary float, so it is not a value of the domain:
  * when a recording publishes one, the amount simply does not appear in the panel of the amounts, and it never appears
  * repaired either.
+ *
+ * A text that is not a decimal number is not an amount either. The result of the calculation of the markup of a
+ * refund carries the answer of the check as a word (`yes` or `no`), and the panel of the amounts never dresses a
+ * word as money.
  */
 function readDecimalText(value: unknown): string | null {
   if (typeof value === "string") {
     const trimmed = value.trim();
-    return trimmed === "" ? null : trimmed;
+    return DECIMAL_TEXT.test(trimmed) ? trimmed : null;
   }
   return null;
 }
