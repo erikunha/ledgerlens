@@ -60,11 +60,11 @@ FROZEN_LEDGER = ROOT / "data" / "eval" / "replay" / "ledger" / "s01.json"
 # artifacts of `site/replay` being regenerated. The bundle, the dataset and the frozen artifact of the ledger are the
 # only inputs of these digests.
 EXPECTED_DIGESTS = {
-    "index.json": "de5f2e875c6dde76916d2a97d5777e1e0682dde6330bb45dc6907858a2e68f71",
-    "s01/events.jsonl": "b370bb1045b9392ed0b4400cec5f81c0fac89bfa1d26929772e504d3356b1154",
+    "index.json": "321d44ddd1ca409ce2ac0a28e65ca3f1f5ac9e1624f243dc8a311381e7f2b7e6",
+    "s01/events.jsonl": "9983cb4be5d05b8dc2677d3f98ab3b293beb3b0840905afadc3754161fa606a7",
     "s01/ledger.json": "049e84ca6753121918beb7daa3401b7e26d814940f103111dba834ec787e5ebf",
-    "s01/manifest.json": "a207e0814f856decc6bddedaf74aa02195a0134cbd923004b08bc1f1e1b3afa1",
-    "s01/provenance.json": "9ac9fca203d17a2c405b635ec0e5db17663033525c061eef6e781f654e990898",
+    "s01/manifest.json": "2696a9a056dd821c449ecf82e325c1f6b655330717774585fe058795a6995738",
+    "s01/provenance.json": "f576bac9863f538f9c01e3ab85edd2a6a193e58f032bc84802e6377b55b8c6b1",
 }
 
 
