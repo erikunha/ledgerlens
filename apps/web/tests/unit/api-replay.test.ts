@@ -218,8 +218,11 @@ describe("the client of the static artifacts", () => {
     expect(loaded.manifest.mode).toBe("deterministic_sandbox");
     expect(loaded.manifest.bundle_schema_version).toBe("1");
     expect(loaded.events.length).toBeGreaterThan(0);
+    // The digest of the bundle is the digest of the manifest that the bundle publishes, and the case computes it
+    // from the bytes of the file on the disk: a case that repeats the digest of the recording breaks every time
+    // the scenario is recorded again, and the check it wants is the one between the two published files.
     expect(loaded.provenance?.["bundle_digest"]).toBe(
-      "bbbe1e54fcae712df66a3a6096838ab5b7f8c938e2e47b7ef6681e43cafa84ac",
+      createHash("sha256").update(PUBLISHED.manifest).digest("hex"),
     );
   });
 

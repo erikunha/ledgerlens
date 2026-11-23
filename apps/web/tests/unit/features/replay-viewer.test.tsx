@@ -86,6 +86,21 @@ const EVENTS: readonly TraceEvent[] = PUBLISHED.events
  * case needs a call that takes more than a second to prove that the column of the latency writes
  * the duration the way the timeline writes it and never as the bare number of the recording.
  */
+/**
+ * The published events of the recording, with the latency of the read of the ledger fixed.
+ *
+ * Why the case fixes the latency: the duration that the recording carries changes with every recapture of the
+ * scenario, and a case that repeats a number of the recording breaks every time the scenario is recorded again.
+ * The case fixes the number and proves the spelling of the duration, which is what the column promises.
+ */
+const EVENTS_WITH_A_KNOWN_LATENCY: readonly TraceEvent[] = EVENTS.map((event) => {
+  const payload = event.payload ?? {};
+  if (payload.run_type !== "tool" || payload.name !== "query_ledger") {
+    return event;
+  }
+  return { ...event, payload: { ...payload, latency_ms: 120 } };
+});
+
 const EVENTS_WITH_A_SLOW_CALL: readonly TraceEvent[] = EVENTS.map((event) => {
   const payload = event.payload ?? {};
   if (payload.run_type !== "tool" || payload.name !== "calculate") {
@@ -548,12 +563,12 @@ describe("the reader of the recorded run", () => {
     // It proves that the latency of a call is written with the formatter of the durations and
     // never as the bare number of the recording, so that one timing of the recording has one
     // spelling on the screen.
-    renderViewer(LOADED);
+    renderViewer({ manifest: MANIFEST, events: EVENTS_WITH_A_KNOWN_LATENCY, provenance: PROVENANCE });
 
     await findLoadedRun();
     const slider = screen.getByRole("slider", { name: "Position of the recording" });
     const last = slider.getAttribute("max");
-    fireEvent.change(slider, { target: { value: last ?? String(EVENTS.length - 1) } });
+    fireEvent.change(slider, { target: { value: last ?? String(EVENTS_WITH_A_KNOWN_LATENCY.length - 1) } });
 
     const calls = await screen.findByRole("table", { name: "The calls of the tools of the recorded run" });
     await waitFor(() => {
@@ -567,8 +582,8 @@ describe("the reader of the recorded run", () => {
 
     const row = within(calls).getByRole("rowheader", { name: /query_ledger/ }).closest("tr");
     expect(row).not.toBeNull();
-    expect(within(row as HTMLElement).getByText("12 ms")).toBeInTheDocument();
-    expect(within(row as HTMLElement).queryByText("12")).toBeNull();
+    expect(within(row as HTMLElement).getByText("120 ms")).toBeInTheDocument();
+    expect(within(row as HTMLElement).queryByText("120")).toBeNull();
   });
 
   it("writes a call of a tool that takes more than a second in seconds", async () => {
