@@ -136,6 +136,24 @@ def test_an_untracked_file_does_not_block_the_capture(tmp_path: Path):
     assert capture_replay.dirty_paths(repository, None) == []
 
 
+def test_the_capture_of_a_scenario_that_names_no_account_uses_the_first_customer(tmp_path: Path):
+    """A scenario whose question is about an id that does not exist still runs, on the first customer.
+
+    Why the scenario names no account: the question of the scenario S04 is about a transaction that is not in the
+    ledger, so there is no customer of the scenario to scope the ledger to. The run still needs an account to sign
+    in, because the agent reads the ledger of one account, so the first customer of the ledger is used and the note
+    of the bundle says which account it was.
+    """
+    repository = _tiny_repository(tmp_path / "repository")
+    out = tmp_path / "bundle"
+
+    capture_replay.capture("S04", out, root=repository)
+
+    manifest, _ = load_bundle(out)
+    assert manifest.scenario == "S04"
+    assert "C-0001" in manifest.note
+
+
 def test_the_capture_refuses_to_run_on_a_dirty_tree(tmp_path: Path):
     """A change in the tracked tree stops the capture, because the recording names a commit and the claim has to be
     true."""

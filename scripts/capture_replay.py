@@ -31,6 +31,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import os
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -166,13 +167,34 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def _planted(manifest: dict, scenario_id: str) -> tuple[str, str]:
-    """The planted question of the scenario and its first account."""
+def _planted(manifest: dict, scenario_id: str) -> tuple[str, str | None]:
+    """The planted question of the scenario and the account of the run, when the scenario names one.
+
+    Why the account may be absent: the question of the scenario S04 is about a transaction that is not in the
+    ledger, so the scenario names no customer and no merchant. The run still needs an account to sign in, because
+    the agent reads the ledger of one account, and the caller resolves the account from the ledger when it is
+    absent.
+    """
     item = next(entry for entry in demo.planted(manifest) if entry.scenario == scenario_id)
     accounts = demo.accounts_of(manifest, scenario_id)
-    if not accounts:
-        raise SystemExit(f"the scenario {scenario_id} has no account")
-    return item.question, accounts[0]
+    return item.question, accounts[0] if accounts else None
+
+
+def _first_customer(ledger: Path) -> str:
+    """The first customer of the ledger, by id, for a scenario that names no account.
+
+    Why the ledger decides and not the manifest: the accounts of a run are the accounts of the ledger the run
+    reads, and the manifest of the scenarios does not list them. The customer is the one that can sign in, because
+    the ledger of a merchant holds the payouts and the ledger of a customer holds the payments.
+    """
+    connection = sqlite3.connect(f"file:{ledger}?mode=ro", uri=True)
+    try:
+        row = connection.execute("SELECT id FROM customers ORDER BY id LIMIT 1").fetchone()
+    finally:
+        connection.close()
+    if row is None:
+        raise SystemExit("the ledger holds no customer, so the capture has no account to sign in")
+    return str(row[0])
 
 
 def capture(scenario_id: str, out: Path, root: Path = ROOT) -> Path:
@@ -193,6 +215,8 @@ def capture(scenario_id: str, out: Path, root: Path = ROOT) -> Path:
         work_root = Path(work)
         base = work_root / "ledger.db"
         build_ledger(SimConfig(source="sample"), base).conn.close()
+        if account_id is None:
+            account_id = _first_customer(base)
         account_db = scoped_ledger(base, account_id, work_root / "account.db")
 
         model, query_model, triage_model = (ScriptedChatModel(script=[]) for _ in range(3))
