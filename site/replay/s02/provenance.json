@@ -1,21 +1,21 @@
 {
   "artifacts": {
-    "events.jsonl": "1c623992cb7bcc29b365c089caf9c06c7c46d03132c7d41827d4ea6122796004",
+    "events.jsonl": "53673d68ddfe6ffdc2d0fe027c293d3926df64f98bfee9446f73c6cd5da2016a",
     "ledger.json": "6a53cb7a6c8f3dc3e8f78705c2bc6c6ee1b3535bc2595b44c0d1ffed069d280d",
-    "manifest.json": "0eb4cdbb54928c7144f03494a4b3411ae978e9fd7837568a275c4d128fdcf45f"
+    "manifest.json": "bdeb43f36fbb2d14d08be7a559c06be7c5a77b2962f33aca9b2d1bebf1e08dbf"
   },
-  "bundle_digest": "0eb4cdbb54928c7144f03494a4b3411ae978e9fd7837568a275c4d128fdcf45f",
+  "bundle_digest": "bdeb43f36fbb2d14d08be7a559c06be7c5a77b2962f33aca9b2d1bebf1e08dbf",
   "capture_kind": "scripted_fixture",
-  "code_sha": "cbbbfd6150cf26b80b8cf0a006ee4492a945f48f",
-  "created_at": "2026-11-23T12:22:57+00:00",
+  "code_sha": "d344ea191429115c1716e94aac7eda170adcfd10",
+  "created_at": "2026-11-23T13:18:23+00:00",
   "dataset_sha256": "cab6cd1eeefd08ae58b138501c2c69431547fcbb7434f1a47720cc81aefe84ba",
   "files": {
-    "events.jsonl": "1c623992cb7bcc29b365c089caf9c06c7c46d03132c7d41827d4ea6122796004"
+    "events.jsonl": "53673d68ddfe6ffdc2d0fe027c293d3926df64f98bfee9446f73c6cd5da2016a"
   },
   "mode": "deterministic_sandbox",
   "model_profile": "scripted-fixture",
   "note": "Deterministic execution of the scenario S02, account C-0733, with the scripted model and the recorded exchange rate. This is not a live execution and it calls no model.",
   "policy_version": "policies-v1",
-  "recorded_at": "2026-11-23T12:22:57+00:00",
+  "recorded_at": "2026-11-23T13:18:23+00:00",
   "snapshot_sha256": "df1102a46bc9fbc70f85ba877fd71a81002c040f49e1ba8e4a63d8c992d715d0"
 }
