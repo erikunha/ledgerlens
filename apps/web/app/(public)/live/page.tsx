@@ -9,9 +9,10 @@
  * server is rendered where the action was, with the code and the message of the server, and a
  * refusal is never dressed up as a run.
  *
- * The page makes no request to the backend before the visitor acts: the routes that hold or spend a
- * credential are the routes that refuse, so a probe would create a credential. The first live act
- * of the visitor reveals the state of the server.
+ * The page opens a session and reads the catalogue of the models when it opens, and it touches no route
+ * that holds or spends a credential: the routes that hold or spend a credential are the routes that
+ * refuse, and a probe of them would create a credential. What the opening requests tell the visitor is
+ * whether the server is there at all, and the refusal of the server is rendered where the action was.
  *
  * The one refusal that closes the live mode is `LIVE_MODE_OFFLINE`: while the product runs offline
  * the backend takes no credential and starts no run, so the controls of the live mode stay disabled
