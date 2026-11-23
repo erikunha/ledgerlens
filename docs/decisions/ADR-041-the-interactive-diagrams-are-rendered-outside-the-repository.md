@@ -62,8 +62,8 @@ shape is the schema of the tool:
 The commands are these two, and they are the whole of the interface:
 
 ```bash
-node ~/Desktop/Projects/.archify-tool/archify/bin/archify.mjs validate architecture docs/diagrams/live-mode.architecture.json --quality showcase --json
-node ~/Desktop/Projects/.archify-tool/archify/bin/archify.mjs deliver architecture docs/diagrams/live-mode.architecture.json ~/Desktop/Projects/.ledgerlens-artefacts/live-mode.architecture.html --quality showcase --json
+node <the tool of the owner, outside the repository> validate architecture docs/diagrams/live-mode.architecture.json --quality showcase --json
+node <the tool of the owner, outside the repository> deliver architecture docs/diagrams/live-mode.architecture.json <the folder of the artefacts, outside the repository>/live-mode.architecture.html --quality showcase --json
 ```
 
 The first command proves that the source is well formed and that the picture has no crossed connection, no label over a

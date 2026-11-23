@@ -8,8 +8,8 @@ description: "Task list for the truth of the policies and the truth of the money
 
 **Prerequisites**: plan.md (required), spec.md (required), the decision that starts the milestone
 (`docs/decisions/ADR-061-the-corpus-of-the-policies-is-the-contract-of-a-fictional-company.md`) and the audit of the
-truth of the policies and of the money, which lives outside the repository at
-`~/Desktop/Projects/.ledgerlens-research-2027/findings/F10_the_truth_of_the_policies_and_the_money.md`
+truth of the policies and of the money, whose findings live in the research folder of the owner of the repository, out
+of git and not published: the finding that starts this milestone is F10, the truth of the policies and of the money
 
 **Tests**: Every task that changes the behaviour of the repository ships its test before its code, and the gate of
 the Python side is green before the commit. A task that is delivered says so, with **DELIVERED** and the evidence

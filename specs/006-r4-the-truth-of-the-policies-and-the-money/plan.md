@@ -39,10 +39,10 @@ the numbers come from the tool and the label comes from the evidence, and the ve
 
 ## The audit that starts the milestone
 
-The audit is the file
-`~/Desktop/Projects/.ledgerlens-research-2027/findings/F10_the_truth_of_the_policies_and_the_money.md`, read on
-2026-11-22 and written on 2026-11-23. It lives outside this repository because the repository is public and the
-audit was a read only pass: it opened the eight policies, the code that judges and the code that computes, the
+The audit is the finding F10, the truth of the policies and of the money, read on 2026-11-22 and written on
+2026-11-23. Its findings live in the research folder of the owner of the repository, out of git and not published,
+because the repository is public. The audit was a read only pass: it opened the eight policies, the code that judges
+and the code that computes, the
 shipped ledger `data/runtime/sandbox-bases/ledger.db` in read only mode, and the sources of the world with their
 dates.
 

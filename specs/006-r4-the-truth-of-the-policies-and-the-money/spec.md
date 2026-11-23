@@ -9,8 +9,9 @@
 **Input**: Design documents: `docs/decisions/ADR-061-the-corpus-of-the-policies-is-the-contract-of-a-fictional-company.md`,
 `docs/decisions/ADR-055-the-policy-index-carries-the-hash-of-the-corpus.md`, `docs/decisions/ADR-007-nli-verification.md`
 and `docs/decisions/ADR-059-the-held-out-set-is-read-by-two-blind-machines-and-adjudicated.md`. The audit of the truth of
-the policies and of the money, read on 2026-11-22 and written on 2026-11-23, which lives outside this repository at
-`~/Desktop/Projects/.ledgerlens-research-2027/findings/F10_the_truth_of_the_policies_and_the_money.md`. User
+the policies and of the money, read on 2026-11-22 and written on 2026-11-23, whose findings live in the research folder
+of the owner of the repository, out of git and not published: the finding that starts this milestone is F10, the truth of
+the policies and of the money. User
 description: "The corpus of `data/policies/` is the contract of Acme Payments, a company that does not exist, and it
 is written as if it described payments as they are. The milestone closes the twelve gaps of the audit, states the
 truth of the policies in a document of its own, and writes the four tests that hold them."

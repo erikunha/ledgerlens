@@ -40,7 +40,11 @@ _WORDS = [
 FORBIDDEN = re.compile("|".join(_WORDS), re.IGNORECASE)
 # a course acronym: upper case only and as a whole word
 FORBIDDEN_CASE = re.compile(r"\b" + "M" + "BA" + r"\b")
-HOME_PATH = re.compile("/" + "Users" + "/|/" + "home" + "/[a-z]")
+# A home path written with a tilde is a path of the machine of a person too, and the guard of the public
+# repository has to refuse it like the other two shapes. The branch names a directory of the home, because
+# the dot folders are conventional names that a platform defines and that a workflow of the continuous
+# integration may use without naming the machine of anybody.
+HOME_PATH = re.compile("/" + "Users" + "/|/" + "home" + "/[a-z]|~" + "/[A-Za-z]")
 SKIP = {"uv.lock", "tests/test_public_clean.py"}
 
 # ---- The secrets -----------------------------------------------------------------------------------
