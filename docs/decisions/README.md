@@ -82,3 +82,4 @@ by hand: run `uv run python scripts/build_docs_index.py` and commit the result.
 | 072 | [ADR-072: A currency the reference source does not publish is missing data, and the case goes to a person](ADR-072-a-currency-the-reference-source-does-not-publish-is-missing-data-and-the-case-goes-to-a-person.md) | accepted | 2026-11-24 |
 | 073 | [ADR-073: The published bundle carries the evidence its verdict was computed on, and it is reproducible](ADR-073-the-published-bundle-carries-the-evidence-its-verdict-was-computed-on-and-it-is-reproducible.md) | accepted | 2026-11-24 |
 | 074 | [ADR-074: A case ends in a decision, and the decision belongs to the code](ADR-074-a-case-ends-in-a-decision-and-the-decision-belongs-to-the-code.md) | accepted | 2026-11-24 |
+| 075 | [ADR-075: The site publishes two catalogs, and each bundle declares the one it belongs to](ADR-075-the-site-publishes-two-catalogs-and-each-bundle-declares-the-one-it-belongs-to.md) | accepted | 2026-11-24 |

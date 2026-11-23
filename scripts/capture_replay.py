@@ -29,13 +29,9 @@ uv run python scripts/capture_replay.py --scenario S03 --out data/eval/replay/s0
 from __future__ import annotations
 
 import argparse
-import hashlib
 import os
-import sqlite3
-import subprocess
 import sys
 import tempfile
-from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -52,10 +48,29 @@ from ledgerlens.memory.long_term import CaseMemory, scenario_case_id  # noqa: E4
 from ledgerlens.observability.trace_event import InMemoryTraceSink, TraceEventStream  # noqa: E402
 from ledgerlens.offline import ScriptedChatModel  # noqa: E402
 from ledgerlens.replay.bundle import bundle_digest, write_bundle  # noqa: E402
+from ledgerlens.replay.capture import (  # noqa: E402  (the path is set up before the import)
+    CaptureError,
+    account_that_holds,
+    code_sha,
+    dirty_paths,
+    ensure_clean_tree,
+    planted_question,
+    sha256_of,
+)
 from ledgerlens.run_context import POLICY_VERSION, RunContext  # noqa: E402
 from ledgerlens.sim.config import SimConfig  # noqa: E402
 from ledgerlens.sim.pipeline import build_ledger  # noqa: E402
 from ledgerlens.tools.fx import FxClient  # noqa: E402
+
+__all__ = [
+    "CAPTURE_KIND",
+    "MODEL_PROFILE",
+    "capture",
+    "code_sha",
+    "dirty_paths",
+    "ensure_clean_tree",
+    "main",
+]
 
 # The kind of the capture and the model behind it: the capture runs the scripted model, never a real one.
 CAPTURE_KIND = "scripted_fixture"
@@ -66,204 +81,6 @@ MODEL_PROFILE = "scripted-fixture"
 SCENARIO_FX_FAULT = {"S11": True}
 
 
-class GitError(Exception):
-    """Git cannot answer in the repository."""
-
-
-def _git(root: Path, *args: str) -> str:
-    """The output of a git command in the repository.
-
-    The hooks of the repository are never touched and no flag bypasses them: the capture only reads. The output
-    comes back as it is, because the status of the working tree starts with the column of the status.
-    """
-    try:
-        done = subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True, text=True)
-    except (OSError, subprocess.CalledProcessError) as error:
-        raise GitError(f"git {args[0]} cannot answer in {root}: {error}") from error
-    return done.stdout
-
-
-def code_sha(root: Path) -> str:
-    """The commit of the repository, the one the recording names as the provenance of the code.
-
-    A capture that cannot state a commit refuses to run, because a recording that names a commit it does not know is
-    a claim that cannot be checked.
-    """
-    try:
-        commit = _git(root, "rev-parse", "HEAD").strip()
-    except GitError as error:
-        raise SystemExit(
-            f"the commit of the repository cannot be read, so the capture refuses to run: {error}"
-        ) from error
-    if not commit:
-        raise SystemExit("the commit of the repository cannot be read, so the capture refuses to run")
-    return commit
-
-
-def _status_entries(text: str) -> list[tuple[str, str]]:
-    """The status and the path of every line of `git status --porcelain`."""
-    entries: list[tuple[str, str]] = []
-    for line in text.splitlines():
-        if not line.strip():
-            continue
-        status, path = line[:2], line[3:]
-        if " -> " in path:
-            # A rename carries the old path and the new one, and the new one is the path on the disk.
-            path = path.split(" -> ", 1)[1]
-        entries.append((status.strip(), path.strip().strip('"')))
-    return entries
-
-
-def _relative_to_root(path: Path | None, root: Path) -> str | None:
-    """The path of a folder relative to the root of the repository, when it is inside it."""
-    if path is None:
-        return None
-    try:
-        return path.resolve().relative_to(root.resolve()).as_posix()
-    except ValueError:
-        return None
-
-
-def _covered_by_output(path: str, out_relative: str) -> bool:
-    """Whether a path of the status is the output folder of the capture, or a part of it."""
-    clean = path.rstrip("/")
-    return clean == out_relative or clean.startswith(out_relative + "/")
-
-
-def dirty_paths(root: Path, out: Path | None = None) -> list[str]:
-    """The paths of the tracked tree that are not clean, without the output folder of the capture.
-
-    Only the tracked tree counts: the repository keeps untracked material on purpose, such as the paused frontend and
-    the local notes, and the commit the recording names is the commit of the tracked code. The output folder is left
-    out because the bundle of a previous capture is the output of the capture, not a change of the code, and the
-    canonical bundle is tracked, so it shows up as a modification.
-    """
-    try:
-        text = _git(root, "status", "--porcelain", "--untracked-files=no")
-    except GitError as error:
-        raise SystemExit(
-            "the state of the working tree cannot be read, so the capture cannot check that the recording names the "
-            f"commit it was made from, and it refuses to run: {error}"
-        ) from error
-    out_relative = _relative_to_root(out, root)
-    dirty: list[str] = []
-    for _status, path in _status_entries(text):
-        if out_relative is not None and _covered_by_output(path, out_relative):
-            continue
-        dirty.append(path)
-    return dirty
-
-
-def ensure_clean_tree(root: Path, out: Path | None = None) -> None:
-    """The refusal of a dirty tracked tree, because the recording names a commit and the claim has to be true.
-
-    Only the tracked tree counts: an untracked file or folder is material the repository keeps on purpose, and it is
-    not part of the commit the recording names.
-    """
-    dirty = dirty_paths(root, out)
-    if dirty:
-        raise SystemExit(
-            "the tracked tree is dirty, and the recording names the commit it was made from, so the claim would be "
-            f"a lie. Commit or drop the changes and capture again: {', '.join(dirty[:5])}"
-        )
-
-
-def _sha256(path: Path) -> str:
-    """The hash of the file, to identify the ledger the execution read."""
-    return hashlib.sha256(path.read_bytes()).hexdigest()
-
-
-def _planted(manifest: dict, scenario_id: str) -> tuple[str, str | None]:
-    """The planted question of the scenario and the account of the run, when the scenario names one.
-
-    Why the account may be absent: the question of the scenario S04 is about a transaction that is not in the
-    ledger, so the scenario names no customer and no merchant. The run still needs an account to sign in, because
-    the agent reads the ledger of one account, and the caller resolves the account from the ledger when it is
-    absent.
-
-    Why the planted list is not the only source of the question: the scenario S11 asks the question of the scenario
-    S01 and is not a complaint of its own on the page, so the capture reads the question of the dataset. The bundle
-    it writes is the published proof that the same question, answered with the reference source in fault, is not the
-    answer the source gives when it works.
-    """
-    item = next((entry for entry in demo.planted(manifest) if entry.scenario == scenario_id), None)
-    scenario = demo.scenario_of(manifest, scenario_id)
-    question = item.question if item is not None else str(scenario["questions"][0])
-    accounts = demo.accounts_of(manifest, scenario_id)
-    return question, accounts[0] if accounts else None
-
-
-def _first_customer(ledger: Path) -> str:
-    """The first customer of the ledger, by id, for a scenario that names no account.
-
-    Why the ledger decides and not the manifest: the accounts of a run are the accounts of the ledger the run
-    reads, and the manifest of the scenarios does not list them. The customer is the one that can sign in, because
-    the ledger of a merchant holds the payouts and the ledger of a customer holds the payments.
-    """
-    connection = sqlite3.connect(f"file:{ledger}?mode=ro", uri=True)
-    try:
-        row = connection.execute("SELECT id FROM customers ORDER BY id LIMIT 1").fetchone()
-    finally:
-        connection.close()
-    if row is None:
-        raise SystemExit("the ledger holds no customer, so the capture has no account to sign in")
-    return str(row[0])
-
-
-# The table of the ledger that holds each kind of id, by the prefix of the id.
-_TABLE_OF_PREFIX = {"TX": "transactions", "R": "refunds", "CB": "chargebacks", "ST": "settlements"}
-
-
-def _visible_records(account_db: Path, ids: Sequence[str]) -> int:
-    """How many of the ids of the scenario the ledger of the account shows.
-
-    Why it matters: the ledger of a customer holds the payments of that customer and no settlement, and the ledger
-    of a merchant holds the payouts and no payment of another merchant. A recording that signs in as the wrong kind
-    of account reads nothing, and then the answer of the recording is a claim with no evidence behind it.
-    """
-    connection = sqlite3.connect(f"file:{account_db}?mode=ro", uri=True)
-    try:
-        seen = 0
-        for identifier in ids:
-            table = _TABLE_OF_PREFIX.get(identifier.split("-", 1)[0])
-            if table is None:
-                continue
-            row = connection.execute(f"SELECT 1 FROM {table} WHERE id = ?", (identifier,)).fetchone()
-            seen += 1 if row is not None else 0
-        return seen
-    finally:
-        connection.close()
-
-
-def _account_that_holds(manifest: dict, scenario_id: str, base: Path, work_root: Path) -> str:
-    """The account of the scenario whose ledger shows the records the question is about.
-
-    Why the account is chosen by what the ledger shows and not by the order of the manifest: the scenario S08 names
-    a customer and a merchant, and the question is about the payout of the merchant. Signing in as the customer
-    reads nothing, and the recording would publish an answer with no evidence behind it.
-
-    Why the fallback exists: the scenario S04 is about an identifier that is not in the ledger, so no account shows
-    anything, and the run still needs an account to sign in. The first customer of the ledger is used and the note
-    of the bundle says which account it was.
-    """
-    scenario = demo.scenario_of(manifest, scenario_id)
-    ids = [
-        identifier
-        for key in ("transaction_ids", "refund_ids", "chargeback_ids", "settlement_ids")
-        for identifier in scenario["ids"].get(key, [])
-    ]
-    best_account = ""
-    best_seen = -1
-    for index, account_id in enumerate(demo.accounts_of(manifest, scenario_id)):
-        candidate = scoped_ledger(base, account_id, work_root / f"candidate-{index}.db")
-        seen = _visible_records(candidate, ids)
-        if seen > best_seen:
-            best_account, best_seen = account_id, seen
-    if best_seen > 0:
-        return best_account
-    return _first_customer(base)
-
-
 def capture(scenario_id: str, out: Path, root: Path = ROOT) -> Path:
     """Runs the planted scenario in deterministic mode and writes the bundle.
 
@@ -272,17 +89,20 @@ def capture(scenario_id: str, out: Path, root: Path = ROOT) -> Path:
     reader needs comes first. Only the tracked tree counts: the repository keeps untracked material on purpose, and
     the commit named is the commit of the tracked code.
     """
-    ensure_clean_tree(root, out)
-    commit = code_sha(root)
+    try:
+        ensure_clean_tree(root, out)
+        commit = code_sha(root)
+    except CaptureError as error:
+        raise SystemExit(str(error)) from error
 
     manifest = demo.load_manifest()
-    question, account_id = _planted(manifest, scenario_id)
+    question, account_id = planted_question(manifest, scenario_id)
 
     with tempfile.TemporaryDirectory(prefix="ledgerlens_replay_") as work:
         work_root = Path(work)
         base = work_root / "ledger.db"
         build_ledger(SimConfig(source="sample"), base).conn.close()
-        account_id = _account_that_holds(manifest, scenario_id, base, work_root)
+        account_id = account_that_holds(manifest, scenario_id, base, work_root)
         account_db = scoped_ledger(base, account_id, work_root / "account.db")
 
         model, query_model, triage_model = (ScriptedChatModel(script=[]) for _ in range(3))
@@ -295,7 +115,7 @@ def capture(scenario_id: str, out: Path, root: Path = ROOT) -> Path:
             session_id=f"replay-{scenario_id.lower()}",
             mode="deterministic_sandbox",
             account_id=account_id,
-            snapshot_sha256=_sha256(account_db),
+            snapshot_sha256=sha256_of(account_db),
             memory_dir=work_root / "memory",
         )
         memory = CaseMemory(context.resolve_memory_dir(), case_id=scenario_case_id(scenario_id))
@@ -325,7 +145,7 @@ def capture(scenario_id: str, out: Path, root: Path = ROOT) -> Path:
             f"replay-{scenario_id.lower()}",
             sink,
             mode="deterministic_sandbox",
-            snapshot_sha256=_sha256(account_db),
+            snapshot_sha256=sha256_of(account_db),
         )
         investigate(agent, question, thread_id=f"replay-{scenario_id.lower()}", on_event=stream.on_span)
         events = sink.read_from(f"replay-{scenario_id.lower()}", after_seq=0, limit=10000)
@@ -334,7 +154,7 @@ def capture(scenario_id: str, out: Path, root: Path = ROOT) -> Path:
             out,
             events,
             scenario=scenario_id,
-            snapshot_sha256=_sha256(account_db),
+            snapshot_sha256=sha256_of(account_db),
             note=(
                 f"Deterministic execution of the scenario {scenario_id}, account {account_id}, with the scripted model "
                 "and the recorded exchange rate. This is not a live execution and it calls no model."

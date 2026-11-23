@@ -51,6 +51,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("bundle", nargs="?", default=str(DEFAULT_BUNDLE), help="folder of the bundle to export")
     parser.add_argument("--out", default=str(DEFAULT_OUT), help="folder the artifacts go to (site/replay)")
     parser.add_argument(
+        "--mode",
+        default=None,
+        help="the mode of the catalog being written (deterministic_sandbox or live_agent); with it, a bundle of "
+        "another mode is refused (ADR-075)",
+    )
+    parser.add_argument(
         "--check",
         action="store_true",
         help="compares what would be written with what is on the disk, and writes nothing",
@@ -59,7 +65,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     try:
         bundles = discover_bundles(Path(args.bundle))
-        files = build_export(bundles)
+        files = build_export(bundles, expected_mode=args.mode)
     except ExportError as exc:
         print(f"export_replay_site: {exc}", file=sys.stderr)
         return 1

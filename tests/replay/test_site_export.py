@@ -406,7 +406,7 @@ def test_a_bundle_with_an_event_that_is_not_json_is_refused(tmp_path: Path):
 
 
 def test_a_bundle_that_declares_another_mode_is_refused_and_never_relabelled(tmp_path: Path):
-    """A bundle that is not a deterministic sandbox is refused, and the export does not call it one."""
+    """A bundle that is not a recording of a catalog of the site is refused, and the export does not call it one."""
     bundle = _copy_bundle(tmp_path)
     events = _events(bundle)
     for event in events:
@@ -420,6 +420,82 @@ def test_a_bundle_that_declares_another_mode_is_refused_and_never_relabelled(tmp
 
     with pytest.raises(ExportError):
         build_export([bundle])
+
+
+def _as_a_real_recording(bundle: Path) -> None:
+    """Turns a copy of the canonical bundle into a recording of a real model, and reseals it.
+
+    The events carry the mode `live_agent` and the manifest declares the kind `real_model_recorded`, which is the
+    combination a recording of a real model carries (ADR-075).
+    """
+    events = _events(bundle)
+    for event in events:
+        event["mode"] = "live_agent"
+    _rewrite_events(bundle, events)
+    manifest = _bundle_manifest(bundle)
+    manifest["mode"] = "live_agent"
+    manifest["capture_kind"] = "real_model_recorded"
+    (bundle / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+
+
+def test_the_export_publishes_the_catalog_of_a_recording_of_a_real_model(tmp_path: Path):
+    """The second catalog is published with the same shape, and its provenance says which mode it is.
+
+    The mode of the catalog travels in the manifest and in the provenance, so the visitor of the page reads the
+    label of the recording from the artifact and not from a name of a folder (ADR-075).
+    """
+    bundle = _copy_scenario(tmp_path)
+    _as_a_real_recording(bundle)
+    _frozen_ledger(tmp_path, json.loads(FROZEN_LEDGER.read_text(encoding="utf-8")))
+
+    artifacts = build_export([bundle])
+    provenance = json.loads(artifacts["s01/provenance.json"].decode("utf-8"))
+    manifest = json.loads(artifacts["s01/manifest.json"].decode("utf-8"))
+
+    assert manifest["mode"] == "live_agent"
+    assert provenance["mode"] == "live_agent"
+    assert provenance["capture_kind"] == "real_model_recorded"
+
+
+def test_the_export_refuses_a_bundle_whose_capture_kind_does_not_match_its_mode(tmp_path: Path):
+    """A live mode with the kind of a fixture is refused, because the two together are a contradiction."""
+    bundle = _copy_scenario(tmp_path)
+    _frozen_ledger(tmp_path, json.loads(FROZEN_LEDGER.read_text(encoding="utf-8")))
+    events = _events(bundle)
+    for event in events:
+        event["mode"] = "live_agent"
+    _rewrite_events(bundle, events)
+    manifest = _bundle_manifest(bundle)
+    manifest["mode"] = "live_agent"
+    (bundle / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+
+    with pytest.raises(ExportError):
+        build_export([bundle])
+
+
+def test_the_export_refuses_a_set_that_mixes_two_modes(tmp_path: Path):
+    """A catalog is one mode: a folder with two of them has no honest name."""
+    first = _copy_bundle(tmp_path, "first")
+    second = _copy_bundle(tmp_path, "second")
+    _frozen_ledger(tmp_path, json.loads(FROZEN_LEDGER.read_text(encoding="utf-8")))
+    _as_a_real_recording(second)
+
+    with pytest.raises(ExportError):
+        build_export([first, second])
+
+
+def test_the_export_refuses_a_bundle_of_another_mode_when_the_caller_names_the_catalog(tmp_path: Path):
+    """A recording of a real model cannot be written into the folder of the sandbox by a mistake of the command."""
+    bundle = _copy_scenario(tmp_path)
+    _frozen_ledger(tmp_path, json.loads(FROZEN_LEDGER.read_text(encoding="utf-8")))
+    _as_a_real_recording(bundle)
+
+    with pytest.raises(ExportError):
+        build_export([bundle], expected_mode="deterministic_sandbox")
 
 
 def test_a_bundle_whose_scenario_is_not_in_the_shape_of_the_contract_is_refused(

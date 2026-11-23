@@ -239,6 +239,18 @@ def _with_provider(name: str) -> str:
     return f"openai:{name}"
 
 
+def model_profile(settings: Settings | None = None) -> str:
+    """The name of the model with the provider that serves it, as the provenance of a recording states it.
+
+    Why it exists: the recording of a real model names the model that produced it, and the name in the environment
+    carries no provider when the provider is the one that everybody uses. The profile is empty when the environment
+    names no model, because a profile that is invented is worse than a profile that is absent.
+    """
+    settings = settings or get_settings()
+    name = (settings.model or "").strip()
+    return _with_provider(name) if name else ""
+
+
 def get_embeddings(settings: Settings | None = None) -> Embeddings:
     """The embeddings for the current mode: fastembed offline, `LEDGERLENS_EMBEDDINGS` online."""
     settings = settings or get_settings()
