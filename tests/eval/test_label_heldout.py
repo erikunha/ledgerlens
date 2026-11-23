@@ -298,6 +298,33 @@ def test_the_report_writes_the_note_of_the_disagreement_into_the_labelled_set(to
     assert "disagrees with the recipe" in note
 
 
+def test_the_note_of_a_disagreement_names_neither_the_expected_label_nor_the_fact_that_differs(
+    tool, tmp_path: Path
+) -> None:
+    """The note that goes into the labelled set says that the reading and the recipe disagreed, and names no label.
+
+    Why it matters: the labelled set is published, and the expected label of a case is the answer key of the
+    generator that wrote the set. The fact that differs is the reason the recipe expected the label it expected,
+    so a note that names it hands the reader the key of the case as well.
+    """
+    root = _tree(
+        tmp_path,
+        [_case(1, "The payment TX-9001 was captured.", [_envelope("TX-9001", "captured")])],
+        [_recipe(1, "contradicted")],
+    )
+    _session(tool, root, ["supported", "the ledger says the payment was captured"])
+
+    path = tool.build_labelled_set(root)
+    records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    note = records[0]["note"]
+
+    assert "contradicted" not in note, f"the note names the label the recipe expected: {note}"
+    assert FACT_MARKER not in note, f"the note names the fact that differs: {note}"
+    assert "the recipe expected a different label" in note, (
+        f"the note does not say that the recipe expected another label: {note}"
+    )
+
+
 # ---- the build ---------------------------------------------------------------------------------------
 
 

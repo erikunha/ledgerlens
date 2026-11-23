@@ -625,15 +625,23 @@ def _disagreements(
 
 
 def _disagreement_sentence(disagreement: Disagreement) -> str:
-    """The sentence that puts a disagreement on the record."""
-    fact = (
-        f" (the fact that differs: {disagreement.differing_fact})"
-        if disagreement.differing_fact
-        else ""
-    )
+    """The sentence that puts a disagreement on the record without naming the answer key.
+
+    Why it never names the expected label: the sentence goes into the note of the labelled set, and the labelled set
+    is published. The expected label of a case is the answer key of the generator that wrote the set, and a published
+    key ends the reservation of the set for every change that comes after it. The sentence says that the recipe
+    expected another label and stops there.
+
+    Why it never names the fact that differs: the fact that differs between the recipe and the reading is the reason
+    the recipe expected the label it expected, so a reader who has it can work the expected label out of it.
+
+    Why the operator still sees the whole thing: the mode `report` of the command line prints the expected label and
+    the fact that differs, because that view runs on the machine of the reader of the recipes and never leaves it.
+    The file that leaves the machine does not carry them.
+    """
     return (
         f"The reading disagrees with the recipe of the case: the reader answered {disagreement.reader_label} and "
-        f"the recipe expected {disagreement.expected_label}{fact}."
+        f"the recipe expected a different label."
     )
 
 
@@ -655,6 +663,11 @@ def report_session(
     Why it exists: the count of the disagreements is a measurement this repository has never had, and every instance
     of it has to be on the record. The report prints the count and writes the note of every disagreement into the
     labelled set, so the file that the manifest will declare carries the record.
+
+    Why this view names the expected label and the fact that differs and the file does not: this view runs on the
+    machine of the reader of the recipes, it is never published, and the operator has to be able to see what the
+    recipe expected and why. The file that leaves the machine carries the count and the label of the reading and
+    nothing of the key.
     """
     cases = load_cases(root)
     labels = load_labels(root, override)
@@ -692,6 +705,11 @@ def build_labelled_set(
     Why it exists: the file is what the manifest of the datasets will declare with the role `held_out`. Every line
     carries the label the reader gave, the note of the reader, the origin that says the reading was a blind one, and
     the evidence as it was read. The recipe never overwrites the label of the reader.
+
+    Why the note of a case never names the expected label: the file is published, and the expected label of a case is
+    the answer key of the generator that wrote the set. A published key ends the reservation of the set for every
+    change that comes after it, so the note of a case where the reading and the recipe disagree says that they
+    disagree and names neither the label the recipe expected nor the fact that differs.
     """
     cases = load_cases(root)
     labels = load_labels(root, override)

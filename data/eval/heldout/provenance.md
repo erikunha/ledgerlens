@@ -33,7 +33,7 @@ commit that first carried each one, so a reader can check that the labels did no
 | `data/eval/heldout/labels_reader_a.jsonl` | `222d8411fa596ddf139e33d897b899c86d8692002e1f18e80a6173c9854a19ba` | `0c86a06` |
 | `data/eval/heldout/labels_reader_b.jsonl` | `3153de3ffad5af26c0ff6fb0d6d4bf6f3b04de13f31947133b272aac34da1149` | `0c86a06` |
 | `data/eval/heldout/labels_adjudicated.jsonl` | `09113557a540a153357cf405f68b5846e87c94cca28b8beadb9057bbc73764e2` | `0c86a06` |
-| `data/eval/verification_heldout.jsonl` | `e8dbcdfbc3f75eafbd3cd3c6d88da5641175cec93b4a48109073c80438924212` | `0c86a06` |
+| `data/eval/verification_heldout.jsonl` | `fa961bc36fad935377fef88a20dad1cc84b175151982dab500909f9d07fca7c9` | `0c86a06` |
 
 A reader recomputes a digest with `shasum -a 256 data/eval/heldout/labels_reader_a.jsonl` and compares it. The
 commit of the last column is the one that first carried the file, and a reader finds it with `git log --diff-filter=A

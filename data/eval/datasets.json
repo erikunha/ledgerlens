@@ -44,7 +44,7 @@
       "path": "data/eval/verification_heldout.jsonl",
       "records_count": 48,
       "scenario_seed": 7301,
-      "sha256": "e8dbcdfbc3f75eafbd3cd3c6d88da5641175cec93b4a48109073c80438924212",
+      "sha256": "fa961bc36fad935377fef88a20dad1cc84b175151982dab500909f9d07fca7c9",
       "source": "The cases are written by the generator ledgerlens/eval/heldout.py over the synthetic ledger of the seed 7301, in six templates of eight instances each, and their labels are written by the reading session of scripts/label_heldout.py. The file is read by scripts/measure_heldout.py and by ledgerlens/eval/heldout_reader.py.",
       "split_role": "held_out"
     },

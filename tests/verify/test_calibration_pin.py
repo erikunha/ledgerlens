@@ -14,10 +14,25 @@ say the calibration was measured over a file that is not there anymore. The coor
 from __future__ import annotations
 
 import hashlib
+import importlib.util
+import json
+from pathlib import Path
 
 from ledgerlens.eval.manifest import MANIFEST_PATH, load_manifests
 from ledgerlens.verify.checks import load_thresholds
 from ledgerlens.verify.nli import MODEL_ID
+
+ROOT = Path(__file__).resolve().parents[2]
+SCRIPT = ROOT / "scripts" / "pin_calibration.py"
+
+
+def _script() -> object:
+    """The module of the script of the pin, loaded from the file of the repository."""
+    spec = importlib.util.spec_from_file_location("pin_calibration", SCRIPT)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def _calibration() -> dict:
@@ -76,3 +91,63 @@ def test_the_pin_names_the_model_and_the_sweep_that_chose_the_thresholds() -> No
     assert sweep["file"] == "docs/decisions/ADR-007-nli-verification.md"
     assert sweep["section"]
     assert "scripts/sweep_nli_thresholds.py" in sweep["command"]
+
+
+def test_the_pin_writes_the_revision_that_the_file_already_records(tmp_path: Path) -> None:
+    """The revision the pin writes is the one the file records, because the file is the only source of it.
+
+    Why it matters: the loader of the model asks for the revision that the file records, so a pin written with
+    another revision would make the loader ask for the weights of one day while the file claims the calibration of
+    the weights of another day. A second copy of the value in the script is a value that can drift away from the one
+    the loader asks for, and the drift is invisible until a measurement is not reproducible (ADR-069).
+    """
+    module = _script()
+    copy = tmp_path / "thresholds.json"
+    copy.write_text((ROOT / "ledgerlens" / "verify" / "thresholds.json").read_text(encoding="utf-8"), encoding="utf-8")
+    revision = json.loads(copy.read_text(encoding="utf-8"))["calibration"]["nli_model"]["revision"]
+
+    code = module.main(["--root", str(ROOT), "--thresholds", str(copy)])
+
+    assert code == 0
+    assert json.loads(copy.read_text(encoding="utf-8"))["calibration"]["nli_model"]["revision"] == revision
+    assert not hasattr(module, "NLI_REVISION"), (
+        "the script holds a copy of the revision of the weights, and a second copy is a value that can drift away "
+        "from the one the loader asks for."
+    )
+
+
+def test_the_pin_refuses_when_no_revision_is_known(tmp_path: Path) -> None:
+    """A file that records no revision and no argument is a refusal, and nothing is written.
+
+    Why it matters: the commit of the weights that the calibration was measured with is not a value the script may
+    invent. A pin written with a revision nobody gave would claim a calibration over weights that were never used
+    (ADR-069).
+    """
+    module = _script()
+    copy = tmp_path / "thresholds.json"
+    text = (ROOT / "ledgerlens" / "verify" / "thresholds.json").read_text(encoding="utf-8")
+    raw = json.loads(text)
+    del raw["calibration"]["nli_model"]["revision"]
+    copy.write_text(json.dumps(raw, indent=2), encoding="utf-8")
+    before = copy.read_text(encoding="utf-8")
+
+    code = module.main(["--root", str(ROOT), "--thresholds", str(copy)])
+
+    assert code == 1
+    assert copy.read_text(encoding="utf-8") == before, "the file was written even though the revision was unknown."
+
+
+def test_the_pin_writes_the_revision_that_the_argument_gives(tmp_path: Path) -> None:
+    """The argument `--nli-revision` writes the revision that the caller gives, over the one of the file.
+
+    Why it matters: the argument is how the coordinator pins the weights of a calibration that was measured over
+    another revision, without a second copy of the value in the script (ADR-069).
+    """
+    module = _script()
+    copy = tmp_path / "thresholds.json"
+    copy.write_text((ROOT / "ledgerlens" / "verify" / "thresholds.json").read_text(encoding="utf-8"), encoding="utf-8")
+
+    code = module.main(["--root", str(ROOT), "--thresholds", str(copy), "--nli-revision", "0" * 40])
+
+    assert code == 0
+    assert json.loads(copy.read_text(encoding="utf-8"))["calibration"]["nli_model"]["revision"] == "0" * 40

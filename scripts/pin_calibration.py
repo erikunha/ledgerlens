@@ -56,17 +56,29 @@ from ledgerlens.verify.nli import MODEL_ID  # noqa: E402  (the path is set up be
 
 __all__ = ["main"]
 
-# The commit of the weights of the model on the Hugging Face hub. The model id names the repository and not the
-# weights, and a repository moves: the revision is what pins the weights the sweep was measured with. It is the
-# commit of the branch `main` of the repository, read on 2026-11-22, and it is the same one the local cache of the
-# model holds.
-NLI_REVISION = "6f5cf0a2b59cabb106aca4c287eed12e357e90eb"
-
 # The sweep of ADR-007 that chose the thresholds, and the command that recomputes it.
 SWEEP_FILE = "docs/decisions/ADR-007-nli-verification.md"
 SWEEP_SECTION = "Thresholds calibrated with live sentences"
 SWEEP_SCRIPT = "scripts/sweep_nli_thresholds.py"
 SWEEP_COMMAND = f"uv run python {SWEEP_SCRIPT}"
+
+
+def _revision_in(text: str) -> str | None:
+    """The commit of the weights that the file of the thresholds already records, or None.
+
+    Why the file and not a constant of this script: the loader of the model asks for the revision that this file
+    records, and a second copy of the value here would be a value that could drift away from the one the loader
+    asks for. A pin written with a stale revision would make the loader ask for the old weights while the file
+    claims the calibration of the new ones (ADR-069).
+    """
+    try:
+        raw = json.loads(text)
+    except json.JSONDecodeError:
+        return None
+    calibration = raw.get("calibration") if isinstance(raw, dict) else None
+    pinned = calibration.get("nli_model") if isinstance(calibration, dict) else None
+    revision = pinned.get("revision") if isinstance(pinned, dict) else None
+    return revision if isinstance(revision, str) and revision.strip() else None
 
 
 # --- the JSON text, edited and not rewritten ---------------------------------------------------------------
@@ -216,7 +228,7 @@ def _set_key(text: str, key: str, value: Any) -> str:
 # --- the pin ----------------------------------------------------------------------------------------------
 
 
-def _pin(manifest_path: Path, manifests: Sequence[Any], root: Path) -> dict[str, Any]:
+def _pin(manifest_path: Path, manifests: Sequence[Any], root: Path, revision: str) -> dict[str, Any]:
     """The pin of the calibration, computed from the disk.
 
     Why it exists: the pin is what the calibration was measured over, and the only honest source of it is the
@@ -237,7 +249,7 @@ def _pin(manifest_path: Path, manifests: Sequence[Any], root: Path) -> dict[str,
     return {
         "tuning_manifest_sha256": digest,
         "tuning_datasets": sorted(entry.dataset_id for entry in manifests if entry.split_role == TUNING_ROLE),
-        "nli_model": {"model": MODEL_ID, "revision": NLI_REVISION},
+        "nli_model": {"model": MODEL_ID, "revision": revision},
         "sweep_log": {
             "file": SWEEP_FILE,
             "section": SWEEP_SECTION,
@@ -275,6 +287,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="the manifest file to read. The default is the one of the root",
     )
     parser.add_argument("--thresholds", default=str(THRESHOLDS_PATH), help="the file of the thresholds to write")
+    parser.add_argument(
+        "--nli-revision",
+        default=None,
+        help=(
+            "the commit of the weights of the model that the calibration was measured with. The default is the one "
+            "the file of the thresholds already records, and the file is the single source of it"
+        ),
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -305,8 +325,18 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"pin_calibration: the thresholds cannot be read: {safe_text(exc)}", file=sys.stderr)
         return 1
 
+    revision = args.nli_revision or _revision_in(original)
+    if not revision:
+        print(
+            "pin_calibration: the file of the thresholds records no revision of the weights of the model, and the "
+            "argument --nli-revision was not given, so the commit that the calibration was measured with is unknown. "
+            "Nothing was written.",
+            file=sys.stderr,
+        )
+        return 1
+
     try:
-        pin = _pin(manifest_path, manifests, root)
+        pin = _pin(manifest_path, manifests, root, revision)
     except TuningRefusal as exc:
         print(f"pin_calibration: {safe_text(exc)}", file=sys.stderr)
         return 1
