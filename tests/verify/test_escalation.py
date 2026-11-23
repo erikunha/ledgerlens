@@ -18,8 +18,9 @@ from typing import Any
 import pytest
 
 from ledgerlens.schemas import Claim, Coherence, Evidence, InvestigationResult, ToolCallRecord
+from ledgerlens.tools.fx import FxClient
 from ledgerlens.verify import verify_result
-from ledgerlens.verify.escalation import apply_escalation
+from ledgerlens.verify.escalation import apply_escalation, escalation_reasons
 from ledgerlens.verify.nli import StubNli
 
 NOW = datetime(2026, 11, 8, tzinfo=UTC)
@@ -598,11 +599,13 @@ def fx_call(
     ok: bool,
     code: str | None = "UPSTREAM_UNAVAILABLE",
     day: str = "2026-10-20",
+    from_currency: str = "EUR",
+    to_currency: str = "BRL",
 ) -> ToolCallRecord:
     return ToolCallRecord(
         step=step,
         tool="get_reference_fx",
-        input={"from_currency": "EUR", "to_currency": "BRL", "date": day},
+        input={"from_currency": from_currency, "to_currency": to_currency, "date": day},
         ok=ok,
         error_code=None if ok else code,
         duration_ms=1,
@@ -664,3 +667,75 @@ def test_the_review_reasons_the_page_shows_come_without_the_escalation_prefix() 
     assert shown == [m.removeprefix(ESCALATION_PREFIX) for m in escalations]
     assert all(DEADLINE_POLICY in reason or "CB-1" in reason for reason in shown)
     assert demo.verification_summary(out)["reasons"] == shown
+
+
+# ---- a currency the source does not publish ----------------------------------------------------------
+
+MISSING_DATA_POLICY = "policy:escalation-and-review#missing-data"
+UNSUPPORTED_PAIR = "EUR/ARS 2026-10-27"  # the pair of S10: the source does not publish ARS
+
+
+def scenario_s10(amount_minor: int = 2500000) -> InvestigationResult:
+    """S10 as it ran: the row of TX-2099 in ARS and the reference rate the source does not publish."""
+    row = {"id": "TX-2099", "amount_minor": amount_minor, "currency": "ARS"}
+    return result_with(ev("sql:1", table(row))).model_copy(
+        update={
+            "tool_trace": [
+                fx_call(1, ok=False, code="UNSUPPORTED_CURRENCY", to_currency="ARS", day="2026-10-27")
+            ],
+            "answer": "TX-2099 is a payment of ARS 25000.00. [sql:1]",
+        }
+    )
+
+
+def test_a_currency_the_source_does_not_publish_requires_review_and_names_the_pair_and_the_policy() -> None:
+    """The catalogue sells S10 as the failure of the currency: the code has to escalate it as such."""
+    out = apply_escalation(scenario_s10(), as_of=date(2026, 11, 2))
+    assert out.requires_human_review is True and out.recommended_action == "escalate_to_human"
+    assert any(UNSUPPORTED_PAIR in item and MISSING_DATA_POLICY in item for item in out.missing_information)
+
+
+def test_the_currency_failure_alone_escalates_when_the_amount_is_below_the_limit() -> None:
+    """Without the rule, a small case went to no one: the failure of the currency was not a reason at all."""
+    out = apply_escalation(scenario_s10(amount_minor=100000), as_of=date(2026, 11, 2))  # 1,000.00
+    reasons = escalation_reasons(out, as_of=date(2026, 11, 2))
+    assert out.requires_human_review is True
+    assert len(reasons) == 1
+    assert UNSUPPORTED_PAIR in reasons[0] and MISSING_DATA_POLICY in reasons[0]
+    assert not any("amount above" in reason for reason in reasons)
+
+
+def test_the_escalation_of_s10_names_the_currency_and_not_only_the_amount() -> None:
+    """The amount rule stays, and the currency rule joins it: the reader sees both."""
+    reasons = escalation_reasons(scenario_s10(), as_of=date(2026, 11, 2))
+    assert any("amount above 5000" in reason and AMOUNT_POLICY in reason for reason in reasons)
+    assert any(UNSUPPORTED_PAIR in reason and MISSING_DATA_POLICY in reason for reason in reasons)
+
+
+def test_a_pair_that_does_not_exist_and_is_obtained_later_is_not_missing() -> None:
+    calls = (
+        fx_call(1, ok=False, code="UNSUPPORTED_CURRENCY", to_currency="ARS", day="2026-10-27"),
+        fx_call(2, ok=True, to_currency="ARS", day="2026-10-27"),
+    )
+    out = apply_escalation(with_trace(*calls), as_of=date(2026, 11, 2))
+    assert out.requires_human_review is False
+    assert not any(UNSUPPORTED_PAIR in item for item in out.missing_information)
+
+
+def test_the_reason_of_a_rate_the_source_could_not_give_anchors_the_policy() -> None:
+    """S11: the reader has to see the rule that decided, and not only the symptom."""
+    out = apply_escalation(with_trace(fx_call(1, ok=False)), as_of=date(2026, 11, 2))
+    assert any(RATE in item and MISSING_DATA_POLICY in item for item in out.missing_information)
+
+
+def test_the_answer_does_not_blame_the_source_when_the_currency_is_not_published() -> None:
+    """The source answered: it does not publish the currency. Saying it was down would be a different fault."""
+    out = apply_escalation(scenario_s10(), as_of=date(2026, 11, 2))
+    assert "FX source was unavailable" not in out.answer
+
+
+def test_the_code_the_fx_tool_answers_with_is_the_code_the_rule_reads() -> None:
+    """The rule reads the trace, so the tool and the rule have to agree on the code of the failure."""
+    envelope = FxClient(mode="fixtures").get_reference_fx("EUR", "ARS", "2026-10-27")
+    assert envelope["ok"] is False
+    assert envelope["error"]["code"] == "UNSUPPORTED_CURRENCY"
