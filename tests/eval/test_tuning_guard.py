@@ -735,17 +735,52 @@ def test_the_projection_of_the_labelled_set_is_the_projection_of_the_join() -> N
     """The two are the same cases, and the comparison is only possible because of the projection.
 
     Why it matters: the labelled set carries seven keys per record and the join carries five, so the bytes and the
-    records of the two differ. The projection is the five keys that the sweep consumes, and under it the two files
+    records of the two differ. The projection is the four keys that the sweep consumes, and under it the two files
     hold the same cases.
     """
     labelled = [
-        {key: row[key] for key in ("claim", "evidence", "evidence_ids", "id", "label")}
+        {key: row[key] for key in ("claim", "evidence", "evidence_ids", "label")}
         for row in _rows(LABELLED_SET_PATH)
     ]
-    joined = _joined_cases(ADJUDICATED_PATH)
+    joined = [
+        {key: case[key] for key in ("claim", "evidence", "evidence_ids", "label")}
+        for case in _joined_cases(ADJUDICATED_PATH)
+    ]
 
     assert labelled == joined
     assert [case_digest(case) for case in labelled] == [case_digest(case) for case in joined]
+
+
+def test_a_rebuild_with_the_ids_renamed_is_refused(tmp_path: Path) -> None:
+    """The rebuild that renames the cases is refused too, because the id is not the content.
+
+    Why it matters: the id of a case is the key of the join and the label of the line in the sweep, and a rebuild
+    that renames the cases tunes over the same truth with the same effect on the number. A reservation that carried
+    the id in the digest would let that rebuild through with one field changed, and the published number would stop
+    being a measurement of the generalization.
+    """
+    cases = _joined_cases(ADJUDICATED_PATH)
+    renamed = [{**case, "id": "x-" + str(case["id"])} for case in cases]
+    relative = "data/eval/my_set.jsonl"
+    _write_cases(tmp_path / relative, renamed)
+    manifests = _declared_as_tuning(tmp_path, relative, renamed)
+
+    with pytest.raises(TuningRefusal) as caught:
+        require_tuning_path(relative, manifests, tmp_path)
+
+    assert "holds a case of the held out set" in str(caught.value)
+
+
+def test_the_digest_of_a_case_does_not_depend_on_the_id_of_the_case() -> None:
+    """The digest follows the content, so two cases that differ only in the id have the same digest.
+
+    Why it matters: it is the property that makes the door of the case a door and not a name check, and it is the
+    property that a rename of the cases cannot break.
+    """
+    case = _joined_cases(ADJUDICATED_PATH)[0]
+
+    assert case_digest(case) == case_digest({**case, "id": "x-" + str(case["id"])})
+    assert case_digest(case) != case_digest({**case, "label": "a label that is not the one of the case"})
 
 
 def test_the_sources_of_the_set_are_reserved_by_path_and_by_digest() -> None:

@@ -145,7 +145,7 @@ HELD_OUT_RESERVED_REPORT_PATHS: tuple[str, ...] = (
 # The digests of the sources of the set are here for the same reason: a copy of the cases is a copy of the half of
 # the set that carries the claims.
 HELD_OUT_RESERVED_DIGESTS: tuple[str, ...] = (
-    "e8dbcdfbc3f75eafbd3cd3c6d88da5641175cec93b4a48109073c80438924212",
+    "fa961bc36fad935377fef88a20dad1cc84b175151982dab500909f9d07fca7c9",
     "39720b7261521b911f1b6fb969afb8a59e97c963dc1933c1539a0b19de55ca30",
     "790425b3988984b9e6f00d1af3e7c06bcdc56de9c29973a22bbb6fc1ec89f844",
     "09113557a540a153357cf405f68b5846e87c94cca28b8beadb9057bbc73764e2",
@@ -154,7 +154,7 @@ HELD_OUT_RESERVED_DIGESTS: tuple[str, ...] = (
     # The digests of the published reports of the measurement: the JSON and the Markdown are byte reproducible, and
     # a copy of either of them under another name carries the predictions of the model over the cases of the set.
     "3afc037b88c9955143c2436ea2e3a1a3743b37faf80ad3dff0a1c0c03e536c75",
-    "d37dd5d97dd3b94a54e21e0e23c4fc01f471b6a927721714b32f1a126e630b35",
+    "262cffcac2a6830c8f95684610e47782f5a94532b40ecc78ecce332aff86cd68",
 )
 
 # The digests of the records of the same files, with the records of a JSONL file read and written back in the
@@ -162,7 +162,7 @@ HELD_OUT_RESERVED_DIGESTS: tuple[str, ...] = (
 # end has other bytes and the same records, and a reservation by the bytes alone stops at that newline. What the
 # sweep reads is the records, so the reservation follows the records.
 HELD_OUT_RESERVED_RECORD_DIGESTS: tuple[str, ...] = (
-    "7f7be52d636391bbb566c1d921b754fd255a4acb3ac056fd2d7d2601b24c547b",
+    "f12b2852679c6bb192dad5d0d602d2b95b25c968bec21fed3805a093b4225c8e",
     "5b736b9c7956bb15eb2505a6d1682972ba1d6ace3db945245beefcc650243c1e",
     "75c1ef83e60f4d1df5c4098b8c760be28051d8afb451026649ae6d9110ce6b97",
     "9231b64704cd568e319dec4edbeef26400c4eca2c425708ef4a8f01d86fcb6c0",
@@ -175,68 +175,73 @@ HELD_OUT_RESERVED_RECORD_DIGESTS: tuple[str, ...] = (
 # Why a case and not only a file: the set can be rebuilt from its own sources, and the rebuild has other bytes and
 # other records than the set, so the reservation by the bytes and by the records misses it. The cases do not
 # change: the rebuild carries the forty eight cases of the set, one by one, and a case that was altered leaves the
-# other forty seven in place. The projection is the five keys that the sweep reads, so a record that carries them
-# is the same case whatever else it carries and whatever name the file has.
+# other forty seven in place. The projection is the four keys that the sweep reads, so a record that carries them
+# is the same case whatever else it carries, whatever name the file has and whatever name the case has (ADR-069).
 #
 # Why fifty digests and not forty eight: the labels of the adjudication and the labels of the generator differ in
 # two of the forty eight cases, and the reservation holds the union of the two variants, so that a file built with
 # the labels of the key is refused as well.
 HELD_OUT_RESERVED_CASE_DIGESTS: tuple[str, ...] = (
-    "004150077a0d075b90f7192afa16e44fd5980485056e0883324fcebd95b6f945",
-    "0420d8dde939340665dc1b20b92441bf90ff8cb87f566b6b99ce1385a369433d",
-    "08266613309eb6ea2e38d50ad03e803f248f2716b62f9beb819a03eea0f6148b",
-    "147a4a10ac5d35374736df1dae5c0af46c3679cb5f7b4dc57e64c552e0a27dcf",
-    "1a506c2801692cbd33f12397d91dc70682893581be0d3aa89253c907d549c6d4",
-    "21952d9cde71b34c3a0154ec7b504ccb4f2e426cb8b13b58e0951f337c8e2de4",
-    "297be92899fcb3b561654d2cff9c8d39ee0c7a832f67737ffefa76229b35d005",
-    "38f7317f433cbdc03e1cf6d00e6d41efdacf6c280b15e5db48c2e3eb2230d7af",
-    "3ef3c1611cd9a29a2c46a0d6825471ee40c3f4d971e7adf8041489ef8e8a240e",
-    "4179d715fb2755327eb841e30120c16f3e8f3b3258b5c606da39d4e97674e3e4",
-    "4186d6929921bf33b31f7eff643fc1290875f05be08786530d59d54b75184167",
-    "4ea0a4226a976e6a36ebaaa5e6e54bb07537b0bc0eef7d4c2aec27b658fa3634",
-    "5477d5895fc8d4f8e09e5744fc0779b2b54486667d2cdaef5ac3299a0cca7322",
-    "57b793145c9aac1f997a69fc0614f86d35911209ec41c548bc5b1401e75b2867",
-    "5e6dbb20a07e92f511a08950d05f018da3d57e31f80d721014450f5271829e21",
-    "629458df551f9e4b6f53acaf74531fe1e0fdc2705605938b6b0dd78f85a08e84",
-    "74c6aaff2b2fcb4589ae8dc50ab55c4909cf8a82ffe15c55455a7bf55e874579",
-    "78303e1f4fa6ebde5c9b94192b79ec17be07f80e3f323156f1eb0b2a4c9e93a9",
-    "861c3ca5a72f1bafd9cf062d3f4e22c4dea4b25ea936af68e6b3384f1314d2bb",
-    "86778aefd7aeaf0ec7a97b04b1a06d9a752e3baac548c6ec3b472d68a6ee952a",
-    "8fbfe5da3cf6537504c5ea491b0c908e3de17acf90cb237fee51e824cd4da89b",
-    "93c1cc5005c96a747d38dedd7bd9ae3f175d1302fc1a1831f43f9b067e925fcc",
-    "98d789969c3077a922a7483aaa2e7abd83398bb427927525d17b85e0a6a4fb15",
-    "9a8fd09911bad8fca7b47702993d682b0eb8c2bd300ec420f64a2b550990043e",
-    "9c97fbe4881aacae31e7e90de00afabfd17de7322b03ae8e3c664b0528f1510f",
-    "a4d0e50ac59f930988485ab1e37e47c27bc0df98899c40748cf08d794aca8ebb",
-    "a6748abdc2b0a66cddb7a72fc42fbe45dcef1049ba85ca0b7ff96d1f4ab43287",
-    "a7dc6a25a9252d2f7d99c77731bb8a3e8ec1aaf5b6d47c4ea6aad9c6fbecba31",
-    "aad8825bb3320820957612f6b915b8a6603a8872a9a659e66ba0045bab09a776",
-    "ab46c5638fc5b2c4d2aae10b6cdea0df19631b26bac5c94aef7bf84f9c362cf9",
-    "b5620a83d8b38110193f74e974527095bb63806b1df1ae2b233abafc9cee1461",
-    "b862ff15e701d71d9979b8b903790e227bd65a956c0bd1cab108381fc19f26cd",
-    "bea7f99ff60bf1f8443bcc1b68f0ea6fb5f68ad8ed6a892b75c2c9c0add96036",
-    "c7190bf249cdbc1b0626cb44380402cbc052af6455526cae0f36102d3d6ee522",
-    "cd161ff4551d859c6a351aed16748c575b7a8ebf7f70652bc4716b6b2fb2ea47",
-    "cec76cd60227e8f0260622f24e63519e95f5fda3bbc9148b540859fe80f0153f",
-    "d5057fd704181a2bead5f5220eecc87eeca1219f197909c74feb26c6ad46f4bf",
-    "d676572f7320c99ccc5867e0b24fdbba3157779dc3a969e7b1cea091c2e5e568",
-    "d9fd79563b561a34dada661d2b3c0b59a6a9aae927d1b71ca6a964a2ca13679e",
-    "da5c7c0ed9ed4d0e69be9976bd4231a693fb12d6ecb750a5202a614cd0225ab0",
-    "deba0edf23cbf14738443ae3ce3959ff9b8b53f5429f39419588aa1a3a11d54d",
-    "e55e7b4d7f4058a9b1c078ec3dac6c0f1751291d89dbcfe2a6191d554985d380",
-    "e6804ed2dd80301d715f2fc99bf3a7c4506a516d51da8fc84b958cab2a6d4f23",
-    "ebb0af8d3de06152cd1a2198fb5ee23959db0cf6b3fc110730a9ab5fcb90af3e",
-    "f093b3b90749af98b54ca9e3e72a383408ab3fde7a440749513a1f309797ca81",
-    "f744e28a7c916b51aa4323e0c47041df420135f455c0b50c4bdb30b4a3a1505f",
-    "f9bacb4adad7016ca6bf7d0ffd7145e4b01e00003e6f079e819eb509e295294f",
-    "fbb5f0bc2a3249c141e4a26e71cf0ae371010ed60b638a70591afd70ae29c2d0",
-    "fbd1bac72ec0c6e45dc4d88acb87748574425108d9e373bf4958d2deeda0bf29",
-    "fdb3f525980f9c387e012d9f402cfe42d26134cd448ce988227b82dc01734d51",
+    "03fc7f2e77d0833a3b22989e3b1266c256a36099be5a9ada7714e0573678b990",
+    "0512ba418a8ac491ef630e56661bb585ca75ea8e2143430750803e002c6ed3bd",
+    "126c0efc108aac4609dfe16519700d054165573be23af08af5661888b9014654",
+    "14e2ab1a5e420594527781b43a909f67180a1243626283e942b545593161ee20",
+    "1ad1fe931ca0bcb61d9dabe5f28713b14b2c68e6630c04cca7b16b75564a0076",
+    "2454b59f02984cfcdf21db7b93ca75cb78e72b9e5b0a84d7678b9415763b07b0",
+    "251abac7eaf935cd880aec6a4e840cfaa875b0a9c3a181b1c3e5cbe7b4b32cdf",
+    "27309b027060e8bc62b7287d1b1adb0ef882058a7505f918fdb6f92f4a034a0a",
+    "2a403f700f0952b85e4c00a5a27aca448c14e2c4686d29ccb95b9f59d486eda5",
+    "2a8b7ab11b24569f711f4c51ebfb1838ca24c8481ceedf54c373ce35e6af1357",
+    "2e71fd38117d9bd8f159db34157da073998a0b282705cf9622db4d78bdb77eef",
+    "30daea90f4cc5e89de8c71b412d1aff69767687fb06f1a67e945f180d8718a7c",
+    "3b06e190718a20ef1d6cd880e0b4df0a56b523e9acf189a247620b928e5872a7",
+    "3e2dd5bfbf7d6c851b1ba2daf368bffe227bbd5416ee793b929fe98bbed19d60",
+    "48f71424c7b74af20023f96f1fd91e83a15b38cd0df56b7f1dcd6dc6693554db",
+    "4d53546ad0042c8a6f32154f24d5619300fbdffe733a2aaa778ac929b1d9b38a",
+    "4d6ffe3cb8aa20f530c05af064200f38eefa807605c89406be64b6aa25b2ebcb",
+    "5558a0d7dce6a1650a27f5b54415ec4c033ade9d5c5cefd90f1c688643611a8e",
+    "58cf835b9385a60cf56aa0822712c59bf14d9dcac892df2196c717900e8759b4",
+    "5d9e2bc2f476f85c41418ed9078b0ca862d71062d00978d1dec066a1fa9bbccb",
+    "5eb20d0a0f570aef94a8571898e645bde09327fcc9fa221ec62465c3e347c257",
+    "61fb25a7539a8c5daff67a0b5bbea2eeb369d4991d2a6b70c65a294275fe3e9a",
+    "660577efc17dce92dd58d203855189196c80181d9e9f62281c63b65cb5f3b029",
+    "6bc595657bf5c40a335b3f87df88b937a758bf1d7e92479cede78f95601e7279",
+    "6dad73cb117d3a8e39e75b11ae3dd2457f56fa034150d88930ca0d114fec5e1b",
+    "7a7a42b17e940c0631180008929ef43fc43bca59b670bc8c35712f045a11998c",
+    "8088cfb4340c490bed324af2afdbfb04f42c188a1763d68a11a35dd8356fd245",
+    "82bca24be650580406157c70c6ba0667b7ae6a8cd3a7be094e8e5f8133217277",
+    "84634db67465dad973c57f2ed44e8eb17819520671762abe4f38284764621c7f",
+    "873fade9626b5b7b64d5bd636fdf45994b4944b6df47114d5180269361d4e96b",
+    "9df7245499cb276ac49f86b8b47367b4526fcdd5019bd8e3e5fc4d6cc7aaa16f",
+    "a44c383685e7eea4b1a06a1df996682b544d676f538f147e29340ee827de3eae",
+    "abad4192caefc195b457d93dcd413e281e724be5b49a10da9f05c19b0e3546e0",
+    "b6a547a6c342637d339fd95a2b711a47d7a57cd96312f57298b0ffadeab31fea",
+    "b6a5becd879f8b28a7348e37c2ab25f0badaabcddf1c36b94afa020261f5d306",
+    "ba384a7777888797af133715134e70d0f2c487fb7ee3c3781a03dc704b25442f",
+    "bd4689e06a2400cb2622f85c9935cac889c23ecdf0222dea441877f69d28f595",
+    "bf3490a5e141928ae112d73b8a5ba5e9495fadb41267bab5dd196ee1f7a97966",
+    "c421cf0222945eed97baad9844f1c7fff4ad108a5a2a95be6053979b7911d0e6",
+    "c8973eb7ae5f551e85d120dc78cf8e10db156fa898aa6d37aa879119b18cc042",
+    "cbbaf74700f6e9b4311da39ecbb935661ab1e50a13eced6f385a880925a2aa79",
+    "d80f14bf2133fed9fcc056f838fe7288cfb58e18f64b11595924088d381610b9",
+    "db8fb950198d5f100b33bda03807231c81551ca4d32161fcb8870b30e7d355de",
+    "e02bdf3a1876d98d2478240c767147a341171362379f1895f12851ec36108e6a",
+    "e35f7976501b04076e9d2c9693644931d97bf3d6d7d18cf5772f4dfea7b4d738",
+    "f1f716a3c289deae2fd92b0e38907f43f9df4a9caaf1af8d818e66630287968f",
+    "f2a6b44714a7fd8ed72a97433fdf87ce5b5b5300701fb15a0aa2319a10477714",
+    "f74900f3d451c1384ec930d1984b2abf7523c4a5977ffb79f47848b69bcec1eb",
+    "fa18f6f5635be20358465dff8cbc1eac58792117c13b30c6911b339ec00b0464",
+    "fb886b77c318b0de0964bcc7f741432e7c344870081a874865d4904249b6a4de",
 )
 
-# The keys of a case, in the projection that the sweep consumes: the claim, the evidence, the ids of the evidence,
-# the id of the case and the label.
-HELD_OUT_CASE_KEYS: tuple[str, ...] = ("claim", "evidence", "evidence_ids", "id", "label")
+# The keys of a case, in the projection that the sweep consumes: the claim, the evidence, the ids of the evidence
+# and the label.
+#
+# Why the id of the case is not in the projection: the id is the key of the join that rebuilds the set and the
+# label of the line in the sweep, and neither is the content that the tuning optimizes. A rebuild that renames the
+# cases carries the same claims, the same evidence and the same labels, so it tunes over the same truth, and a
+# reservation that included the id would let that rebuild through with one line changed (ADR-069).
+HELD_OUT_CASE_KEYS: tuple[str, ...] = ("claim", "evidence", "evidence_ids", "label")
 
 # The reserved digests as a set, so that the door of the case is a membership and not a walk over a tuple.
 _RESERVED_CASE_DIGESTS = frozenset(HELD_OUT_RESERVED_CASE_DIGESTS)
@@ -1070,11 +1075,15 @@ def _records_digest_of(path: Path) -> str | None:
 def case_digest(case: Mapping[str, Any]) -> str:
     """The canonical digest of one case, in the projection that the sweep consumes.
 
-    Why it exists: the sweep reads a case as the claim, the evidence, the ids of the evidence, the id of the case
-    and the label. The labelled set carries those five keys and two more, and a rebuild of the set carries the five
-    and nothing else, so the bytes and the records of the two differ. The projection is what the two have in
-    common, and the digest of the projection is the same for the same case under any name, in any order and in any
-    file.
+    Why it exists: the sweep reads a case as the claim, the evidence, the ids of the evidence and the label. The
+    labelled set carries those four keys and three more, and a rebuild of the set carries the four and nothing else,
+    so the bytes and the records of the two differ. The projection is what the two have in common, and the digest of
+    the projection is the same for the same case under any name, in any order and in any file.
+
+    Why the id of the case is not in the projection: the id is the key of the join that rebuilds the set and the
+    label of the line in the sweep, and it is not the content that a tuning optimizes. A rebuild that renames the
+    cases tunes over the same truth, so a digest that carried the id would let that rebuild through with one field
+    changed (ADR-069).
 
     Why the canonical form: the keys are sorted and the separators are the ones of the repository, so the digest of
     a case does not depend on how the file that holds it was written.
@@ -1090,7 +1099,7 @@ def _case_digests_of(path: Path) -> set[str]:
     Why the empty set and not an error: the door of the case has to hold a file that may not be a dataset at all,
     and a file that cannot be read is not the held out set.
 
-    Why a record that does not carry the five keys is skipped: it is not a case of the sweep and it cannot be a
+    Why a record that does not carry the four keys is skipped: it is not a case of the sweep and it cannot be a
     case of the held out set.
     """
     try:
