@@ -54,6 +54,7 @@ from ledgerlens.api.accounts import Account, account_statement, load_account_pro
 from ledgerlens.config import ConfigError, get_settings, offline
 from ledgerlens.observability.trace import Span
 from ledgerlens.offline import ScriptedChatModel, text_message
+from ledgerlens.prompts.ai_disclosure import AI_DISCLOSURE
 from ledgerlens.schemas import InvestigationResult
 from ledgerlens.sim.config import SimConfig
 from ledgerlens.sim.pipeline import build_ledger
@@ -591,6 +592,10 @@ def main() -> None:
         st.caption(
             "Ask the support assistant about your payments, refunds, disputes or payouts. " + mode_line(is_offline)
         )
+        # The sentence of the disclosure of the AI agent sits under the question box, where the person
+        # reads it before the first answer. It comes from the domain, so the demo and the public site
+        # say the same thing (Article 50 of the EU AI Act, applied since 2 August 2026).
+        st.caption(AI_DISCLOSURE)
         st.toggle(
             "Show the agent trace",
             key="observer",

@@ -29,6 +29,17 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+/**
+ * The words of the disclosure of the AI agent, read from the domain of the product.
+ *
+ * Why the file of the domain and not a sentence written here: Article 50 of the EU AI Act has applied
+ * since 2 August 2026, and the surface that answers a person has to say that the answer comes from an
+ * AI agent and that a person reviews the cases that need a review. The demo application says it with
+ * the same words, and the two surfaces cannot drift apart because there is only one place where the
+ * sentence is written: `ledgerlens/prompts/ai_disclosure.json`.
+ */
+import aiDisclosure from "../../../../../ledgerlens/prompts/ai_disclosure.json";
+
 import { Badge } from "@/components/ui/Badge";
 import { Button, buttonClasses } from "@/components/ui/Button";
 import { CardSection } from "@/components/ui/Card";
@@ -222,6 +233,7 @@ export default function LivePage() {
           <Badge>origin: {client.baseUrl}</Badge>
         </div>
         <h1 className="text-3xl font-semibold">Live mode</h1>
+        <p className="max-w-2xl text-text-muted">{aiDisclosure.sentence}</p>
         <p className="max-w-2xl text-text-muted">
           You type the key of your provider and the run happens on the backend of the demo. The key is
           read once, from the field you typed, and it never reaches a URL, a header or a log. The

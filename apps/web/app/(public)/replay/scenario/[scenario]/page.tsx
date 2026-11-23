@@ -17,6 +17,16 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+/**
+ * The words of the disclosure of the AI agent, read from the domain of the product.
+ *
+ * Why this page carries the sentence: the recording shows the answer of an AI agent to a person,
+ * and a person who reads it has to know that the answer was produced by a model and not by a
+ * person (Article 50 of the EU AI Act, applied since 2 August 2026). The words come from the file
+ * of the domain, so the demo application and this site cannot say different things.
+ */
+import aiDisclosure from "../../../../../../../ledgerlens/prompts/ai_disclosure.json";
+
 import { buttonClasses } from "@/components/ui/Button";
 import { ReplayProvider } from "@/features/replay/ReplayProvider";
 import { ReplayViewer } from "@/features/replay/ReplayViewer";
@@ -108,6 +118,7 @@ export default async function ReplayScenarioPage({ params }: ReplayScenarioPageP
     <div className="mx-auto flex w-full max-w-content flex-col gap-8 px-6 py-12">
       <header className="flex flex-col gap-3">
         <h1 className="text-3xl font-semibold">Recorded demo</h1>
+        <p className="max-w-2xl text-text-muted">{aiDisclosure.sentence}</p>
         <p className="max-w-2xl text-text-muted">
           The demo reads the published artifacts of a capture, played in the browser. It asks no
           provider, it needs no key and no network, and it runs the same way for every visitor.
