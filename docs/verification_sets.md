@@ -20,6 +20,8 @@ than the measurement supports.
 | 48 | Total of the held out set of the verifier | `data/eval/verification_heldout.jsonl` | held_out | 47 through the NLI, 1 by the code |
 | 47 | The part of the held out set that goes through the NLI | `data/eval/verification_heldout.jsonl`, the 47 cases with evidence | held_out | the model |
 | 24 | Cases of the held out set the verifier decided as the blind reading decided | `data/eval/verification_heldout.jsonl` | held_out | the model and the code |
+| 25 | Cases of the held out set the verifier decided as the recipes of the generator expected | `data/eval/verification_heldout.jsonl`, scored against the recipes of the generator, which are not published | held_out | the model and the code |
+| 46 | Cases of the held out set where the adjudicated reading and the recipe of the generator agree | the labels of the reading against the recipes of the generator, which are not published | held_out | the two blind readings and the adjudication |
 
 The two 30s are different sets and they do not add up. The first is a part of the verification set; the second is the
 set of the online evaluation.
@@ -66,14 +68,27 @@ at all, a claim whose evidence contradicts itself, and a benign claim that the e
 
 Its labels come from **two independent blind machine readings with an adjudication of the divergences**
 ([ADR-059](decisions/ADR-059-the-held-out-set-is-read-by-two-blind-machines-and-adjudicated.md)). The recipe of the
-generator lives in a file neither reader opened, the id of a case does not encode its template, and the templates are
-not grouped in the file. The label of the adjudication wins over the label of the generator, and every disagreement
-is on the record, with the count of them.
+generator was written in a file that the two readers were forbidden to open, that file is not published now, the id of
+a case does not encode its template, and the templates are not grouped in the file. The labels show that the readings
+are not a copy of the key: each of the two readings disagrees with it in two of the forty eight cases. The generator
+that writes the recipes is public and deterministic, so anybody can rebuild the key: the blindness of the reading is a
+procedure and not a secret. The provenance of the reading, with the digests of its files and the limit of what they
+prove, is in [data/eval/heldout/provenance.md](../data/eval/heldout/provenance.md). The label of the adjudication
+wins over the label of the generator, and every disagreement is on the record, with the count of them. The decision
+that supersedes the sentence of ADR-052 about the role is
+[ADR-062](decisions/ADR-062-the-role-held-out-exists-and-the-sentence-of-adr-052-is-superseded.md).
 
 | Set | Dataset | Cases | Accuracy | Reading |
 |---|---|---|---|---|
 | Held out | `data/eval/verification_heldout.jsonl` | 48 | 0.500 | 24 of the 48 cases, with the denominator of the set |
 | Held out, the cases the model judged | the same file, the 47 cases with evidence | 47 | 0.489 | 23 of the 47, and one case decided by the code |
+
+**The same verifier scores 25 of the 48 cases when it is scored against the recipes of the generator instead of the
+adjudicated labels.** The one case of the difference is `ho-002`: the verifier answers `not_enough_evidence` for it,
+the recipe expects `not_enough_evidence` and the adjudicated reading answers `supported`. That one case is the whole
+distance between reproducing the generator and generalising, so the published number is 24 of the 48 cases, 0.500,
+the one measured against the adjudicated labels. The recipes themselves are not published, and the number of 25 of
+48 is published here because a reader who decides whether to trust 0.500 needs to see how close the two numbers are.
 
 The confusion matrix, with the reader in the rows and the verifier in the columns:
 
@@ -94,13 +109,15 @@ measured over a `tuning` set, over the very sentences the thresholds were chosen
 a set that no decision of this repository was taken against, so it is a measure of the behaviour on unseen data, with
 its denominator and with the restriction of the role.
 
-### The three counts of the reading, and what they may claim
+### The counts of the reading, and what they may claim
 
 | Count | What it is | What it is for |
 |---|---|---|
 | 2 of 48 | the cases where the two readings diverge (`ho-013` and `ho-035`) | the noise of the rule, with no answer key anywhere near it |
 | 2 of 48 | the cases where the first reading and the recipe disagree (`ho-002` and `ho-013`) | the distance between one blind reading and the expectation of the writer |
 | 2 of 48 | the cases where the second reading and the recipe disagree (`ho-002` and `ho-035`) | the same distance, measured on the other reading |
+| 46 of 48 | the cases where the adjudicated reading and the recipe agree, 95.8 % of the set | the agreement of the second opinion with the key, which is a measurement of the set and not of the reader |
+| 25 of 48 | the accuracy of the verifier scored against the recipes of the generator | the distance between reproducing the generator and generalising, which is the one case that separates it from the 24 of 48 |
 | 24 of 48 | the adjudicated accuracy over the set | the accuracy of the verifier over the set, with its denominator |
 
 Both divergences between the two readings are the same two cases, the pair whose evidence contradicts itself: the
@@ -110,8 +127,11 @@ that is in the header of every screen of the reading, that evidence which contra
 says nothing, and the label is `not_enough_evidence` in both cases.
 
 **What these counts may not claim.** The reading is a machine reading, so it may share a blind spot with the model
-that the set measures, and the number cannot rule that out. The divergence between the two readers is a lower bound
-on the noise of a label, and not an upper bound. The labels are not the labels a human would have given.
+that the set measures, and the number cannot rule that out. The agreement of the adjudicated reading with the key,
+46 of the 48 cases, is a measurement of the set and not of the independence of the reader: the reading landed where
+the writer of the cases landed, so it is not independent evidence of the quality of the labels. The divergence
+between the two readers is a lower bound on the noise of a label, and not an upper bound. The labels are not the
+labels a human would have given.
 
 ## The rule of citation
 
@@ -128,8 +148,11 @@ on the noise of a label, and not an upper bound. The labels are not the labels a
 6. Every accuracy named above, except the one over the held out set, is a number over a `tuning` dataset, so none of
    them is a generalization to unseen data. The accuracy over the held out set, 24 of 48, is the only one that may be
    presented as a measure over data nobody decided on, and it may be presented only with its denominator and with the
-   restriction of the role. A number that claims to generalize names the dataset it was measured over and the
-   restriction that applies to it, or it does not go out.
+   restriction of the role. The 25 of 48 the same verifier scores against the recipes of the generator is not the
+   accuracy of the set: the labels of the set are the adjudicated ones and the recipes are not published, so that
+   number may be cited only as the distance between reproducing the generator and generalising, and never as the
+   accuracy of the verifier over the held out set. A number that claims to generalize names the dataset it was
+   measured over and the restriction that applies to it, or it does not go out.
 
 ## Where the truth lives now
 

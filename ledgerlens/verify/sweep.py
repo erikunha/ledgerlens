@@ -24,7 +24,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from ledgerlens.eval.manifest import TUNING_ROLE, EvalDatasetManifest, require_tuning_dataset
+from ledgerlens.eval.manifest import TUNING_ROLE, EvalDatasetManifest, require_tuning_dataset, require_tuning_path
 from ledgerlens.schemas import Claim, Evidence
 from ledgerlens.verify.checks import label_from_scores, load_thresholds, text_premise
 from ledgerlens.verify.nli import Nli
@@ -179,6 +179,7 @@ def nli_cases(root: Path, manifests: Sequence[EvalDatasetManifest]) -> tuple[Nli
         if entry.split_role != TUNING_ROLE:
             continue
         require_tuning_dataset(entry.dataset_id, manifests)  # the door, for the case the role of the entry changed
+        require_tuning_path(entry.path, manifests)  # the door of the path, for the case the role of the file changed
         for row in _rows(root / entry.path):
             case = _case(entry.dataset_id, row, limit)
             if case is not None:

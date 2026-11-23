@@ -42,9 +42,11 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from ledgerlens.eval.manifest import (  # noqa: E402  (the path is set up before the import)
+    HELD_OUT_RESERVED_PATHS,
     MANIFEST_RELATIVE,
     TUNING_ROLE,
     ManifestError,
+    TuningRefusal,
     load_manifests,
     safe_text,
     verify_manifests,
@@ -219,7 +221,22 @@ def _pin(manifest_path: Path, manifests: Sequence[Any]) -> dict[str, Any]:
 
     Why it exists: the pin is what the calibration was measured over, and the only honest source of it is the
     manifest that is on the disk now.
+
+    Why a reserved path may not enter the pin: the pin names the material the calibration was measured over, and a
+    dataset that may not be tuned against may not be named as tuning material, whatever role the manifest gives it.
+    The pin is the record of the calibration, so a pin that named the held out set would be a record that says the
+    thresholds were chosen over it.
     """
+    tuning = [entry for entry in manifests if entry.split_role == TUNING_ROLE]
+    reserved = [
+        entry for entry in tuning if Path(entry.path).as_posix() in HELD_OUT_RESERVED_PATHS
+    ]
+    if reserved:
+        raise TuningRefusal(
+            "the manifest declares as tuning material a dataset that is reserved for the held out set: "
+            + ", ".join(entry.path for entry in reserved)
+            + ". The role of an entry is data and the reservation is code, so the pin refuses to name it."
+        )
     digest = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
     return {
         "tuning_manifest_sha256": digest,
@@ -279,7 +296,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     try:
         manifests = load_manifests(manifest_path)
-    except (ManifestError, OSError, ValueError) as exc:
+    except (ManifestError, OSError, ValueError, TuningRefusal) as exc:
         print(f"pin_calibration: the manifest cannot be read: {safe_text(exc)}", file=sys.stderr)
         return 1
 
@@ -292,7 +309,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"pin_calibration: the thresholds cannot be read: {safe_text(exc)}", file=sys.stderr)
         return 1
 
-    pin = _pin(manifest_path, manifests)
+    try:
+        pin = _pin(manifest_path, manifests)
+    except TuningRefusal as exc:
+        print(f"pin_calibration: {safe_text(exc)}", file=sys.stderr)
+        return 1
     text = original
     for key, value in pin.items():
         try:

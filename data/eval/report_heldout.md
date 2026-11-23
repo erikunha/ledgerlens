@@ -3,7 +3,7 @@
 the model that produced the verdicts: MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli (the real model)
 the thresholds applied: entailment_min 0.81, contradiction_min 0.91, max_premise_chars 4000 (the pinned ones of ledgerlens/verify/thresholds.json)
 the labelled file: data/eval/verification_heldout.jsonl
-the recipes of the generator (a private input of the report, never a label): data/eval/heldout/recipes.jsonl
+the recipes of the generator (a private input of the report, not published, never a label): data/eval/heldout/recipes.jsonl
 
 ## Accuracy
 

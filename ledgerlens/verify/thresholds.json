@@ -26,7 +26,7 @@
     "plateau": {"entailment_min": [0.77, 0.84], "contradiction_min": [0.90, 0.92]},
     "sweep": "docs/decisions/ADR-007-nli-verification.md",
     "denominator": "The accuracy is measured over the cases that go through the NLI: the 30 text cases of the verification set plus the 40 live sentences, 70 in total. The 43 records of the verification set include 7 numeric ones and 6 coherence ones, which the code decides and the NLI does not see.",
-    "tuning_manifest_sha256": "2319ce1bd1b300c37eaefb9eb3b15cc72dbb65656fb4374afe7451d354365d3a",
+    "tuning_manifest_sha256": "f000c61faf2b5a2c0cf0b8db15f0c6ced67c652145facae0ad065bf5a9e8647e",
     "tuning_datasets": [
       "eval_cases",
       "policy_questions",

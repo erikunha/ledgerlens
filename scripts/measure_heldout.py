@@ -395,7 +395,7 @@ def render_report(
     )
     lines.append(f"the labelled file: {_relative(measurement.labelled_path)}")
     lines.append(
-        "the recipes of the generator (a private input of the report, never a label): "
+        "the recipes of the generator (a private input of the report, not published, never a label): "
         f"{_relative(measurement.recipes_path)}"
     )
     lines.append("")

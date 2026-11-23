@@ -18,9 +18,9 @@ Two decisions of this module:
   record: `fingerprint_dataset` raises `ManifestError` naming the file and the line. The count of the manifest and the
   count of the disk are then computed by the same rule, so they can be compared.
 - **The role of a dataset is decided by what the repository can prove it was used for.** The conservative role wins
-  when the evidence is not clean. Two datasets of this repository carry the role `held_out` today, the labelled set of
-  the blind reading and the answer key of the generator that wrote it, and no result over any other dataset of this
-  repository may be presented as a generalization to unseen data.
+  when the evidence is not clean. One dataset of this repository carries the role `held_out` today, the labelled set
+  of the blind reading, and the answer key of the generator that wrote it is not published and is not declared here,
+  so no result over any other dataset of this repository may be presented as a generalization to unseen data.
 
 The scan for an undeclared JSONL file looks at the files that sit directly in `data/eval/`. The folders below it hold
 other artifacts with their own contract: the recording of the scenario `S01` lives in `data/eval/replay/s01/` and
@@ -97,6 +97,12 @@ SPLIT_ROLES: tuple[str, ...] = ("tuning", "validation", "held_out")
 # `validation` may be scored but never tuned against, and a dataset with the role `held_out` may be read only by
 # the final scoring step.
 TUNING_ROLE = "tuning"
+
+# The paths that are reserved for the held out set, relative to the root of the project and with forward slashes.
+# Why the reservation lives in the code and not in the manifest: the manifest is data and a hand edit of it is one
+# line of JSON away, while this constant is code that a reader reviews. A path that is reserved here stays
+# refused whatever role the manifest gives it, so the role of the entry cannot unlock the file it names.
+HELD_OUT_RESERVED_PATHS: tuple[str, ...] = ("data/eval/verification_heldout.jsonl",)
 
 # The folder of the datasets, relative to the project root, and the manifest file relative to it. They are relative
 # so that a check over another root reads that root and not this one.
@@ -875,8 +881,48 @@ def require_tuning_dataset(dataset_id: str, manifests: Sequence[EvalDatasetManif
     return entry
 
 
+def require_tuning_path(path: str | Path, manifests: Sequence[EvalDatasetManifest]) -> EvalDatasetManifest:
+    """The entry of the dataset a path names, when it may be tuned against, and a refusal when it may not.
+
+    Why it exists next to the guard of the name: a tuning script that opens a file by its path does not pass
+    through the door of the name, and the door of the name was the only one. The path of the file of the dataset is
+    the other way a script reaches the data, so it is the other way the rule has to hold.
+
+    Why a path nobody declared is refused: the manifest is what says which file is which, so a file that no entry
+    names is a file that nobody may tune on.
+
+    Why a reserved path is refused before the manifest is even asked: the role of a dataset is a field of a JSON
+    file, and a hand edit of that field is one line away, so a guard that reads the role of the entry alone can be
+    unlocked by editing the data. The reservation lives in the code, where a reader reviews it, and it holds
+    whatever role the manifest gives the path.
+
+    Raises `TuningRefusal` when the path is reserved, when no entry names the path, or when the entry that names it
+    may not be tuned against.
+    """
+    wanted = Path(path).as_posix()
+    entry = next((manifest for manifest in manifests if manifest.path == wanted), None)
+    if entry is None:
+        raise TuningRefusal(
+            f"The path '{safe_text(wanted)}' is not declared by the manifest, so it may not be tuned against: only "
+            f"the datasets with the role '{TUNING_ROLE}' may be tuned against."
+        )
+    if entry.split_role != TUNING_ROLE:
+        raise TuningRefusal(
+            f"The dataset '{safe_text(entry.dataset_id)}' has the role '{safe_text(entry.split_role)}' and may not be "
+            f"tuned against: only the datasets with the role '{TUNING_ROLE}' may be tuned against."
+        )
+    if wanted in HELD_OUT_RESERVED_PATHS:
+        raise TuningRefusal(
+            f"The path '{safe_text(wanted)}' is reserved for the held out set, so it may not be tuned against "
+            f"whatever role the manifest gives it: only the datasets with the role '{TUNING_ROLE}' may be tuned "
+            f"against."
+        )
+    return entry
+
+
 __all__ = [
     "EVAL_DIR_RELATIVE",
+    "HELD_OUT_RESERVED_PATHS",
     "MANIFEST_PATH",
     "MANIFEST_RELATIVE",
     "SPLIT_ROLES",
@@ -892,6 +938,7 @@ __all__ = [
     "may_be_tuned_against",
     "render_manifests",
     "require_tuning_dataset",
+    "require_tuning_path",
     "safe_text",
     "update_fingerprints",
     "verify_manifests",

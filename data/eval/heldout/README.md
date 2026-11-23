@@ -2,7 +2,12 @@
 
 This folder holds the held out verification cases of the repository: 48 cases that nobody tuned anything against,
 whose labels come from two independent blind readings of the cases and from an adjudication of the two cases where
-the readings diverged. Neither reader ever opened the recipe of a case.
+the readings diverged. The two readers were instructed to be blind to the recipe of a case, and the labels show that
+the readings are not a copy of it: each of the two readings disagrees with the recipe in two of the forty eight
+cases, and a reading that had the recipe open would have agreed with it everywhere. The file that holds the recipes
+is not published either: it is not in the public tree and the manifest of the datasets does not declare it. The
+provenance of the reading, with the digests of its files and the limit of what they prove, is in
+[`provenance.md`](provenance.md).
 
 The reading is what produces the labels, and its own files are the record that it happened:
 `labels_reader_a.jsonl` and `labels_reader_b.jsonl` hold what each reader answered, one line per label, and
@@ -10,19 +15,20 @@ The reading is what produces the labels, and its own files are the record that i
 adjudication. The label of the adjudication is the label of the set. The label the generator expected is never
 written over it.
 
-Three files live here and the key never meets the cases:
+The files of this folder and the key never meet:
 
 - `cases.jsonl` is the file the readers read. Every line is one case with its id, its claim and its evidence. It
   holds **no label, no template name, no recipe and no id that says which template the case belongs to**. The ids run
   from `ho-001` to `ho-048` in an order that does not group the templates together.
-- `recipes.jsonl` is the file the readers never see. Every line is the recipe of one case of the other file: the
-  label the generator expects (`label`), the template of the case (`template`), the pair it belongs to (`pair_id`), the
-  fact the pair changes (`fact_key`, `fact_value` and `differing_fact`) and, for the three controls, what makes the
-  case a control (`control`).
+- `recipes.jsonl` is the file the readers were forbidden to open, and it is **not published**: it is not in the public tree, it is
+  not in the index of git and no entry of the manifest of the datasets declares it. Every line is the recipe of one
+  case of the other file: the label the generator expects (`label`), the template of the case (`template`), the pair
+  it belongs to (`pair_id`), the fact the pair changes (`fact_key`, `fact_value` and `differing_fact`) and, for the
+  three controls, what makes the case a control (`control`).
 - the three files of the labels hold what the readers answered and what the adjudication decided, and they hold no
   recipe and no template.
 
-The recipe is read by the blind reading session, `scripts/label_heldout.py`, which compares the labels with the
+The recipe is read by the instrument of the reading, `scripts/label_heldout.py`, which compares the labels with the
 recipe and writes every disagreement into the note of the case. The mode `compare` compares two readings with each
 other and never opens the recipe at all, so the divergence between the two readers is measured with no answer key
 anywhere near it.
@@ -73,6 +79,15 @@ recipe of the generator in 2 of the 48 cases, and the two readings disagreed wit
 | 2 of 48 | the cases where the first reading and the recipe disagree, `ho-002` and `ho-013` |
 | 2 of 48 | the cases where the second reading and the recipe disagree, `ho-002` and `ho-035` |
 
+Put the other way round, the adjudicated reading agrees with the recipe of the generator in **46 of the 48 cases,
+95.8 % of the set**, and the two exceptions are the same two cases the table names.
+
+**What that agreement means.** The blind reading is a second opinion that lands in the same place as the writer of
+the cases, so it is not independent evidence of the quality of the labels: a reader who asks whether the labels are
+right cannot use this number to find out. What the number does say is that the set is not ambiguous on those points,
+that 46 of the 48 cases carry a label that a careful reader of the same evidence reaches as well, and that the
+generator and the reading are not two things that disagree about the set.
+
 The two cases where the readings diverged are the pair whose evidence contradicts itself. The adjudication applied
 the rule that is in the header of every screen of the reading, that evidence which contradicts itself says two
 things and so says nothing, and the label of both cases is `not_enough_evidence`.
@@ -96,15 +111,23 @@ generator, `tests/eval/test_heldout_generator.py`.
 
 ## The blindness is a procedure and not a secret
 
-The recipes live in this folder and in the public tree, and the generator that writes them is public and
-deterministic, so anybody can rebuild the key at any time. What the procedure guarantees is narrower and it is what
-matters: the readings happened while the key was still out of the public tree, and the readers were forbidden from
-opening it. The manifest declares the key with the role `held_out`, so the guard that refuses a tuning script covers
-it as well as the labelled set.
+The recipes are not in this folder any more and they are not in the public tree: the file was removed from the index
+of git and no entry of the manifest of the datasets, `data/eval/datasets.json`, declares it, so the guard of the
+tuning refuses a path that no entry declares. The generator that writes them is public and deterministic, so anybody
+can rebuild the key at any time:
+
+```bash
+uv run python -m ledgerlens.eval.heldout
+```
+
+What the procedure guarantees is narrower and it is what matters: the readings happened while the key was still out of
+the public tree, and the readers were forbidden from opening it. The protection of the role of the set is the
+procedure, the guard and the review of this repository, and not a secret.
 
 ## The folder and the manifest of the datasets
 
-The folder sits outside the scan of `data/eval/*.jsonl`, so the files of it are not datasets of the scan. Two of
-them are declared anyway, in `data/eval/datasets.json`, with the role `held_out`: the labelled set of the reading,
-`data/eval/verification_heldout.jsonl`, and the key of the generator, `data/eval/heldout/recipes.jsonl`. The
-declaration of the key is what lets the guard of the tuning refuse a script that reads it.
+The folder sits outside the scan of `data/eval/*.jsonl`, so the files of it are not datasets of the scan. One of
+them is declared anyway, in `data/eval/datasets.json`, with the role `held_out`: the labelled set of the reading,
+`data/eval/verification_heldout.jsonl`. The key of the generator is not declared, because it is not published: no
+entry of the manifest names it, and the guard of the tuning refuses a path that no entry declares, so a tuning script
+cannot read it.

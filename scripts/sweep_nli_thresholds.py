@@ -55,6 +55,7 @@ from ledgerlens.eval.manifest import (  # noqa: E402  (the path is set up before
     TuningRefusal,
     load_manifests,
     require_tuning_dataset,
+    require_tuning_path,
     safe_text,
 )
 from ledgerlens.verify.checks import THRESHOLDS_PATH  # noqa: E402  (the path is set up before the import)
@@ -211,7 +212,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         chosen = sorted(entry.dataset_id for entry in manifests if entry.split_role == TUNING_ROLE)
     for dataset_id in chosen:
         try:
-            require_tuning_dataset(dataset_id, manifests)
+            entry = require_tuning_dataset(dataset_id, manifests)
+            # The door of the path: the role of an entry is a field of a JSON file, and the reservation of the
+            # held out set lives in the code, so the path is asked as well.
+            require_tuning_path(entry.path, manifests)
         except TuningRefusal as exc:
             return _refuse(str(exc))
 
@@ -227,7 +231,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             f"the real NLI model needs {', '.join(missing)}: install the `verify` extra (uv sync --extra verify)."
         )
 
-    cases = nli_cases(root, tuple(entry for entry in manifests if entry.dataset_id in chosen))
+    try:
+        cases = nli_cases(root, tuple(entry for entry in manifests if entry.dataset_id in chosen))
+    except TuningRefusal as exc:
+        return _refuse(str(exc))
     if not cases:
         return _refuse("the datasets with the role `tuning` hold no case that goes to the NLI model.")
     sets = _sets_of(cases)

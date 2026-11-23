@@ -93,11 +93,17 @@ asks for: a claim with no evidence at all, a claim whose evidence contradicts it
 evidence does not support.
 
 Its labels come from **two independent blind machine readings with an adjudication of the divergences**. The recipe of
-the generator lives in a file neither reader opened, the id of a case does not encode its template, and the templates
-are not grouped in the file. The label of the adjudication wins over the label of the generator, and every
-disagreement between the two is on the record, with the count of them. The decisions are
-[ADR-053](decisions/ADR-053-the-held-out-set-and-the-blind-labelling.md) and
-[ADR-059](decisions/ADR-059-the-held-out-set-is-read-by-two-blind-machines-and-adjudicated.md).
+the generator was written in a file that the two readers were forbidden to open, that file is not published now, the
+id of a case does not encode its template, and the templates are not grouped in the file. The labels show that the
+readings are not a copy of the key: each of the two readings disagrees with it in two of the forty eight cases. The
+generator that writes the recipes is public and deterministic, so anybody can rebuild the key: the blindness of the
+reading is a procedure and not a secret. The provenance of the reading, with the digests of its files and the limit
+of what they prove, is in [data/eval/heldout/provenance.md](../data/eval/heldout/provenance.md). The label of the
+adjudication wins over the label of the generator, and every disagreement between the two is on the record, with the
+count of them. The decisions are
+[ADR-053](decisions/ADR-053-the-held-out-set-and-the-blind-labelling.md),
+[ADR-059](decisions/ADR-059-the-held-out-set-is-read-by-two-blind-machines-and-adjudicated.md) and
+[ADR-062](decisions/ADR-062-the-role-held-out-exists-and-the-sentence-of-adr-052-is-superseded.md).
 
 **The role is declared and the number is published.** The manifest declares the file with the role `held_out`, and
 the accuracy over it is 24 of the 48 cases, 0.500, with 23 of the 47 cases that go through the NLI model and one case
@@ -105,27 +111,38 @@ that the code decides because the claim cites no evidence at all. The false `sup
 `contradicted` is 0. The report is [`data/eval/report_heldout.md`](../data/eval/report_heldout.md) and the canonical
 reading of every number is in [the sets of the verifier](verification_sets.md).
 
+**The same verifier scores 25 of the 48 cases when it is scored against the recipes of the generator instead of the
+adjudicated labels.** The one case of the difference is `ho-002`: the verifier answers `not_enough_evidence` for it,
+the recipe expects `not_enough_evidence` and the adjudicated reading answers `supported`. That one case is the whole
+distance between reproducing the generator and generalising, so the number this repository publishes is 24 of the 48
+cases, 0.500, the one measured against the adjudicated labels. The recipes themselves are not published, and the
+number of 25 of 48 is published here because a reader who decides whether to trust 0.500 needs to see how close the
+two numbers are.
+
 This is the first number of this repository that is not a fit. Every other accuracy was measured over the very
 sentences the thresholds were chosen against. This one was measured over cases that no decision of this repository
 was taken against, so it says what the verifier does with data it has never seen, which is a harder and less
 flattering answer than the tuning sets gave.
 
-### The three counts of the reading
+### The counts of the reading
 
 | Count | What it is |
 |---|---|
 | 2 of 48 | the cases where the two readings diverge from each other |
 | 2 of 48 | the cases where the first reading and the recipe of the generator disagree |
 | 2 of 48 | the cases where the second reading and the recipe of the generator disagree |
+| 46 of 48 | the cases where the adjudicated reading and the recipe of the generator agree, 95.8 % of the set |
 
-The divergence between the two readers is a measurement of the noise of the rule, and it is the only one of the three
-that was made with no answer key anywhere near it. The divergence of each reader against the recipe measures the
-distance between a blind reading and the expectation of the writer of the generator.
+The divergence between the two readers is a measurement of the noise of the rule, and it is the only one of those
+three divergences that was made with no answer key anywhere near it. The divergence of each reader against the recipe
+measures the distance between a blind reading and the expectation of the writer of the generator.
 
 **What these counts may not claim.** The readers are language models, so a reading may share a blind spot with the
-model the set measures, and the number cannot rule that out. The divergence between the two readers is a lower bound
-on the noise of a label, and not an upper bound. The labels are not the labels a human would have given, and no
-sentence of this repository may say that they are.
+model the set measures, and the number cannot rule that out. The agreement of the adjudicated reading with the key,
+46 of the 48 cases, is a measurement of the set and not of the independence of the reader: the reading landed where
+the writer of the cases landed, so it is not independent evidence of the quality of the labels. The divergence
+between the two readers is a lower bound on the noise of a label, and not an upper bound. The labels are not the
+labels a human would have given, and no sentence of this repository may say that they are.
 
 ## What the held out set does not measure
 

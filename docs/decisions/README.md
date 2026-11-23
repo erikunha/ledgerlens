@@ -66,6 +66,8 @@ by hand: run `uv run python scripts/build_docs_index.py` and commit the result.
 | 056 | [ADR-056: Two vector sites and one protocol](ADR-056-two-vector-sites-and-one-protocol.md) | proposed | 2026-11-22 |
 | 057 | [ADR-057: The model has a clock and the repository pins it](ADR-057-the-model-has-a-clock-and-the-repository-pins-it.md) | proposed | 2026-11-22 |
 | 058 | [ADR-058: The programme of readiness for 2027 and what it does not do](ADR-058-the-programme-of-readiness-for-2027-and-what-it-does-not-do.md) | proposed | 2026-11-22 |
-| 059 | [ADR-059: The held out set is read by two blind machines and adjudicated](ADR-059-the-held-out-set-is-read-by-two-blind-machines-and-adjudicated.md) | proposed | 2026-11-23 |
+| 059 | [ADR-059: The held out set is read by two blind machines and adjudicated](ADR-059-the-held-out-set-is-read-by-two-blind-machines-and-adjudicated.md) | accepted | 2026-11-23 |
 | 060 | [ADR-060: The surfaces that answer a person carry the sentence of the AI agent](ADR-060-the-surfaces-that-answer-a-person-carry-the-sentence-of-the-ai-agent.md) | accepted | 2026-11-23 |
 | 061 | [ADR-061: The corpus of the policies is the contract of a fictional company, and the held out set freezes it](ADR-061-the-corpus-of-the-policies-is-the-contract-of-a-fictional-company.md) | accepted | 2026-11-23 |
+| 062 | [ADR-062: The role held out exists, and the sentence of ADR-052 is superseded](ADR-062-the-role-held-out-exists-and-the-sentence-of-adr-052-is-superseded.md) | accepted | 2026-11-23 |
+| 063 | [ADR-063: The path of the machine of the owner is not a decision and is not published](ADR-063-the-path-of-the-machine-of-the-owner-is-not-a-decision-and-is-not-published.md) | accepted | 2026-11-23 |

@@ -1,12 +1,12 @@
 ---
 type: adr
-status: proposed
+status: accepted
 date: 2026-11-23
 ---
 
 # ADR-059: The held out set is read by two blind machines and adjudicated
 
-Status: proposed. Date: 2026-11-23.
+Status: accepted. Date: 2026-11-23.
 
 ## Context
 
