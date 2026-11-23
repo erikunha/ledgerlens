@@ -13,8 +13,17 @@ the generator are a private input of the report: they give the template of each 
 expected, and the report says how many of them the reading did not agree with, because that count is the noise a
 label carries.
 
+The report is published twice: as Markdown, for a person, and as JSON, for a program. The two carry the same numbers
+and they take the sentences that limit the number from the same place, the manifest of the datasets, so they never
+drift. The JSON carries the predictions of the model for every case and never the expected label of a case: the
+expected label of a case is the answer key of the generator, and a published key ends the reservation of the set for
+every change that comes after. The identifiers of the cases where the reading disagreed with the recipes are
+published, because that count is the noise of a label of this set, and the label of neither of them is.
+
 A number of this repository is never published without the model that produced it: the report names the model and
-the thresholds, and a run with the stand-in of the rules says so in the report itself.
+the thresholds, and a run with the stand-in of the rules says so in the report itself. The weights are pinned to the
+commit that the calibration recorded, so the measurement of one day and the measurement of another day are the same
+measurement.
 
 The refusals are sentences with an exit code that is not zero, never a traceback: the labelled file that does not
 exist, the reading that left a case out, and the caller that insists on the real model when only the stand-in is
@@ -55,24 +64,30 @@ from ledgerlens.eval.heldout_reader import (  # noqa: E402
     heldout_result,
     read_heldout_cases,
 )
-from ledgerlens.eval.manifest import safe_text  # noqa: E402
+from ledgerlens.eval.manifest import ManifestError, load_manifests, safe_text  # noqa: E402
 from ledgerlens.verify.checks import load_thresholds, verify_result  # noqa: E402
 from ledgerlens.verify.nli import (  # noqa: E402
     HuggingFaceNli,
     Nli,
     StubNli,
     get_nli,
+    nli_revision,
 )
 
 __all__ = [
     "CaseOutcome",
+    "HeldoutDeclaration",
     "HeldoutMeasurement",
     "MeasureRefusal",
+    "ModelReport",
     "RecipeFact",
     "TemplateRow",
     "main",
     "measure_heldout",
     "model_name",
+    "model_report",
+    "read_declaration",
+    "render_json",
     "render_report",
     "select_nli",
 ]
@@ -82,6 +97,36 @@ NO_MODEL = 2
 
 # The file the reading session builds, relative to the root of the tree. It is the input of the measurement.
 LABELLED_SET_RELATIVE = Path("data") / "eval" / "verification_heldout.jsonl"
+
+# The manifest of the datasets, relative to the root of the tree. It declares the role of the set and it holds the
+# sentences that limit the number that is measured over it.
+MANIFEST_RELATIVE = Path("data") / "eval" / "datasets.json"
+
+# The published reports of the measurement, relative to the root of the tree. The Markdown one is for a person and
+# the JSON one is for a program, and they carry the same numbers.
+PUBLISHED_MARKDOWN_RELATIVE = Path("data") / "eval" / "report_heldout.md"
+PUBLISHED_JSON_RELATIVE = Path("data") / "eval" / "report_heldout.json"
+
+# The command that produces the published measurement, as it is recorded in the published report.
+MEASUREMENT_COMMAND = "uv run --extra verify python scripts/measure_heldout.py"
+
+# The version of the shape of the published report. It grows when a field is added and never when one is removed, so
+# a reader of an older file knows that a field is missing and not that it was empty.
+MEASUREMENT_VERSION = "1"
+JSON_SCHEMA = "ledgerlens.heldout_measurement"
+JSON_SCHEMA_VERSION = 1
+
+# The sentences that say what the published report does not carry. They are in the file itself, so a reader of the
+# file does not have to guess what a field that is not there means.
+NOT_PUBLISHED: tuple[str, ...] = (
+    "The expected label of a case is the answer key of the generator that wrote the set, and this file does not "
+    "carry it: not in a field, not in a note and not as a hash, because there are only three labels and a hash of "
+    "the expected label is brute forceable in three tries.",
+    "The label of the reading of a case is not carried either: the only label of a case in this file is the label that "
+    "the model predicted, which is the output of the model and not the truth of the case.",
+    "The identifiers of the cases where the reading disagreed with the recipes are carried, and the label of neither "
+    "of them is.",
+)
 
 # The method of a verdict that the verifier decided by itself, without the model.
 CODE_METHOD = "none"
@@ -143,6 +188,38 @@ class TemplateRow:
 
 
 @dataclass(frozen=True)
+class ModelReport:
+    """What the report says about the model that produced the verdicts: its name, its revision and its sentence.
+
+    Why it exists: a number of this repository is never published without the model that produced it, and a model
+    whose weights move is not the same model on another day. The revision is the commit of the weights, and it is the
+    one that the calibration of the thresholds recorded.
+    """
+
+    name: str
+    revision: str | None
+    description: str
+
+
+@dataclass(frozen=True)
+class HeldoutDeclaration:
+    """What the manifest of the datasets declares about the set that was measured.
+
+    Why it exists: the role of the set and the sentences that limit a number over it live in the manifest, and a report
+    that copies them by hand drifts from them. The declaration is read from the manifest at run time, so the two
+    reports of the measurement and the manifest always say the same thing.
+    """
+
+    dataset_id: str
+    path: str
+    split_role: str
+    records_count: int
+    contamination_policy: str
+    caveat: str
+    declared: bool
+
+
+@dataclass(frozen=True)
 class HeldoutMeasurement:
     """The measurement of the verifier over the labelled held out set.
 
@@ -198,6 +275,74 @@ def model_name(nli: Nli) -> str:
     if isinstance(nli, StubNli):
         return "StubNli (the deterministic stand-in of the rules, not the model)"
     return f"{type(nli).__name__} (an injected predictor, not a model of the repository)"
+
+
+def model_report(nli: Nli) -> ModelReport:
+    """The model that produced the verdicts, with the commit of its weights when it has one.
+
+    Why it exists: the report names the model and the revision of its weights, so a reader knows that the measurement
+    of one day and the measurement of another day are the same measurement. The revision is the one that the
+    calibration of the thresholds recorded, and the stand-in of the rules has none.
+    """
+    description = model_name(nli)
+    if not isinstance(nli, HuggingFaceNli):
+        return ModelReport(name=type(nli).__name__, revision=None, description=description)
+    try:
+        revision = nli.revision or nli_revision(nli.model_id)
+    except RuntimeError:
+        revision = None
+    return ModelReport(name=nli.model_id, revision=revision, description=description)
+
+
+def read_declaration(manifest_path: Path, labelled_path: Path) -> HeldoutDeclaration:
+    """What the manifest of the datasets declares about the set that was measured.
+
+    Why it exists: the role of the set is what says what a number over it may claim, and the sentences that limit the
+    number are the ones of the manifest. The report reads them there, so the two reports of the measurement and the
+    manifest never drift apart.
+
+    Why a file that the manifest does not declare is not a refusal: the measurement itself is still a measurement, and
+    a set that the manifest does not declare is a set that this report names no role for. The report says so.
+
+    Raises `MeasureRefusal` when the manifest cannot be read and when it declares the set with a role that is not
+    `held_out`, because a measurement of the held out set published under another role would claim to be a
+    measurement of data that a decision was taken against.
+    """
+    try:
+        manifests = load_manifests(manifest_path)
+    except ManifestError as error:
+        raise MeasureRefusal(
+            f"The manifest of the datasets could not be read, so the report names no role for the set and no "
+            f"sentence that limits the number: {error}"
+        ) from error
+
+    wanted = _relative(labelled_path)
+    entry = next((item for item in manifests if item.path == wanted), None)
+    if entry is None:
+        return HeldoutDeclaration(
+            dataset_id="",
+            path=wanted,
+            split_role="",
+            records_count=0,
+            contamination_policy="",
+            caveat="",
+            declared=False,
+        )
+    if entry.split_role != "held_out":
+        raise MeasureRefusal(
+            f"The manifest of the datasets declares the file {safe_text(wanted)} with the role "
+            f"'{safe_text(entry.split_role)}', and the measurement of the held out set is not published under "
+            f"another role."
+        )
+    return HeldoutDeclaration(
+        dataset_id=entry.dataset_id,
+        path=entry.path,
+        split_role=entry.split_role,
+        records_count=entry.records_count,
+        contamination_policy=entry.contamination_policy,
+        caveat=entry.notes,
+        declared=True,
+    )
 
 
 def select_nli(choice: str = "auto") -> Nli:
@@ -374,6 +519,8 @@ def render_report(
     *,
     model: str,
     thresholds: Mapping[str, Any] | None = None,
+    declaration: HeldoutDeclaration | None = None,
+    revision: str | None = None,
 ) -> str:
     """The report of the measurement, in Markdown, as it is printed and as it is written.
 
@@ -381,12 +528,21 @@ def render_report(
     that produced them, the thresholds that were applied, the denominators of every rate, the matrix of the two
     labels, the count of the false supported, the table by template, the count of the disagreements of the reading
     with the recipes and the list of every case.
+
+    Why it carries the sentences that limit the number: a number without its limits is a number that reads as more
+    than it is. The sentences come from the manifest of the datasets, the same place the JSON report takes them from,
+    so the two reports never drift apart.
     """
     values = dict(thresholds or load_thresholds())
     lines: list[str] = []
     lines.append("# The verification over the held out set")
     lines.append("")
     lines.append(f"the model that produced the verdicts: {model}")
+    if revision:
+        lines.append(
+            f"the revision of the weights: {revision} (the commit that the calibration of "
+            f"ledgerlens/verify/thresholds.json recorded)"
+        )
     lines.append(
         "the thresholds applied: entailment_min "
         f"{values.get('entailment_min')}, contradiction_min {values.get('contradiction_min')}, "
@@ -449,6 +605,19 @@ def render_report(
     )
     lines.append("")
 
+    lines.append("## The limitations of this number")
+    lines.append("")
+    if declaration is not None and declaration.declared:
+        lines.append(f"the contamination policy of the set: {declaration.contamination_policy}")
+        lines.append("")
+        lines.append(f"the caveat of the set: {declaration.caveat}")
+    else:
+        lines.append(
+            "the manifest of the datasets does not declare the file that was measured, so this report names no role "
+            "for the set and no sentence that limits the number."
+        )
+    lines.append("")
+
     lines.append("## The cases")
     lines.append("")
     lines.append("| id | the claim | the reader | the verifier | the method | the note |")
@@ -463,10 +632,112 @@ def render_report(
     return "\n".join(lines)
 
 
+def render_json(
+    measurement: HeldoutMeasurement,
+    *,
+    model: ModelReport,
+    thresholds: Mapping[str, Any] | None = None,
+    declaration: HeldoutDeclaration | None = None,
+) -> str:
+    """The report of the measurement, in JSON, as it is written next to the Markdown one.
+
+    Why it exists: the Markdown report is for a person and a number that a program cannot read is a number that a
+    program cannot check. The JSON carries the aggregate, the predictions of the model and the sentences that limit
+    the number, so a reader can check that the two reports agree and that the predictions are consistent with the
+    aggregate that is published.
+
+    Why it carries no expected label: the expected label of a case is the answer key of the generator, and a
+    published key ends the reservation of the set for every change that comes after. The predictions are the output
+    of the model and not the truth of a case, and the truth of a case is not published here, not even as a hash:
+    there are only three labels, so a hash of the expected label is brute forceable in three tries.
+    """
+    values = dict(thresholds or load_thresholds())
+    payload: dict[str, Any] = {
+        "schema": JSON_SCHEMA,
+        "schema_version": JSON_SCHEMA_VERSION,
+        "measurement_version": MEASUREMENT_VERSION,
+        "command": MEASUREMENT_COMMAND,
+        "dataset": {
+            "dataset_id": declaration.dataset_id if declaration is not None else "",
+            "path": declaration.path if declaration is not None else _relative(measurement.labelled_path),
+            "split_role": declaration.split_role if declaration is not None else "",
+            "cases": measurement.total,
+            "denominator": measurement.total,
+        },
+        "model": {
+            "name": model.name,
+            "revision": model.revision,
+            "reported": model.description,
+        },
+        "thresholds": {
+            "entailment_min": values.get("entailment_min"),
+            "contradiction_min": values.get("contradiction_min"),
+            "max_premise_chars": values.get("max_premise_chars"),
+        },
+        "accuracy": {
+            "correct": measurement.correct,
+            "cases": measurement.total,
+            "value": str(measurement.accuracy),
+        },
+        "accuracy_of_the_model_cases": {
+            "correct": measurement.model_correct,
+            "cases": measurement.model_total,
+            "value": str(measurement.model_accuracy),
+        },
+        "cases_decided_by_the_code": measurement.code_total,
+        "counts": {
+            "verifier": {label: measurement.verifier_counts[label] for label in LABELS},
+            "reader": {label: measurement.reader_counts[label] for label in LABELS},
+            "false_supported": measurement.false_supported,
+            "false_contradicted": measurement.false_contradicted,
+        },
+        "confusion_matrix": {
+            "rows": "reader",
+            "columns": "verifier",
+            "labels": list(LABELS),
+            "counts": {
+                reader: {verifier: measurement.matrix[(reader, verifier)] for verifier in LABELS}
+                for reader in LABELS
+            },
+        },
+        "by_template": [
+            {
+                "template": row.template,
+                "cases": row.total,
+                "reader_counts": {label: row.reader_counts[label] for label in LABELS},
+                "right": row.correct,
+            }
+            for row in measurement.by_template
+        ],
+        "cases": [
+            {"id": item.case_id, "predicted_label": item.verdict_label, "method": item.method}
+            for item in measurement.cases
+        ],
+        "reading_against_the_recipes": {
+            "count": measurement.disagreements,
+            "case_ids": list(measurement.disagreement_ids),
+        },
+        "limitations": {
+            "contamination_policy": declaration.contamination_policy if declaration is not None else "",
+            "caveat": declaration.caveat if declaration is not None else "",
+        },
+        "not_published": list(NOT_PUBLISHED),
+    }
+    return json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
+
+
 def main(argv: Sequence[str] | None = None) -> int:
-    """The command line of the measurement: the labelled file, the model and where the report is written.
+    """The command line of the measurement: the labelled file, the model and where the reports are written.
 
     Why it returns a code and never a traceback: the reader of the failure is a person, and a refusal is a sentence.
+
+    Why the machine readable report is written next to the Markdown one: the two carry the same numbers, and a
+    reader that checks one against the other needs both. The JSON is written next to the Markdown report when the
+    Markdown report is written somewhere, and to the published path when it is not.
+
+    Why a published report is never overwritten by a measurement of the stand-in: the published number is the number
+    of the real model, and the stand-in measures the rules of the stand-in. A run that wants a report of the stand-in
+    names the path it wants with `--out` or `--json-out`.
     """
     parser = argparse.ArgumentParser(
         description="Measures the verifier over the labelled held out set of the verification.",
@@ -483,17 +754,28 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="the recipes of the generator, the private input of the report",
     )
     parser.add_argument(
+        "--manifest",
+        default=str(MANIFEST_RELATIVE),
+        help="the manifest of the datasets, the source of the role of the set and of the sentences that limit it",
+    )
+    parser.add_argument(
         "--model",
         choices=("auto", "real", "stub"),
         default="auto",
         help="the model that produces the verdicts: the real one, the stand-in, or the one that is there",
     )
     parser.add_argument("--out", default=None, help="the Markdown file the report is written to")
+    parser.add_argument(
+        "--json-out",
+        default=None,
+        help="the JSON file the machine readable report is written to, next to the Markdown one by default",
+    )
     arguments = parser.parse_args(argv)
 
     root = Path(arguments.root).resolve()
     labelled = _resolve(root, arguments.labelled)
     recipes = _resolve(root, arguments.recipes)
+    manifest = _resolve(root, arguments.manifest)
 
     try:
         nli = select_nli(arguments.model)
@@ -507,14 +789,55 @@ def main(argv: Sequence[str] | None = None) -> int:
     except Exception as error:  # the model may be missing, unreachable or broken: it is a sentence and not a pass
         return _refuse(f"the measurement could not run: {safe_text(error)}", code=NO_MODEL)
 
-    report = render_report(measurement, model=model_name(nli))
+    try:
+        declaration = read_declaration(manifest, labelled)
+    except MeasureRefusal as error:
+        return _refuse(str(error))
+
+    model = model_report(nli)
+    report = render_report(
+        measurement,
+        model=model.description,
+        declaration=declaration,
+        revision=model.revision,
+    )
+    payload = render_json(measurement, model=model, declaration=declaration)
     print(report)
 
-    if arguments.out:
-        out = _resolve(root, arguments.out)
-        out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(report, encoding="utf-8")
+    markdown_target = _resolve(root, arguments.out) if arguments.out else None
+    if arguments.json_out:
+        json_target = _resolve(root, arguments.json_out)
+    elif markdown_target is not None:
+        json_target = markdown_target.with_suffix(".json")
+    else:
+        json_target = _resolve(root, PUBLISHED_JSON_RELATIVE)
+
+    for target in (markdown_target, json_target):
+        if target is None:
+            continue
+        if _is_published(target) and not isinstance(nli, HuggingFaceNli):
+            return _refuse(
+                f"The published report {safe_text(_relative(target))} is the report of the measurement of the real "
+                f"model, and this run measured the stand-in of the rules, so the published report is not written. "
+                f"Name the path you want with --out or --json-out."
+            )
+
+    if markdown_target is not None:
+        markdown_target.parent.mkdir(parents=True, exist_ok=True)
+        markdown_target.write_text(report, encoding="utf-8")
+    json_target.parent.mkdir(parents=True, exist_ok=True)
+    json_target.write_text(payload, encoding="utf-8")
     return 0
+
+
+def _is_published(path: Path) -> bool:
+    """Whether the path is one of the published reports of the measurement.
+
+    Why it exists: the published report is the number of the real model, and a run of the stand-in must not replace
+    it. The two published paths are the ones the repository commits.
+    """
+    relative = _relative(path)
+    return relative in {str(PUBLISHED_MARKDOWN_RELATIVE), str(PUBLISHED_JSON_RELATIVE)}
 
 
 def _read_cases(path: Path) -> tuple[HeldoutCase, ...]:

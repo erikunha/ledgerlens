@@ -1,6 +1,7 @@
 # The verification over the held out set
 
 the model that produced the verdicts: MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli (the real model)
+the revision of the weights: 6f5cf0a2b59cabb106aca4c287eed12e357e90eb (the commit that the calibration of ledgerlens/verify/thresholds.json recorded)
 the thresholds applied: entailment_min 0.81, contradiction_min 0.91, max_premise_chars 4000 (the pinned ones of ledgerlens/verify/thresholds.json)
 the labelled file: data/eval/verification_heldout.jsonl
 the recipes of the generator (a private input of the report, not published, never a label): data/eval/heldout/recipes.jsonl
@@ -40,6 +41,12 @@ the false contradicted: 0
 ## The reader and the recipes
 
 the reading disagrees with the recipe of 2 case(s) of 48: ho-002, ho-013
+
+## The limitations of this number
+
+the contamination policy of the set: Thresholds, prompts and hyperparameters are tuned only against the datasets whose split_role is 'tuning'. A dataset with the role 'validation' may be scored but never tuned against. A dataset with the role 'held_out' may be read only by the final scoring step, and a tuning script that reads it has to fail. One dataset of this repository carries the role 'held_out' today: the verification_heldout, which is the labelled set of the blind reading. The answer key of the generator that wrote the set is not published, because a key that is public is not a key, and the two readings were instructed to be blind to it: each of them disagrees with it in two of the forty eight cases. No number over any other dataset of this repository may be presented as a generalization to unseen data.
+
+the caveat of the set: The labels come from two independent blind machine readings with an adjudication of the divergences, each one instructed to be blind to the recipe of the case (ADR-059), and each one disagreeing with the key of the generator in two of the forty eight cases. The divergence between the two readings measures the noise of the rule with no answer key near it, and the divergence of each reading against the recipes measures the distance between a blind reading and the expectation of the writer. The reading is a machine reading, so it may share a blind spot with the model that the set measures, and the number over the set cannot claim to be free of it. It has one labeling pass and the repository has no mechanism to version a second one yet. No number over any other dataset of this repository may be presented as a generalization to unseen data.
 
 ## The cases
 

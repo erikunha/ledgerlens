@@ -19,14 +19,19 @@ from pathlib import Path
 import pytest
 
 from ledgerlens.eval.manifest import (
+    HELD_OUT_RESERVED_CASE_DIGESTS,
     HELD_OUT_RESERVED_DIGESTS,
     HELD_OUT_RESERVED_PATHS,
     HELD_OUT_RESERVED_RECORD_DIGESTS,
+    HELD_OUT_SOURCE_PATHS,
     TUNING_ROLE,
     EvalDatasetManifest,
     ManifestError,
     TuningRefusal,
+    case_digest,
+    fingerprint_dataset,
     load_manifests,
+    manifest_problems,
     may_be_tuned_against,
     require_tuning_dataset,
     require_tuning_path,
@@ -190,11 +195,21 @@ def test_the_guard_answers_without_reading_the_disk(tmp_path: Path) -> None:
 # `held_out` allows. Every other script of the repository reads the sets of the role `tuning` and nothing else.
 # The markers that name a file whose role is not `tuning`, in the source of a script. The paths and the constants
 # that resolve to them are both here, because a script may name either one.
+#
+# The sources of the held out set are here as well, and they are the files the set can be rebuilt from: the cases
+# the readers saw, the labels of the two readings and the labels of the adjudication. A script that names one of
+# them is a script that may rebuild the set, and the set may never be tuning material.
 MARKERS_OF_A_HELD_OUT_FILE = (
     "verification_heldout.jsonl",
     "heldout/recipes.jsonl",
     "RECIPES_PATH",
     "LABELLED_SET_RELATIVE",
+    "heldout/cases.jsonl",
+    "heldout/labels_adjudicated.jsonl",
+    "heldout/labels_reader_a.jsonl",
+    "heldout/labels_reader_b.jsonl",
+    "labels_reader_a",
+    "labels_reader_b",
 )
 
 ALLOWED_READERS = {
@@ -208,6 +223,24 @@ def _scripts_of_the_repository() -> list[Path]:
     return sorted((ROOT / "scripts").glob("*.py"))
 
 
+def _mentions_of_a_held_out_file(text: str) -> list[str]:
+    """The markers of the held out material that a source names."""
+    return [marker for marker in MARKERS_OF_A_HELD_OUT_FILE if marker in text]
+
+
+def _offenders(scripts: list[Path]) -> list[str]:
+    """The scripts that name the held out material and that are not allowed to name it."""
+    offenders: list[str] = []
+    for script in scripts:
+        mentions = _mentions_of_a_held_out_file(script.read_text(encoding="utf-8"))
+        if not mentions:
+            continue
+        if script.name in ALLOWED_READERS:
+            continue
+        offenders.append(f"{script.name} mentions {', '.join(mentions)}")
+    return offenders
+
+
 def test_no_tuning_script_of_the_repository_opens_a_dataset_that_may_not_be_tuned_against() -> None:
     """Only the scoring step opens a file whose role is not `tuning`, and the list of those is closed.
 
@@ -218,20 +251,35 @@ def test_no_tuning_script_of_the_repository_opens_a_dataset_that_may_not_be_tune
 
     Why the list is closed and not open: a script that is added to the list without a reason is a second door.
     """
-    offenders: list[str] = []
-    for script in _scripts_of_the_repository():
-        text = script.read_text(encoding="utf-8")
-        mentions = [marker for marker in MARKERS_OF_A_HELD_OUT_FILE if marker in text]
-        if not mentions:
-            continue
-        if script.name in ALLOWED_READERS:
-            continue
-        offenders.append(f"{script.name} mentions {', '.join(mentions)}")
+    offenders = _offenders(_scripts_of_the_repository())
 
     assert offenders == [], (
         "a script that may not read a dataset of the role 'held_out' names one of them: "
         + "; ".join(offenders)
     )
+
+
+def test_the_scan_refuses_a_script_that_names_a_source_of_the_held_out_set(tmp_path: Path) -> None:
+    """The scan of the source sees the files the set can be rebuilt from, and it names them.
+
+    Why the offender is built in a temporary folder and not written into `scripts/`: the scan is a scan of the
+    source of a folder, and the proof of the scan has to run against a folder of its own. The file is never part of
+    the repository and the check of the tree stays honest.
+    """
+    assert "heldout/cases.jsonl" in MARKERS_OF_A_HELD_OUT_FILE
+
+    offender = tmp_path / "sneaky.py"
+    offender.write_text('PATH = "data/eval/heldout/cases.jsonl"\n', encoding="utf-8")
+
+    assert _offenders([offender]) == ["sneaky.py mentions heldout/cases.jsonl"]
+
+
+def test_the_scan_refuses_a_script_that_names_a_label_of_a_reading(tmp_path: Path) -> None:
+    """The labels of the two readings are held out material as well, and the scan sees them by their bare name."""
+    offender = tmp_path / "sneaky.py"
+    offender.write_text('PATH = "data/eval/heldout/labels_reader_b.jsonl"\n', encoding="utf-8")
+
+    assert _offenders([offender]) != []
 
 
 def test_the_scripts_that_may_read_the_held_out_set_are_the_scoring_step() -> None:
@@ -320,19 +368,26 @@ def test_a_path_that_no_entry_declares_is_refused() -> None:
 
 
 def test_the_reserved_paths_are_the_paths_of_the_datasets_with_the_role_held_out() -> None:
-    """The reservation of the code and the manifest say the same thing.
+    """The reservation of the code holds the datasets with the role `held_out` and the sources of the set.
 
     Why the two have to agree: the reservation lives in the code because the role of an entry is data and a data
     edit is one line away. If the manifest declares a dataset with the role `held_out` that the code does not
     reserve, the door of the path can be opened by editing the role of the entry, and the guard of the name is
     the only door left.
+
+    Why the reservation holds more than the datasets: the sources of the set are the files it can be rebuilt from,
+    and a path that names one of them is refused whatever the manifest says about it.
     """
     manifests = load_manifests(ROOT / "data" / "eval" / "datasets.json")
     reserved = {path for path in HELD_OUT_RESERVED_PATHS}
     declared = {entry.path for entry in manifests if entry.split_role == "held_out"}
 
-    assert reserved == declared, (
-        "the paths reserved in the code and the datasets with the role 'held_out' of the manifest are not the same: "
+    assert declared <= reserved, (
+        "the datasets with the role 'held_out' of the manifest are not all reserved in the code: "
+        f"reserved {sorted(reserved)}, declared {sorted(declared)}"
+    )
+    assert reserved - declared == set(HELD_OUT_SOURCE_PATHS), (
+        "the paths reserved in the code that the manifest does not declare as datasets are the sources of the set: "
         f"reserved {sorted(reserved)}, declared {sorted(declared)}"
     )
 
@@ -520,3 +575,295 @@ def test_the_reserved_record_digests_are_the_digests_of_the_set_and_of_the_key()
         assert digest in HELD_OUT_RESERVED_RECORD_DIGESTS, (
             f"the digest of the records of {name} is not reserved: a copy of it with other bytes would pass"
         )
+
+
+# --- the reservation that follows the case ------------------------------------------------------------------
+
+
+# The folder of the sources of the held out set. The cases the readers saw, the labels of the two readings and the
+# labels of the adjudication live in it, and the answer key of the generator lives in it too.
+HELDOUT_DIR = ROOT / "data" / "eval" / "heldout"
+CASES_PATH = HELDOUT_DIR / "cases.jsonl"
+ADJUDICATED_PATH = HELDOUT_DIR / "labels_adjudicated.jsonl"
+RECIPES_PATH = HELDOUT_DIR / "recipes.jsonl"
+LABELLED_SET_PATH = ROOT / "data" / "eval" / "verification_heldout.jsonl"
+
+
+def _rows(path: Path) -> list[dict[str, object]]:
+    """The records of a JSONL file of the repository."""
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+def _joined_cases(labels_path: Path) -> list[dict[str, object]]:
+    """The cases of the held out set with the labels of a file, joined on the id.
+
+    Why the join and not the labelled set: the join is the exploit. The cases carry the claim, the evidence and the
+    ids of the evidence and the labels carry the label, and the two together are the shape the sweep consumes.
+    """
+    labels = {str(row["id"]): str(row["label"]) for row in _rows(labels_path)}
+    cases = sorted(_rows(CASES_PATH), key=lambda row: str(row["id"]))
+    return [{**case, "label": labels[str(case["id"])]} for case in cases]
+
+
+def _write_cases(path: Path, cases: list[dict[str, object]]) -> Path:
+    """Writes the cases in a JSONL file, one record per line."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        "\n".join(json.dumps(case, ensure_ascii=False, sort_keys=True) for case in cases) + "\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+def _declared_as_tuning(root: Path, relative: str, cases: list[dict[str, object]]) -> tuple[EvalDatasetManifest, ...]:
+    """A manifest that declares a file with the role of the tuning, the way the exploit declares it.
+
+    Why the manifest is written and read: the exploit does not ask the guard about a name, it writes a manifest that
+    declares the file, and the test has to walk the same path a person would walk.
+    """
+    path = root / relative
+    manifest = root / "data" / "eval" / "datasets.json"
+    manifest.parent.mkdir(parents=True, exist_ok=True)
+    manifest.write_text(
+        json.dumps(
+            {
+                "datasets": [
+                    {
+                        "dataset_id": "my_set",
+                        "path": relative,
+                        "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                        "records_count": len(cases),
+                        "source": "A reconstruction of the held out set from its own sources.",
+                        "labeling_version": "v1",
+                        "split_role": TUNING_ROLE,
+                        "scenario_seed": 7301,
+                        "contamination_policy": POLICY,
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    return load_manifests(manifest)
+
+
+def test_the_join_of_the_sources_of_the_held_out_set_is_refused(tmp_path: Path) -> None:
+    """The set rebuilt from its own sources is refused, and the refusal names the case that is in it.
+
+    Why this is the hole and why this test closes it: the reserved path, the reserved digest of the bytes and the
+    reserved digest of the records all miss a reconstruction, because the join has other bytes and other records than
+    the labelled set. The case does not: the join carries the cases of the set, one by one.
+    """
+    root = tmp_path / "tree"
+    cases = _joined_cases(ADJUDICATED_PATH)
+    relative = "data/eval/my_set.jsonl"
+    _write_cases(root / relative, cases)
+    manifests = _declared_as_tuning(root, relative, cases)
+
+    with pytest.raises(TuningRefusal) as caught:
+        require_tuning_path(relative, manifests, root)
+
+    message = str(caught.value)
+    assert "holds a case of the held out set" in message
+    assert message.endswith(".")
+
+
+def test_a_file_with_the_reserved_cases_and_one_altered_case_is_refused(tmp_path: Path) -> None:
+    """A file with the cases of the set and one case that was changed is refused, because the other ones are there.
+
+    Why the test alters one case and not all of them: a reservation by the case holds a reconstruction that alters
+    one record, because the forty seven other cases are the cases of the set. A reservation by the bytes would not
+    hold it, and neither would a reservation by the records.
+    """
+    root = tmp_path / "tree"
+    cases = _joined_cases(ADJUDICATED_PATH)
+    altered = [{**cases[0], "label": "contradicted" if cases[0]["label"] != "contradicted" else "supported"}]
+    altered.extend(cases[1:])
+    relative = "data/eval/my_set.jsonl"
+    _write_cases(root / relative, altered)
+    manifests = _declared_as_tuning(root, relative, altered)
+
+    with pytest.raises(TuningRefusal) as caught:
+        require_tuning_path(relative, manifests, root)
+
+    assert "holds a case of the held out set" in str(caught.value)
+
+
+def test_a_file_with_the_labels_of_the_generator_is_refused(tmp_path: Path) -> None:
+    """The set rebuilt with the labels of the generator is refused too.
+
+    Why the labels of the generator matter: the two variants of the labels differ in two of the forty eight cases,
+    and a reservation that held only the adjudicated labels would miss a file built with the labels of the key.
+    The reservation holds the union of the two.
+    """
+    if not RECIPES_PATH.exists():
+        pytest.skip("the answer key of the generator is not on the disk of this tree")
+
+    root = tmp_path / "tree"
+    cases = _joined_cases(RECIPES_PATH)
+    relative = "data/eval/my_set.jsonl"
+    _write_cases(root / relative, cases)
+    manifests = _declared_as_tuning(root, relative, cases)
+
+    with pytest.raises(TuningRefusal) as caught:
+        require_tuning_path(relative, manifests, root)
+
+    assert "holds a case of the held out set" in str(caught.value)
+
+
+def test_the_reserved_case_digests_are_the_cases_of_the_files_on_the_disk() -> None:
+    """The reservation holds the digests of the cases of the files of the disk, and it holds all of them.
+
+    Why the count and not only the membership: the union of the two variants of the labels is fifty digests, and a
+    constant that lost one of them would refuse a reconstruction of the set without saying why. The count is what
+    says that nothing was lost.
+    """
+    digests: set[str] = set()
+    for labels_path in (ADJUDICATED_PATH, RECIPES_PATH):
+        if not labels_path.exists():
+            continue
+        digests.update(case_digest(case) for case in _joined_cases(labels_path))
+
+    assert len(HELD_OUT_RESERVED_CASE_DIGESTS) == 50
+    assert set(HELD_OUT_RESERVED_CASE_DIGESTS) == digests, (
+        "the reserved case digests and the digests of the cases on the disk are not the same: "
+        f"reserved {len(HELD_OUT_RESERVED_CASE_DIGESTS)}, on the disk {len(digests)}"
+    )
+
+
+def test_the_projection_of_the_labelled_set_is_the_projection_of_the_join() -> None:
+    """The two are the same cases, and the comparison is only possible because of the projection.
+
+    Why it matters: the labelled set carries seven keys per record and the join carries five, so the bytes and the
+    records of the two differ. The projection is the five keys that the sweep consumes, and under it the two files
+    hold the same cases.
+    """
+    labelled = [
+        {key: row[key] for key in ("claim", "evidence", "evidence_ids", "id", "label")}
+        for row in _rows(LABELLED_SET_PATH)
+    ]
+    joined = _joined_cases(ADJUDICATED_PATH)
+
+    assert labelled == joined
+    assert [case_digest(case) for case in labelled] == [case_digest(case) for case in joined]
+
+
+def test_the_sources_of_the_set_are_reserved_by_path_and_by_digest() -> None:
+    """The files the set can be rebuilt from are reserved by their path, by their bytes and by their records.
+
+    Why the sources and not only the set: the reservation of the set alone does not stop a copy of the cases, and
+    the cases are the half of the set that carries the claims.
+    """
+    reserved_paths = set(HELD_OUT_RESERVED_PATHS)
+
+    for name in (
+        "data/eval/heldout/cases.jsonl",
+        "data/eval/heldout/labels_adjudicated.jsonl",
+        "data/eval/heldout/labels_reader_a.jsonl",
+        "data/eval/heldout/labels_reader_b.jsonl",
+    ):
+        assert name in reserved_paths, f"the source {name} is not reserved by its path"
+
+    for name in (
+        "data/eval/heldout/cases.jsonl",
+        "data/eval/heldout/labels_adjudicated.jsonl",
+        "data/eval/heldout/labels_reader_a.jsonl",
+        "data/eval/heldout/labels_reader_b.jsonl",
+    ):
+        path = ROOT / name
+        if not path.exists():
+            continue
+        assert hashlib.sha256(path.read_bytes()).hexdigest() in HELD_OUT_RESERVED_DIGESTS, (
+            f"the digest of the bytes of {name} is not reserved"
+        )
+        records = _rows(path)
+        canonical = json.dumps(records, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        assert hashlib.sha256(canonical.encode("utf-8")).hexdigest() in HELD_OUT_RESERVED_RECORD_DIGESTS, (
+            f"the digest of the records of {name} is not reserved"
+        )
+
+
+# --- the scan of the folder of the sources --------------------------------------------------------------------
+
+
+def test_the_check_refuses_an_undeclared_file_in_the_folder_of_the_sources(tmp_path: Path) -> None:
+    """A JSONL file of the folder of the sources that no entry declares is a problem of the check.
+
+    Why it matters: the exploit put its file in that folder, because the scan of the folder looked only at the files
+    that sit directly in `data/eval/`. The scan looks into the folder now, and a file that nobody declares there is
+    said out loud.
+    """
+    datasets = tmp_path / "data" / "eval"
+    datasets.mkdir(parents=True)
+    (datasets / "eval_cases.jsonl").write_text('{"id": "a"}\n', encoding="utf-8")
+    heldout = datasets / "heldout"
+    heldout.mkdir()
+    (heldout / "my_set.jsonl").write_text('{"id": "b"}\n', encoding="utf-8")
+    digest, count = fingerprint_dataset(datasets / "eval_cases.jsonl")
+    manifest = datasets / "datasets.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "datasets": [
+                    {
+                        "dataset_id": "eval_cases",
+                        "path": "data/eval/eval_cases.jsonl",
+                        "sha256": digest,
+                        "records_count": count,
+                        "source": "The records come from the seeded sample ledger of data/scenarios.json.",
+                        "labeling_version": "v1",
+                        "split_role": TUNING_ROLE,
+                        "scenario_seed": 42,
+                        "contamination_policy": POLICY,
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    problems = manifest_problems(tmp_path)
+
+    assert [problem.message for problem in problems if problem.kind == "undeclared"] != []
+    assert any("my_set.jsonl" in problem.message for problem in problems)
+
+
+def test_the_check_does_not_report_the_sources_of_the_held_out_set(tmp_path: Path) -> None:
+    """The sources of the set are not datasets and the code reserves them, so the check does not report them.
+
+    Why it matters: the scan of the folder has to know the sources of the set, or the check of the datasets would
+    fail on a tree that is correct.
+    """
+    datasets = tmp_path / "data" / "eval"
+    datasets.mkdir(parents=True)
+    (datasets / "eval_cases.jsonl").write_text('{"id": "a"}\n', encoding="utf-8")
+    heldout = datasets / "heldout"
+    heldout.mkdir()
+    for name in ("cases.jsonl", "labels_adjudicated.jsonl", "labels_reader_a.jsonl", "labels_reader_b.jsonl"):
+        (heldout / name).write_text('{"id": "b"}\n', encoding="utf-8")
+    digest, count = fingerprint_dataset(datasets / "eval_cases.jsonl")
+    manifest = datasets / "datasets.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "datasets": [
+                    {
+                        "dataset_id": "eval_cases",
+                        "path": "data/eval/eval_cases.jsonl",
+                        "sha256": digest,
+                        "records_count": count,
+                        "source": "The records come from the seeded sample ledger of data/scenarios.json.",
+                        "labeling_version": "v1",
+                        "split_role": TUNING_ROLE,
+                        "scenario_seed": 42,
+                        "contamination_policy": POLICY,
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    problems = manifest_problems(tmp_path)
+
+    assert [problem.message for problem in problems if problem.kind == "undeclared"] == []

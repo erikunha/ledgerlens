@@ -96,6 +96,8 @@ and one line that says what the file holds.
 - [ADR-062: The role held out exists, and the sentence of ADR-052 is superseded](decisions/ADR-062-the-role-held-out-exists-and-the-sentence-of-adr-052-is-superseded.md): Status: accepted. Date: 2026-11-23.
 - [ADR-063: The path of the machine of the owner is not a decision and is not published](decisions/ADR-063-the-path-of-the-machine-of-the-owner-is-not-a-decision-and-is-not-published.md): Status: accepted. Date: 2026-11-23.
 - [ADR-064: The sentences that assert the blindness of the reading as a fact are superseded](decisions/ADR-064-the-sentences-that-assert-the-blindness-of-the-reading-as-a-fact-are-superseded.md): Status: accepted. Date: 2026-11-23.
+- [ADR-065: The reservation of the held out set follows the case and not only the file](decisions/ADR-065-the-reservation-of-the-held-out-set-follows-the-case-and-not-only-the-file.md): Status: accepted. Date: 2026-11-23.
+- [ADR-067: The measurement of the held out set is published without its answer key](decisions/ADR-067-the-measurement-of-the-held-out-set-is-published-without-its-answer-key.md): Status: accepted. Date: 2026-11-23.
 - [Decision records](decisions/README.md): Every decision that restricts the future of the work is a record in this folder, and this index lists them in the order of their number, with their status...
 
 ## docs/pt-BR

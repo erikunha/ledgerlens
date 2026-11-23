@@ -1,0 +1,394 @@
+{
+  "schema": "ledgerlens.heldout_measurement",
+  "schema_version": 1,
+  "measurement_version": "1",
+  "command": "uv run --extra verify python scripts/measure_heldout.py",
+  "dataset": {
+    "dataset_id": "verification_heldout",
+    "path": "data/eval/verification_heldout.jsonl",
+    "split_role": "held_out",
+    "cases": 48,
+    "denominator": 48
+  },
+  "model": {
+    "name": "MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli",
+    "revision": "6f5cf0a2b59cabb106aca4c287eed12e357e90eb",
+    "reported": "MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli (the real model)"
+  },
+  "thresholds": {
+    "entailment_min": 0.81,
+    "contradiction_min": 0.91,
+    "max_premise_chars": 4000
+  },
+  "accuracy": {
+    "correct": 24,
+    "cases": 48,
+    "value": "0.500"
+  },
+  "accuracy_of_the_model_cases": {
+    "correct": 23,
+    "cases": 47,
+    "value": "0.489"
+  },
+  "cases_decided_by_the_code": 1,
+  "counts": {
+    "verifier": {
+      "supported": 14,
+      "contradicted": 10,
+      "not_enough_evidence": 24
+    },
+    "reader": {
+      "supported": 19,
+      "contradicted": 23,
+      "not_enough_evidence": 6
+    },
+    "false_supported": 4,
+    "false_contradicted": 0
+  },
+  "confusion_matrix": {
+    "rows": "reader",
+    "columns": "verifier",
+    "labels": [
+      "supported",
+      "contradicted",
+      "not_enough_evidence"
+    ],
+    "counts": {
+      "supported": {
+        "supported": 10,
+        "contradicted": 0,
+        "not_enough_evidence": 9
+      },
+      "contradicted": {
+        "supported": 2,
+        "contradicted": 10,
+        "not_enough_evidence": 11
+      },
+      "not_enough_evidence": {
+        "supported": 2,
+        "contradicted": 0,
+        "not_enough_evidence": 4
+      }
+    }
+  },
+  "by_template": [
+    {
+      "template": "hedge_shape",
+      "cases": 8,
+      "reader_counts": {
+        "supported": 3,
+        "contradicted": 4,
+        "not_enough_evidence": 1
+      },
+      "right": 4
+    },
+    {
+      "template": "compound_shape",
+      "cases": 8,
+      "reader_counts": {
+        "supported": 1,
+        "contradicted": 4,
+        "not_enough_evidence": 3
+      },
+      "right": 3
+    },
+    {
+      "template": "negation_shape",
+      "cases": 8,
+      "reader_counts": {
+        "supported": 4,
+        "contradicted": 4,
+        "not_enough_evidence": 0
+      },
+      "right": 4
+    },
+    {
+      "template": "relative_period_shape",
+      "cases": 8,
+      "reader_counts": {
+        "supported": 4,
+        "contradicted": 4,
+        "not_enough_evidence": 0
+      },
+      "right": 0
+    },
+    {
+      "template": "range_shape",
+      "cases": 8,
+      "reader_counts": {
+        "supported": 4,
+        "contradicted": 4,
+        "not_enough_evidence": 0
+      },
+      "right": 7
+    },
+    {
+      "template": "two_source_shape",
+      "cases": 8,
+      "reader_counts": {
+        "supported": 3,
+        "contradicted": 3,
+        "not_enough_evidence": 2
+      },
+      "right": 6
+    }
+  ],
+  "cases": [
+    {
+      "id": "ho-001",
+      "predicted_label": "not_enough_evidence",
+      "method": "nli"
+    },
+    {
+      "id": "ho-002",
+      "predicted_label": "not_enough_evidence",
+      "method": "nli"
+    },
+    {
+      "id": "ho-003",
+      "predicted_label": "not_enough_evidence",
+      "method": "nli"
+    },
+    {
+      "id": "ho-004",
+      "predicted_label": "not_enough_evidence",
+      "method": "nli"
+    },
+    {
+      "id": "ho-005",
+      "predicted_label": "contradicted",
+      "method": "nli"
+    },
+    {
+      "id": "ho-006",
+      "predicted_label": "not_enough_evidence",
+      "method": "nli"
+    },
+    {
+      "id": "ho-007",
+      "predicted_label": "contradicted",
+      "method": "nli"
+    },
+    {
+      "id": "ho-008",
+      "predicted_label": "not_enough_evidence",
+      "method": "nli"
+    },
+    {
+      "id": "ho-009",
+      "predicted_label": "contradicted",
+      "method": "nli"
+    },
+    {
+      "id": "ho-010",
+      "predicted_label": "contradicted",
+      "method": "nli"
+    },
+    {
+      "id": "ho-011",
+      "predicted_label": "supported",
+      "method": "nli"
+    },
+    {
+      "id": "ho-012",
+      "predicted_label": "supported",
+      "method": "nli"
+    },
+    {
+      "id": "ho-013",
+      "predicted_label": "supported",
+      "method": "nli"
+    },
+    {
+      "id": "ho-014",
+      "predicted_label": "supported",
+      "method": "nli"
+    },
+    {
+      "id": "ho-015",
+      "predicted_label": "not_enough_evidence",
+      "method": "nli"
+    },
+    {
+      "id": "ho-016",
+      "predicted_label": "not_enough_evidence",
+      "method": "nli"
+    },
+    {
+      "id": "ho-017",
+      "predicted_label": "contradicted",
+      "method": "nli"
+    },
+    {
+      "id": "ho-018",
+      "predicted_label": "supported",
+      "method": "nli"
+    },
+    {
+      "id": "ho-019",
+      "predicted_label": "contradicted",
+      "method": "nli"
+    },
+    {
+      "id": "ho-020",
+      "predicted_label": "not_enough_evidence",
+      "method": "nli"
+    },
+    {
+      "id": "ho-021",
+      "predicted_label": "contradicted",
+      "method": "nli"
+    },
+    {
+      "id": "ho-022",
+      "predicted_label": "not_enough_evidence",
+      "method": "nli"
+    },
+    {
+      "id": "ho-023",
+      "predicted_label": "supported",
+      "method": "nli"
+    },
+    {
+      "id": "ho-024",
+      "predicted_label": "not_enough_evidence",
+      "method": "nli"
+    },
+    {
+      "id": "ho-025",
+      "predicted_label": "not_enough_evidence",
+      "method": "nli"
+    },
+    {
+      "id": "ho-026",
+      "predicted_label": "not_enough_evidence",
+      "method": "nli"
+    },
+    {
+      "id": "ho-027",
+      "predicted_label": "contradicted",
+      "method": "nli"
+    },
+    {
+      "id": "ho-028",
+      "predicted_label": "contradicted",
+      "method": "nli"
+    },
+    {
+      "id": "ho-029",
+      "predicted_label": "not_enough_evidence",
+      "method": "nli"
+    },
+    {
+      "id": "ho-030",
+      "predicted_label": "supported",
+      "method": "nli"
+    },
+    {
+      "id": "ho-031",
+      "predicted_label": "supported",
+      "method": "nli"
+    },
+    {
+      "id": "ho-032",
+      "predicted_label": "not_enough_evidence",
+      "method": "none"
+    },
+    {
+      "id": "ho-033",
+      "predicted_label": "supported",
+      "method": "nli"
+    },
+    {
+      "id": "ho-034",
+      "predicted_label": "not_enough_evidence",
+      "method": "nli"
+    },
+    {
+      "id": "ho-035",
+      "predicted_label": "supported",
+      "method": "nli"
+    },
+    {
+      "id": "ho-036",
+      "predicted_label": "not_enough_evidence",
+      "method": "nli"
+    },
+    {
+      "id": "ho-037",
+      "predicted_label": "not_enough_evidence",
+      "method": "nli"
+    },
+    {
+      "id": "ho-038",
+      "predicted_label": "not_enough_evidence",
+      "method": "nli"
+    },
+    {
+      "id": "ho-039",
+      "predicted_label": "not_enough_evidence",
+      "method": "nli"
+    },
+    {
+      "id": "ho-040",
+      "predicted_label": "not_enough_evidence",
+      "method": "nli"
+    },
+    {
+      "id": "ho-041",
+      "predicted_label": "not_enough_evidence",
+      "method": "nli"
+    },
+    {
+      "id": "ho-042",
+      "predicted_label": "supported",
+      "method": "nli"
+    },
+    {
+      "id": "ho-043",
+      "predicted_label": "not_enough_evidence",
+      "method": "nli"
+    },
+    {
+      "id": "ho-044",
+      "predicted_label": "supported",
+      "method": "nli"
+    },
+    {
+      "id": "ho-045",
+      "predicted_label": "supported",
+      "method": "nli"
+    },
+    {
+      "id": "ho-046",
+      "predicted_label": "contradicted",
+      "method": "nli"
+    },
+    {
+      "id": "ho-047",
+      "predicted_label": "supported",
+      "method": "nli"
+    },
+    {
+      "id": "ho-048",
+      "predicted_label": "not_enough_evidence",
+      "method": "nli"
+    }
+  ],
+  "reading_against_the_recipes": {
+    "count": 2,
+    "case_ids": [
+      "ho-002",
+      "ho-013"
+    ]
+  },
+  "limitations": {
+    "contamination_policy": "Thresholds, prompts and hyperparameters are tuned only against the datasets whose split_role is 'tuning'. A dataset with the role 'validation' may be scored but never tuned against. A dataset with the role 'held_out' may be read only by the final scoring step, and a tuning script that reads it has to fail. One dataset of this repository carries the role 'held_out' today: the verification_heldout, which is the labelled set of the blind reading. The answer key of the generator that wrote the set is not published, because a key that is public is not a key, and the two readings were instructed to be blind to it: each of them disagrees with it in two of the forty eight cases. No number over any other dataset of this repository may be presented as a generalization to unseen data.",
+    "caveat": "The labels come from two independent blind machine readings with an adjudication of the divergences, each one instructed to be blind to the recipe of the case (ADR-059), and each one disagreeing with the key of the generator in two of the forty eight cases. The divergence between the two readings measures the noise of the rule with no answer key near it, and the divergence of each reading against the recipes measures the distance between a blind reading and the expectation of the writer. The reading is a machine reading, so it may share a blind spot with the model that the set measures, and the number over the set cannot claim to be free of it. It has one labeling pass and the repository has no mechanism to version a second one yet. No number over any other dataset of this repository may be presented as a generalization to unseen data."
+  },
+  "not_published": [
+    "The expected label of a case is the answer key of the generator that wrote the set, and this file does not carry it: not in a field, not in a note and not as a hash, because there are only three labels and a hash of the expected label is brute forceable in three tries.",
+    "The label of the reading of a case is not carried either: the only label of a case in this file is the label that the model predicted, which is the output of the model and not the truth of the case.",
+    "The identifiers of the cases where the reading disagreed with the recipes are carried, and the label of neither of them is."
+  ]
+}

@@ -22,9 +22,11 @@ Two decisions of this module:
   of the blind reading, and the answer key of the generator that wrote it is not published and is not declared here,
   so no result over any other dataset of this repository may be presented as a generalization to unseen data.
 
-The scan for an undeclared JSONL file looks at the files that sit directly in `data/eval/`. The folders below it hold
-other artifacts with their own contract: the recording of the scenario `S01` lives in `data/eval/replay/s01/` and
-declares its own files in its own manifest (ADR-014), so it is not a dataset of this manifest.
+The scan for an undeclared JSONL file looks at the files that sit directly in `data/eval/` and at the files of
+`data/eval/heldout/`, which hold the sources of the held out set. The other folders below it hold artifacts with
+their own contract: the recording of the scenario `S01` lives in `data/eval/replay/s01/` and declares its own files
+in its own manifest (ADR-014), so it is not a dataset of this manifest. The sources of the held out set are not
+datasets either, and the code reserves them, so the scan knows them and does not report them.
 
 The path of an entry is relative to the root of the check and may not leave it. A path that is absolute or that
 climbs out of the root with a `..` part is refused when the manifest is read, before the disk is touched. A path that
@@ -61,6 +63,12 @@ against and `require_tuning_dataset` refuses with a sentence when it may not. On
 by ignoring the guard. The guard takes the entries of the manifest as an argument and never reads the disk, so the
 caller decides which root it is about.
 
+The reservation of the held out set is the other half of that guard, and it has four doors: the path, the digest
+of the bytes, the digest of the records and the digest of the case. A path names a file, a copy under another name
+has other bytes, and a rebuild of the set from its own sources has other records. The case is what does not change:
+the rebuild carries the cases of the set one by one, and the digest of a case is the digest of the projection that
+the sweep consumes.
+
 Usage:
 
 ```python
@@ -79,7 +87,7 @@ import io
 import json
 import os
 import stat
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, fields, replace
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -102,31 +110,145 @@ TUNING_ROLE = "tuning"
 # Why the reservation lives in the code and not in the manifest: the manifest is data and a hand edit of it is one
 # line of JSON away, while this constant is code that a reader reviews. A path that is reserved here stays
 # refused whatever role the manifest gives it, so the role of the entry cannot unlock the file it names.
-HELD_OUT_RESERVED_PATHS: tuple[str, ...] = ("data/eval/verification_heldout.jsonl",)
+#
+# The sources of the set are reserved with it, and they are the files the set can be rebuilt from: the cases the
+# readers saw, the labels of the two readings and the labels of the adjudication, and the answer key of the
+# generator. A copy of one of them under another name is the same cheat with another name.
+HELD_OUT_SOURCE_PATHS: tuple[str, ...] = (
+    "data/eval/heldout/cases.jsonl",
+    "data/eval/heldout/labels_adjudicated.jsonl",
+    "data/eval/heldout/labels_reader_a.jsonl",
+    "data/eval/heldout/labels_reader_b.jsonl",
+    "data/eval/heldout/recipes.jsonl",
+)
+
+HELD_OUT_RESERVED_PATHS: tuple[str, ...] = (
+    "data/eval/verification_heldout.jsonl",
+    *HELD_OUT_SOURCE_PATHS,
+)
+
+# The paths of the reports of the measurement of the held out set. Why they are reserved and not only the sources of
+# the set: a report of the set is a reading of the set, and the reading carries the verdict the model gave to every
+# case of it. A file that holds that may not be tuned against, because tuning on a reading of the set is tuning on
+# the set, whatever the role the manifest gives the file.
+HELD_OUT_RESERVED_REPORT_PATHS: tuple[str, ...] = (
+    "data/eval/report_heldout.json",
+    "data/eval/report_heldout.md",
+)
 
 # The digests that are reserved for the held out set and for the answer key of the generator that wrote it.
 # Why the digests and not only the paths: a path names a file and a copy of the file under another name has
 # another path, so a reservation by path alone stops at the name. The bytes of the set and of the key are the
 # same under any name, and the digest is what the manifest has to declare for the file to be a dataset at all:
 # a copy that the check of the datasets accepts carries the digest of the set, and the digest is reserved here.
+#
+# The digests of the sources of the set are here for the same reason: a copy of the cases is a copy of the half of
+# the set that carries the claims.
 HELD_OUT_RESERVED_DIGESTS: tuple[str, ...] = (
     "e8dbcdfbc3f75eafbd3cd3c6d88da5641175cec93b4a48109073c80438924212",
     "39720b7261521b911f1b6fb969afb8a59e97c963dc1933c1539a0b19de55ca30",
+    "790425b3988984b9e6f00d1af3e7c06bcdc56de9c29973a22bbb6fc1ec89f844",
+    "09113557a540a153357cf405f68b5846e87c94cca28b8beadb9057bbc73764e2",
+    "222d8411fa596ddf139e33d897b899c86d8692002e1f18e80a6173c9854a19ba",
+    "3153de3ffad5af26c0ff6fb0d6d4bf6f3b04de13f31947133b272aac34da1149",
+    # The digests of the published reports of the measurement: the JSON and the Markdown are byte reproducible, and
+    # a copy of either of them under another name carries the predictions of the model over the cases of the set.
+    "3afc037b88c9955143c2436ea2e3a1a3743b37faf80ad3dff0a1c0c03e536c75",
+    "d37dd5d97dd3b94a54e21e0e23c4fc01f471b6a927721714b32f1a126e630b35",
 )
 
-# The digests of the records of the same two files, with the records of a JSONL file read and written back in the
+# The digests of the records of the same files, with the records of a JSONL file read and written back in the
 # canonical form of the repository. Why the records and not only the bytes: a copy of the set with a newline at the
 # end has other bytes and the same records, and a reservation by the bytes alone stops at that newline. What the
 # sweep reads is the records, so the reservation follows the records.
 HELD_OUT_RESERVED_RECORD_DIGESTS: tuple[str, ...] = (
     "7f7be52d636391bbb566c1d921b754fd255a4acb3ac056fd2d7d2601b24c547b",
     "5b736b9c7956bb15eb2505a6d1682972ba1d6ace3db945245beefcc650243c1e",
+    "75c1ef83e60f4d1df5c4098b8c760be28051d8afb451026649ae6d9110ce6b97",
+    "9231b64704cd568e319dec4edbeef26400c4eca2c425708ef4a8f01d86fcb6c0",
+    "dc6643a677600695df72cbd28908c2b4bb24bfe72da7dd4f761cb67b76ce7344",
+    "eee1c01b79d3a266d4c964c9abaa75ed4a45bba8d6347110a9d8e2999402c127",
 )
+
+# The digests of the cases of the held out set, one per case, in the projection that the sweep consumes.
+#
+# Why a case and not only a file: the set can be rebuilt from its own sources, and the rebuild has other bytes and
+# other records than the set, so the reservation by the bytes and by the records misses it. The cases do not
+# change: the rebuild carries the forty eight cases of the set, one by one, and a case that was altered leaves the
+# other forty seven in place. The projection is the five keys that the sweep reads, so a record that carries them
+# is the same case whatever else it carries and whatever name the file has.
+#
+# Why fifty digests and not forty eight: the labels of the adjudication and the labels of the generator differ in
+# two of the forty eight cases, and the reservation holds the union of the two variants, so that a file built with
+# the labels of the key is refused as well.
+HELD_OUT_RESERVED_CASE_DIGESTS: tuple[str, ...] = (
+    "004150077a0d075b90f7192afa16e44fd5980485056e0883324fcebd95b6f945",
+    "0420d8dde939340665dc1b20b92441bf90ff8cb87f566b6b99ce1385a369433d",
+    "08266613309eb6ea2e38d50ad03e803f248f2716b62f9beb819a03eea0f6148b",
+    "147a4a10ac5d35374736df1dae5c0af46c3679cb5f7b4dc57e64c552e0a27dcf",
+    "1a506c2801692cbd33f12397d91dc70682893581be0d3aa89253c907d549c6d4",
+    "21952d9cde71b34c3a0154ec7b504ccb4f2e426cb8b13b58e0951f337c8e2de4",
+    "297be92899fcb3b561654d2cff9c8d39ee0c7a832f67737ffefa76229b35d005",
+    "38f7317f433cbdc03e1cf6d00e6d41efdacf6c280b15e5db48c2e3eb2230d7af",
+    "3ef3c1611cd9a29a2c46a0d6825471ee40c3f4d971e7adf8041489ef8e8a240e",
+    "4179d715fb2755327eb841e30120c16f3e8f3b3258b5c606da39d4e97674e3e4",
+    "4186d6929921bf33b31f7eff643fc1290875f05be08786530d59d54b75184167",
+    "4ea0a4226a976e6a36ebaaa5e6e54bb07537b0bc0eef7d4c2aec27b658fa3634",
+    "5477d5895fc8d4f8e09e5744fc0779b2b54486667d2cdaef5ac3299a0cca7322",
+    "57b793145c9aac1f997a69fc0614f86d35911209ec41c548bc5b1401e75b2867",
+    "5e6dbb20a07e92f511a08950d05f018da3d57e31f80d721014450f5271829e21",
+    "629458df551f9e4b6f53acaf74531fe1e0fdc2705605938b6b0dd78f85a08e84",
+    "74c6aaff2b2fcb4589ae8dc50ab55c4909cf8a82ffe15c55455a7bf55e874579",
+    "78303e1f4fa6ebde5c9b94192b79ec17be07f80e3f323156f1eb0b2a4c9e93a9",
+    "861c3ca5a72f1bafd9cf062d3f4e22c4dea4b25ea936af68e6b3384f1314d2bb",
+    "86778aefd7aeaf0ec7a97b04b1a06d9a752e3baac548c6ec3b472d68a6ee952a",
+    "8fbfe5da3cf6537504c5ea491b0c908e3de17acf90cb237fee51e824cd4da89b",
+    "93c1cc5005c96a747d38dedd7bd9ae3f175d1302fc1a1831f43f9b067e925fcc",
+    "98d789969c3077a922a7483aaa2e7abd83398bb427927525d17b85e0a6a4fb15",
+    "9a8fd09911bad8fca7b47702993d682b0eb8c2bd300ec420f64a2b550990043e",
+    "9c97fbe4881aacae31e7e90de00afabfd17de7322b03ae8e3c664b0528f1510f",
+    "a4d0e50ac59f930988485ab1e37e47c27bc0df98899c40748cf08d794aca8ebb",
+    "a6748abdc2b0a66cddb7a72fc42fbe45dcef1049ba85ca0b7ff96d1f4ab43287",
+    "a7dc6a25a9252d2f7d99c77731bb8a3e8ec1aaf5b6d47c4ea6aad9c6fbecba31",
+    "aad8825bb3320820957612f6b915b8a6603a8872a9a659e66ba0045bab09a776",
+    "ab46c5638fc5b2c4d2aae10b6cdea0df19631b26bac5c94aef7bf84f9c362cf9",
+    "b5620a83d8b38110193f74e974527095bb63806b1df1ae2b233abafc9cee1461",
+    "b862ff15e701d71d9979b8b903790e227bd65a956c0bd1cab108381fc19f26cd",
+    "bea7f99ff60bf1f8443bcc1b68f0ea6fb5f68ad8ed6a892b75c2c9c0add96036",
+    "c7190bf249cdbc1b0626cb44380402cbc052af6455526cae0f36102d3d6ee522",
+    "cd161ff4551d859c6a351aed16748c575b7a8ebf7f70652bc4716b6b2fb2ea47",
+    "cec76cd60227e8f0260622f24e63519e95f5fda3bbc9148b540859fe80f0153f",
+    "d5057fd704181a2bead5f5220eecc87eeca1219f197909c74feb26c6ad46f4bf",
+    "d676572f7320c99ccc5867e0b24fdbba3157779dc3a969e7b1cea091c2e5e568",
+    "d9fd79563b561a34dada661d2b3c0b59a6a9aae927d1b71ca6a964a2ca13679e",
+    "da5c7c0ed9ed4d0e69be9976bd4231a693fb12d6ecb750a5202a614cd0225ab0",
+    "deba0edf23cbf14738443ae3ce3959ff9b8b53f5429f39419588aa1a3a11d54d",
+    "e55e7b4d7f4058a9b1c078ec3dac6c0f1751291d89dbcfe2a6191d554985d380",
+    "e6804ed2dd80301d715f2fc99bf3a7c4506a516d51da8fc84b958cab2a6d4f23",
+    "ebb0af8d3de06152cd1a2198fb5ee23959db0cf6b3fc110730a9ab5fcb90af3e",
+    "f093b3b90749af98b54ca9e3e72a383408ab3fde7a440749513a1f309797ca81",
+    "f744e28a7c916b51aa4323e0c47041df420135f455c0b50c4bdb30b4a3a1505f",
+    "f9bacb4adad7016ca6bf7d0ffd7145e4b01e00003e6f079e819eb509e295294f",
+    "fbb5f0bc2a3249c141e4a26e71cf0ae371010ed60b638a70591afd70ae29c2d0",
+    "fbd1bac72ec0c6e45dc4d88acb87748574425108d9e373bf4958d2deeda0bf29",
+    "fdb3f525980f9c387e012d9f402cfe42d26134cd448ce988227b82dc01734d51",
+)
+
+# The keys of a case, in the projection that the sweep consumes: the claim, the evidence, the ids of the evidence,
+# the id of the case and the label.
+HELD_OUT_CASE_KEYS: tuple[str, ...] = ("claim", "evidence", "evidence_ids", "id", "label")
+
+# The reserved digests as a set, so that the door of the case is a membership and not a walk over a tuple.
+_RESERVED_CASE_DIGESTS = frozenset(HELD_OUT_RESERVED_CASE_DIGESTS)
 
 # The folder of the datasets, relative to the project root, and the manifest file relative to it. They are relative
 # so that a check over another root reads that root and not this one.
 EVAL_DIR_RELATIVE = Path("data") / "eval"
 MANIFEST_RELATIVE = Path("data") / "eval" / "datasets.json"
+
+# The folder of the sources of the held out set, below the folder of the datasets. It holds the cases, the labels
+# of the readings and the answer key of the generator, and the scan of the folder looks into it.
+HELDOUT_DIR_RELATIVE = Path("data") / "eval" / "heldout"
 
 # A sha256 is 64 lowercase hexadecimal characters. Uppercase and a short digest are refused.
 _SHA256_LENGTH = 64
@@ -717,18 +839,29 @@ def manifest_problems(
     # the same file and can never disagree about it.
     declared = {manifest.path for manifest in manifests}
     undeclared: list[ManifestProblem] = []
-    for path in sorted((base / EVAL_DIR_RELATIVE).glob("*.jsonl")):
+    # The scan looks at the files that sit directly in `data/eval/` and at the files of the folder of the sources
+    # of the held out set, which live below it. A rebuild of the set that a person puts in that folder is a file
+    # that no entry declares, and the check has to say so. The sources themselves are not datasets and the code
+    # reserves them, so they are not reported.
+    scanned = sorted((base / EVAL_DIR_RELATIVE).glob("*.jsonl")) + sorted(
+        (base / HELDOUT_DIR_RELATIVE).glob("*.jsonl")
+    )
+    for path in scanned:
         relative = path.relative_to(base).as_posix()
-        if relative not in declared:
-            undeclared.append(
-                ManifestProblem(
-                    kind="undeclared",
-                    message=(
-                        f"The file '{safe_text(relative)}' is a JSONL file of '{EVAL_DIR_RELATIVE.as_posix()}' "
-                        f"and it is not declared by any entry of the manifest."
-                    ),
-                )
+        if relative in declared:
+            continue
+        if relative in HELD_OUT_SOURCE_PATHS:
+            continue
+        folder = PurePosixPath(relative).parent.as_posix()
+        undeclared.append(
+            ManifestProblem(
+                kind="undeclared",
+                message=(
+                    f"The file '{safe_text(relative)}' is a JSONL file of '{safe_text(folder)}' "
+                    f"and it is not declared by any entry of the manifest."
+                ),
             )
+        )
 
     return missing + wrong_hash + wrong_count + unreadable + undeclared
 
@@ -934,6 +1067,52 @@ def _records_digest_of(path: Path) -> str | None:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
+def case_digest(case: Mapping[str, Any]) -> str:
+    """The canonical digest of one case, in the projection that the sweep consumes.
+
+    Why it exists: the sweep reads a case as the claim, the evidence, the ids of the evidence, the id of the case
+    and the label. The labelled set carries those five keys and two more, and a rebuild of the set carries the five
+    and nothing else, so the bytes and the records of the two differ. The projection is what the two have in
+    common, and the digest of the projection is the same for the same case under any name, in any order and in any
+    file.
+
+    Why the canonical form: the keys are sorted and the separators are the ones of the repository, so the digest of
+    a case does not depend on how the file that holds it was written.
+    """
+    projection = {key: case[key] for key in HELD_OUT_CASE_KEYS}
+    canonical = json.dumps(projection, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _case_digests_of(path: Path) -> set[str]:
+    """The digests of the cases of a JSONL file, or an empty set when the file cannot be read.
+
+    Why the empty set and not an error: the door of the case has to hold a file that may not be a dataset at all,
+    and a file that cannot be read is not the held out set.
+
+    Why a record that does not carry the five keys is skipped: it is not a case of the sweep and it cannot be a
+    case of the held out set.
+    """
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return set()
+    digests: set[str] = set()
+    for line in text.splitlines():
+        if not line.strip():
+            continue
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(record, dict):
+            continue
+        if not all(key in record for key in HELD_OUT_CASE_KEYS):
+            continue
+        digests.add(case_digest(record))
+    return digests
+
+
 def require_tuning_path(
     path: str | Path,
     manifests: Sequence[EvalDatasetManifest],
@@ -958,12 +1137,19 @@ def require_tuning_path(
     digest of the entry is what the check of the datasets compares with the file on the disk, so a copy that the
     check accepts carries the digest of the set and is refused here.
 
+    Why a reserved case is refused: the set can be rebuilt from its own sources, and the rebuild has other bytes
+    and other records than the set, so the doors of the bytes and of the records miss it. The cases do not change:
+    the rebuild carries the cases of the set one by one, and a case that was altered leaves the other ones in
+    place. The digest of a case is the digest of the projection that the sweep consumes, so it is the same for the
+    same case under any name and in any file.
+
     Why the root is an argument and not always read: the declaration of the manifest can be a lie, and the bytes of
     the file are the truth, so a caller that knows the root gets the check of the file itself. The callers of the
     sweep know the root, and a caller that does not still gets the check of the declaration.
 
     Raises `TuningRefusal` when the path is reserved, when the digest of the entry is reserved, when no entry
-    names the path, or when the entry that names it may not be tuned against.
+    names the path, when the entry that names it may not be tuned against, or when the file on the disk holds a
+    case of the held out set.
     """
     wanted = Path(path).as_posix()
     entry = next((manifest for manifest in manifests if manifest.path == wanted), None)
@@ -977,7 +1163,7 @@ def require_tuning_path(
             f"The dataset '{safe_text(entry.dataset_id)}' has the role '{safe_text(entry.split_role)}' and may not be "
             f"tuned against: only the datasets with the role '{TUNING_ROLE}' may be tuned against."
         )
-    if wanted in HELD_OUT_RESERVED_PATHS:
+    if wanted in HELD_OUT_RESERVED_PATHS or wanted in HELD_OUT_RESERVED_REPORT_PATHS:
         raise TuningRefusal(
             f"The path '{safe_text(wanted)}' is reserved for the held out set, so it may not be tuned against "
             f"whatever role the manifest gives it: only the datasets with the role '{TUNING_ROLE}' may be tuned "
@@ -1002,14 +1188,27 @@ def require_tuning_path(
                 f"key of the generator that wrote it, so it may not be tuned against under any name and with any "
                 f"role: only the datasets with the role '{TUNING_ROLE}' may be tuned against."
             )
+        # The fourth door: the cases. A rebuild of the set from its own sources has other bytes and other records
+        # than the set, and the reservation by the bytes and by the records misses it. The cases do not change, so a
+        # file that carries one case of the set is refused.
+        if _case_digests_of(on_disk) & _RESERVED_CASE_DIGESTS:
+            raise TuningRefusal(
+                f"The file '{safe_text(wanted)}' holds a case of the held out set, so it may not be tuned against "
+                f"under any name and with any role: only the datasets with the role '{TUNING_ROLE}' may be tuned "
+                f"against."
+            )
     return entry
 
 
 __all__ = [
     "EVAL_DIR_RELATIVE",
+    "HELD_OUT_CASE_KEYS",
+    "HELD_OUT_RESERVED_CASE_DIGESTS",
     "HELD_OUT_RESERVED_DIGESTS",
     "HELD_OUT_RESERVED_PATHS",
     "HELD_OUT_RESERVED_RECORD_DIGESTS",
+    "HELD_OUT_RESERVED_REPORT_PATHS",
+    "HELD_OUT_SOURCE_PATHS",
     "MANIFEST_PATH",
     "MANIFEST_RELATIVE",
     "SPLIT_ROLES",
@@ -1019,6 +1218,7 @@ __all__ = [
     "ManifestError",
     "ManifestProblem",
     "TuningRefusal",
+    "case_digest",
     "fingerprint_dataset",
     "load_manifests",
     "manifest_problems",

@@ -6,19 +6,29 @@ English, three labels) lives in the optional `verify` extra (`transformers` and 
 the first prediction. In offline mode (`LEDGERLENS_OFFLINE=1`) or without `transformers`, `get_nli` returns
 `StubNli`, which decides by simple rules and always gives the same answer. Both have the same interface:
 `predict(premise, hypothesis) -> {"entailment": p, "neutral": p, "contradiction": p}`.
+
+The weights are pinned: the loader asks for the commit that the calibration of the thresholds recorded, and the
+commit is read from `ledgerlens/verify/thresholds.json` at run time instead of being written here, so the loader and
+the calibration cannot drift apart. A number measured with the weights of the `main` branch of the hub is a number
+of a moving target, and the repository publishes numbers.
 """
 
 from __future__ import annotations
 
 import importlib.util
+import json
 import math
 import os
 import re
 from collections.abc import Callable
+from pathlib import Path
 from typing import Protocol
 
 MODEL_ID = "MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli"
 MAX_LENGTH = 512  # the model's limit, in tokens; the premise is truncated, the hypothesis is not
+
+# The file that records the commit of the weights that the calibration of the thresholds used.
+THRESHOLDS_PATH = Path(__file__).with_name("thresholds.json")
 
 _NEGATIONS = {"not", "no", "never", "cannot", "without", "neither", "nor"}
 # end of sentence, line break and the divisions of a JSON (braces, brackets and a comma before a new key)
@@ -78,6 +88,44 @@ _ENTAILMENT_COVERAGE = 0.75
 
 class Nli(Protocol):
     def predict(self, premise: str, hypothesis: str) -> dict[str, float]: ...
+
+
+def nli_revision(model_id: str = MODEL_ID) -> str:
+    """The commit of the weights that the calibration of the thresholds pinned.
+
+    Why it exists: the calibration chose the thresholds over one commit of the model, and the number over the held
+    out set is only the same number on another day when the weights are the same weights. The commit is read from the
+    file that records it, `ledgerlens/verify/thresholds.json`, at run time and never written here, so the loader and
+    the calibration cannot drift apart.
+
+    Raises `RuntimeError` when the file does not record a revision for the model, because a loader that falls back to
+    the branch of the hub measures weights that nobody pinned.
+    """
+    try:
+        raw = json.loads(THRESHOLDS_PATH.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise RuntimeError(
+            f"The thresholds file {THRESHOLDS_PATH} could not be read, so the weights of the model are not pinned and "
+            f"the measurement of one day is not the measurement of another day: {error}."
+        ) from error
+
+    calibration = raw.get("calibration") if isinstance(raw, dict) else None
+    pinned = calibration.get("nli_model") if isinstance(calibration, dict) else None
+    pinned = pinned if isinstance(pinned, dict) else {}
+    revision = pinned.get("revision")
+    if not isinstance(revision, str) or not revision.strip():
+        raise RuntimeError(
+            f"The thresholds file {THRESHOLDS_PATH} records no revision for the weights of the model, so the weights "
+            f"are not pinned and the measurement of one day is not the measurement of another day."
+        )
+    pinned_model = pinned.get("model")
+    if isinstance(pinned_model, str) and pinned_model and pinned_model != model_id:
+        raise RuntimeError(
+            f"The thresholds file {THRESHOLDS_PATH} pins the revision of the weights of '{pinned_model}' and the "
+            f"loader asks for the weights of '{model_id}', so the pinned revision does not belong to the model that is "
+            f"loaded."
+        )
+    return revision
 
 
 def _tokens(text: str) -> list[str]:
@@ -153,9 +201,17 @@ Backend = tuple[dict[int, str], Callable[[str, str], list[float]]]
 class HuggingFaceNli:
     """The real model. Does not import `transformers` or `torch` until the first prediction."""
 
-    def __init__(self, model_id: str = MODEL_ID, *, backend: Backend | None = None, max_length: int = MAX_LENGTH):
+    def __init__(
+        self,
+        model_id: str = MODEL_ID,
+        *,
+        backend: Backend | None = None,
+        max_length: int = MAX_LENGTH,
+        revision: str | None = None,
+    ):
         self.model_id = model_id
         self.max_length = max_length
+        self.revision = revision
         self._backend = backend
 
     def _load(self) -> Backend:
@@ -167,8 +223,11 @@ class HuggingFaceNli:
         # and with the warning off a multithreaded prediction ends in a segmentation fault. With a single thread
         # the two runtimes compete for nothing and a prediction (one sentence at a time) still takes seconds.
         torch.set_num_threads(1)
-        tokenizer = AutoTokenizer.from_pretrained(self.model_id)
-        model = AutoModelForSequenceClassification.from_pretrained(self.model_id).to("cpu")  # CPU: no GPU here
+        # The commit of the weights is the one that the calibration pinned, so the measurement of one day and the
+        # measurement of another day are the same measurement.
+        revision = self.revision or nli_revision(self.model_id)
+        tokenizer = AutoTokenizer.from_pretrained(self.model_id, revision=revision)
+        model = AutoModelForSequenceClassification.from_pretrained(self.model_id, revision=revision).to("cpu")
         model.eval()
 
         def logits(premise: str, hypothesis: str) -> list[float]:
@@ -221,3 +280,16 @@ def get_nli(offline: bool | None = None, *, require_real: bool = False) -> Nli:
     if offline or missing:
         return StubNli()
     return _cache.setdefault(MODEL_ID, HuggingFaceNli(MODEL_ID))
+
+
+__all__ = [
+    "MAX_LENGTH",
+    "MODEL_ID",
+    "THRESHOLDS_PATH",
+    "Backend",
+    "HuggingFaceNli",
+    "Nli",
+    "StubNli",
+    "get_nli",
+    "nli_revision",
+]
