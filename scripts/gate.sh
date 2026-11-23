@@ -20,6 +20,13 @@ uv run pytest -q
 echo "== eval datasets (offline)"
 uv run python scripts/check_eval_datasets.py
 
+# The index of the documentation must describe the files that are on the disk, because an index that lies is
+# worse than no index: a reader who follows a line of the index and finds nothing there stops trusting the
+# index. The check reads the disk, writes nothing, and refuses with a readable reason and a non zero exit code,
+# so the gate stops on the reason and not on a traceback.
+echo "== docs index (offline)"
+uv run python scripts/build_docs_index.py --check
+
 # The published artifacts must match the bundle they claim to show, or the site shows a recording that is not the
 # one that was made. The check writes nothing and fails the gate when it finds a difference.
 echo "== export check (offline)"
