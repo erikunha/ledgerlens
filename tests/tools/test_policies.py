@@ -264,6 +264,40 @@ def test_the_tool_reports_an_index_of_another_embedding(built_index: Path) -> No
     assert "openai:text-embedding-3-small" in error["message"]
 
 
+def test_the_tool_reports_an_index_of_another_corpus(built_index: Path) -> None:
+    """An index built from another corpus of policies is refused, and the model is told what to do.
+
+    Why it matters: an index that describes other policies answers with passages that do not exist in the
+    repository, and the agent would cite them as if they were the policy it read.
+    """
+    meta_file = built_index / "policies_fastembed" / "index_meta.json"
+    meta = json.loads(meta_file.read_text())
+    meta["corpus_sha256"] = "0" * 64
+    meta_file.write_text(json.dumps(meta))
+
+    error = make_tool(built_index).invoke({"query": "chargeback fee", "transform": "none"})["error"]
+
+    assert error["code"] == "INDEX_STALE" and error["retryable"] is False
+    assert "scripts/build_index.py" in error["message"]
+
+
+def test_a_failing_search_returns_the_error_envelope_instead_of_raising(
+    built_index: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The contract of every tool: it returns an object, never raises to the model."""
+
+    def boom(*args: object, **kwargs: object) -> None:
+        raise RuntimeError("the embedder is down")
+
+    monkeypatch.setattr("ledgerlens.tools.policies.search_policy_index", boom)
+    result = make_tool(built_index).invoke({"query": REFUND_WINDOW_QUERY, "transform": "none"})
+
+    assert result["ok"] is False
+    assert result["error"]["code"] == "INDEX_SEARCH_FAILED"
+    assert result["error"]["retryable"] is False
+    assert "the embedder is down" in result["error"]["message"]
+
+
 def test_the_index_is_loaded_once_per_tool(built_index: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     loads: list[Path] = []
     original = retrieval.load_policy_index

@@ -85,8 +85,8 @@ and one line that says what the file holds.
 - [ADR-051: The structural baseline of the pages and the paint of the replay](decisions/ADR-051-the-structural-baseline-and-the-paint-of-the-replay.md): Status: accepted. Date: 2026-11-22.
 - [ADR-052: The manifest of the eval datasets](decisions/ADR-052-the-manifest-of-the-eval-datasets.md): Status: accepted. Date: 2026-11-22.
 - [ADR-053: The held out set and the blind labelling](decisions/ADR-053-the-held-out-set-and-the-blind-labelling.md): Status: accepted. Date: 2026-11-22.
-- [ADR-054: The agent loop has a ceiling in every path](decisions/ADR-054-the-agent-loop-has-a-ceiling-in-every-path.md): Status: proposed. Date: 2026-11-22.
-- [ADR-055: The policy index carries the hash of the corpus](decisions/ADR-055-the-policy-index-carries-the-hash-of-the-corpus.md): Status: proposed. Date: 2026-11-22.
+- [ADR-054: The agent loop has a ceiling in every path](decisions/ADR-054-the-agent-loop-has-a-ceiling-in-every-path.md): Status: accepted. Date: 2026-11-22.
+- [ADR-055: The policy index carries the hash of the corpus](decisions/ADR-055-the-policy-index-carries-the-hash-of-the-corpus.md): Status: accepted. Date: 2026-11-22.
 - [ADR-056: Two vector sites and one protocol](decisions/ADR-056-two-vector-sites-and-one-protocol.md): Status: proposed. Date: 2026-11-22.
 - [ADR-057: The model has a clock and the repository pins it](decisions/ADR-057-the-model-has-a-clock-and-the-repository-pins-it.md): Status: proposed. Date: 2026-11-22.
 - [ADR-058: The programme of readiness for 2027 and what it does not do](decisions/ADR-058-the-programme-of-readiness-for-2027-and-what-it-does-not-do.md): Status: proposed. Date: 2026-11-22.

@@ -1,12 +1,12 @@
 ---
 type: adr
-status: proposed
+status: accepted
 date: 2026-11-22
 ---
 
 # ADR-054: The agent loop has a ceiling in every path
 
-Status: proposed. Date: 2026-11-22.
+Status: accepted. Date: 2026-11-22.
 
 ## Context
 
@@ -132,6 +132,11 @@ import would close a cycle: `ledgerlens/byok/budget.py` imports `ledgerlens/run_
 `ledgerlens/schemas.py`. The conversion is the one place where the two shapes meet, and it carries the names of the
 `CostReport` (`ledgerlens/byok/budget.py:106-132`).
 
+What the implementation of this record did: the numbers of the turn travel in the outputs of the root span of the
+trace (`ledgerlens/agents/integrator.py`, the `usage` and the `budget` beside the tokens of the run) and not in a
+field of the result, because `ledgerlens/schemas.py` and the contract belong to another slice. The field of the
+result is the task T119 below and it is not paid.
+
 The contract `docs/contracts/investigation_result.schema.json` gains the property, and the test that proves a
 generated result against the contract (`tests/test_schemas.py:33`) keeps proving it. The `schema_version` of the
 result stays "1" (`ledgerlens/schemas.py:148`), because the field is optional and a payload of the old shape still
@@ -180,10 +185,24 @@ to this record with the number that the wall clock has to be. The implementation
 format the other tasks of the repository use:
 
 ```
-- [ ] T115 [P] Test the shipped loop stops at the cap of the calls and the turn comes back as a result, in tests/agents/test_integrator_budget.py
-- [ ] T116 [P] Test the follow-up spends the ceiling of the turn and not a ceiling of its own, in tests/agents/test_integrator_budget.py
-- [ ] T117 [P] Test the result carries the calls, the tokens and the two costs, in tests/agents/test_integrator_budget.py
-- [ ] T118 Implement the shipped ceiling of the agent loop in ledgerlens/agents/integrator.py, with the coordinator of the turn and the handler that reserves
+- [x] T115 [P] Test the shipped loop stops at the cap of the calls and the turn comes back as a result, in tests/agents/test_integrator_budget.py
+- [x] T116 [P] Test the follow-up spends the ceiling of the turn and not a ceiling of its own, in tests/agents/test_integrator_budget.py
+- [x] T117 [P] Test the result carries the calls, the tokens and the two costs, in tests/agents/test_integrator_budget.py
+- [x] T118 Implement the shipped ceiling of the agent loop in ledgerlens/agents/integrator.py, with the coordinator of the turn and the handler that reserves
 - [ ] T119 Add the property `usage` to the result in ledgerlens/schemas.py and to the contract in docs/contracts/investigation_result.schema.json
 - [ ] T120 Pass the coordinator of the live run to the agent in ledgerlens/api/live_case.py, without a second counter
 ```
+
+What is still unpaid, after the implementation of T115 to T118:
+
+- **T119, the field of the result**: the numbers of the turn travel in the trace and not in the result, because
+  `ledgerlens/schemas.py` and `docs/contracts/investigation_result.schema.json` belong to another slice. The
+  contract of the result does not carry the usage yet.
+- **T120, the live path**: the live path builds its own graph over the wrapped tools
+  (`ledgerlens/api/live_case.py`), so it does not carry the middleware of the integrator and it counts nothing
+  here. Until the coordinator of the live run is handed to `investigate`, the live path is bounded by the
+  shipped ceiling (12 calls of a model) and not by the budget of the request. The live path does not get a
+  second counter: the bridge and `wrap_tool` are the ones that reserve there.
+- **The calls of the models that the tools make** (the model that writes the SQL and the rewrite of the policy
+  search) are not reserved by the integrator in the demo and in the evaluation, because they happen inside a
+  tool and the integrator does not see them. The live path counts them through the bridge.

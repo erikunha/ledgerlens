@@ -61,8 +61,8 @@ by hand: run `uv run python scripts/build_docs_index.py` and commit the result.
 | 051 | [ADR-051: The structural baseline of the pages and the paint of the replay](ADR-051-the-structural-baseline-and-the-paint-of-the-replay.md) | accepted | 2026-11-22 |
 | 052 | [ADR-052: The manifest of the eval datasets](ADR-052-the-manifest-of-the-eval-datasets.md) | accepted | 2026-11-22 |
 | 053 | [ADR-053: The held out set and the blind labelling](ADR-053-the-held-out-set-and-the-blind-labelling.md) | accepted | 2026-11-22 |
-| 054 | [ADR-054: The agent loop has a ceiling in every path](ADR-054-the-agent-loop-has-a-ceiling-in-every-path.md) | proposed | 2026-11-22 |
-| 055 | [ADR-055: The policy index carries the hash of the corpus](ADR-055-the-policy-index-carries-the-hash-of-the-corpus.md) | proposed | 2026-11-22 |
+| 054 | [ADR-054: The agent loop has a ceiling in every path](ADR-054-the-agent-loop-has-a-ceiling-in-every-path.md) | accepted | 2026-11-22 |
+| 055 | [ADR-055: The policy index carries the hash of the corpus](ADR-055-the-policy-index-carries-the-hash-of-the-corpus.md) | accepted | 2026-11-22 |
 | 056 | [ADR-056: Two vector sites and one protocol](ADR-056-two-vector-sites-and-one-protocol.md) | proposed | 2026-11-22 |
 | 057 | [ADR-057: The model has a clock and the repository pins it](ADR-057-the-model-has-a-clock-and-the-repository-pins-it.md) | proposed | 2026-11-22 |
 | 058 | [ADR-058: The programme of readiness for 2027 and what it does not do](ADR-058-the-programme-of-readiness-for-2027-and-what-it-does-not-do.md) | proposed | 2026-11-22 |

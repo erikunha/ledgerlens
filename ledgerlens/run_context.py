@@ -118,6 +118,18 @@ class RunBudget:
     max_memory_items: int | None = None
 
 
+# The ceiling of the paths that ship: the demo, the evaluation and the tests (ADR-054). The money cap is off,
+# because the price of the model there is unknown, so the caps of the calls and of the time hold the run.
+#
+# Why the numbers: the worst turn the evaluation exercises spends 7 calls of a model (the triage, one per plan
+# step, the rewrite of the policy search and the answer) and the follow-up adds at most 2 more, so 12 leaves
+# three calls of headroom. The plan of a turn has at most 4 steps with a tool and the follow-up may repeat
+# them, so 16 calls of a tool stop a turn that loops and still leave room for the retries of a search that
+# returns nothing. The wall clock is a declared number and not a measured one: the repository has no latency
+# measurement today, and the milestone of the latency has to revisit it.
+SHIPPED_RUN_BUDGET = RunBudget(max_model_calls=12, max_tool_calls=16, max_wall_seconds=120.0)
+
+
 @dataclass(frozen=True)
 class RunContext:
     """The identity and the scope of an execution, without global state.

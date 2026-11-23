@@ -20,6 +20,13 @@ uv run pytest -q
 echo "== eval datasets (offline)"
 uv run python scripts/check_eval_datasets.py
 
+# The committed policy index must describe the policies of the repository, because an index built from another
+# corpus answers with text that is not on the disk, and every other check of the gate stays green while it
+# happens. The check reads the disk, writes nothing, needs no model and no network, and refuses with a
+# readable reason and a non zero exit code, so the gate stops on the reason and not on a traceback.
+echo "== policy index (offline)"
+uv run python scripts/check_policy_index.py
+
 # The index of the documentation must describe the files that are on the disk, because an index that lies is
 # worse than no index: a reader who follows a line of the index and finds nothing there stops trusting the
 # index. The check reads the disk, writes nothing, and refuses with a readable reason and a non zero exit code,
