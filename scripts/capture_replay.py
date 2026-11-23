@@ -60,6 +60,10 @@ from ledgerlens.tools.fx import FxClient  # noqa: E402
 CAPTURE_KIND = "scripted_fixture"
 MODEL_PROFILE = "scripted-fixture"
 
+# The scenarios whose run has the reference source in fault, and the scenarios whose run does not: the scenario S11
+# is the scenario S01 with the source broken, and the recording is the proof that the agent then says less.
+SCENARIO_FX_FAULT = {"S11": True}
+
 
 class GitError(Exception):
     """Git cannot answer in the repository."""
@@ -175,10 +179,17 @@ def _planted(manifest: dict, scenario_id: str) -> tuple[str, str | None]:
     ledger, so the scenario names no customer and no merchant. The run still needs an account to sign in, because
     the agent reads the ledger of one account, and the caller resolves the account from the ledger when it is
     absent.
+
+    Why the planted list is not the only source of the question: the scenario S11 asks the question of the scenario
+    S01 and is not a complaint of its own on the page, so the capture reads the question of the dataset. The bundle
+    it writes is the published proof that the same question, answered with the reference source in fault, is not the
+    answer the source gives when it works.
     """
-    item = next(entry for entry in demo.planted(manifest) if entry.scenario == scenario_id)
+    item = next((entry for entry in demo.planted(manifest) if entry.scenario == scenario_id), None)
+    scenario = demo.scenario_of(manifest, scenario_id)
+    question = item.question if item is not None else str(scenario["questions"][0])
     accounts = demo.accounts_of(manifest, scenario_id)
-    return item.question, accounts[0] if accounts else None
+    return question, accounts[0] if accounts else None
 
 
 def _first_customer(ledger: Path) -> str:
@@ -279,10 +290,14 @@ def capture(scenario_id: str, out: Path, root: Path = ROOT) -> Path:
             db_path=account_db,
             query_model=query_model,
             triage_model=triage_model,
-            fx_client=FxClient(mode="fixtures", sleep=lambda _: None),
+            fx_client=FxClient(
+                mode="fixtures",
+                fault=SCENARIO_FX_FAULT.get(scenario_id, False),
+                sleep=lambda _: None,
+            ),
         )
-        triage_model.script.append(demo.offline_triage(question, manifest))
-        script = demo.offline_script(question, manifest)
+        triage_model.script.append(demo.offline_triage(question, manifest, scenario_id))
+        script = demo.offline_script(question, manifest, scenario_id)
         if script is None:
             raise SystemExit(f"the scenario {scenario_id} has no offline script")
         messages, sqls = script

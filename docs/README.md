@@ -99,6 +99,7 @@ and one line that says what the file holds.
 - [ADR-065: The reservation of the held out set follows the case and not only the file](decisions/ADR-065-the-reservation-of-the-held-out-set-follows-the-case-and-not-only-the-file.md): Status: accepted. Date: 2026-11-23.
 - [ADR-066: The pages of the live mode exist and the README was the one that was wrong](decisions/ADR-066-the-pages-of-the-live-mode-exist-and-the-readme-was-the-one-that-was-wrong.md): Status: accepted. Date: 2026-11-23.
 - [ADR-067: The measurement of the held out set is published without its answer key](decisions/ADR-067-the-measurement-of-the-held-out-set-is-published-without-its-answer-key.md): Status: accepted. Date: 2026-11-23.
+- [ADR-068: The published catalogue holds the failures and not only the cases the agent resolves](decisions/ADR-068-the-published-catalogue-holds-the-failures-and-not-only-the-cases-the-agent-resolves.md): Status: accepted. Date: 2026-11-23.
 - [Decision records](decisions/README.md): Every decision that restricts the future of the work is a record in this folder, and this index lists them in the order of their number, with their status...
 
 ## docs/pt-BR

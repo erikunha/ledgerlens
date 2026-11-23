@@ -75,3 +75,4 @@ by hand: run `uv run python scripts/build_docs_index.py` and commit the result.
 | 065 | [ADR-065: The reservation of the held out set follows the case and not only the file](ADR-065-the-reservation-of-the-held-out-set-follows-the-case-and-not-only-the-file.md) | accepted | 2026-11-23 |
 | 066 | [ADR-066: The pages of the live mode exist and the README was the one that was wrong](ADR-066-the-pages-of-the-live-mode-exist-and-the-readme-was-the-one-that-was-wrong.md) | accepted | 2026-11-23 |
 | 067 | [ADR-067: The measurement of the held out set is published without its answer key](ADR-067-the-measurement-of-the-held-out-set-is-published-without-its-answer-key.md) | accepted | 2026-11-23 |
+| 068 | [ADR-068: The published catalogue holds the failures and not only the cases the agent resolves](ADR-068-the-published-catalogue-holds-the-failures-and-not-only-the-cases-the-agent-resolves.md) | accepted | 2026-11-23 |
