@@ -311,15 +311,24 @@ flowchart LR
    labelled file, the role in the manifest and the number over it exist: 24 of the 48, with the false `supported` of 4
    and half of the set left without a verdict. The work that is left is not to publish it, but to decide what the
    verifier does with the twenty four cases it refuses to decide.
-2. **The label has no measured error rate.** The divergence of the two readings is a floor under the noise of the rule
+2. **The key of the held out set is in the history of the branch, so the number no longer reserves the set.** The
+   review of the branch found that the published labelled set and the published Markdown report named the expected
+   label of the two cases where the blind reading disagreed with the recipes, and the commit `619617e` of the branch
+   carries those names. The files of the tree were redacted and the note of a divergence now says that the recipe
+   expected a different label ([ADR-069](decisions/ADR-069-the-reservation-follows-the-content-of-the-case-and-the-key-of-the-set-is-not-published.md)),
+   and the guard of the tuning still refuses the set as a target. But a reader of the history of the branch can
+   rebuild the key of the forty eight cases, and a change can be tuned against them. The number over the set stays
+   the least flattering number of this repository and it stays reproducible; what it can no longer be is a measurement
+   over data that nobody was able to tune against.
+3. **The label has no measured error rate.** The divergence of the two readings is a floor under the noise of the rule
    and not a ceiling over it
    (`docs/decisions/ADR-059-the-held-out-set-is-read-by-two-blind-machines-and-adjudicated.md`: `:130` to `:133`), and the
    error rate of a machine reading is not the error rate of a human one.
-3. **Nothing detects that the quality went down.** A gate step that recomputes the verifier verdict over the 43
+4. **Nothing detects that the quality went down.** A gate step that recomputes the verifier verdict over the 43
    records and refuses a drop against a pinned baseline, plus the rule that a report is written under a versioned id.
-4. **The saved reports do not name the role of their sets.** The record that decided this says so in advance
+5. **The saved reports do not name the role of their sets.** The record that decided this says so in advance
    (`docs/decisions/ADR-052-the-manifest-of-the-eval-datasets.md:300`).
-5. **The retrieval set is not held out either**
+6. **The retrieval set is not held out either**
    (`docs/decisions/ADR-053-the-held-out-set-and-the-blind-labelling.md:170`), so the same leak sits in the component
    that feeds the premise.
 
@@ -1210,17 +1219,24 @@ findings each carry their own list, and this is the union of them.
 
 ## The next milestone, in order
 
-1. **Decide what the verifier does with the twenty four cases it refuses to decide.** The number over the held out set
+1. **Read a new held out set, because the one of this branch is spent.** The key of the forty eight cases is in
+   the history of the branch at the commit `619617e`, so the number over the set can be checked and can also be
+   gamed ([ADR-069](decisions/ADR-069-the-reservation-follows-the-content-of-the-case-and-the-key-of-the-set-is-not-published.md)).
+   The reading is a procedure and not a secret, and it is cheap to repeat: two blind machine readings of a new set,
+   an adjudication of the divergences, and the measurement over it with the model of the commit that the calibration
+   recorded. Until that set exists, no number of this repository may be presented again as a measurement of unseen
+   data.
+2. **Decide what the verifier does with the twenty four cases it refuses to decide.** The number over the held out set
    is published: 24 of the 48, with the false `supported` of 4 and half of the set left without a verdict. The next
    work is not another number, it is the decision about the refusals: the thresholds that stop at 0,81 and 0,91 were
    chosen over seventy cases of the tuning, and the question is what they do over the cases nobody tuned on.
-2. **Put the runtime inside an envelope.** The ceiling of the loop first, then the latency and the cost per case, with
+3. **Put the runtime inside an envelope.** The ceiling of the loop first, then the latency and the cost per case, with
    the hardware, the denominator and the role of the set printed beside every number of the envelope.
-3. **Close the twelve gaps of the corpus.** The record that decides what the corpus is, then one task per gap with the
+4. **Close the twelve gaps of the corpus.** The record that decides what the corpus is, then one task per gap with the
    test that holds it, the four tests written to fail first and the document of the truth of the policies.
-4. **Finish the index of the documentation.** The index of the documents and the index of the records exist and are
+5. **Finish the index of the documentation.** The index of the documents and the index of the records exist and are
    generated; what is owed is the link from the root README to the site, to the evaluation page and to the policies.
-5. **Publish the failures.** Done: the catalogue of the replay holds nine scenarios, and the happy path of an FX
+6. **Publish the failures.** Done: the catalogue of the replay holds nine scenarios, and the happy path of an FX
    refund is one of them. The chargeback that escalates, the payout that nets and the id that does not exist are
    published, and so are the failures the design package asks for: the prompt injection (S09), the currency the
    reference source does not publish (S10) and the reference rate that could not be read (S11), each one recorded as

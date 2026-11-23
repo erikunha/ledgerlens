@@ -100,6 +100,11 @@ and one line that says what the file holds.
 - [ADR-066: The pages of the live mode exist and the README was the one that was wrong](decisions/ADR-066-the-pages-of-the-live-mode-exist-and-the-readme-was-the-one-that-was-wrong.md): Status: accepted. Date: 2026-11-23.
 - [ADR-067: The measurement of the held out set is published without its answer key](decisions/ADR-067-the-measurement-of-the-held-out-set-is-published-without-its-answer-key.md): Status: accepted. Date: 2026-11-23.
 - [ADR-068: The published catalogue holds the failures and not only the cases the agent resolves](decisions/ADR-068-the-published-catalogue-holds-the-failures-and-not-only-the-cases-the-agent-resolves.md): Status: accepted. Date: 2026-11-23.
+- [ADR-069: The reservation follows the content of the case, and the key of the set is not published](decisions/ADR-069-the-reservation-follows-the-content-of-the-case-and-the-key-of-the-set-is-not-published.md): Status: accepted. Date: 2026-11-24.
+- [ADR-070: The script that writes the pin reads the commit of the weights from the file it writes](decisions/ADR-070-the-script-that-writes-the-pin-reads-the-commit-of-the-weights-from-the-file-it-writes.md): Status: accepted. Date: 2026-11-24.
+- [ADR-071: The wall and the ceiling of the loop are in every path, and the cut is named to the visitor](decisions/ADR-071-the-wall-and-the-ceiling-of-the-loop-are-in-every-path-and-the-cut-is-named-to-the-visitor.md): Status: accepted. Date: 2026-11-24.
+- [ADR-072: A currency the reference source does not publish is missing data, and the case goes to a person](decisions/ADR-072-a-currency-the-reference-source-does-not-publish-is-missing-data-and-the-case-goes-to-a-person.md): Status: accepted. Date: 2026-11-24.
+- [ADR-073: The published bundle carries the evidence its verdict was computed on, and it is reproducible](decisions/ADR-073-the-published-bundle-carries-the-evidence-its-verdict-was-computed-on-and-it-is-reproducible.md): Status: accepted. Date: 2026-11-24.
 - [Decision records](decisions/README.md): Every decision that restricts the future of the work is a record in this folder, and this index lists them in the order of their number, with their status...
 
 ## docs/pt-BR
