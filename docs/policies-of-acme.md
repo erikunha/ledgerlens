@@ -40,8 +40,8 @@ words, and those items are listed under what is still unverified.
 ## The eight policies, rule by rule
 
 The order of the sections is the order of the files in `data/policies/`. The first column gives the rule and the
-line of the file it comes from. The rows the audit marked as a gap carry the number of the gap, and the second
-column says what is wrong with the rule as it stands.
+line of the file it comes from. The rows that are a gap carry the number of the gap, and the second column says what
+is wrong with the rule as it stands.
 
 ### 1. [Chargeback handling](../data/policies/chargeback-handling.md)
 
@@ -53,6 +53,7 @@ column says what is wrong with the rule as it stands.
 | **Gap 9.** `:29` The business days, and the calendar of the merchant's settlement currency. | A house rule of Acme. What is wrong: the policy names the settlement currency and the code uses the currency of the dispute record (`ledgerlens/verify/escalation.py:30`). | The calendars come from the `holidays` library, per [ADR-009](decisions/ADR-009-public-data-first-simulation-for-gaps.md) |
 | `:33` to `:49` The evidence list of each reason code, and what a strong defense is. | A house rule of Acme. The audit named no source for the evidence lists. | None: this is a house rule of Acme |
 | `:53`, `:65`, `:69` Who sends the evidence, no refund while a dispute is open, and the thresholds of escalation. | A house rule of Acme: the thresholds are service levels and no rule of the world fixes them. | None: this is a house rule of Acme |
+| **Gap 13.** `:57` The outcome of the dispute: the network decides for or against the merchant, and Acme cannot change the outcome. | A rule of the world in its shape: the card network decides the outcome of a dispute, the rule that `:13` and `:17` already state with a source. What is wrong: the corpus states the rule of the network as the contract of Acme, in a paragraph that carries no source and no date, and the sentence that Acme cannot change the outcome is a house rule of the company. | Primary: [Mastercard Chargeback Guide](https://brand.mastercard.com/content/dam/mccom/en-us/documents/rules/chargeback-guide.pdf) and [Mastercard Chargebacks Made Simple Guide](https://www.mastercard.us/content/dam/public/mastercardcom/na/global-site/documents/chargebacks-made-simple-guide.pdf), read 2026-11-22 |
 | `:61` The fee of each dispute opened, charged even if the merchant wins. | A rule of the world: the dispute received fee is not returned on a win. The amount is the figure of this repository. | Primary: [Stripe, How disputes work](https://docs.stripe.com/disputes/how-disputes-work) and [Stripe, Respond to disputes](https://docs.stripe.com/disputes/responding), read 2026-11-22 |
 
 ### 2. [Cross-currency refunds](../data/policies/cross-currency-refunds.md)
@@ -133,10 +134,11 @@ column says what is wrong with the rule as it stands.
 | **Gap 3.** `:49` The negative balance: no payout on a negative net, and the balance deducted from the next settlement. | A house rule of Acme, and the sharpest disagreement of the audit: two settlements with a negative net, ST-0104 at -1801.20 EUR and ST-0159 at -9.92 EUR, are both paid, and the next settlement does not carry the balance. The practice of the world is to transfer the negative balance to the next settlement batch. | Primary: [Adyen, Balance transfers](https://docs.adyen.com/reporting/balance-transfers/) and [Adyen, Next payout](https://docs.adyen.com/account/balances/next-payout/), read 2026-11-22 |
 | `:53` to `:61` A late payout, the reconciliation of a settlement, and what the answer to the merchant shows. | A house rule of Acme. | None: this is a house rule of Acme |
 
-## The twelve gaps
+## The thirteen gaps
 
 The audit found twelve places where the corpus says something the world does not say, or something the data of this
-repository contradicts. They are the skeleton of this document, and each one is marked in the tables above.
+repository contradicts, and the review of the milestone found a thirteenth. They are the skeleton of this document, and
+each one is marked in the tables above.
 
 | # | The place | What is wrong | What the rule really is | The source |
 |---|---|---|---|---|
@@ -152,6 +154,7 @@ repository contradicts. They are the skeleton of this document, and each one is 
 | 10 | `ledgerlens/retrieval.py:96` | The fiction is stated in one policy of eight (`data/policies/refund-policy.md:13`) and in no chunk of the index, so a served excerpt reads as the rule of a real company. | A house rule of Acme that is not marked anywhere the reader looks. | None: this is a house rule of Acme |
 | 11 | `ledgerlens/verify/claims.py:54` | A claim may cite only what is inside this repository, so an answer that is right about the real world can only be contradicted or not enough evidence. | An invention of this project: the vocabulary of the verifier has no way to cite a rule that is not in the corpus. | None: this is a choice of this project |
 | 12 | `NOTICE` and `data/sources.lock.json` | The ECB sets three conditions for the reuse of its material and the NOTICE states two, the lock records the string "ECB reuse with source acknowledged" which is not the notice of the ECB, and the cross rates of the committed recordings are computed through the euro without a word about it. | The three conditions are a rule of the world, and the string of the lock is an invention of this project. | Primary: [European Central Bank, Disclaimer and copyright](https://www.ecb.europa.eu/services/using-our-site/disclaimer/html/index.en.html), read 2026-11-22 |
+| 13 | `data/policies/chargeback-handling.md:57` | The outcome of the dispute is attributed to the card network, and Acme is said to be unable to change it, in a paragraph that carries no source and no date, so a claim about the world is stated as the contract of the company. | A rule of the world in its shape, the decision of the network that `:13` and `:17` already state with a source. The sentence that Acme cannot change the outcome is a house rule of Acme. | Primary: [Mastercard Chargeback Guide](https://brand.mastercard.com/content/dam/mccom/en-us/documents/rules/chargeback-guide.pdf) and [Mastercard Chargebacks Made Simple Guide](https://www.mastercard.us/content/dam/public/mastercardcom/na/global-site/documents/chargebacks-made-simple-guide.pdf), read 2026-11-22 |
 
 ## What the networks and the law really say
 
