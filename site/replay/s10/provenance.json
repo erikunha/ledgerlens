@@ -1,0 +1,21 @@
+{
+  "artifacts": {
+    "events.jsonl": "3ab751ccd13bca747a1487b025379791eda9e6c0d54d049578d5a96f980eb624",
+    "ledger.json": "d52e2a0868ca74587e2c5302e72af0174b8ac92d8f587f1a96592680fa92512f",
+    "manifest.json": "d348e837008aa4999943e28130c9f80a7b65b4416b52395afa5bb9e71345388f"
+  },
+  "bundle_digest": "d348e837008aa4999943e28130c9f80a7b65b4416b52395afa5bb9e71345388f",
+  "capture_kind": "scripted_fixture",
+  "code_sha": "4e74e43f605e0b36a8f2f2b085499f48de302d9b",
+  "created_at": "2026-11-23T16:43:52+00:00",
+  "dataset_sha256": "cab6cd1eeefd08ae58b138501c2c69431547fcbb7434f1a47720cc81aefe84ba",
+  "files": {
+    "events.jsonl": "3ab751ccd13bca747a1487b025379791eda9e6c0d54d049578d5a96f980eb624"
+  },
+  "mode": "deterministic_sandbox",
+  "model_profile": "scripted-fixture",
+  "note": "Deterministic execution of the scenario S10, account C-0777, with the scripted model and the recorded exchange rate. This is not a live execution and it calls no model.",
+  "policy_version": "policies-v1",
+  "recorded_at": "2026-11-23T16:43:52+00:00",
+  "snapshot_sha256": "4f9bace0aa80730f077b35a7e7ad7bcf9e6b48bcfd6519091b57f9e496cb9990"
+}

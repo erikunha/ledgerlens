@@ -1,0 +1,52 @@
+{
+  "accounts": [
+    {
+      "id": "C-0777",
+      "kind": "customer",
+      "name": "Lucía Fernández",
+      "reads": [
+        {
+          "columns": [
+            "id",
+            "amount_minor",
+            "amount_major",
+            "currency",
+            "created_at"
+          ],
+          "evidence_id": "sql:1",
+          "records": [
+            "TX-2099"
+          ],
+          "row_count": 1,
+          "rows": [
+            {
+              "amount_major": "25000.00",
+              "amount_minor": "2500000",
+              "created_at": "2026-10-27T18:20:00Z",
+              "currency": "ARS",
+              "id": "TX-2099"
+            }
+          ],
+          "seq": 19,
+          "sql": "SELECT * FROM (SELECT id, amount_minor, currency, created_at FROM transactions WHERE id = 'TX-2099') LIMIT 50",
+          "tool": "query_ledger",
+          "truncated": false
+        }
+      ],
+      "rows": [
+        {
+          "amount": "25000.00",
+          "at": "2026-10-27T18:20:00Z",
+          "currency": "ARS",
+          "id": "TX-2099",
+          "kind": "transaction",
+          "status": "captured"
+        }
+      ]
+    }
+  ],
+  "page_size": 50,
+  "scenario": "S10",
+  "schema_version": "1",
+  "snapshot_sha256": "4f9bace0aa80730f077b35a7e7ad7bcf9e6b48bcfd6519091b57f9e496cb9990"
+}

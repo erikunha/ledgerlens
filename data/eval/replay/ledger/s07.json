@@ -1,0 +1,67 @@
+{
+  "accounts": [
+    {
+      "id": "C-0600",
+      "kind": "customer",
+      "name": "Susan Ortega",
+      "reads": [
+        {
+          "columns": [
+            "id",
+            "amount_minor",
+            "amount_major",
+            "currency",
+            "refund_id",
+            "payout_amount_minor",
+            "payout_amount_major",
+            "payout_currency"
+          ],
+          "evidence_id": "sql:1",
+          "records": [
+            "TX-2030",
+            "R-0720"
+          ],
+          "row_count": 1,
+          "rows": [
+            {
+              "amount_major": "80.00",
+              "amount_minor": "8000",
+              "currency": "USD",
+              "id": "TX-2030",
+              "payout_amount_major": "80.00",
+              "payout_amount_minor": "8000",
+              "payout_currency": "USD",
+              "refund_id": "R-0720"
+            }
+          ],
+          "seq": 19,
+          "sql": "SELECT * FROM (SELECT t.id, t.amount_minor, t.currency, r.id AS refund_id, r.payout_amount_minor, r.payout_currency FROM transactions AS t JOIN refunds AS r ON r.transaction_id = t.id WHERE t.id = 'TX-2030' AND r.id = 'R-0720') LIMIT 50",
+          "tool": "query_ledger",
+          "truncated": false
+        }
+      ],
+      "rows": [
+        {
+          "amount": "80.00",
+          "at": "2026-10-08T13:00:00Z",
+          "currency": "USD",
+          "id": "TX-2030",
+          "kind": "transaction",
+          "status": "refunded"
+        },
+        {
+          "amount": "80.00",
+          "at": "2026-10-10T09:00:00Z",
+          "currency": "USD",
+          "id": "R-0720",
+          "kind": "refund",
+          "status": "paid"
+        }
+      ]
+    }
+  ],
+  "page_size": 50,
+  "scenario": "S07",
+  "schema_version": "1",
+  "snapshot_sha256": "8e95db422c0005ae0fc77648cf7696becd7d14b8620364d340337c1c3f6b07eb"
+}

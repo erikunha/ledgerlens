@@ -446,10 +446,12 @@ flowchart LR
    against the evidence and not against the instructions that produced it.
 3. **No signature on the artifact and no freshness rule.** The gate checks the artifacts against the bundle and never
    against the current prompt or policy version.
-4. **The published evidence is five scenarios deep, and the injection scenario is still not one of them.** `site/replay/`
-   holds five scenarios, the happy path of an FX refund, the two chargeback cases, the payout and the id that does
-   not exist, and the injection scenario is not published
-   (`docs/v3/docs/08-EVIDENCE-TRACING-AND-PROVENANCE.md:58` asks for a published failure).
+4. **The published evidence was five scenarios deep, and the injection scenario was not one of them.** This one is
+   closed: `site/replay/` holds nine scenarios, and the failures the design package asks for are among them
+   (`docs/v3/docs/08-EVIDENCE-TRACING-AND-PROVENANCE.md:58` asks for a published failure). The injection, the currency
+   the reference source does not publish and the reference rate that could not be read are published as the
+   deterministic recordings S09, S10 and S11, with the control of a refund that paid exactly what was charged
+   published as S07 (ADR-068).
 
 **Where the work lands.** A new ADR in `docs/decisions/` for the live trace, which folds the hash of the prompt into
 it. The code is `ledgerlens/observability/trace_event.py:63`, the tool layer and the verifier, and the sink
@@ -587,8 +589,8 @@ flowchart LR
    says the opposite in one of the two languages passes it.
 4. **The evaluation asset is stated as a negative and is invisible to a reader who searches for it.**
 5. **The demo measures nothing about itself.** No count of visits, no completion, no error counter.
-6. **The published evidence is five scenarios deep.** The catalog holds five cards (`site/replay/index.json`), and
-   the proof a reader can check is a visitor five cases deep and not one.
+6. **The published evidence was five scenarios deep.** It is nine now: the catalog holds nine cards
+   (`site/replay/index.json`), and the proof a reader can check is a visitor nine cases deep, the failures included.
 
 **Where the work lands.** `README.md` and `README.pt-BR.md`, the new `docs/README.md` and the new
 `docs/decisions/README.md`, and the one broken link `docs/v3/README.md:64`. The redesign of the front end is not in
@@ -1218,9 +1220,11 @@ findings each carry their own list, and this is the union of them.
    test that holds it, the four tests written to fail first and the document of the truth of the policies.
 4. **Finish the index of the documentation.** The index of the documents and the index of the records exist and are
    generated; what is owed is the link from the root README to the site, to the evaluation page and to the policies.
-5. **Publish the failures.** The catalogue of the replay holds five scenarios, and the happy path of an FX refund is
-   one of them: the chargeback that escalates, the payout that nets and the id that does not exist are published, and
-   the failure the design package asks for, the prompt injection, is still not one of them.
+5. **Publish the failures.** Done: the catalogue of the replay holds nine scenarios, and the happy path of an FX
+   refund is one of them. The chargeback that escalates, the payout that nets and the id that does not exist are
+   published, and so are the failures the design package asks for: the prompt injection (S09), the currency the
+   reference source does not publish (S10) and the reference rate that could not be read (S11), each one recorded as
+   the escalation it produced (ADR-068).
 
 ## What this document does not decide
 

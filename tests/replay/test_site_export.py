@@ -581,8 +581,8 @@ def test_the_script_exits_1_when_the_disk_differs_and_0_when_it_matches(
 def test_the_artifacts_published_in_the_repository_match_the_bundle():
     """The published artifacts are the ones the bundles say, so the gate can prove they never drifted.
 
-    Why every bundle and not only the first: the site publishes five scenarios, and a check that only looked at
-    the first one would let the other four drift without anyone noticing.
+    Why every bundle and not only the first: the site publishes nine scenarios, and a check that only looked at
+    the first one would let the other eight drift without anyone noticing.
     """
     files = build_export(discover_bundles(ROOT / "data" / "eval" / "replay"))
     assert check_export(files, PUBLISHED) == []
@@ -591,7 +591,17 @@ def test_the_artifacts_published_in_the_repository_match_the_bundle():
 def test_a_folder_of_bundles_gives_one_scenario_per_bundle():
     """A folder with bundle folders inside it gives one scenario for each of them."""
     found = discover_bundles(ROOT / "data" / "eval" / "replay")
-    assert [path.name for path in found] == ["s01", "s02", "s03", "s04", "s08"]
+    assert [path.name for path in found] == [
+        "s01",
+        "s02",
+        "s03",
+        "s04",
+        "s07",
+        "s08",
+        "s09",
+        "s10",
+        "s11",
+    ]
 
     assert discover_bundles(CANONICAL) == [CANONICAL]
 
