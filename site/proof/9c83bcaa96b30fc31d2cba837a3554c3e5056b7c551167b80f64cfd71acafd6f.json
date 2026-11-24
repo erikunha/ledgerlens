@@ -1,0 +1,30 @@
+{
+  "artifact_id": "9c83bcaa96b30fc31d2cba837a3554c3e5056b7c551167b80f64cfd71acafd6f",
+  "claim_evidence_refs": [
+    "sql:1",
+    "policy:chargeback-handling#response-deadline",
+    "policy:chargeback-handling#escalation",
+    "policy:escalation-and-review#when-to-escalate",
+    "policy:escalation-and-review#deadline-within-2-days",
+    "policy:duplicate-charges#customer-communication",
+    "policy:escalation-and-review#response-times",
+    "policy:chargeback-handling#stages",
+    "policy:refund-policy#refunds-and-chargebacks"
+  ],
+  "cost_provenance": "replayed",
+  "cost_usd": null,
+  "known_limitations": [
+    "the run is the recording of the scripted model, and it reproduces the run of the capture byte for byte",
+    "the artifact attests to a claim about the code of the repository and says nothing about a person"
+  ],
+  "mode": "deterministic_sandbox",
+  "privacy_reviewed": true,
+  "scenario_id": "S03",
+  "schema_version": "3",
+  "snapshot_hash": "764dce7fcf03127337d05bd169da2fb8dc5685e9c115cb4e19d2eda9cdb48259",
+  "source_commit": "69080118ccbb4eb97e97d68bf22f13206d85d38710e2423f481546e3aad084e7",
+  "trace_refs": [
+    "data/eval/replay/s03/events.jsonl"
+  ],
+  "verdict_summary": "CL1 not_enough_evidence; CL2 supported; CL3 not_enough_evidence"
+}

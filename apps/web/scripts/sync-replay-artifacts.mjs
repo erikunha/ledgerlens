@@ -59,6 +59,11 @@ const CATALOGS = [
     source: join(REPOSITORY_ROOT, "site", "replay-real"),
     destination: join(REPOSITORY_ROOT, "apps", "web", "public", "replay-real"),
   },
+  {
+    name: "proof",
+    source: join(REPOSITORY_ROOT, "site", "proof"),
+    destination: join(REPOSITORY_ROOT, "apps", "web", "public", "proof"),
+  },
 ];
 
 /**

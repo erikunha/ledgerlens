@@ -1,0 +1,22 @@
+{
+  "artifact_id": "cec0f1ffb3a1ffc37ad7318feac39c638068291c85945dccca7f9fda92aa987f",
+  "claim_evidence_refs": [
+    "sql:1"
+  ],
+  "cost_provenance": "unknown",
+  "cost_usd": null,
+  "known_limitations": [
+    "the run is the recording of one run of a real model, and it is not reproducible byte for byte",
+    "the artifact attests to a claim about the code of the repository and says nothing about a person"
+  ],
+  "mode": "live_provider",
+  "privacy_reviewed": true,
+  "scenario_id": "S09",
+  "schema_version": "3",
+  "snapshot_hash": "8ee2f503b47e7e647cb449a61cb3da896c229cafa587f99e02c0c4ed325298b9",
+  "source_commit": "69080118ccbb4eb97e97d68bf22f13206d85d38710e2423f481546e3aad084e7",
+  "trace_refs": [
+    "data/eval/replay-real/s09/events.jsonl"
+  ],
+  "verdict_summary": "CL1 not_enough_evidence"
+}

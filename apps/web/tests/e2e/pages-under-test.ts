@@ -107,6 +107,24 @@ export const PAGES_UNDER_TEST: readonly PageUnderTest[] = [
     },
   },
   {
+    name: "the catalog of the proofs of work",
+    path: "/proof",
+    settle: async (page: Page) => {
+      await expect(page.getByRole("heading", { level: 1, name: "Proof of work" })).toBeVisible();
+      await expect(page.getByRole("link", { name: /S01 · replay/ }).first()).toBeVisible();
+    },
+  },
+  {
+    name: "the page of a proof of work",
+    path: "/proof",
+    settle: async (page: Page) => {
+      await expect(page.getByRole("heading", { level: 1, name: "Proof of work" })).toBeVisible();
+      await page.getByRole("link", { name: /S01 · replay/ }).first().click();
+      await expect(page.getByRole("heading", { level: 1, name: "Proof of S01" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "The provenance" })).toBeVisible();
+    },
+  },
+  {
     name: "the recording of S01 made with a real model",
     path: "/replay-real/scenario/S01",
     settle: async (page: Page) => {

@@ -104,3 +104,4 @@ by hand: run `uv run python scripts/build_docs_index.py` and commit the result.
 | 094 | [ADR-094: A document is a source of evidence and it never corrects the ledger](ADR-094-a-document-is-a-source-of-evidence-and-it-never-corrects-the-ledger.md) | accepted | 2026-11-24 |
 | 095 | [ADR-095: The registry of the structural functions is the only source of a dependency](ADR-095-the-registry-of-the-structural-functions-is-the-only-source-of-a-dependency.md) | accepted | 2026-11-24 |
 | 096 | [ADR-096: The deterministic verdict is the gate of the training data](ADR-096-the-deterministic-verdict-is-the-gate-of-the-training-data.md) | accepted | 2026-11-24 |
+| 097 | [ADR-097: The proof of work carries the provenance and the digest discipline of the catalogs](ADR-097-the-proof-of-work-carries-the-provenance-and-the-digest-discipline-of-the-catalogs.md) | accepted | 2026-11-24 |

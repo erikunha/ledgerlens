@@ -12,6 +12,10 @@ out/
 public/replay/
 public/replay-real/
 
+# The catalog of the proofs of work is copied the same way and is not tracked either: the source of
+# truth is site/proof at the root of the repository (ADR-097).
+public/proof/
+
 # the output of the tests
 coverage/
 playwright-report/

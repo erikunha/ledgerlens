@@ -1,0 +1,22 @@
+{
+  "artifact_id": "11af12d50f654bc7a1237854926b33984540698116f89be3bb337f09afa521d6",
+  "claim_evidence_refs": [
+    "sql:1"
+  ],
+  "cost_provenance": "replayed",
+  "cost_usd": null,
+  "known_limitations": [
+    "the run is the recording of the scripted model, and it reproduces the run of the capture byte for byte",
+    "the artifact attests to a claim about the code of the repository and says nothing about a person"
+  ],
+  "mode": "deterministic_sandbox",
+  "privacy_reviewed": true,
+  "scenario_id": "S04",
+  "schema_version": "3",
+  "snapshot_hash": "87da26ffd7674cdfb8c5503b124bdb64df8ed88ac06c117be3ce0cfe9cd118dc",
+  "source_commit": "69080118ccbb4eb97e97d68bf22f13206d85d38710e2423f481546e3aad084e7",
+  "trace_refs": [
+    "data/eval/replay/s04/events.jsonl"
+  ],
+  "verdict_summary": "CL1 supported"
+}

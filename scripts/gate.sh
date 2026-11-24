@@ -95,4 +95,10 @@ uv run python scripts/measure_replay_budget.py
 echo "== replay budget of the catalogue of a real model (offline)"
 uv run python scripts/measure_replay_budget.py --site site/replay-real
 
+# The published proofs must match the bundles they were built from: a proof that drifts from its bundle is a
+# proof that asks the reader to trust the name and not the bytes. The check rebuilds the export, writes
+# nothing, and refuses with a readable reason and a non zero exit code.
+echo "== proof check (offline)"
+uv run python scripts/export_proof_site.py --check
+
 echo "gate: ok"

@@ -1,0 +1,24 @@
+{
+  "artifact_id": "27a0495da68627d017da75681675aae9266a2e5b71cf8138bc708a79d1fbe5cb",
+  "claim_evidence_refs": [
+    "api:1",
+    "api:2",
+    "calc:1"
+  ],
+  "cost_provenance": "unknown",
+  "cost_usd": null,
+  "known_limitations": [
+    "the run is the recording of one run of a real model, and it is not reproducible byte for byte",
+    "the artifact attests to a claim about the code of the repository and says nothing about a person"
+  ],
+  "mode": "live_provider",
+  "privacy_reviewed": true,
+  "scenario_id": "S07",
+  "schema_version": "3",
+  "snapshot_hash": "ce8b010b5648de58501ef83cabc8e31ac2743eb1121deececd58c10c11231df4",
+  "source_commit": "69080118ccbb4eb97e97d68bf22f13206d85d38710e2423f481546e3aad084e7",
+  "trace_refs": [
+    "data/eval/replay-real/s07/events.jsonl"
+  ],
+  "verdict_summary": "CL1 supported; CL2 not_enough_evidence"
+}

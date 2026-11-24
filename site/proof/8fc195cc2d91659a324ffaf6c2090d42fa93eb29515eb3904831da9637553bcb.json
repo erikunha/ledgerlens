@@ -1,0 +1,28 @@
+{
+  "artifact_id": "8fc195cc2d91659a324ffaf6c2090d42fa93eb29515eb3904831da9637553bcb",
+  "claim_evidence_refs": [
+    "sql:1",
+    "policy:cross-currency-refunds#overview",
+    "policy:cross-currency-refunds#what-is-cross-currency",
+    "policy:duplicate-charges#duplicates-with-fx",
+    "policy:cross-currency-refunds#payout-currency",
+    "fx:2026-10-23:EUR-BRL",
+    "calc:1"
+  ],
+  "cost_provenance": "replayed",
+  "cost_usd": null,
+  "known_limitations": [
+    "the run is the recording of the scripted model, and it reproduces the run of the capture byte for byte",
+    "the artifact attests to a claim about the code of the repository and says nothing about a person"
+  ],
+  "mode": "deterministic_sandbox",
+  "privacy_reviewed": true,
+  "scenario_id": "S13",
+  "schema_version": "3",
+  "snapshot_hash": "066e14ce1a55c98e3e7185b2eb13ec755c2d39ebaf23ac5e99f16c4c3f9ecad1",
+  "source_commit": "69080118ccbb4eb97e97d68bf22f13206d85d38710e2423f481546e3aad084e7",
+  "trace_refs": [
+    "data/eval/replay/s13/events.jsonl"
+  ],
+  "verdict_summary": "CL1 supported; CL2 supported; CL3 supported; CL4 supported; CL5 supported; CL6 supported"
+}
