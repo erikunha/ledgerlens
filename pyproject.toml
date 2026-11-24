@@ -46,6 +46,13 @@ api = [
 app = [
     "streamlit>=1.67",
 ]
+# The document pipeline of the spec 019. The readers of the text layer of a PDF and of an image are optional:
+# the offline gate runs with no key and no network, and a pipeline whose only path asks for a converter that is
+# not installed could never be part of it. The refusal of the conversion names the converter that is missing.
+documents = [
+    "pypdf>=5.0",
+    "Pillow>=10.0",
+]
 dev = [
     "pytest>=8.3",
     "ruff>=0.8",

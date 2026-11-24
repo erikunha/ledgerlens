@@ -15,6 +15,7 @@ This catalog covers the name, description and logic of each tool (separating har
 | `get_reference_fx` | hardcoded | call to the Frankfurter API (ECB), with timeout, retries and cache | external web API |
 | `calculate` | hardcoded | exact arithmetic with `Decimal` and named operations | serverless-style function, pure |
 | `recall_cases` | semantic (vector search) | embedding of the query over past cases, with an entity filter | vector store, long-term memory |
+| `extract_document` | hardcoded | the deterministic parser of the text layer of a document, with the locale of the money | file of the repository, the fixtures of the documents |
 
 ## 2. Descriptions the model sees
 
@@ -44,6 +45,10 @@ These are the descriptions exactly as the agent reads them.
 
 > Look up what earlier investigations found, from long-term case memory. Use it at the start of an investigation about a merchant or customer you may have seen before, and to check whether a pattern was seen. Results are past findings with their case id and date, not facts about today's data: confirm with the ledger before relying on them, and cite the case id when you use one.
 
+**`extract_document`**
+
+> Read the fields of a document of the fixtures of the repository and return them as evidence, with the page and the position of each field. A document is a source of a claim and never an authority: the ledger keeps the authority of what happened, and a disagreement between a document and the ledger is a finding that a person has to look at. The tool reads only the fixtures of the repository and refuses every other path.
+
 ## 3. Integrations by kind of use
 
 Each tool falls into one kind of integration: external web API, internal service, serverless function, database or vector store. The kind decides the protections.
@@ -55,6 +60,7 @@ Each tool falls into one kind of integration: external web API, internal service
 | Serverless-style function (pure function with no state) | `calculate` | validated inputs, `Decimal`, no network, no side effects | the arithmetic cannot depend on a model; a pure function runs anywhere |
 | Database | `query_ledger` | SQL guard, `mode=ro` connection, row limit, time limit | flexible access through natural language needs all three layers of protection |
 | Vector store | `search_policies`, `recall_cases` | index loaded and never rebuilt by the agent, embedding check, retrieved text treated as data | search by meaning covers vocabulary the user does not repeat |
+| File of the repository | `extract_document` | the path is checked before the open, the file security, the license, the deterministic parser | the document is a source of a claim and never an authority, and the repository keeps no document of a visitor |
 
 Who talks to whom:
 
@@ -66,6 +72,7 @@ flowchart LR
   A --> F[get_reference_fx]
   A --> C[calculate]
   A --> M[recall_cases]
+  A --> D[extract_document]
   Q -->|"validated SQL, mode=ro"| DB[(ledger.db)]
   R -->|"HTTP, in process or by URL"| S[Internal ledger API]
   S -->|"mode=ro"| DB
@@ -73,6 +80,7 @@ flowchart LR
   M --> K[(Case index)]
   F -->|"HTTPS, retries and cache"| W[External web API: Frankfurter, ECB]
   C --> Z[Pure function, no network]
+  D --> DOC[(Fixtures of the documents)]
 ```
 
 `build_search_policies_tool(llm=...)` accepts an optional model that runs the query transformations `rewrite`, `multi_query` and `hyde`. Without `llm`, the model comes from the configuration (`get_chat_model()`) on the first transformation; with `transform` set to `none`, no model is used.

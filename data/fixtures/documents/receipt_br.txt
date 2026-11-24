@@ -1,0 +1,5 @@
+Recibo
+Loja: Casa Verde Foods
+Data: 2026-10-20
+Transacao: TX-2048
+Total: 1.000,00 BRL

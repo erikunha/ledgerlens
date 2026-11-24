@@ -16,6 +16,7 @@ from langchain_core.tools import BaseTool
 from ledgerlens.offline import ScriptedChatModel
 from ledgerlens.tools.calculator import build_calculate_tool
 from ledgerlens.tools.cases import build_recall_cases_tool
+from ledgerlens.tools.documents import build_extract_document_tool
 from ledgerlens.tools.fx import build_get_reference_fx_tool
 from ledgerlens.tools.ledger_api import build_get_ledger_record_tool
 from ledgerlens.tools.policies import build_search_policies_tool
@@ -33,6 +34,7 @@ EXPECTED = {
     "get_reference_fx": ("hardcoded", "external web API"),
     "calculate": ("hardcoded", "serverless-style function"),
     "recall_cases": ("semantic", "vector store"),
+    "extract_document": ("hardcoded", "file of the repository"),
 }
 # how each kind of integration shows up in the contract table
 INTEGRATION_CONTRACT = {
@@ -41,6 +43,7 @@ INTEGRATION_CONTRACT = {
     "vector store": "vector store",
     "external web API": "external web API",
     "serverless-style function": "serverless-style",
+    "file of the repository": "file of the repository",
 }
 
 
@@ -52,6 +55,7 @@ def registered_tools() -> dict[str, BaseTool]:
         build_get_reference_fx_tool(),
         build_calculate_tool(),
         build_recall_cases_tool(runtime_dir="unused"),
+        build_extract_document_tool(),
     ]
     return {tool.name: tool for tool in tools}
 

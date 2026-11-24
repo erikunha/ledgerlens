@@ -1,0 +1,41 @@
+{
+  "fixtures": [
+    {
+      "file": "receipt_blurred.txt",
+      "license": "CC0-1.0",
+      "sha256": "af4a554e6bb37ec9cd9c05fc9db01d12a23615739a623fbf55674bdb218dd147",
+      "synthetic": true
+    },
+    {
+      "file": "receipt_br.txt",
+      "license": "CC0-1.0",
+      "sha256": "e64848a7606e1922ec5acbeb66c36610188f1137d392d1d51de59b023c4fcffc",
+      "synthetic": true
+    },
+    {
+      "file": "receipt_many_decimals.txt",
+      "license": "CC0-1.0",
+      "sha256": "e8c81ff8f3f31fe6afae4b928594061520bbce21705085642846477fb2a1bd7a",
+      "synthetic": true
+    },
+    {
+      "file": "receipt_two_currencies.txt",
+      "license": "CC0-1.0",
+      "sha256": "4b5e4a05e5bc9cef73eb842ee248968d94564760870c05316f1710a443be5b3c",
+      "synthetic": true
+    },
+    {
+      "file": "receipt_unknown_language.txt",
+      "license": "CC0-1.0",
+      "sha256": "c8c31787d4310482f775ec70f5a401754e01d253bc2e55e461d0723bc99006ef",
+      "synthetic": true
+    },
+    {
+      "file": "receipt_us.txt",
+      "license": "CC0-1.0",
+      "sha256": "66062372c55a27f759b00acf8131cc20f65667d1138e0ee42bd00b8816397b46",
+      "synthetic": true
+    }
+  ],
+  "note": "The fixtures of the documents of the repository are synthetic: the repository keeps no document of a visitor (ADR-P009), and every fixture carries its digest and its license."
+}

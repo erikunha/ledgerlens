@@ -10,6 +10,7 @@ Six tools. Each is a `langchain_core.tools.StructuredTool` built from a Pydantic
 | `get_reference_fx` | hardcoded | external web API (Frankfurter), with recorded fixtures |
 | `calculate` | hardcoded | serverless-style pure function |
 | `recall_cases` | semantic (vector search) | vector store, long-term memory |
+| `extract_document` | hardcoded | file of the repository (the fixtures of the documents) |
 
 ## Common result envelope
 
@@ -395,6 +396,59 @@ Output `data`:
 A search with no hits is a success with an empty list. Entity filters (`merchant_id`, `customer_id`) are applied before ranking. Expired semantic facts (`valid_until` in the past) are skipped.
 
 Errors: `CASE_INDEX_UNAVAILABLE` (no; the tool then returns an empty result with a note, because memory is optional), `INVALID_ID` (no).
+
+## 7. `extract_document`
+
+Type: hardcoded. Evidence id: `doc:<digest>:<n>`.
+
+Description:
+
+> Read the fields of a document of the fixtures of the repository and return them as evidence, with the page and the position of each field. A document is a source of a claim and never an authority: the ledger keeps the authority of what happened, and a disagreement between a document and the ledger is a finding that a person has to look at. The tool reads only the fixtures of the repository and refuses every other path.
+
+Input:
+
+```json
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["path"],
+  "properties": {
+    "path": {"type": "string", "description": "the path of the document, inside data/fixtures/documents/"}
+  }
+}
+```
+
+Output `data`:
+
+```json
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["fields", "digest", "license"],
+  "properties": {
+    "fields": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "value", "page", "position", "confidence", "extraction_version"],
+        "properties": {
+          "name": {"type": "string"},
+          "value": {"type": ["string", "null"]},
+          "page": {"type": "integer"},
+          "position": {"type": "string"},
+          "confidence": {"enum": ["read", "uncertain", "not_read"]},
+          "extraction_version": {"type": "string"}
+        }
+      }
+    },
+    "digest": {"type": "string"},
+    "license": {"type": "string"}
+  }
+}
+```
+
+A document whose value was not read with certainty carries a null value and the confidence that names the doubt. Errors: `DOCUMENT_REFUSED` (no; the path is outside the fixtures, the file fails the file security, the license is unknown or the file has no text layer).
 
 ## Expected trajectories (for evaluation)
 

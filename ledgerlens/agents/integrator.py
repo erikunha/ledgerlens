@@ -156,6 +156,7 @@ _SOURCE_BY_PREFIX = {
     "fx": "fx",
     "calc": "calc",
     "case": "case",
+    "doc": "doc",
 }
 # Field that identifies an item inside `data["results"]`, per tool (policy search and case search).
 _ITEM_KEY = {"search_policies": "chunk_id", "recall_cases": "case_id"}

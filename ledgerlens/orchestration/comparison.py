@@ -667,6 +667,7 @@ def _run_studio_case(
             "fx": "fx",
             "calc": "calc",
             "case": "case",
+            "doc": "doc",
         }
         evidence = [
             Evidence(

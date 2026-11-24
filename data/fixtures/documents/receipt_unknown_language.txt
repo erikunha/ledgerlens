@@ -1,0 +1,4 @@
+Quittung
+Geschaft: Beispiel GmbH
+Datum: 2026-10-20
+Gesamtbetrag: 100,00 EUR

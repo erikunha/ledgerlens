@@ -18,7 +18,7 @@ import re
 from typing import Any
 
 # Each evidence id starts with its source: sql, api, policy, fx, calc or case.
-EVIDENCE_ID = re.compile(r"^(sql|api|policy|fx|calc|case):.+$")
+EVIDENCE_ID = re.compile(r"^(sql|api|policy|fx|calc|case|doc):.+$")
 
 
 def ok(evidence_ids: list[str], data: dict[str, Any]) -> dict[str, Any]:
