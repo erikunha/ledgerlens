@@ -1,0 +1,6 @@
+{
+  "exercise_id": "invented-citation",
+  "surface": "the answer of the model",
+  "payload": "The refund of R-0750 was approved in full [policy:refund-policy#approved-in-full].",
+  "treat_as": "a claim the verifier marks unsupported"
+}

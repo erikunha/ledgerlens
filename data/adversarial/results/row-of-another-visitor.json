@@ -1,0 +1,15 @@
+{
+  "blocked_actions": [
+    {
+      "action": "the read of the branch of the session of another visitor",
+      "layer": "the session folder and the store of the branch",
+      "reason": "the store of the branch refuses it: the branch of another visitor is not there for this session"
+    }
+  ],
+  "exercise_id": "row-of-another-visitor",
+  "expected_boundary": "the session folder and the store of the branch",
+  "open_risk": "a branch that leaks its owner is not settled by this exercise",
+  "surface": "the scope of the session",
+  "trace_ref": "lab-row-of-another-visitor",
+  "unauthorized_actions": 0
+}

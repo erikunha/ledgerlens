@@ -77,6 +77,10 @@ class Settings(BaseModel):
     # runtime a single agent with a deterministic verifier until a paired comparison measures a gain. It opens only
     # for an experiment that is registered before it runs.
     orchestration_studio: bool = False
+    # The flag of the adversarial laboratory: off in the shipped configuration, because the laboratory is a
+    # research feature and its output is a trace and a published page, never a route a stranger may call. The
+    # exercises run in the offline mode with the fake provider, so an attack never spends the money of anybody.
+    adversarial_lab: bool = False
     embeddings: Literal["fastembed", "openai"] = "fastembed"
     openai_api_key: SecretStr | None = None
     langsmith_api_key: SecretStr | None = None
@@ -214,6 +218,7 @@ def get_settings(env: Mapping[str, str] | None = None) -> Settings:
     settings = Settings(
         offline=_flag(values.get("LEDGERLENS_OFFLINE")),
         orchestration_studio=_flag(values.get("LEDGERLENS_ORCHESTRATION_STUDIO")),
+        adversarial_lab=_flag(values.get("LEDGERLENS_ADVERSARIAL_LAB")),
         model=_text(values.get("LEDGERLENS_MODEL")),
         model_cascade=_cascade(values.get("LEDGERLENS_MODEL_CASCADE")),
         embeddings=embeddings,  # type: ignore[arg-type]

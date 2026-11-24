@@ -1,0 +1,15 @@
+{
+  "blocked_actions": [
+    {
+      "action": "the call of the model past the cap of 1",
+      "layer": "the coordinator of the budget",
+      "reason": "the coordinator of the budget stops the run: the budget of the run is exhausted: the cap 'max_model_calls' stopped the run: the run reached the cap of 1 model calls, so the run stops"
+    }
+  ],
+  "exercise_id": "call-past-the-cap",
+  "expected_boundary": "the coordinator of the budget",
+  "open_risk": "a run that spends in the tools what it saved in the models is not settled by this exercise",
+  "surface": "the money of the run",
+  "trace_ref": "lab-call-past-the-cap",
+  "unauthorized_actions": 0
+}

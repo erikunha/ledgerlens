@@ -8,6 +8,7 @@ and one line that says what the file holds.
 
 ## docs
 
+- [The adversarial laboratory](adversarial-lab.md): The laboratory measures the boundaries of the repository with a list of canned exercises whose payloads are synthetic. It adds no defense of its own: a...
 - [LedgerLens cognitive architecture](architecture.md): This document covers the anatomy of the agent, its type and maturity level, the planning design, the choice between imperative and declarative composition...
 - [Demo recording](demo.md): The site of the demo and the local run of its two modes are in docs/frontend.md. The recorded run is below.
 - [The evaluation of this repository, and what each number is allowed to claim](evaluation.md): This page answers one question, for a reader who did not read the code: is any number published by this repository a generalization, or is it a fit? The...
@@ -126,6 +127,7 @@ and one line that says what the file holds.
 - [ADR-088: The queue of the review is a simulation with fictional defaults, and its capacity is never a plan of a team](decisions/ADR-088-the-queue-of-the-review-is-a-simulation-with-fictional-defaults-and-its-capacity-is-never-a-plan-of-a-team.md): Status: accepted. Date: 2026-11-24.
 - [ADR-089: The studio stays off in the shipped configuration, and the comparison that measured it was registered before it ran](decisions/ADR-089-the-studio-stays-off-in-the-shipped-configuration-and-the-comparison-was-registered-before-it-ran.md): Status: accepted. Date: 2026-11-24.
 - [ADR-090: The versioned memory has a quarantine that is a state, a promotion that is simulated and a snapshot that freezes a run](decisions/ADR-090-the-versioned-memory-has-a-quarantine-that-is-a-state-a-promotion-that-is-simulated-and-a-snapshot-that-freezes-a-run.md): Status: accepted. Date: 2026-11-24.
+- [ADR-091: The adversarial laboratory adds no defense of its own, and its count says nothing about an attack that is not in the list](decisions/ADR-091-the-adversarial-laboratory-adds-no-defense-of-its-own-and-its-count-says-nothing-about-an-attack-that-is-not-in-the-list.md): Status: accepted. Date: 2026-11-24.
 - [Decision records](decisions/README.md): Every decision that restricts the future of the work is a record in this folder, and this index lists them in the order of their number, with their status...
 
 ## docs/orchestration
