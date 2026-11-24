@@ -244,7 +244,7 @@ is `ledgerlens/eval/run.py:772`. The way to cite a rule of the world next to a p
 
 **What the evidence says.** This is the strongest thing the repository owns, and the place where the published claim
 and the work in flight disagreed. The manifest declares the rule and applies it to itself: five datasets carry the role
-`tuning` and one carries the role `held_out`, and the policy says that no result over a tuning dataset may be presented
+`tuning` and two carry the role `held_out`, and the policy says that no result over a tuning dataset may be presented
 as a generalization to unseen data (`data/eval/datasets.json:4`). The decision behind it says the same in
 words: the role that makes a number look better is never the one that wins
 (`docs/decisions/ADR-052-the-manifest-of-the-eval-datasets.md:75`).

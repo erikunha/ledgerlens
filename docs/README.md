@@ -125,6 +125,10 @@ and one line that says what the file holds.
 - [ADR-088: The queue of the review is a simulation with fictional defaults, and its capacity is never a plan of a team](decisions/ADR-088-the-queue-of-the-review-is-a-simulation-with-fictional-defaults-and-its-capacity-is-never-a-plan-of-a-team.md): Status: accepted. Date: 2026-11-24.
 - [Decision records](decisions/README.md): Every decision that restricts the future of the work is a record in this folder, and this index lists them in the order of their number, with their status...
 
+## docs/orchestration
+
+- [The baseline of the orchestration studio](orchestration/baseline.md): The studio of the multi-agent orchestration is experimental and it is measured against the path that the repository ships today. A reference that moves is...
+
 ## docs/pt-BR
 
 - [roadmap-v3.md](pt-BR/roadmap-v3.md): the Portuguese edition of [roadmap-v3.md](roadmap-v3.md); its own title is in Portuguese, so the file name names it here.

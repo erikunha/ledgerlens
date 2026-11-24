@@ -798,18 +798,23 @@ def test_a_manifest_that_is_a_link_outside_the_root_is_refused_and_not_read(tmp_
 # --- the manifest that ships --------------------------------------------------------------------------------
 
 
-def test_the_manifest_of_the_repository_declares_the_six_datasets() -> None:
-    """The manifest of the repository declares the six datasets with the roles the archaeology decided.
+def test_the_manifest_of_the_repository_declares_the_seven_datasets() -> None:
+    """The manifest of the repository declares the seven datasets with the roles the archaeology decided.
 
-    Why the list has six entries and not seven: the held out set of the verification came with the blind reading
+    Why the list has seven entries and not eight: the held out set of the verification came with the blind reading
     of ADR-059, and the answer key of the generator came with it too, and the key is not published and is not
     declared here. A key that is public is not a key, so the tree keeps the cases and the labels and leaves the key
     out, and the guard refuses the path of the key because no entry of the manifest names it (ADR-062).
+
+    Why the seventh is the pre-registration of the comparison of the studio: it names the set of the comparison, and
+    a set that a tuning script may read is a set that a threshold may be chosen against, so it carries the role
+    `held_out` like the blind reading does.
     """
     manifests = load_manifests(MANIFEST_PATH)
 
     assert [m.dataset_id for m in manifests] == [
         "eval_cases",
+        "orchestration_comparison",
         "policy_questions",
         "triage_cases",
         "verification_heldout",
@@ -818,6 +823,7 @@ def test_the_manifest_of_the_repository_declares_the_six_datasets() -> None:
     ]
     assert {m.dataset_id: m.split_role for m in manifests} == {
         "eval_cases": "tuning",
+        "orchestration_comparison": "held_out",
         "policy_questions": "tuning",
         "triage_cases": "tuning",
         "verification_heldout": "held_out",

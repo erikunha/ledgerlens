@@ -9,7 +9,12 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 # data generated at run time
-data/runtime/
+data/runtime/*
+# the pre-registration of the comparison of the orchestration studio is written before the run and has to be in
+# git, because a comparison that is registered after it ran is not a pre-registration. The negations come after
+# the rule above, because a broader ignore rule higher up would otherwise win.
+!data/runtime/orchestration/
+!data/runtime/orchestration/**
 # the answer key of the generator of the held out set: it is not published, because it is the key of a set whose
 # whole purpose is to be untuned. The generator is public and deterministic, so anybody can rebuild it with
 # `uv run python -m ledgerlens.eval.heldout`, and the blindness of the reading was a procedure and not a secret

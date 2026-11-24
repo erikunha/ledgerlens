@@ -39,17 +39,32 @@ T183, and the tests of the sandbox that the studio touches stay in `tests/sandbo
 **Purpose**: the reference arm of the comparison is the shipped code, and a reference that moves is not a
 reference.
 
-- [ ] T180 [P] Record the behavior of the shipped path in `docs/orchestration/baseline.md`: the agent of
+- [x] T180 [P] Record the behavior of the shipped path in `docs/orchestration/baseline.md`: the agent of
   `ledgerlens/agents/integrator.py`, its six tools, the verifier of `ledgerlens/verify/`, the snapshot of the
   branch it reads and the commit of the code, so that the studio is measured against a named reference and not
-  against a memory of one
-- [ ] T181 [P] Write the test in `tests/orchestration/test_baseline_is_frozen.py` that reads
+  against a memory of one - **DELIVERED**: the page `docs/orchestration/baseline.md` names the commit
+  `77a9a2c9ba9665619290dc3875e81169f3256cac`, the agent of `ledgerlens/agents/integrator.py` with the six tools
+  `query_ledger`, `get_ledger_record`, `search_policies`, `get_reference_fx`, `calculate` and `recall_cases`, the
+  verifier of `ledgerlens/verify/` with its thresholds, and the snapshot of the comparison with the digest of the set
+  of 31 cases and the digest of the canonical ledger.
+- [x] T181 [P] Write the test in `tests/orchestration/test_baseline_is_frozen.py` that reads
   `docs/orchestration/baseline.md` and expects the commit of the baseline, the tools of the shipped agent and
-  the name of the snapshot of the comparison, and that fails while the file does not exist
-- [ ] T182 [P] Write the manifest of the comparison in `data/runtime/orchestration/comparison.json` with the
+  the name of the snapshot of the comparison, and that fails while the file does not exist - **DELIVERED**: the
+  test is in `tests/orchestration/test_baseline_is_frozen.py`: it fails with a sentence while the page does not
+  exist, it expects a commit that the repository holds and that is an ancestor of the head, it expects the six
+  tools of the contract and it checks that the source of the repository still declares them, and it expects the
+  digests of the set and of the ledger to be the digests of the files of the disk.
+- [x] T182 [P] Write the manifest of the comparison in `data/runtime/orchestration/comparison.json` with the
   set of the comparison, the denominator, the two arms, the measures and the rule that decides the result, and
   register it in `data/eval/datasets.json` with the role the manifest of the datasets gives it, so that the set
-  of the comparison is never read by anything but the final scoring
+  of the comparison is never read by anything but the final scoring - **DELIVERED**: the manifest is in
+  `data/runtime/orchestration/comparison.json`, with one record per line so that the manifest of the datasets can
+  count its records and pin its digest. It names the set of the 31 cases with its digest, the denominator, the
+  snapshot of the ledger, the two arms, the four measures with their direction, the rule that decides the result
+  and the uncertainty of the measurement. It is registered in `data/eval/datasets.json` with the role `held_out`,
+  the path is reserved in the code of the guard of the tuning, and the sentence of the contamination policy that
+  counts the datasets with that role was corrected in the seven entries and republished in the two reports of the
+  held out set.
 
 ## Part B, the dispatcher, behind a flag
 
