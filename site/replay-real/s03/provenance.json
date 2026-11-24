@@ -1,21 +1,27 @@
 {
   "artifacts": {
-    "events.jsonl": "191a68159b3947111cef2e6316d6bba44c81f4d175a4816a6eea06fc19d19c5d",
-    "ledger.json": "f01553fa6eb5e6fc294077692c8beb219de08a59f3cb0f42c11bbac83d2fdf5e",
-    "manifest.json": "71997143319681a855aace216d55e9caeda85f1c893c16e1c5177b6ba3aeb842"
+    "events.jsonl": "8d882bec5ad9da1e7bbd9298cfaab9bd9a2efdb5c3964b45911b7f5828ec3e4c",
+    "ledger.json": "c2ca2d18465a558f7d6e3a4c4b287b0594288c72fae020fe21f527a39a42b609",
+    "manifest.json": "b1d966a2a057141889af044191385bfe2d533a4bdf2a1b6bcb865acdbb4ef7c0"
   },
-  "bundle_digest": "71997143319681a855aace216d55e9caeda85f1c893c16e1c5177b6ba3aeb842",
+  "bundle_digest": "b1d966a2a057141889af044191385bfe2d533a4bdf2a1b6bcb865acdbb4ef7c0",
   "capture_kind": "real_model_recorded",
-  "code_sha": "9ffb3cbcfcb1a17883a63a56a7e5954a753322b1",
-  "created_at": "2026-11-23T21:42:43+00:00",
+  "code_sha": "b52e208b8a5f83c8442cc7a698c64521fe7d7669",
+  "created_at": "2026-11-24T02:13:00+00:00",
   "dataset_sha256": "cab6cd1eeefd08ae58b138501c2c69431547fcbb7434f1a47720cc81aefe84ba",
   "files": {
-    "events.jsonl": "191a68159b3947111cef2e6316d6bba44c81f4d175a4816a6eea06fc19d19c5d"
+    "events.jsonl": "8d882bec5ad9da1e7bbd9298cfaab9bd9a2efdb5c3964b45911b7f5828ec3e4c"
   },
   "mode": "live_agent",
   "model_profile": "openai:gpt-4.1",
-  "note": "Real execution of the scenario S03, account C-0291, with the model openai:gpt-4.1 and the live reference rate. This is the recording of a real run and it is not reproducible byte for byte. The verdicts of the claims were computed by the deterministic verifier of the repository, the judge the sandbox catalogue uses, so that anybody can re-verify this bundle offline.",
+  "model_profiles": {
+    "agent": "openai:gpt-4.1",
+    "policy": "openai:gpt-4.1-mini",
+    "sql": "openai:gpt-4.1",
+    "triage": "openai:gpt-4.1-mini"
+  },
+  "note": "Real execution of the scenario S03, account C-0291, with the model openai:gpt-4.1 and the live reference rate. The work was split by the task: the triage and the rewrite of the search of the policies ran on openai:gpt-4.1-mini, the statement that reads the ledger ran on openai:gpt-4.1 and the answer with the tools ran on openai:gpt-4.1. This is the recording of a real run and it is not reproducible byte for byte. The verdicts of the claims were computed by the deterministic verifier of the repository, the judge the sandbox catalog uses, so that anybody can re-verify this bundle offline.",
   "policy_version": "policies-v1",
-  "recorded_at": "2026-11-23T21:42:43+00:00",
+  "recorded_at": "2026-11-24T02:13:00+00:00",
   "snapshot_sha256": "cc73222856d4d21516935d6fa9d55104fdfafbaf92622a7fdae8e7f3b8425f24"
 }

@@ -1,17 +1,23 @@
 {
   "bundle_schema_version": "1",
   "capture_kind": "real_model_recorded",
-  "code_sha": "9ffb3cbcfcb1a17883a63a56a7e5954a753322b1",
-  "created_at": "2026-11-23T21:43:15+00:00",
+  "code_sha": "b52e208b8a5f83c8442cc7a698c64521fe7d7669",
+  "created_at": "2026-11-24T02:13:23+00:00",
   "events": 38,
   "files": {
-    "events.jsonl": "a8ec010853022e9c1c04c1cf4ff3008be0d20c366f0190e6643e5ecc9197933d"
+    "events.jsonl": "c8ecfc61848a0aebeb9ea9ab729b4f0abd05e47209ca0dd39a5a1acc0548fbb2"
   },
   "mode": "live_agent",
   "model_profile": "openai:gpt-4.1",
-  "note": "Real execution of the scenario S10, account C-0777, with the model openai:gpt-4.1 and the live reference rate. This is the recording of a real run and it is not reproducible byte for byte. The verdicts of the claims were computed by the deterministic verifier of the repository, the judge the sandbox catalogue uses, so that anybody can re-verify this bundle offline.",
+  "model_profiles": {
+    "agent": "openai:gpt-4.1",
+    "policy": "openai:gpt-4.1-mini",
+    "sql": "openai:gpt-4.1",
+    "triage": "openai:gpt-4.1-mini"
+  },
+  "note": "Real execution of the scenario S10, account C-0777, with the model openai:gpt-4.1 and the live reference rate. The work was split by the task: the triage and the rewrite of the search of the policies ran on openai:gpt-4.1-mini, the statement that reads the ledger ran on openai:gpt-4.1 and the answer with the tools ran on openai:gpt-4.1. This is the recording of a real run and it is not reproducible byte for byte. The verdicts of the claims were computed by the deterministic verifier of the repository, the judge the sandbox catalog uses, so that anybody can re-verify this bundle offline.",
   "policy_version": "policies-v1",
-  "recorded_at": "2026-11-23T21:43:15+00:00",
+  "recorded_at": "2026-11-24T02:13:23+00:00",
   "run_id": "replay-real-s10",
   "scenario": "S10",
   "snapshot_sha256": "4f9bace0aa80730f077b35a7e7ad7bcf9e6b48bcfd6519091b57f9e496cb9990"

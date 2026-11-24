@@ -4,7 +4,39 @@
       "id": "C-0291",
       "kind": "customer",
       "name": "Linda Harper",
-      "reads": [],
+      "reads": [
+        {
+          "columns": [
+            "chargeback_id",
+            "filing_date",
+            "deadline_date",
+            "resolution_date",
+            "transaction_id",
+            "transaction_date",
+            "transaction_captured_at"
+          ],
+          "evidence_id": "sql:1",
+          "records": [
+            "CB-0310"
+          ],
+          "row_count": 1,
+          "rows": [
+            {
+              "chargeback_id": "CB-0310",
+              "deadline_date": "2026-11-09",
+              "filing_date": "2026-10-28T10:00:00Z",
+              "resolution_date": "null",
+              "transaction_captured_at": "2026-10-21T15:20:03Z",
+              "transaction_date": "2026-10-21T15:20:00Z",
+              "transaction_id": "TX-2077"
+            }
+          ],
+          "seq": 19,
+          "sql": "SELECT * FROM (SELECT c.id AS chargeback_id, c.opened_at AS filing_date, c.deadline AS deadline_date, c.resolved_at AS resolution_date, t.id AS transaction_id, t.created_at AS transaction_date, t.captured_at AS transaction_captured_at FROM chargebacks AS c JOIN transactions AS t ON c.transaction_id = t.id WHERE c.id = 'CB-0310') LIMIT 50",
+          "tool": "query_ledger",
+          "truncated": false
+        }
+      ],
       "rows": [
         {
           "amount": "215.00",

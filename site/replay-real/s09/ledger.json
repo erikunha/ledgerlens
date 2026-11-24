@@ -4,7 +4,28 @@
       "id": "C-0888",
       "kind": "customer",
       "name": "Daniel Brooks",
-      "reads": [],
+      "reads": [
+        {
+          "columns": [
+            "status"
+          ],
+          "evidence_id": "sql:1",
+          "records": [
+            "R-0750",
+            "TX-2095"
+          ],
+          "row_count": 1,
+          "rows": [
+            {
+              "status": "requested"
+            }
+          ],
+          "seq": 19,
+          "sql": "SELECT * FROM (SELECT status FROM refunds WHERE id = 'R-0750' AND transaction_id = 'TX-2095') LIMIT 50",
+          "tool": "query_ledger",
+          "truncated": false
+        }
+      ],
       "rows": [
         {
           "amount": "60.00",

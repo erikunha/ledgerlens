@@ -4,7 +4,23 @@
       "id": "C-0001",
       "kind": "customer",
       "name": "Glenn Alexander-Jones",
-      "reads": [],
+      "reads": [
+        {
+          "columns": [
+            "status"
+          ],
+          "evidence_id": "sql:1",
+          "records": [
+            "TX-9999"
+          ],
+          "row_count": 0,
+          "rows": [],
+          "seq": 19,
+          "sql": "SELECT * FROM (SELECT status FROM transactions WHERE id = 'TX-9999') LIMIT 50",
+          "tool": "query_ledger",
+          "truncated": false
+        }
+      ],
       "rows": [
         {
           "amount": "78.10",
