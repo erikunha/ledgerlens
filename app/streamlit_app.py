@@ -51,7 +51,7 @@ import streamlit as st
 from ledgerlens import demo
 from ledgerlens.agents.integrator import Integrator, build_integrator, investigate
 from ledgerlens.api.accounts import Account, account_statement, load_account_profile, load_accounts, scoped_ledger
-from ledgerlens.config import ConfigError, get_settings, offline
+from ledgerlens.config import ConfigError, get_chat_model, get_settings, offline
 from ledgerlens.observability.trace import Span
 from ledgerlens.offline import ScriptedChatModel, text_message
 from ledgerlens.prompts.ai_disclosure import AI_DISCLOSURE
@@ -204,7 +204,14 @@ def ask_agent(question: str, account_id: str, is_offline: bool) -> Integrator:
         if is_offline:
             agents[account_id] = offline_session(account_id)
         else:
-            agents[account_id] = {"agent": build_integrator(db_path=account_ledger(account_id, False))}
+            agents[account_id] = {
+                "agent": build_integrator(
+                    db_path=account_ledger(account_id, False),
+                    # The model of a retry is built by the deployment that holds the provider, and the demo holds
+                    # the provider of the deployment (ADR-084).
+                    fallback_factory=lambda name: get_chat_model(model=name),
+                )
+            }
     session = agents[account_id]
     if is_offline:
         prepare_offline_turn(session, question)

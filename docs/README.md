@@ -117,6 +117,7 @@ and one line that says what the file holds.
 - [ADR-082: The number of an evaluation case is fixed once the case is published](decisions/ADR-082-the-number-of-an-evaluation-case-is-fixed-once-the-case-is-published.md): Status: accepted. Date: 2026-11-24.
 - [ADR-083: The routing is measured against one model over the same cases, and every number carries its set](decisions/ADR-083-the-routing-is-measured-against-one-model-over-the-same-cases-and-every-number-carries-its-set.md): Status: accepted. Date: 2026-11-24.
 - [ADR-084: The fallback of a run happens only with a consent of the deployment and with the budget that is left](decisions/ADR-084-the-fallback-of-a-run-happens-only-with-a-consent-of-the-deployment-and-with-the-budget-that-is-left.md): Status: accepted. Date: 2026-11-24.
+- [ADR-085: The retry of a failed model is wired into the triage of the run and into the model of the graph](decisions/ADR-085-the-retry-of-a-failed-model-is-wired-into-the-triage-of-the-run-and-into-the-model-of-the-graph.md): Status: accepted. Date: 2026-11-24.
 - [Decision records](decisions/README.md): Every decision that restricts the future of the work is a record in this folder, and this index lists them in the order of their number, with their status...
 
 ## docs/pt-BR

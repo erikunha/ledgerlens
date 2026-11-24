@@ -344,6 +344,9 @@ def run_variant_c(case: EvalCase, world: World, model: BaseChatModel | None = No
         triage_model=triage_model or model or _online_model(),
         verifier=partial(verify_result, nli=world.nli, ledger_db=world.db_path),
         case_memory=world.case_memory(case, "C"),
+        # The model of a retry is built by the deployment that holds the provider, and the evaluation holds the
+        # provider of the deployment (ADR-084).
+        fallback_factory=lambda name: get_chat_model(model=name, temperature=0),
         **kwargs,
     )
     return _outputs(investigate(agent, case.question, thread_id=f"eval-C-{case.id}"))

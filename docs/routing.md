@@ -96,11 +96,65 @@ above the position of the failed model in the cascade.
 The decision is a value: it carries the action, the model, the reason, the number of the attempts and the strategy,
 so a reader of a recording of a run that retried sees the model of the retry and the reason of it. The decision moves
 no counter of the budget, and the reservation is a step of its own that comes after it and before the call. The
-module decides and reserves, and the caller calls, and the wiring of the retry inside the loop of the agent is not
-there yet, so the rate of the fallback of the comparison of the routes is still not measured.
+module decides and reserves, and the caller calls.
+
+The retry is wired into the run in the two places where a model of the run fails: the triage of the run and the
+model of the graph. The models that the tools call, the statement that reads the ledger and the rewrite of the
+search of the policies, are not wired yet.
+
+Four of the rules of the wiring hold here, and they are the rules of the module:
+
+1. **The retry never repeats a model that this task already tried.** The call that failed already happened and the
+   money of it is already spent, and a retry that answers the same model would spend the budget of the run twice for
+   the same failure. The rule is wider than the neighbour of the failed model: a cascade that holds the same model
+   twice, or a retry whose model was the model of an earlier failure of the same task, stops the retry too.
+2. **The retry is outside the reservation of the graph.** The reservation books the usage of a call under the model
+   of that call, and a retry that ran inside it would book the tokens of the model of the retry under the model that
+   failed. Every attempt of the turn is therefore reserved under its own model, and the reservation of the retry
+   carries the input it is about to send and the output it asks for, so the cap of the money and the cap of the
+   tokens are checked before the call. The model of the retry is built before it is reserved, so a deployment that
+   cannot build it is not charged for a call that never happens. The plan of the retry of the triage is the whole
+   prompt of the triage, its system message included, and not the complaint alone: the system message is the
+   largest part of the call, and a plan built from the complaint alone would undercount it by two orders of
+   magnitude and would let a cap pass a call that does not fit.
+3. **The consent counts the retries of a task, and a task is a call of a model.** The triage is a task and each call
+   of the graph is a task of its own, so a task that fails gets the retries the deployment consented to and the task
+   that comes after it gets its own.
+4. **The side that holds the provider is the one that reserves the call.** A turn that does not own the counting
+   refuses the retry, because a retry that nobody reserves would spend the money of the run outside the caps of the
+   run.
+
+The caller that holds the provider builds the model of a retry, and the live path of the visitor holds the credential
+of the visitor and not the key of the server, so the live path has no retry at all and keeps the one model of
+ADR-037.
+
+A turn of the graph that stops because the retry did not happen comes back as a result that names the reason, and
+not as an exception that nobody reads. The result is the answer of a turn that owns the counting, and a turn whose
+budget belongs to the caller raises the stop, because the caller is the one that has to read it. The decision of
+the retry is in the trace of the turn, with the model of the retry and the reason of it, and a stop leaves a
+decision in the trace too, so a reader of the trace sees a run that stopped and why. The decision of a stop carries
+no model, because no model ran the retry, and the reason names the model that the retry would have used when there
+was one. The cap that the budget recorded is the cap the result names.
+
+The name of the model of the triage comes from the deployment when the router named the slot of the triage, and from
+the model of the triage itself when the caller routed nothing. The demo of the repository names no slot at all. The
+comparison of the routes carries the four names of the arm, and the retry of the triage reads the one of the slot of
+the triage: the other three arrive at the run as the model objects of their slots, and the router named them where it
+decided. The model of the graph is not named that way either: the graph knows the model it is running with, and the
+retry of a call of the graph reads that one.
+
+The tokens of the triage are not in the report of the coordinator: the chain of the triage answers with the plan and
+not with the message of the provider, and the tokens of the provider are in the message. The tokens of the triage
+are in the trace of the run, the plan of the retry of the triage is the whole prompt, and the gap is of the triage
+path and not of the wiring.
+
+The rate of the fallback of the comparison of the routes is still not measured: the comparison builds no runner, so
+the zero it publishes says that the question was not asked.
 
 [ADR-084](decisions/ADR-084-the-fallback-of-a-run-happens-only-with-a-consent-of-the-deployment-and-with-the-budget-that-is-left.md)
-is the decision that says what a fallback has to carry to be allowed.
+is the decision that says what a fallback has to carry to be allowed, and
+[ADR-085](decisions/ADR-085-the-retry-of-a-failed-model-is-wired-into-the-triage-of-the-run-and-into-the-model-of-the-graph.md)
+is the decision that says where the retry is wired into the run.
 
 ## The comparison of the routes
 

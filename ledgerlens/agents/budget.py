@@ -18,7 +18,7 @@ only thing that enforces them. A second enforcer would be a second source of the
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from langchain.agents.middleware import AgentMiddleware, ModelRequest, ToolCallRequest
@@ -29,12 +29,16 @@ from ledgerlens.run_context import SHIPPED_RUN_BUDGET, RunBudget
 
 __all__ = [
     "BudgetReservationMiddleware",
+    "CHARS_PER_TOKEN",
     "GRAPH_HEADROOM",
     "GRAPH_STEP_BACKSTOP",
     "GRAPH_STEPS",
+    "NO_FALLBACK",
     "Owner",
+    "PLANNED_OUTPUT_TOKENS",
     "STEPS_PER_MODEL_CALL",
     "TurnBudget",
+    "TurnState",
     "cap_sentence",
     "caps_of",
     "derived_recursion_limit",
@@ -66,6 +70,18 @@ GRAPH_STEP_BACKSTOP = STEPS_PER_MODEL_CALL * (SHIPPED_RUN_BUDGET.max_model_calls
 # It is not the name of a cap of the run: naming one would say that a caller gave a cap that it gave not.
 GRAPH_STEPS = "graph_steps"
 
+# The name of the cut when a model failed and the retry did not happen (ADR-084). It is not the name of a cap
+# either: the turn did not reach a limit, the deployment consented to no retry or the budget did not cover it.
+NO_FALLBACK = "no_fallback"
+
+# The number of characters that one token of a text is worth. The rule is rough and it is only used to plan the
+# tokens of a call, never to report them: the observed tokens are the ones the provider counted (FR-010).
+CHARS_PER_TOKEN = 4
+
+# The number of output tokens a call plans when the request says nothing. The plan is an estimate and the estimate
+# is what the cap on the money is checked against, so it is bounded and small (FR-009).
+PLANNED_OUTPUT_TOKENS = 512
+
 # Who counts the calls of a turn. The integrator counts when nobody else does (the demo and the evaluation),
 # the caller counts when it holds the provider (the live path) and nobody counts when the graph was built
 # elsewhere and the side that holds the provider counts on its own.
@@ -82,6 +98,27 @@ _CAP_LABELS = {
 }
 
 
+@dataclass
+class TurnState:
+    """What a turn remembers while it runs: the decisions of the fallback and the call that the fallback reserved
+    before it made it.
+
+    Why it is a box and not a field of the ceiling: the ceiling of a turn is a frozen value, and these two things
+    have to change while the turn runs. The box is per turn, so two turns of the same session never share a
+    decision (ADR-084).
+
+    Why the count of the retries is not here: the consent of the deployment says how many retries a task may get,
+    and a task is a call of a model, so the count of the retries is the count of the call and it lives with the
+    call (ADR-084).
+    """
+
+    # The decisions of the fallback of the turn, in the shape the trace carries.
+    fallbacks: list[dict[str, Any]] = field(default_factory=list)
+    # The identifier of the model whose call the fallback reserved before it made it. The reservation of the
+    # graph reads it and does not reserve that call twice (ADR-084).
+    reserved_next: str | None = None
+
+
 @dataclass(frozen=True)
 class TurnBudget:
     """The ceiling of one turn: the caps, the coordinator that counts them and the side that owns the counting.
@@ -94,6 +131,32 @@ class TurnBudget:
     caps: RunBudget
     coordinator: BudgetCoordinator
     owner: Owner = "integrator"
+    # What the turn remembers while it runs: the decisions of the fallback and the reservation that the fallback
+    # made. The box is per turn, and the ceiling above it never changes (ADR-084).
+    state: TurnState = field(default_factory=TurnState)
+
+    def record_fallback(self, decision: dict[str, Any]) -> None:
+        """Keeps the decision of a retry, so the trace of the turn shows the model of the retry and the reason."""
+        self.state.fallbacks.append(decision)
+
+    def mark_reserved(self, model_id: str) -> None:
+        """Says that the next call of a model is already reserved, and under which identifier.
+
+        Why the mark exists: the fallback reserves the call of a retry before it makes it, with the plan of the
+        retry, and the reservation of the graph would reserve it a second time and count the same call twice
+        (ADR-084).
+        """
+        self.state.reserved_next = model_id
+
+    def take_reserved(self) -> str | None:
+        """The identifier of the model whose call was already reserved, and the mark is consumed."""
+        model_id = self.state.reserved_next
+        self.state.reserved_next = None
+        return model_id
+
+    def clear_reserved(self) -> None:
+        """Drops the mark of a reserved call, for the caller that made it and did not need it."""
+        self.state.reserved_next = None
 
     def reserve_model_call(
         self,
@@ -218,6 +281,12 @@ def cap_sentence(cap: str, caps: RunBudget | None = None) -> str:
     no cap of the calls of the models was not stopped by a cap (ADR-054). A cap that has no value is named
     without a number too, because a number that nobody gave is a number of nothing.
     """
+    if cap == NO_FALLBACK:
+        return (
+            "a model of the turn failed and the retry did not happen: the consent of the deployment, the retries it "
+            "left, the cascade of the deployment or the remaining budget of the run did not allow it, so the turn "
+            "stops and a person takes it over"
+        )
     if cap == GRAPH_STEPS:
         return (
             "the ceiling of the graph stopped the turn: the turn reached the ceiling of "
@@ -289,17 +358,23 @@ class BudgetReservationMiddleware(AgentMiddleware):
 
     Why it does nothing when the turn carries the ceiling of somebody else: the side that holds the provider
     is the one that reserves (the live path), and a second counter would count the same calls twice (ADR-054).
+
+    Why it does not reserve a call that the fallback already reserved: the fallback reserves the call of a
+    retry before it makes it, with the plan of that retry, and reserving it here a second time would count the
+    same call twice and would check the caps without the plan (ADR-084). The usage of that call is booked under
+    the identifier the fallback reserved it under, so the reservation and the usage answer each other.
     """
 
     def wrap_model_call(self, request: ModelRequest, handler: Callable[[ModelRequest], Any]) -> Any:
         """Reserves the call of the model, runs it and records what the provider reported."""
         turn = turn_of(request.runtime)
         model_id = model_id_of(request.model)
-        if turn is not None:
+        reserved = turn.take_reserved() if turn is not None else None
+        if turn is not None and reserved is None:
             turn.reserve_model_call(model_id)
         response = handler(request)
         if turn is not None:
-            turn.record_model_usage(model_id, **_tokens_of(response))
+            turn.record_model_usage(reserved or model_id, **_tokens_of(response))
         return response
 
     def wrap_tool_call(self, request: ToolCallRequest, handler: Callable[[ToolCallRequest], Any]) -> Any:
@@ -313,11 +388,12 @@ class BudgetReservationMiddleware(AgentMiddleware):
         """The asynchronous path of the reservation: the same caps, awaited."""
         turn = turn_of(request.runtime)
         model_id = model_id_of(request.model)
-        if turn is not None:
+        reserved = turn.take_reserved() if turn is not None else None
+        if turn is not None and reserved is None:
             turn.reserve_model_call(model_id)
         response = await handler(request)
         if turn is not None:
-            turn.record_model_usage(model_id, **_tokens_of(response))
+            turn.record_model_usage(reserved or model_id, **_tokens_of(response))
         return response
 
     async def awrap_tool_call(

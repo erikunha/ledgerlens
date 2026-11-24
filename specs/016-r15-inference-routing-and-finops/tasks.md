@@ -107,8 +107,21 @@ T241, and the tests of the registry and of the budget that the routing reads sta
   (`LEDGERLENS_FALLBACK_ATTEMPTS` and `LEDGERLENS_FALLBACK_DIRECTION`, with no retry as the default), the
   decision as a value and the stop with the reason (`FallbackStopped`). The budget is asked BEFORE the call, so
   the money of a retry the budget does not cover is never spent, and the caps of the run are never changed by the
-  decision (ADR-084). The wiring of the retry inside the loop of the agent is NOT there yet: the module decides
-  and the caller calls, and the rate of the fallback of the comparison of the routes is still not measured.
+  decision (ADR-084). The wiring of the retry inside the loop of the agent is in the TRIAGE of the run and in the
+  model of the graph (`FallbackMiddleware`), the models that the tools call are NOT wired yet, and the rate of the
+  fallback of the comparison of the routes is still not measured, because the comparison builds no runner (ADR-085).
+- [x] T257 [P] Wire the retry of a failed model into the run, in the triage of the run and in the model of the
+  graph, and write the test in `tests/routing/test_fallback_in_the_run.py` that expects the triage that failed to
+  be retried, that expects the model that failed never to be called again, that expects the usage of the retry
+  under the model of the retry, that expects the plan of the retry to reach the caps of the money, that expects the
+  decision in the trace and the reason in the result, and that expects the live path to build no runner -
+  **DELIVERED**: the wiring is in `ledgerlens/agents/fallback.py` (`FallbackRunner` and `FallbackMiddleware`) and in
+  `ledgerlens/agents/integrator.py` (`build_integrator`, `run_triage`). The retry is outside the reservation of the
+  graph, so every attempt is reserved under its own model; the reservation of the retry carries the plan of the
+  retry, so the cap of the money is checked before the call, and the plan of the retry of the triage is the whole
+  prompt of the triage, its system message included; the consent counts the retries of a task, and a task is
+  a call of a model; the caller that holds the provider builds the model of a retry, and the live path of the
+  visitor holds no provider and therefore has no runner (ADR-085).
 
 ## Part D, the comparison and the publication
 

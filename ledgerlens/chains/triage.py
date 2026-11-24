@@ -18,6 +18,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.messages import BaseMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import Runnable, chain
 
@@ -49,6 +50,16 @@ def triage_prompt() -> ChatPromptTemplate:
     """The triage prompt with the format instructions already filled in; only `complaint` is left."""
     # `partial` fixes one variable now, so whoever uses the chain only passes the complaint.
     return TRIAGE_PROMPT.partial(format_instructions=triage_format_instructions())
+
+
+def triage_input_of(complaint: str) -> list[BaseMessage]:
+    """The messages a triage call sends for this complaint: the system message and the complaint itself.
+
+    Why it exists: the system message of the triage is the largest part of the call, and a plan of the retry
+    that left it out would let a cap of the tokens pass a call that sends it (FR-009). The prompt is rendered
+    here and not estimated, so the plan is the call itself and not a guess about it.
+    """
+    return list(triage_prompt().invoke({"complaint": complaint}).to_messages())
 
 
 def build_triage_declarative(model: BaseChatModel) -> Runnable[dict, Triage | TriageError]:

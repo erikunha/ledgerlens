@@ -1123,3 +1123,28 @@ def test_a_run_that_the_ceiling_of_the_turn_cuts_never_ends_with_an_empty_answer
     # says which limit it was, and the case repeats it.
     assert "stopped the turn" in result.answer
     assert "the cap '" in result.answer or "the ceiling of the graph" in result.answer
+
+
+def test_the_live_path_of_the_visitor_builds_no_runner_of_the_retry(
+    ledger_db: Path, index_root: Path, embeddings: FastEmbedEmbeddings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The live path holds the credential of the visitor and not the key of the server, so it has no runner.
+
+    Why it matters: a retry built with the key of the server would be a call that the visitor did not ask for,
+    that nobody counts and that the caps of the visitor do not hold (ADR-037, ADR-054).
+
+    Why the consent is on: a deployment that consented to no retry would have no runner in any path, and the
+    test would pass without proving anything about the live path.
+    """
+    monkeypatch.setenv("LEDGERLENS_FALLBACK_ATTEMPTS", "1")
+    caller = _caller(scripted_adapter())
+    demo = build_demo_agent(
+        caller,
+        db_path=ledger_db,
+        verifier=refusing_verifier(),
+        index_root=index_root,
+        embeddings=embeddings,
+    )
+
+    assert demo.agent.fallback is None
+    assert demo.agent.triage_fallback is None

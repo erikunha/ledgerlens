@@ -209,6 +209,8 @@ def capture(scenario_id: str, catalog: Path, root: Path = ROOT) -> Path:
             run_context=context,
             case_memory=memory,
             verifier=_deterministic_verifier(account_db),
+            # The model of a retry is built by the deployment that holds the provider (ADR-084).
+            fallback_factory=lambda name: get_chat_model(settings, model=name),
         )
 
         sink = InMemoryTraceSink()

@@ -305,6 +305,9 @@ def run_arm(
             policy_model=models[SLOT_POLICY],
             fx_client=FxClient(mode="fixtures", fault=case.fx_fault, sleep=lambda _: None),
             case_memory=memory,
+            # The names of the models of the slots, as the arm names them: they are the names the cascade of the
+            # deployment holds, and they are what the retry of a failed model reads (ADR-084).
+            model_names=dict(arm.models),
         )
         result = investigate(agent, case.question, thread_id=f"routing-{arm.name}-{case.id}", on_event=spans.append)
         calls, input_tokens, output_tokens = _calls_of(spans)
