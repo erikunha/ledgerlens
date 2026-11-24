@@ -1,16 +1,16 @@
 {
   "artifacts": {
-    "events.jsonl": "fff0482eea6d485cfc7ea5cc66429cea18772b4ad3bf30fdad43997cfdcd2ad4",
-    "ledger.json": "8d873579695c66d2eb71844f546b2b50979d2fe293113b71b203b4b5fb1bd6a6",
-    "manifest.json": "cd5db2ac980881b1ba9af89c18a07c9ae2ce1029c99cde4a6fc6bef6e6ce65a9"
+    "events.jsonl": "ac57089f94ba797f3c4ca89901eb078a1602e42ccace2c80170f92b32d2e21d7",
+    "ledger.json": "4cc9eec80a979beb6daecdc75e9ff0b8e89361142215d06ebdedaf3b23467eda",
+    "manifest.json": "f3513dcab60ef84d5d3a3bc68343b0a9484e14dd747cbdb4e6b2173874d09abe"
   },
-  "bundle_digest": "cd5db2ac980881b1ba9af89c18a07c9ae2ce1029c99cde4a6fc6bef6e6ce65a9",
+  "bundle_digest": "f3513dcab60ef84d5d3a3bc68343b0a9484e14dd747cbdb4e6b2173874d09abe",
   "capture_kind": "real_model_recorded",
-  "code_sha": "b52e208b8a5f83c8442cc7a698c64521fe7d7669",
-  "created_at": "2026-11-24T02:12:53+00:00",
-  "dataset_sha256": "cab6cd1eeefd08ae58b138501c2c69431547fcbb7434f1a47720cc81aefe84ba",
+  "code_sha": "37aa9b66f6bb9cd120c09f00dac1f1fd95a3a5fe",
+  "created_at": "2026-11-24T03:44:40+00:00",
+  "dataset_sha256": "af34b1a17b5342de8ecef9732bd9e082cb5a4ca91e9b36173e231b71b0ebefb1",
   "files": {
-    "events.jsonl": "fff0482eea6d485cfc7ea5cc66429cea18772b4ad3bf30fdad43997cfdcd2ad4"
+    "events.jsonl": "ac57089f94ba797f3c4ca89901eb078a1602e42ccace2c80170f92b32d2e21d7"
   },
   "mode": "live_agent",
   "model_profile": "openai:gpt-4.1",
@@ -22,6 +22,6 @@
   },
   "note": "Real execution of the scenario S02, account C-0733, with the model openai:gpt-4.1 and the live reference rate. The work was split by the task: the triage and the rewrite of the search of the policies ran on openai:gpt-4.1-mini, the statement that reads the ledger ran on openai:gpt-4.1 and the answer with the tools ran on openai:gpt-4.1. This is the recording of a real run and it is not reproducible byte for byte. The verdicts of the claims were computed by the deterministic verifier of the repository, the judge the sandbox catalog uses, so that anybody can re-verify this bundle offline.",
   "policy_version": "policies-v1",
-  "recorded_at": "2026-11-24T02:12:53+00:00",
-  "snapshot_sha256": "df1102a46bc9fbc70f85ba877fd71a81002c040f49e1ba8e4a63d8c992d715d0"
+  "recorded_at": "2026-11-24T03:44:40+00:00",
+  "snapshot_sha256": "9e35262f7ef078b006504d636c54ced9813180f6c85438f809bf939de2cb7355"
 }

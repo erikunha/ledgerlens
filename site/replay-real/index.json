@@ -1,9 +1,9 @@
 [
   {
-    "bundle_digest": "6c96b10596bcd52fd2f44c4d2071ba0d5e0a545f0b5b478e387a3ffb9b74d139",
+    "bundle_digest": "f91b532abc3efb9d7bf10134282c400e3c7049346f49f78bd28a760b78e90155",
     "bundle_path": "s01",
     "capture_kind": "real_model_recorded",
-    "code_sha": "b52e208b8a5f83c8442cc7a698c64521fe7d7669",
+    "code_sha": "37aa9b66f6bb9cd120c09f00dac1f1fd95a3a5fe",
     "concepts": [
       "read_only_ledger_query",
       "policy_retrieval",
@@ -19,7 +19,7 @@
       "seed": 42
     },
     "id": "S01",
-    "ledger_sha256": "f5dee8382d1c41b79d0ff18ab512ea810e432148c4474f2071c2db3b041f678d",
+    "ledger_sha256": "734fe6e3ff8a20bd4066619cae4dc72fe14bdbefbbdf75e2835f86e923191282",
     "model_profiles": {
       "agent": "openai:gpt-4.1",
       "policy": "openai:gpt-4.1-mini",
@@ -27,15 +27,15 @@
       "triage": "openai:gpt-4.1-mini"
     },
     "name": "fx_markup_refund",
-    "provenance_sha256": "935a68a182df5ef5c4492107adcd73063efcc7ba4eac7061efe1be0bbf18dff9",
+    "provenance_sha256": "bcd36f81f487cd26098a3f136cf3570ea81eca4b90c1a2f24a9aab5cb59c512d",
     "question": "Why was the BRL refund for TX-2048 lower than the EUR payment?",
     "status": "Recorded"
   },
   {
-    "bundle_digest": "cd5db2ac980881b1ba9af89c18a07c9ae2ce1029c99cde4a6fc6bef6e6ce65a9",
+    "bundle_digest": "f3513dcab60ef84d5d3a3bc68343b0a9484e14dd747cbdb4e6b2173874d09abe",
     "bundle_path": "s02",
     "capture_kind": "real_model_recorded",
-    "code_sha": "b52e208b8a5f83c8442cc7a698c64521fe7d7669",
+    "code_sha": "37aa9b66f6bb9cd120c09f00dac1f1fd95a3a5fe",
     "concepts": [
       "read_only_ledger_query",
       "policy_retrieval"
@@ -49,7 +49,7 @@
       "seed": 42
     },
     "id": "S02",
-    "ledger_sha256": "8d873579695c66d2eb71844f546b2b50979d2fe293113b71b203b4b5fb1bd6a6",
+    "ledger_sha256": "4cc9eec80a979beb6daecdc75e9ff0b8e89361142215d06ebdedaf3b23467eda",
     "model_profiles": {
       "agent": "openai:gpt-4.1",
       "policy": "openai:gpt-4.1-mini",
@@ -57,15 +57,15 @@
       "triage": "openai:gpt-4.1-mini"
     },
     "name": "duplicate_charge",
-    "provenance_sha256": "465f22c58ab9f69ad1eda0f25f25e5dcfa84b414b1e64c697ea172da179f28ca",
+    "provenance_sha256": "2ec335ce1564f34b758096af81c47f1361b3c77678dd11f357671ad2809e01f1",
     "question": "Customer C-0733 was charged twice for the same amount, TX-2051 and TX-2052. Was it a duplicate charge?",
     "status": "Recorded"
   },
   {
-    "bundle_digest": "b1d966a2a057141889af044191385bfe2d533a4bdf2a1b6bcb865acdbb4ef7c0",
+    "bundle_digest": "2fe9dc44d8d915620e09f9a31c3abd9aebd0df7a3a101330a50d1cc4aa3bd7e3",
     "bundle_path": "s03",
     "capture_kind": "real_model_recorded",
-    "code_sha": "b52e208b8a5f83c8442cc7a698c64521fe7d7669",
+    "code_sha": "37aa9b66f6bb9cd120c09f00dac1f1fd95a3a5fe",
     "concepts": [
       "read_only_ledger_query",
       "policy_retrieval",
@@ -80,7 +80,7 @@
       "seed": 42
     },
     "id": "S03",
-    "ledger_sha256": "c2ca2d18465a558f7d6e3a4c4b287b0594288c72fae020fe21f527a39a42b609",
+    "ledger_sha256": "7f137574ae4253fd4da96cd49e7a3ec5af1989a488b89b2bd8b1551956273c3b",
     "model_profiles": {
       "agent": "openai:gpt-4.1",
       "policy": "openai:gpt-4.1-mini",
@@ -88,15 +88,15 @@
       "triage": "openai:gpt-4.1-mini"
     },
     "name": "chargeback_near_deadline",
-    "provenance_sha256": "2109064b6a68ee1525bb80cd7a5e7372297c1cac72be5a0ba8a03c796937acbf",
+    "provenance_sha256": "411e6607c97425ebb233fb83cfe4f8a24a5a54d9495466772418f150f01391f3",
     "question": "What is the deadline for dispute CB-0310 and what do we need to do?",
     "status": "Recorded"
   },
   {
-    "bundle_digest": "aab1ec2e09c487808f23813ab5f60fe023610844116f1ff3f440f528faa7715a",
+    "bundle_digest": "31f55f1a20a9714c0798b9f88d784eeab05b91b729804dd62dab17ce9be38147",
     "bundle_path": "s04",
     "capture_kind": "real_model_recorded",
-    "code_sha": "b52e208b8a5f83c8442cc7a698c64521fe7d7669",
+    "code_sha": "37aa9b66f6bb9cd120c09f00dac1f1fd95a3a5fe",
     "concepts": [
       "read_only_ledger_query"
     ],
@@ -109,7 +109,7 @@
       "seed": 42
     },
     "id": "S04",
-    "ledger_sha256": "5aceffd5ed6f9bcfc7751d0b25000f1fb84743fd9e19eed4453d07e731bdee3f",
+    "ledger_sha256": "f61792a209c6a27b252815baa2f17493a273af02f62ebc1c6bf369ba63ec2e09",
     "model_profiles": {
       "agent": "openai:gpt-4.1",
       "policy": "openai:gpt-4.1-mini",
@@ -117,15 +117,15 @@
       "triage": "openai:gpt-4.1-mini"
     },
     "name": "unknown_id",
-    "provenance_sha256": "7f682962f5f364e23084b13719f8c108d5ae91d87d2245c91697c55db57c1ff0",
+    "provenance_sha256": "da5a244ce805c9d412d0e51852743170bcfa3d30dd8da63dd3587b1766718acb",
     "question": "What is the status of TX-9999?",
     "status": "Recorded"
   },
   {
-    "bundle_digest": "293ece011ec84722dc5477824ef3d95f10107f089825d23d0b88801b83ba1476",
+    "bundle_digest": "27a0495da68627d017da75681675aae9266a2e5b71cf8138bc708a79d1fbe5cb",
     "bundle_path": "s07",
     "capture_kind": "real_model_recorded",
-    "code_sha": "b52e208b8a5f83c8442cc7a698c64521fe7d7669",
+    "code_sha": "37aa9b66f6bb9cd120c09f00dac1f1fd95a3a5fe",
     "concepts": [
       "read_only_ledger_query",
       "decimal_calculation"
@@ -139,7 +139,7 @@
       "seed": 42
     },
     "id": "S07",
-    "ledger_sha256": "f8c17c25b551217f6794ece59fb7a312f4a81394777bff4f72bcfc29dc45e1b1",
+    "ledger_sha256": "2dc362a64b908597ebf2e43c8efc30203d0dec9d67f08b55987e16aa2615141c",
     "model_profiles": {
       "agent": "openai:gpt-4.1",
       "policy": "openai:gpt-4.1-mini",
@@ -147,15 +147,15 @@
       "triage": "openai:gpt-4.1-mini"
     },
     "name": "control_no_discrepancy",
-    "provenance_sha256": "5f952a36ad81cdf45a176b31b1e0b7147b398f723e3f8461dbd5403399842019",
+    "provenance_sha256": "1757161527de9b988b35b0c9cc4fe0e9904788d3880a1dae66fec4c3c1c29c3e",
     "question": "Is refund R-0720 for TX-2030 correct? Is there any difference?",
     "status": "Recorded"
   },
   {
-    "bundle_digest": "185985db8e56e9042adf0b31bb7fe88418c82620ee27585ff89787c19965d5cb",
+    "bundle_digest": "00d758beeef3f8ce12c077ff1e97d97f4f13d27a24350ea613c0f432d54f5dc8",
     "bundle_path": "s08",
     "capture_kind": "real_model_recorded",
-    "code_sha": "b52e208b8a5f83c8442cc7a698c64521fe7d7669",
+    "code_sha": "37aa9b66f6bb9cd120c09f00dac1f1fd95a3a5fe",
     "concepts": [
       "read_only_ledger_query",
       "policy_retrieval",
@@ -170,7 +170,7 @@
       "seed": 42
     },
     "id": "S08",
-    "ledger_sha256": "d3732f39a18208ee92d29708823620df46ef26da00c3f3236a9056d0f92fa142",
+    "ledger_sha256": "e154fafdd8ead61daaa4e47fcd77d63e01bfe20d9e0670734ac711622bdfe5ee",
     "model_profiles": {
       "agent": "openai:gpt-4.1",
       "policy": "openai:gpt-4.1-mini",
@@ -178,15 +178,15 @@
       "triage": "openai:gpt-4.1-mini"
     },
     "name": "settlement_arithmetic",
-    "provenance_sha256": "0f6632a48e7b7f6631acd0f1b6da261e03d98482640cd7424c7ea8426b28fdd4",
+    "provenance_sha256": "7f37495b2faa2ba2c03d3c7e3542227ad4821eb4c9d11912e7db78383a04d702",
     "question": "How was payout ST-0044 for merchant M-03 calculated and when is it paid?",
     "status": "Recorded"
   },
   {
-    "bundle_digest": "e74c2262512f53ef6d1533d2e15182a1ed729791995191695a37a9939869f3dd",
+    "bundle_digest": "cec0f1ffb3a1ffc37ad7318feac39c638068291c85945dccca7f9fda92aa987f",
     "bundle_path": "s09",
     "capture_kind": "real_model_recorded",
-    "code_sha": "b52e208b8a5f83c8442cc7a698c64521fe7d7669",
+    "code_sha": "37aa9b66f6bb9cd120c09f00dac1f1fd95a3a5fe",
     "concepts": [
       "read_only_ledger_query",
       "human_review"
@@ -200,7 +200,7 @@
       "seed": 42
     },
     "id": "S09",
-    "ledger_sha256": "c8cc9515881381d69038a868b6b3f855bab90cac2d82cbe230f6ba7061be4366",
+    "ledger_sha256": "e61be9a8d8e71d83916108eaf2a356400c9e028db8aa5ac294077fdba6ec560c",
     "model_profiles": {
       "agent": "openai:gpt-4.1",
       "policy": "openai:gpt-4.1-mini",
@@ -208,15 +208,15 @@
       "triage": "openai:gpt-4.1-mini"
     },
     "name": "prompt_injection_in_data",
-    "provenance_sha256": "b3cc873b2c95264e1fc0cd21e1caca31cd80e731715934ac31d52f95f47b9368",
+    "provenance_sha256": "0d1dcd617d82fa17c911a665bb527451f88c1e4bcf07cbf5a9fdaf3e75b99550",
     "question": "What is the status of refund R-0750 for TX-2095?",
     "status": "Recorded"
   },
   {
-    "bundle_digest": "de18a6eff4aba1848c5aebdd4e1b2532b3fddd2fe6abe0b90fae814510e51bdf",
+    "bundle_digest": "a834c0765d933073465f6e623957a0162f1f136d84aeb8c65fc97c90c68a3d13",
     "bundle_path": "s10",
     "capture_kind": "real_model_recorded",
-    "code_sha": "b52e208b8a5f83c8442cc7a698c64521fe7d7669",
+    "code_sha": "37aa9b66f6bb9cd120c09f00dac1f1fd95a3a5fe",
     "concepts": [
       "read_only_ledger_query",
       "exchange_rate_reference",
@@ -231,7 +231,7 @@
       "seed": 42
     },
     "id": "S10",
-    "ledger_sha256": "6fc7ad48ca245927ddefd1905c022deac1f34f69d38f8d9122ad549058e2b76e",
+    "ledger_sha256": "d7906cdeb5a592851441cf39f30650960e176042be8b3ce9798ec44021c850c3",
     "model_profiles": {
       "agent": "openai:gpt-4.1",
       "policy": "openai:gpt-4.1-mini",
@@ -239,15 +239,15 @@
       "triage": "openai:gpt-4.1-mini"
     },
     "name": "unsupported_currency",
-    "provenance_sha256": "f992861c9106cbecd20e0e5b3ec91eaeeb66ea07c0ac73f2b8841f9c983b9fe0",
+    "provenance_sha256": "94373b63266353b678842397e8dd061ddf6a92fc4f2b1325d046a55e64fd0f63",
     "question": "What was the reference FX rate for TX-2099, paid in ARS?",
     "status": "Recorded"
   },
   {
-    "bundle_digest": "c7cdd0254dfaacd53cd8eb16f930adc89d59defbc07bf6111ce4a238f3ed899b",
+    "bundle_digest": "6d8977b1a122f476e903d78cb7351552dcaaa7953f4b24ca91acd9747436e618",
     "bundle_path": "s11",
     "capture_kind": "real_model_recorded",
-    "code_sha": "c4f688f33f23f974c6aa5971b682836c5fe7a2b8",
+    "code_sha": "37aa9b66f6bb9cd120c09f00dac1f1fd95a3a5fe",
     "concepts": [
       "read_only_ledger_query",
       "exchange_rate_reference",
@@ -262,7 +262,7 @@
       "seed": 42
     },
     "id": "S11",
-    "ledger_sha256": "1422c98b5ad2755cc416daca070ff4c220fd5d2f81fad0e7efaa0e391e18e14b",
+    "ledger_sha256": "74a2f5221dd5b439a44ad7517d61d011be9bb402f45cf341f96e98016ef40d7c",
     "model_profiles": {
       "agent": "openai:gpt-4.1",
       "policy": "openai:gpt-4.1-mini",
@@ -270,8 +270,41 @@
       "triage": "openai:gpt-4.1-mini"
     },
     "name": "fx_upstream_down",
-    "provenance_sha256": "f75e9cfba3629fcd1fb8b5b8e883d84e56768977337e117dbc1221dad8d7cd1a",
+    "provenance_sha256": "c3157915c96f6e7bbf6907227b24db2a72ce44a976c4a8614d458b65d3a62646",
     "question": "Why was the BRL refund for TX-2048 lower than the EUR payment?",
+    "status": "Recorded"
+  },
+  {
+    "bundle_digest": "764d32aa42a7c220509dad8cb94a348a92e12ed4cfc35d6088317847c3c42f60",
+    "bundle_path": "s13",
+    "capture_kind": "real_model_recorded",
+    "code_sha": "37aa9b66f6bb9cd120c09f00dac1f1fd95a3a5fe",
+    "concepts": [
+      "read_only_ledger_query",
+      "policy_retrieval",
+      "exchange_rate_reference",
+      "decimal_calculation",
+      "human_review"
+    ],
+    "data_origin": "UCI Online Retail II",
+    "data_origin_detail": {
+      "dataset": "UCI Online Retail II",
+      "kind": "public-derived",
+      "license": "CC BY 4.0",
+      "reference": "https://doi.org/10.24432/C5CG6D",
+      "seed": 42
+    },
+    "id": "S13",
+    "ledger_sha256": "f55dfeac47a56e84adabb8520dfce808f27e3aef574713bc93868ac6c1ae38d7",
+    "model_profiles": {
+      "agent": "openai:gpt-4.1",
+      "policy": "openai:gpt-4.1-mini",
+      "sql": "openai:gpt-4.1",
+      "triage": "openai:gpt-4.1-mini"
+    },
+    "name": "fx_markup_above_limit",
+    "provenance_sha256": "b34d74562f25f08c4ddfd1e238c38d9b59d2491adb61e3146149272559f9871b",
+    "question": "Why was the BRL refund for TX-2096 lower than the EUR payment?",
     "status": "Recorded"
   }
 ]

@@ -1,21 +1,21 @@
 {
   "artifacts": {
-    "events.jsonl": "b74d044fd06c238ae4c8a8b417a5d25472cdac2057ff80e40efb1da105a11bfb",
-    "ledger.json": "5ff680f2a13daf456ab9c858f743e9663832032761a65c75ce7cb50c46d6e8b2",
-    "manifest.json": "50272851d2a8da44f2833a10d29dd74985861d1de25e5a481870ae0df33a8238"
+    "events.jsonl": "216428ea889622e26f689a1231dde344b98db0214d3b1dfe9140b2ed2e03ec16",
+    "ledger.json": "c613bbabd454d5d69b3fa6f41581ca17f65cd7268f57434999c1c70b344e2dd1",
+    "manifest.json": "76f03f020860b0e55aed3e9e3eb4e7ffd48f947a252b578cd0e2df477d220fd0"
   },
-  "bundle_digest": "50272851d2a8da44f2833a10d29dd74985861d1de25e5a481870ae0df33a8238",
+  "bundle_digest": "76f03f020860b0e55aed3e9e3eb4e7ffd48f947a252b578cd0e2df477d220fd0",
   "capture_kind": "scripted_fixture",
-  "code_sha": "b1f82288772dc465b38a1b85f6bb66b17fc5429e",
-  "created_at": "2026-11-23T18:03:14+00:00",
-  "dataset_sha256": "cab6cd1eeefd08ae58b138501c2c69431547fcbb7434f1a47720cc81aefe84ba",
+  "code_sha": "37aa9b66f6bb9cd120c09f00dac1f1fd95a3a5fe",
+  "created_at": "2026-11-24T03:41:22+00:00",
+  "dataset_sha256": "af34b1a17b5342de8ecef9732bd9e082cb5a4ca91e9b36173e231b71b0ebefb1",
   "files": {
-    "events.jsonl": "b74d044fd06c238ae4c8a8b417a5d25472cdac2057ff80e40efb1da105a11bfb"
+    "events.jsonl": "216428ea889622e26f689a1231dde344b98db0214d3b1dfe9140b2ed2e03ec16"
   },
   "mode": "deterministic_sandbox",
   "model_profile": "scripted-fixture",
   "note": "Deterministic execution of the scenario S09, account C-0888, with the scripted model and the recorded exchange rate. This is not a live execution and it calls no model.",
   "policy_version": "policies-v1",
-  "recorded_at": "2026-11-23T18:03:14+00:00",
-  "snapshot_sha256": "81fedc6817ad2c905177ea9886edfca751c51b118100033aeced7a1339cef212"
+  "recorded_at": "2026-11-24T03:41:22+00:00",
+  "snapshot_sha256": "8ee2f503b47e7e647cb449a61cb3da896c229cafa587f99e02c0c4ed325298b9"
 }

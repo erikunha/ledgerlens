@@ -11,7 +11,7 @@ the first claim of the signature scenario rests on.
 
 Why the check reads both catalogs: the site publishes the recordings of the scripted model and the recordings of
 a real model, and a check that read only the first one would let the second carry a verdict nobody redid. The
-two catalogs hold the same nine scenarios, so the same check runs on the two of them.
+two catalogs hold the same ten scenarios, so the same check runs on the two of them.
 
 Why the check of the values is a general one and not a pair of hardcoded numbers: the answer of the scripted model
 is written by this repository and is the same in every recording, while the answer of a real model is written by the
@@ -38,8 +38,8 @@ ROOT = Path(__file__).resolve().parents[2]
 PUBLISHED = ROOT / "site" / "replay"
 PUBLISHED_REAL = ROOT / "site" / "replay-real"
 
-# The nine scenarios the catalog publishes, in the order of the index.
-SCENARIOS = ("s01", "s02", "s03", "s04", "s07", "s08", "s09", "s10", "s11")
+# The ten scenarios the catalog publishes, in the order of the index.
+SCENARIOS = ("s01", "s02", "s03", "s04", "s07", "s08", "s09", "s10", "s11", "s13")
 
 # The marker of a cut, the one the old rule of the cut left in the published evidence.
 _CUT_MARKER = "…"

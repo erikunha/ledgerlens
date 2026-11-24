@@ -1,0 +1,70 @@
+{
+  "accounts": [
+    {
+      "id": "C-0951",
+      "kind": "customer",
+      "name": "Renata Duarte Alves",
+      "reads": [
+        {
+          "columns": [
+            "kind",
+            "applied_rate",
+            "applied_at",
+            "merchant_id",
+            "merchant_name",
+            "fx_plan"
+          ],
+          "evidence_id": "sql:1",
+          "records": [
+            "TX-2096"
+          ],
+          "row_count": 2,
+          "rows": [
+            {
+              "applied_at": "2026-10-19T09:12:04Z",
+              "applied_rate": "5.6633",
+              "fx_plan": "markup",
+              "kind": "charge",
+              "merchant_id": "M-19",
+              "merchant_name": "Seine Gourmet SAS"
+            },
+            {
+              "applied_at": "2026-10-23T14:30:00Z",
+              "applied_rate": "5.3943",
+              "fx_plan": "markup",
+              "kind": "refund",
+              "merchant_id": "M-19",
+              "merchant_name": "Seine Gourmet SAS"
+            }
+          ],
+          "seq": 19,
+          "sql": "SELECT * FROM (SELECT f.kind, f.applied_rate, f.applied_at, m.id AS merchant_id, m.name AS merchant_name, m.fx_plan FROM fx_applied AS f JOIN transactions AS t ON t.id = f.transaction_id JOIN merchants AS m ON m.id = t.merchant_id WHERE f.transaction_id = 'TX-2096' ORDER BY f.applied_at) LIMIT 50",
+          "tool": "query_ledger",
+          "truncated": false
+        }
+      ],
+      "rows": [
+        {
+          "amount": "80.00",
+          "at": "2026-10-19T09:12:00Z",
+          "currency": "EUR",
+          "id": "TX-2096",
+          "kind": "transaction",
+          "status": "refunded"
+        },
+        {
+          "amount": "431.54",
+          "at": "2026-10-23T14:05:00Z",
+          "currency": "BRL",
+          "id": "R-0751",
+          "kind": "refund",
+          "status": "paid"
+        }
+      ]
+    }
+  ],
+  "page_size": 50,
+  "scenario": "S13",
+  "schema_version": "1",
+  "snapshot_sha256": "066e14ce1a55c98e3e7185b2eb13ec755c2d39ebaf23ac5e99f16c4c3f9ecad1"
+}

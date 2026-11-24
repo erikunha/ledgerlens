@@ -2,7 +2,7 @@
 
 What they guarantee, and why: (a) the capture refuses an offline machine and a machine without a key, because a
 recording without a real model is the recording of the other catalog; (b) the whole catalog is left out of the
-check of the tree and not only the folder of the scenario, because the script records the nine scenarios of the
+check of the tree and not only the folder of the scenario, because the script records the ten scenarios of the
 catalog in one run and the bundle of the first one would otherwise block the second one; (c) the model of each
 slot of the run is chosen by the task the slot does, and the recording names the model that wrote the answer.
 
@@ -79,7 +79,7 @@ def test_the_capture_refuses_a_machine_without_a_key(monkeypatch: pytest.MonkeyP
 
 
 def test_the_capture_leaves_the_whole_catalog_out_of_the_check_of_the_tree(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The nine scenarios are recorded in one run, and the bundle of the first one must not block the second one."""
+    """The ten scenarios are recorded in one run, and the bundle of the first one must not block the second one."""
     monkeypatch.setattr(capture_live_replay, "get_settings", _online_settings)
     seen: list[Path] = []
 

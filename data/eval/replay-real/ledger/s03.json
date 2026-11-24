@@ -7,13 +7,16 @@
       "reads": [
         {
           "columns": [
-            "chargeback_id",
-            "filing_date",
-            "deadline_date",
-            "resolution_date",
+            "id",
             "transaction_id",
-            "transaction_date",
-            "transaction_captured_at"
+            "amount_minor",
+            "amount_major",
+            "currency",
+            "reason_code",
+            "stage",
+            "opened_at",
+            "deadline",
+            "resolved_at"
           ],
           "evidence_id": "sql:1",
           "records": [
@@ -22,17 +25,20 @@
           "row_count": 1,
           "rows": [
             {
-              "chargeback_id": "CB-0310",
-              "deadline_date": "2026-11-09",
-              "filing_date": "2026-10-28T10:00:00Z",
-              "resolution_date": "null",
-              "transaction_captured_at": "2026-10-21T15:20:03Z",
-              "transaction_date": "2026-10-21T15:20:00Z",
+              "amount_major": "215.00",
+              "amount_minor": "21500",
+              "currency": "USD",
+              "deadline": "2026-11-09",
+              "id": "CB-0310",
+              "opened_at": "2026-10-28T10:00:00Z",
+              "reason_code": "NRC",
+              "resolved_at": "null",
+              "stage": "evidence_requested",
               "transaction_id": "TX-2077"
             }
           ],
           "seq": 19,
-          "sql": "SELECT * FROM (SELECT c.id AS chargeback_id, c.opened_at AS filing_date, c.deadline AS deadline_date, c.resolved_at AS resolution_date, t.id AS transaction_id, t.created_at AS transaction_date, t.captured_at AS transaction_captured_at FROM chargebacks AS c JOIN transactions AS t ON c.transaction_id = t.id WHERE c.id = 'CB-0310') LIMIT 50",
+          "sql": "SELECT * FROM (SELECT * FROM chargebacks WHERE id = 'CB-0310') LIMIT 50",
           "tool": "query_ledger",
           "truncated": false
         }
@@ -60,5 +66,5 @@
   "page_size": 50,
   "scenario": "S03",
   "schema_version": "1",
-  "snapshot_sha256": "cc73222856d4d21516935d6fa9d55104fdfafbaf92622a7fdae8e7f3b8425f24"
+  "snapshot_sha256": "764dce7fcf03127337d05bd169da2fb8dc5685e9c115cb4e19d2eda9cdb48259"
 }

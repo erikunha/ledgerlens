@@ -60,11 +60,11 @@ FROZEN_LEDGER = ROOT / "data" / "eval" / "replay" / "ledger" / "s01.json"
 # artifacts of `site/replay` being regenerated. The bundle, the dataset and the frozen artifact of the ledger are the
 # only inputs of these digests.
 EXPECTED_DIGESTS = {
-    "s01/events.jsonl": "6ea5944004a7fd1d005ac3d50c40222d85d9437607ccab5c16afd79846baf1a1",
-    "s01/manifest.json": "0e760a78cb49988add6c20c6470f0cb8281dc9e8ba21ae57baefe2ef39ab464f",
-    "s01/provenance.json": "b4e00dad73d0dbc9a3a177b8485e2a78d3b4828a21424352ee4cb19ed666b8db",
-    "s01/ledger.json": "e17c040be4f6af68dfc695be239561efc1b69cea29fa79c88577140485cd1029",
-    "index.json": "4a10a180bed172dc55726ec7b883b1d6a68300960c06c9e38f2178fce7cb80fe",
+    "s01/events.jsonl": "52167573995894ce0193ecfe7629fb52ae922945e8786a1f71269f71c70543cb",
+    "s01/manifest.json": "e14e02bf9597f908b3f779719d3f95899d2bc825b7124e3a256b3d81230446d5",
+    "s01/provenance.json": "d7565b77612da5fb752edce2c6aedea7ba9aa7fcc95e2fd5f52dbf07ca5a4017",
+    "s01/ledger.json": "9c7caeb5cfdda901edbfe98cd4b487bf3ff81ff8a5f4fad0f00bc4f0aca81a60",
+    "index.json": "52e57df4e510457a2a1fdd9f938203b600d7d23d1a50b485317a95c4e2ef1af7",
 }
 
 
@@ -705,7 +705,7 @@ def test_the_script_exits_1_when_the_disk_differs_and_0_when_it_matches(
 def test_the_artifacts_published_in_the_repository_match_the_bundle():
     """The published artifacts are the ones the bundles say, so the gate can prove they never drifted.
 
-    Why every bundle and not only the first: the site publishes nine scenarios, and a check that only looked at
+    Why every bundle and not only the first: the site publishes ten scenarios, and a check that only looked at
     the first one would let the other eight drift without anyone noticing.
     """
     files = build_export(discover_bundles(ROOT / "data" / "eval" / "replay"))
@@ -725,6 +725,7 @@ def test_a_folder_of_bundles_gives_one_scenario_per_bundle():
         "s09",
         "s10",
         "s11",
+        "s13",
     ]
 
     assert discover_bundles(CANONICAL) == [CANONICAL]

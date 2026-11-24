@@ -1,0 +1,82 @@
+{
+  "accounts": [
+    {
+      "id": "C-0951",
+      "kind": "customer",
+      "name": "Renata Duarte Alves",
+      "reads": [
+        {
+          "columns": [
+            "transaction_id",
+            "amount_minor",
+            "amount_major",
+            "currency",
+            "transaction_status",
+            "transaction_created_at",
+            "refund_id",
+            "requested_amount_minor",
+            "requested_amount_major",
+            "requested_currency",
+            "payout_amount_minor",
+            "payout_amount_major",
+            "payout_currency",
+            "refund_status",
+            "refund_created_at",
+            "refund_resolved_at"
+          ],
+          "evidence_id": "sql:1",
+          "records": [
+            "TX-2096"
+          ],
+          "row_count": 1,
+          "rows": [
+            {
+              "amount_major": "80.00",
+              "amount_minor": "8000",
+              "currency": "EUR",
+              "payout_amount_major": "431.54",
+              "payout_amount_minor": "43154",
+              "payout_currency": "BRL",
+              "refund_created_at": "2026-10-23T14:05:00Z",
+              "refund_id": "R-0751",
+              "refund_resolved_at": "2026-10-23T14:30:00Z",
+              "refund_status": "paid",
+              "requested_amount_major": "80.00",
+              "requested_amount_minor": "8000",
+              "requested_currency": "EUR",
+              "transaction_created_at": "2026-10-19T09:12:00Z",
+              "transaction_id": "TX-2096",
+              "transaction_status": "refunded"
+            }
+          ],
+          "seq": 27,
+          "sql": "SELECT * FROM (SELECT t.id AS transaction_id, t.amount_minor, t.currency, t.status AS transaction_status, t.created_at AS transaction_created_at, r.id AS refund_id, r.requested_amount_minor, r.requested_currency, r.payout_amount_minor, r.payout_currency, r.status AS refund_status, r.created_at AS refund_created_at, r.resolved_at AS refund_resolved_at FROM transactions AS t LEFT JOIN refunds AS r ON t.id = r.transaction_id WHERE t.id = 'TX-2096') LIMIT 50",
+          "tool": "query_ledger",
+          "truncated": false
+        }
+      ],
+      "rows": [
+        {
+          "amount": "80.00",
+          "at": "2026-10-19T09:12:00Z",
+          "currency": "EUR",
+          "id": "TX-2096",
+          "kind": "transaction",
+          "status": "refunded"
+        },
+        {
+          "amount": "431.54",
+          "at": "2026-10-23T14:05:00Z",
+          "currency": "BRL",
+          "id": "R-0751",
+          "kind": "refund",
+          "status": "paid"
+        }
+      ]
+    }
+  ],
+  "page_size": 50,
+  "scenario": "S13",
+  "schema_version": "1",
+  "snapshot_sha256": "066e14ce1a55c98e3e7185b2eb13ec755c2d39ebaf23ac5e99f16c4c3f9ecad1"
+}

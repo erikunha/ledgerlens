@@ -7,7 +7,7 @@
       "reads": [
         {
           "columns": [
-            "settlement_id",
+            "id",
             "merchant_id",
             "period_start",
             "period_end",
@@ -20,16 +20,8 @@
             "fees_major",
             "net_minor",
             "net_major",
-            "status",
             "expected_payout_date",
-            "paid_at",
-            "merchant_name",
-            "merchant_country",
-            "merchant_category",
-            "settlement_currency",
-            "fx_plan",
-            "refund_window_days",
-            "onboarded_at"
+            "paid_at"
           ],
           "evidence_id": "sql:1",
           "records": [
@@ -43,29 +35,21 @@
               "expected_payout_date": "2026-10-14",
               "fees_major": "926.67",
               "fees_minor": "92667",
-              "fx_plan": "standard",
               "gross_major": "30919.54",
               "gross_minor": "3091954",
-              "merchant_category": "food",
-              "merchant_country": "BR",
+              "id": "ST-0044",
               "merchant_id": "M-03",
-              "merchant_name": "Casa Verde Foods",
               "net_major": "29992.87",
               "net_minor": "2999287",
-              "onboarded_at": "2025-01-03T00:00:00Z",
               "paid_at": "2026-10-14T06:00:00Z",
               "period_end": "2026-10-11",
               "period_start": "2026-10-05",
-              "refund_window_days": "30",
               "refunds_major": "0.00",
-              "refunds_minor": "0",
-              "settlement_currency": "BRL",
-              "settlement_id": "ST-0044",
-              "status": "paid"
+              "refunds_minor": "0"
             }
           ],
-          "seq": 19,
-          "sql": "SELECT * FROM (SELECT s.id AS settlement_id, s.merchant_id, s.period_start, s.period_end, s.currency, s.gross_minor, s.refunds_minor, s.fees_minor, s.net_minor, s.status, s.expected_payout_date, s.paid_at, m.name AS merchant_name, m.country AS merchant_country, m.category AS merchant_category, m.settlement_currency, m.fx_plan, m.refund_window_days, m.onboarded_at FROM settlements AS s JOIN merchants AS m ON s.merchant_id = m.id WHERE s.id = 'ST-0044' AND s.merchant_id = 'M-03') LIMIT 1",
+          "seq": 27,
+          "sql": "SELECT * FROM (SELECT id, merchant_id, period_start, period_end, currency, gross_minor, refunds_minor, fees_minor, net_minor, expected_payout_date, paid_at FROM settlements WHERE id = 'ST-0044' AND merchant_id = 'M-03') LIMIT 50",
           "tool": "query_ledger",
           "truncated": false
         }
@@ -1133,5 +1117,5 @@
   "page_size": 50,
   "scenario": "S08",
   "schema_version": "1",
-  "snapshot_sha256": "930b8d73637f6410fb997ee822967a0c7c0efb7e0e21b1cb20fc44c7ea74981c"
+  "snapshot_sha256": "ffbc903e895cf456823b7bc2f31fcea167c731ba7ded68a20ee101db85bcfaa6"
 }

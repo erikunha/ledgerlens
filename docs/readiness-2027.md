@@ -456,7 +456,7 @@ flowchart LR
 3. **No signature on the artifact and no freshness rule.** The gate checks the artifacts against the bundle and never
    against the current prompt or policy version.
 4. **The published evidence was five scenarios deep, and the injection scenario was not one of them.** This one is
-   closed: `site/replay/` holds nine scenarios, and the failures the design package asks for are among them
+   closed: `site/replay/` holds ten scenarios, and the failures the design package asks for are among them
    (`docs/v3/docs/08-EVIDENCE-TRACING-AND-PROVENANCE.md:58` asks for a published failure). The injection, the currency
    the reference source does not publish and the reference rate that could not be read are published as the
    deterministic recordings S09, S10 and S11, with the control of a refund that paid exactly what was charged
@@ -1236,7 +1236,7 @@ findings each carry their own list, and this is the union of them.
    test that holds it, the four tests written to fail first and the document of the truth of the policies.
 5. **Finish the index of the documentation.** The index of the documents and the index of the records exist and are
    generated; what is owed is the link from the root README to the site, to the evaluation page and to the policies.
-6. **Publish the failures.** Done: the catalogue of the replay holds nine scenarios, and the happy path of an FX
+6. **Publish the failures.** Done: the catalogue of the replay holds ten scenarios, and the happy path of an FX
    refund is one of them. The chargeback that escalates, the payout that nets and the id that does not exist are
    published, and so are the failures the design package asks for: the prompt injection (S09), the currency the
    reference source does not publish (S10) and the reference rate that could not be read (S11), each one recorded as

@@ -238,8 +238,19 @@ describe("the client of the static artifacts", () => {
     if (!Array.isArray(catalog)) {
       throw new Error(`the loader refused the published catalog: ${catalog.error}`);
     }
-    expect(catalog).toHaveLength(9);
-    expect(catalog.map((card) => card.id)).toEqual(["S01", "S02", "S03", "S04", "S07", "S08", "S09", "S10", "S11"]);
+    expect(catalog).toHaveLength(10);
+    expect(catalog.map((card) => card.id)).toEqual([
+      "S01",
+      "S02",
+      "S03",
+      "S04",
+      "S07",
+      "S08",
+      "S09",
+      "S10",
+      "S11",
+      "S13",
+    ]);
     expect(catalog[0]?.question).toBe("Why was the BRL refund for TX-2048 lower than the EUR payment?");
   });
 
@@ -255,8 +266,19 @@ describe("the client of the static artifacts", () => {
     if (!Array.isArray(catalog)) {
       throw new Error(`the loader refused the published catalog of a real model: ${catalog.error}`);
     }
-    expect(catalog).toHaveLength(9);
-    expect(catalog.map((card) => card.id)).toEqual(["S01", "S02", "S03", "S04", "S07", "S08", "S09", "S10", "S11"]);
+    expect(catalog).toHaveLength(10);
+    expect(catalog.map((card) => card.id)).toEqual([
+      "S01",
+      "S02",
+      "S03",
+      "S04",
+      "S07",
+      "S08",
+      "S09",
+      "S10",
+      "S11",
+      "S13",
+    ]);
     expect(catalog[0]?.capture_kind).toBe("real_model_recorded");
   });
 

@@ -482,7 +482,7 @@ The two facades alone are still two visitors, each one with its own issuer, and 
 
 ## 8. The published recordings
 
-The public site plays recorded investigations, and it publishes two catalogues of the same nine scenarios.
+The public site plays recorded investigations, and it publishes two catalogues of the same ten scenarios.
 
 | | The catalogue of the sandbox | The catalogue of a real model |
 |---|---|---|
