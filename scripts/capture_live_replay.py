@@ -125,12 +125,17 @@ def _deterministic_verifier(db_path: Path):
     return verify
 
 
-def capture(scenario_id: str, out: Path, root: Path = ROOT) -> Path:
+def capture(scenario_id: str, catalog: Path, root: Path = ROOT) -> Path:
     """Runs the scenario with a real model and writes the bundle of the run.
 
     The capture names the commit it ran from and refuses to run on a dirty tracked tree, because the recording
     claims a commit and the claim has to be true. The refusal of an offline machine comes first: there the model
     would be the scripted one, and the label of the recording would be a lie.
+
+    The whole catalog is left out of the check of the tree, and not only the folder of the scenario: this script
+    records the nine scenarios of the catalog in one run, and the bundle that the first one wrote would otherwise
+    block the second one. The catalog is the output of the capture, so what is in it is never part of the claim
+    about the commit.
     """
     settings = get_settings()
     if settings.offline:
@@ -145,8 +150,9 @@ def capture(scenario_id: str, out: Path, root: Path = ROOT) -> Path:
             "other catalog. Put OPENAI_API_KEY in the file of the environment."
         )
 
+    out = catalog / scenario_id.lower()
     try:
-        ensure_clean_tree(root, out)
+        ensure_clean_tree(root, catalog)
         commit = code_sha(root)
     except CaptureError as error:
         raise SystemExit(str(error)) from error
@@ -250,7 +256,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     for scenario_id in scenarios:
         try:
-            capture(scenario_id, out_root / scenario_id.lower())
+            capture(scenario_id, out_root)
         except SystemExit as refusal:
             print(f"capture_live_replay: {refusal}", file=sys.stderr)
             return 1
