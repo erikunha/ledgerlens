@@ -1,0 +1,139 @@
+---
+description: "Task list for the multi-agent orchestration studio"
+---
+
+# Tasks: The multi-agent orchestration studio
+
+**Input**: Design documents from `specs/013-r11-multiagent-orchestration-studio/`
+
+**Prerequisites**: plan.md (required), spec.md (required), the decision that draws the red line
+(`docs/v3/adrs/ADR-P007-no-multiagent-by-default.md`), the design package
+(`docs/v3/advanced-specs/R11-02-budgeted-specialist-dispatch.md` and
+`docs/v3/advanced-specs/R11-05-graph-checkpoint-and-resume.md`), the decision that fixes the one model of a
+run (`docs/decisions/ADR-037-the-case-of-the-demo-runs-on-a-bridge-over-the-caller.md`) and the decision that
+fixes the budget (`docs/decisions/ADR-034-the-registry-the-budget-and-the-endpoint.md`)
+
+**Tests**: Every task that changes the behaviour of the repository ships its test before its code, and the gate
+of the Python side is green before the commit. The whole suite runs offline with `LEDGERLENS_OFFLINE=1` and no
+key, and the provider is a fake in the tests. A task that is delivered says so, with **DELIVERED** and the
+evidence of what it delivered.
+
+**Organization**: Tasks are grouped by the four parts of the plan, and the tasks of a group touch disjoint files
+so that they can be worked on in parallel. The ids of this milestone start above the ids of `specs/001-` through
+`specs/006-` and they are continuous inside this milestone. The folder `tests/orchestration/` is created by
+T183, and the tests of the sandbox that the studio touches stay in `tests/sandbox/`.
+
+## Format: `[ID] [P?] Description`
+
+- **[P]**: Can run in parallel (different files, no dependencies)
+- **[DELIVERED]**: the task is done, and the sentence names what it delivered
+- Include exact file paths in descriptions
+
+## Path Conventions
+
+- **Single project**: `ledgerlens/`, `tests/`, `scripts/`, `data/`, `docs/` at repository root
+- Paths shown below assume single project
+
+## Part A, the baseline that is frozen before anything is measured
+
+**Purpose**: the reference arm of the comparison is the shipped code, and a reference that moves is not a
+reference.
+
+- [ ] T180 [P] Record the behavior of the shipped path in `docs/orchestration/baseline.md`: the agent of
+  `ledgerlens/agents/integrator.py`, its six tools, the verifier of `ledgerlens/verify/`, the snapshot of the
+  branch it reads and the commit of the code, so that the studio is measured against a named reference and not
+  against a memory of one
+- [ ] T181 [P] Write the test in `tests/orchestration/test_baseline_is_frozen.py` that reads
+  `docs/orchestration/baseline.md` and expects the commit of the baseline, the tools of the shipped agent and
+  the name of the snapshot of the comparison, and that fails while the file does not exist
+- [ ] T182 [P] Write the manifest of the comparison in `data/runtime/orchestration/comparison.json` with the
+  set of the comparison, the denominator, the two arms, the measures and the rule that decides the result, and
+  register it in `data/eval/datasets.json` with the role the manifest of the datasets gives it, so that the set
+  of the comparison is never read by anything but the final scoring
+
+## Part B, the dispatcher, behind a flag
+
+**Purpose**: the dispatcher validates, schedules and spends. It never widens the scope and it never decides an
+amount.
+
+- [ ] T183 [P] Create the package `ledgerlens/orchestration/` with the module `__init__.py` and the module
+  `ledgerlens/orchestration/plan.py`, whose docstring says what a plan is and why the plan of a case is
+  validated before any step runs, and write the test in `tests/orchestration/test_plan_validation.py` that
+  expects a plan with a cycle to be refused at the planning and expects that no step ran
+- [ ] T184 [P] Add the typed plan and the typed result of a step to `ledgerlens/schemas.py`, with the docstring
+  of each class saying what it carries and why, and write the test in `tests/orchestration/test_step_result.py`
+  that expects the status, the evidence references, the spend and the error of a step to be present and to be
+  typed
+- [ ] T185 [P] Write the module `ledgerlens/orchestration/specialists.py` with the versioned spec of a
+  specialist, the docstring saying what a specialist may read, which tools it may call, what it may spend and
+  what it must return, and the registry of the specialists, and write the test in
+  `tests/orchestration/test_specialist_spec.py` that expects a specialist of the registry to refuse a tool
+  that is not in its allowlist
+- [ ] T186 Write the module `ledgerlens/orchestration/dispatcher.py` with the docstring saying that the
+  dispatcher owns the policy and the registry of the tools and that the permissions of a specialist are the
+  intersection of the permissions of its parent with the permissions of its own spec, and write the test in
+  `tests/orchestration/test_dispatch_scope.py` that expects the refusal of a tool outside the allowlist and the
+  refusal of an account outside the scope of the run, and that expects no tool call
+- [ ] T187 Write the module `ledgerlens/orchestration/scheduler.py` with the docstring saying that the scheduler
+  runs the independent steps of a plan under a concurrency cap and that every step spends from the budget of
+  the run, and write the test in `tests/orchestration/test_dispatch_budget.py` that expects the run to stop at
+  the cap of `ledgerlens/byok/budget.py`, with the name of the cap and the partial result, and that expects no
+  call outside the budget
+- [ ] T188 [P] Write the module `ledgerlens/orchestration/join.py` with the docstring saying that two results are
+  joined only on a matching snapshot and on evidence identifiers that resolve to a record of the run, and write
+  the test in `tests/orchestration/test_join_and_conflict.py` that expects the refusal of an invented evidence
+  identifier and expects the value of the deterministic calculator, or a named abstention, over two results that
+  disagree over an amount
+- [ ] T189 [P] Read the flag of the studio in `ledgerlens/config.py` as `LEDGERLENS_ORCHESTRATION_STUDIO`, off by
+  default, and write the test in `tests/orchestration/test_studio_flag.py` that expects the flag off in the
+  shipped configuration and that expects the refusal of a run that asks for the studio without a registered
+  experiment in `data/runtime/orchestration/comparison.json`
+- [ ] T190 [P] Write the test in `tests/orchestration/test_trace_of_dispatch.py` that reads the events of
+  `ledgerlens/observability/trace_event.py` produced by a run of the studio and expects one event per step
+  with the budget it had and the reason it stopped, and that expects the trace to name the specialist that
+  answered each part of the question
+
+## Part C, the journal and the resume
+
+**Purpose**: a suspended run continues from durable state without repeating an effect and without losing its
+provenance.
+
+- [ ] T191 [P] Write the module `ledgerlens/orchestration/journal.py` with the docstring saying that the journal
+  of a run records the steps, their attempts, their inputs and their outputs so that a run resumes from what
+  it already did, and write the test in `tests/orchestration/test_journal.py` that expects the journal to
+  refuse a step whose output does not match the digest of its inputs
+- [ ] T192 [P] Write the module `ledgerlens/orchestration/resume.py` with the docstring saying that a resume
+  reuses the output of a completed step, runs again only a step that is idempotent and read-only, refuses a
+  step whose snapshot or whose configuration version changed and never rehydrates a credential, and write the
+  test in `tests/orchestration/test_resume.py` that expects the reuse, the two refusals and the absence of any
+  call of a provider in the resume
+- [ ] T193 Write the test in `tests/orchestration/test_restart_idempotency.py` that commits the same command of
+  `ledgerlens/sandbox/mutation.py` twice with the same idempotency key and expects one event of the branch in
+  `ledgerlens/sandbox/projector.py` and an unchanged projection
+- [ ] T194 [P] Write the module `ledgerlens/orchestration/verify_stage.py` with the docstring saying that the
+  verifier of `ledgerlens/verify/` runs on the claims of the joined steps before the summary and that it stays
+  deterministic, and write the test in `tests/orchestration/test_verify_before_summary.py` that expects the
+  summary of a run of the studio to exist only after the verdicts of the verifier
+- [ ] T195 [P] Write the test in `tests/orchestration/test_comparison_dataset_role.py` that expects the set of
+  `data/runtime/orchestration/comparison.json` to carry the role the manifest of `data/eval/datasets.json`
+  gives it and that expects the refusal of `ledgerlens/eval/manifest.py` when a tuning script reads it
+
+## Part D, the comparison and the publication
+
+**Purpose**: the result is published, and the decision that follows it is published too.
+
+- [ ] T196 [P] Write the script `scripts/measure_orchestration.py` that runs the two arms of the comparison over
+  the set of the comparison with the same snapshot and writes the measures with their denominator, and write the
+  test in `tests/orchestration/test_measure_orchestration.py` that expects the script to refuse to run when the
+  manifest of the experiment was written after the first run
+- [ ] T197 [P] Write the page `docs/orchestration/comparison.md` with the measures of the two arms, the
+  denominator, the uncertainty of the difference and the decision that follows the result, and with the rule that
+  a studio that costs more and answers the same is not a gain, and with the wording that the number was
+  measured over the set it names and is not a generalization
+- [ ] T198 [P] Write the test in `tests/orchestration/test_comparison_is_published.py` that reads
+  `docs/orchestration/comparison.md` and expects the two arms, the denominator, the uncertainty and the decision,
+  and that expects the page to exist even when the decision was that the flag stays off
+- [ ] T199 [P] Write the record of the milestone in `docs/decisions/` with the next number after ADR-077, which
+  writes down that the studio is off in the shipped configuration, that the comparison was registered before it
+  ran, that the result was published with the decision that follows it and that the verifier stayed
+  deterministic, and link it from `docs/decisions/README.md`

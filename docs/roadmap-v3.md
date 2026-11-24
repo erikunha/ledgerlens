@@ -124,6 +124,37 @@ deployment with a static fallback, the security hardening and the real measureme
 research tracks: multiagent, versioned memory, durable execution, digital twin, multimodal and causality, each one with
 the proof gate the package defines.
 
+The component specs of the package are ported into this repository, one folder per track, and they are the work that
+follows this roadmap:
+
+| Track | The folder of the spec | What it waits for |
+|---|---|---|
+| Cold start | [`specs/007-r1-cold-start-guided-replay/`](../specs/007-r1-cold-start-guided-replay/) | the guided replay of the visitor |
+| Mutations of the sandbox | [`specs/008-r2-isolated-sandbox-mutations/`](../specs/008-r2-isolated-sandbox-mutations/) | the branch layer of the sandbox |
+| Paired arena | [`specs/009-r4-paired-evaluation-arena/`](../specs/009-r4-paired-evaluation-arena/) | the paired comparison of the variants |
+| Evidence graph | [`specs/010-r8-evidence-graph-and-provenance/`](../specs/010-r8-evidence-graph-and-provenance/) | the provenance of the published bundles |
+| Cost and utility | [`specs/011-r9-cost-per-case-and-decision-utility/`](../specs/011-r9-cost-per-case-and-decision-utility/) | the measured cost of a case |
+| Human review and approval | [`specs/012-r10-human-review-and-approval/`](../specs/012-r10-human-review-and-approval/) | the queue of the cases that need a person |
+| Studio of specialists | [`specs/013-r11-multiagent-orchestration-studio/`](../specs/013-r11-multiagent-orchestration-studio/) | a paired comparison that measures a gain |
+| Versioned memory | [`specs/014-r12-versioned-memory-with-quarantine/`](../specs/014-r12-versioned-memory-with-quarantine/) | the memory of the cases |
+| Adversarial laboratory | [`specs/015-r13-safe-adversarial-laboratory/`](../specs/015-r13-safe-adversarial-laboratory/) | the measured defense of the sandbox |
+| Inference routing | [`specs/016-r15-inference-routing-and-finops/`](../specs/016-r15-inference-routing-and-finops/) | the router that ADR-078 starts |
+| Durable execution | [`specs/017-r16-durable-operations-and-forensic-traces/`](../specs/017-r16-durable-operations-and-forensic-traces/) | the journal of a run |
+| Digital twin | [`specs/018-r17-operations-digital-twin/`](../specs/018-r17-operations-digital-twin/) | the measured cost of the operations |
+| Source grounded extraction | [`specs/019-r18-source-grounded-document-extraction/`](../specs/019-r18-source-grounded-document-extraction/) | the sources with their dates |
+| Causality | [`specs/020-r19-causal-counterfactual-interventions/`](../specs/020-r19-causal-counterfactual-interventions/) | the paired comparison of the counterfactual |
+| Verified feedback | [`specs/021-r20-verified-feedback-to-evaluation-and-training/`](../specs/021-r20-verified-feedback-to-evaluation-and-training/) | the verdict of the verifier as the gate |
+| Proof of work | [`specs/022-r22-portable-proof-of-work-export/`](../specs/022-r22-portable-proof-of-work-export/) | the digest of the published artifacts |
+
+Two of these tracks are not waiting for anything but a measurement, and neither one may claim a gain before it has one.
+The studio of specialists stays behind a flag until a paired comparison over the same cases measures a gain
+([ADR-P007](v3/adrs/ADR-P007-no-multiagent-by-default.md)), and the verified feedback may not become training data
+without the verdict of the deterministic verifier as its gate.
+
+The routing of the inference is the one track that already has a decision: the model of each task is chosen by the task
+([ADR-078](decisions/ADR-078-the-model-of-each-slot-is-chosen-by-the-work-it-does.md)). What is missing there is the measurement
+of what the cascade costs against one model for the whole run, and that measurement is the next one of the evaluation.
+
 ## Where the design package is
 
 The package with the atlas of 234 capabilities, the 161 new ids, the 34 screens, the 19 component specs and the 7
