@@ -123,11 +123,13 @@ and one line that says what the file holds.
 - [ADR-086: The economics module computes and never calls a model, and an unknown stays unknown](decisions/ADR-086-the-economics-module-computes-and-never-calls-a-model-and-an-unknown-stays-unknown.md): Status: accepted. Date: 2026-11-24.
 - [ADR-087: The review is a typed task, the identity of the reviewer is the session, and the agent never decides](decisions/ADR-087-the-review-is-a-typed-task-the-identity-of-the-reviewer-is-the-session-and-the-agent-never-decides.md): Status: accepted. Date: 2026-11-24.
 - [ADR-088: The queue of the review is a simulation with fictional defaults, and its capacity is never a plan of a team](decisions/ADR-088-the-queue-of-the-review-is-a-simulation-with-fictional-defaults-and-its-capacity-is-never-a-plan-of-a-team.md): Status: accepted. Date: 2026-11-24.
+- [ADR-089: The studio stays off in the shipped configuration, and the comparison that measured it was registered before it ran](decisions/ADR-089-the-studio-stays-off-in-the-shipped-configuration-and-the-comparison-was-registered-before-it-ran.md): Status: accepted. Date: 2026-11-24.
 - [Decision records](decisions/README.md): Every decision that restricts the future of the work is a record in this folder, and this index lists them in the order of their number, with their status...
 
 ## docs/orchestration
 
 - [The baseline of the orchestration studio](orchestration/baseline.md): The studio of the multi-agent orchestration is experimental and it is measured against the path that the repository ships today. A reference that moves is...
+- [The comparison of the studio against the single agent](orchestration/comparison.md): The set of the comparison is 31 cases (eval_cases.jsonl, digest 5909f0fc62f8ef89d09b7a2da69b26d1c427182fb0c424a5ba934b72e855caaa), the denominator of every...
 
 ## docs/pt-BR
 

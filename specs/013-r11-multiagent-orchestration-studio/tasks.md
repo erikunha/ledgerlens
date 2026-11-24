@@ -209,18 +209,40 @@ provenance.
 
 **Purpose**: the result is published, and the decision that follows it is published too.
 
-- [ ] T196 [P] Write the script `scripts/measure_orchestration.py` that runs the two arms of the comparison over
+- [x] T196 [P] Write the script `scripts/measure_orchestration.py` that runs the two arms of the comparison over
   the set of the comparison with the same snapshot and writes the measures with their denominator, and write the
   test in `tests/orchestration/test_measure_orchestration.py` that expects the script to refuse to run when the
   manifest of the experiment was written after the first run
-- [ ] T197 [P] Write the page `docs/orchestration/comparison.md` with the measures of the two arms, the
+  - **DELIVERED**: the script is in `scripts/measure_orchestration.py` and the logic of the comparison is in
+    `ledgerlens/orchestration/comparison.py`: the two arms run over the same 31 cases, over the same ledger built
+    from the versioned sample and with the same model, the script refuses to run offline, and the first run pins
+    the digest of the manifest in `data/runtime/orchestration/runs.jsonl`, so a manifest written after the first
+    run is refused. The test is in `tests/orchestration/test_measure_orchestration.py`: the refusal of the
+    offline run, the pin of the first run, the refusal of the rewritten manifest, the rule of the decision and
+    the arm of the studio offline with the scripted model, the real tools and the real verifier.
+- [x] T197 [P] Write the page `docs/orchestration/comparison.md` with the measures of the two arms, the
   denominator, the uncertainty of the difference and the decision that follows the result, and with the rule that
   a studio that costs more and answers the same is not a gain, and with the wording that the number was
   measured over the set it names and is not a generalization
-- [ ] T198 [P] Write the test in `tests/orchestration/test_comparison_is_published.py` that reads
+  - **DELIVERED**: the page is in `docs/orchestration/comparison.md`, written by the run of the comparison. It
+    carries the measures of the two arms over the 31 cases of the set (the single agent resolved 21 and the
+    studio 23), the denominator of every measure, the interval of the difference of the correctness, the rule of
+    the manifest, the decision that follows the result and the wording that the number was measured over the set
+    it names and is not a generalization.
+- [x] T198 [P] Write the test in `tests/orchestration/test_comparison_is_published.py` that reads
   `docs/orchestration/comparison.md` and expects the two arms, the denominator, the uncertainty and the decision,
   and that expects the page to exist even when the decision was that the flag stays off
-- [ ] T199 [P] Write the record of the milestone in `docs/decisions/` with the next number after ADR-077, which
+  - **DELIVERED**: the test is in `tests/orchestration/test_comparison_is_published.py`: it reads the page and
+    expects the two arms, the denominator of the 31 cases, the uncertainty of the difference and the decision,
+    it expects the outcome of the decision to be one of the two the rule allows, and it expects the result and
+    the record of the run to exist next to the page.
+- [x] T199 [P] Write the record of the milestone in `docs/decisions/` with the next number after ADR-077, which
   writes down that the studio is off in the shipped configuration, that the comparison was registered before it
   ran, that the result was published with the decision that follows it and that the verifier stayed
   deterministic, and link it from `docs/decisions/README.md`
+  - **DELIVERED**: the record is
+    `docs/decisions/ADR-089-the-studio-stays-off-in-the-shipped-configuration-and-the-comparison-was-registered-before-it-ran.md`:
+    the studio is off in the shipped configuration, the comparison was registered before it ran and the first
+    run pinned the digest of the manifest, the result was published with the decision that follows it, the
+    verifier stayed deterministic and the answer of the studio is composed and not written by a model. The index
+    of the decisions was regenerated with `uv run python scripts/build_docs_index.py`.

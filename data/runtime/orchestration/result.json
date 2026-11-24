@@ -1,0 +1,994 @@
+{
+  "arms": {
+    "orchestration_studio": {
+      "arm": {
+        "description": "The experimental variant: a plan of steps dispatched to specialists under the budget of the run, with the same tools, the same verifier and the same model of the single agent.",
+        "name": "orchestration_studio"
+      },
+      "cases": [
+        {
+          "answer": "id: TX-2048; transaction_id: TX-2048; payment_amount_minor: 10000; payment_amount_major: 100.00; payment_currency: EUR; refund_requested_amount_minor: 10000; refund_requested_amount_major: 100.00; refund_requested_currency: EUR; refund_payout_amount_minor: 54931; refund_payout_amount_major: 549.31; refund_payout_currency: BRL. [sql:1]. Calculation convert: result 549.31. Formula: 100.00 * 5.4931 = 549.31. [calc:1].",
+          "case": "EC-01",
+          "correctness": 0.25,
+          "cost_usd": "0.0007612",
+          "input_tokens": 1259,
+          "latency_ms": 5304,
+          "missing_facts": [
+            "566.79",
+            "17.48",
+            "14.08"
+          ],
+          "money_reason": "",
+          "output_tokens": 161,
+          "reason": "",
+          "tool_calls": 2
+        },
+        {
+          "answer": "id: TX-2051; merchant_id: M-05; customer_id: C-0733; amount_minor: 4990; amount_major: 49.90; currency: USD; method: card; card_brand: visa; card_fingerprint: fp_d7f33ce5911d; status: captured; created_at: 2026-10-05T14:03:10Z; captured_at: 2026-10-05T14:03:12Z; origin: scenario:S02; source_ref: null. [sql:1]. id: TX-2052; merchant_id: M-05; customer_id: C-0733; amount_minor: 4990; amount_major: 49.90; currency: USD; method: card; card_brand: visa; card_fingerprint: fp_d7f33ce5911d; status: captured; created_at: 2026-10-05T14:03:48Z; captured_at: 2026-10-05T14:03:50Z; origin: scenario:S02; source_ref: null. [sql:1].",
+          "case": "EC-02",
+          "correctness": 1.0,
+          "cost_usd": "0.0006940",
+          "input_tokens": 1271,
+          "latency_ms": 3880,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 116,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "id: CB-0310; deadline: 2026-11-09. [sql:1]. Overview [policy:chargeback-handling#overview]. A chargeback is a dispute the cardholder opens with the issuing bank to ask for a payment back. Acme Payments gets the notice from the card network, informs the merchant and prepares the defense. This policy defines the stages, the deadlines and the evidence required. [policy:chargeback-handling#overview]. Response deadline [policy:chargeback-handling#response-deadline]. When to escalate [policy:chargeback-handling#escalation]. A dispute must be escalated to a human analyst when the card network deadline is 2 days away or less, when the internal cutoff has already passed, when the amount exceeds 5,000 or when required evidence is missing. The full criteria are in the escalation and review policy. [policy:chargeback-handling#escalation]. What to tell the customer [policy:refund-policy#customer-communication].",
+          "case": "EC-03",
+          "correctness": 0.3333333333333333,
+          "cost_usd": "0.0006416",
+          "input_tokens": 1260,
+          "latency_ms": 4752,
+          "missing_facts": [
+            "evidence_requested",
+            "NRC"
+          ],
+          "money_reason": "",
+          "output_tokens": 86,
+          "reason": "",
+          "tool_calls": 2
+        },
+        {
+          "answer": "",
+          "case": "EC-04",
+          "correctness": 0.0,
+          "cost_usd": "0.0005856",
+          "input_tokens": 1252,
+          "latency_ms": 3169,
+          "missing_facts": [
+            "TX-9999",
+            "row_count 0"
+          ],
+          "money_reason": "",
+          "output_tokens": 53,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "id: TX-2060; merchant_id: M-03; customer_id: C-0205; amount_minor: 7500; amount_major: 75.00; currency: EUR; method: card; card_brand: mastercard; card_fingerprint: fp_70fdfaa61b72; status: captured; created_at: 2026-10-30T10:15:00Z; captured_at: 2026-10-30T10:15:03Z; origin: scenario:S05; source_ref: null. [sql:1]. id: TX-2061; merchant_id: M-17; customer_id: C-0205; amount_minor: 7500; amount_major: 75.00; currency: EUR; method: card; card_brand: mastercard; card_fingerprint: fp_1fb9916f165e; status: captured; created_at: 2026-10-30T10:40:00Z; captured_at: 2026-10-30T10:40:02Z; origin: scenario:S05; source_ref: null. [sql:1].",
+          "case": "EC-05",
+          "correctness": 1.0,
+          "cost_usd": "0.0006364",
+          "input_tokens": 1263,
+          "latency_ms": 3401,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 82,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "transaction_id: TX-2090; status: rejected; reason: outside_refund_window. [sql:1]. Refund window [policy:refund-policy#refund-window]. Rejection reasons [policy:refund-policy#rejection-reasons]. A request is rejected when the window has ended (`outside_refund_window`), when the requested amount plus earlier refunds exceeds the captured amount or when the payment has an open dispute. The rejection reason is kept on the refund itself. A rejection for the window is automatic and needs no review, but the analyst must check the capture date and the merchant's window before explaining the decision to the customer. [policy:refund-policy#rejection-reasons]. What to tell the customer [policy:refund-policy#customer-communication]. Who can request [policy:refund-policy#who-can-request].",
+          "case": "EC-06",
+          "correctness": 1.0,
+          "cost_usd": "0.0007492",
+          "input_tokens": 1265,
+          "latency_ms": 5148,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 152,
+          "reason": "",
+          "tool_calls": 2
+        },
+        {
+          "answer": "transaction: id: TX-2030; merchant_id: M-05; customer_id: C-0600; amount_minor: 8000; amount_major: 80.00; currency: USD; method: card; card_brand: visa; card_fingerprint: fp_9e9fb08b91ad; status: refunded; created_at: 2026-10-08T13:00:00Z; captured_at: 2026-10-08T13:00:02Z; origin: scenario:S07; source_ref: null. [api:1]. refunds: id: R-0720; transaction_id: TX-2030; requested_amount_minor: 8000; requested_amount_major: 80.00; requested_currency: USD; payout_amount_minor: 8000; payout_amount_major: 80.00; payout_currency: USD; fx_applied_id: null; status: paid; reason: Customer cancelled the subscription; created_at: 2026-10-10T09:00:00Z; resolved_at: 2026-10-11T09:00:00Z. [api:1]. chargebacks: none. [api:1]. fx_applied: none. [api:1]. transaction: id: TX-2030; merchant_id: M-05; customer_id: C-0600; amount_minor: 8000; amount_major: 80.00; currency: USD; method: card; card_brand: visa; card_fingerprint: fp_9e9fb08b91ad; status: refunded; created_at: 2026-10-08T13:00:00Z; captured_at: 2026-10-08T13:00:02Z; origin: scenario:S07; source_ref: null. [api:2]. refunds: id: R-0720; transaction_id: TX-2030; requested_amount_minor: 8000; requested_amount_major: 80.00; requested_currency: USD; payout_amount_minor: 8000; payout_amount_major: 80.00; payout_currency: USD; fx_applied_id: null; status: paid; reason: Customer cancelled the subscription; created_at: 2026-10-10T09:00:00Z; resolved_at: 2026-10-11T09:00:00Z. [api:2]. chargebacks: none. [api:2]. fx_applied: none. [api:2]. Calculation difference: result 0.00. Formula: 80.00 - 80.00 = 0.00. [calc:1].",
+          "case": "EC-07",
+          "correctness": 1.0,
+          "cost_usd": "0.0007296",
+          "input_tokens": 1260,
+          "latency_ms": 3676,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 141,
+          "reason": "",
+          "tool_calls": 3
+        },
+        {
+          "answer": "id: ST-0044; merchant_id: M-03; period_start: 2026-10-05; period_end: 2026-10-11; currency: BRL; gross_minor: 3091954; gross_major: 30919.54; refunds_minor: 0; refunds_major: 0.00; fees_minor: 92667; fees_major: 926.67; net_minor: 2999287; net_major: 29992.87; status: paid; expected_payout_date: 2026-10-14; paid_at: 2026-10-14T06:00:00Z. [sql:1].",
+          "case": "EC-08",
+          "correctness": 1.0,
+          "cost_usd": "0.0006852",
+          "input_tokens": 1261,
+          "latency_ms": 3746,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 113,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "status: requested. [sql:1].",
+          "case": "EC-09",
+          "correctness": 0.5,
+          "cost_usd": "0.0006120",
+          "input_tokens": 1258,
+          "latency_ms": 3067,
+          "missing_facts": [
+            "R-0750"
+          ],
+          "money_reason": "",
+          "output_tokens": 68,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "",
+          "case": "EC-10",
+          "correctness": 0.0,
+          "cost_usd": "0.0006012",
+          "input_tokens": 1259,
+          "latency_ms": 2426,
+          "missing_facts": [
+            "ARS",
+            "2500000"
+          ],
+          "money_reason": "",
+          "output_tokens": 61,
+          "reason": "S1: get_reference_fx failed: DATE_UNAVAILABLE; the verifier returned no verdict, so the run has no summary: a summary without a verdict is a claim",
+          "tool_calls": 1
+        },
+        {
+          "answer": "id: TX-2048; transaction_id: TX-2048; payment_amount_minor: 10000; payment_amount_major: 100.00; payment_currency: EUR; refund_requested_amount_minor: 10000; refund_requested_amount_major: 100.00; refund_requested_currency: EUR; refund_payout_amount_minor: 54931; refund_payout_amount_major: 549.31; refund_payout_currency: BRL. [sql:1]. Calculation convert: result 549.31. Formula: 100.00 * 5.4931 = 549.31. [calc:1].",
+          "case": "EC-11",
+          "correctness": 0.5,
+          "cost_usd": "0.0007820",
+          "input_tokens": 1259,
+          "latency_ms": 5626,
+          "missing_facts": [
+            "EUR-BRL 2026-10-20"
+          ],
+          "money_reason": "",
+          "output_tokens": 174,
+          "reason": "S3: get_reference_fx failed: UPSTREAM_UNAVAILABLE",
+          "tool_calls": 3
+        },
+        {
+          "answer": "Case CASE-0001 (semantic, 2026-11-07, confidence high): Merchant M-17 applies an FX markup of about 2.5% on cross-currency refunds (seen on TX-2048) [case:CASE-0001].",
+          "case": "EC-12",
+          "correctness": 1.0,
+          "cost_usd": "0.0006168",
+          "input_tokens": 1258,
+          "latency_ms": 1950,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 71,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "id: TX-0001; status: captured. [sql:1].",
+          "case": "EC-13",
+          "correctness": 1.0,
+          "cost_usd": "0.0005856",
+          "input_tokens": 1252,
+          "latency_ms": 2423,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 53,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "id: TX-0007; status: failed. [sql:1].",
+          "case": "EC-14",
+          "correctness": 1.0,
+          "cost_usd": "0.0005840",
+          "input_tokens": 1252,
+          "latency_ms": 2970,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 52,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "id: TX-0008; status: partially_refunded. [sql:1].",
+          "case": "EC-15",
+          "correctness": 1.0,
+          "cost_usd": "0.0012116",
+          "input_tokens": 2337,
+          "latency_ms": 4325,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 173,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "id: TX-0138; status: refunded. [sql:1].",
+          "case": "EC-16",
+          "correctness": 1.0,
+          "cost_usd": "0.0005856",
+          "input_tokens": 1252,
+          "latency_ms": 2577,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 53,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "id: TX-1177; status: disputed. [sql:1].",
+          "case": "EC-17",
+          "correctness": 1.0,
+          "cost_usd": "0.0005840",
+          "input_tokens": 1252,
+          "latency_ms": 2531,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 52,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "id: TX-0265; status: charged_back. [sql:1].",
+          "case": "EC-18",
+          "correctness": 1.0,
+          "cost_usd": "0.0005856",
+          "input_tokens": 1252,
+          "latency_ms": 2705,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 53,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "id: ST-0002; merchant_id: M-02; net_minor: 74107; net_major: 741.07; currency: EUR. [sql:1].",
+          "case": "EC-19",
+          "correctness": 1.0,
+          "cost_usd": "0.0012616",
+          "input_tokens": 2358,
+          "latency_ms": 4643,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 199,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "id: ST-0003; merchant_id: M-03; net_minor: 3522994; net_major: 35229.94; currency: BRL. [sql:1].",
+          "case": "EC-20",
+          "correctness": 1.0,
+          "cost_usd": "0.0006108",
+          "input_tokens": 1259,
+          "latency_ms": 3145,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 67,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "id: ST-0009; merchant_id: M-09; net_minor: 824836; net_major: 8248.36; currency: USD. [sql:1].",
+          "case": "EC-21",
+          "correctness": 1.0,
+          "cost_usd": "0.0006108",
+          "input_tokens": 1259,
+          "latency_ms": 2823,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 67,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "id: ST-0019; merchant_id: M-19; net_minor: 504121; net_major: 5041.21; currency: EUR. [sql:1].",
+          "case": "EC-22",
+          "correctness": 1.0,
+          "cost_usd": "0.0006108",
+          "input_tokens": 1259,
+          "latency_ms": 3293,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 67,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "id: ST-0025; merchant_id: M-01; net_minor: 4496483; net_major: 44964.83; currency: BRL. [sql:1].",
+          "case": "EC-23",
+          "correctness": 1.0,
+          "cost_usd": "0.0006108",
+          "input_tokens": 1259,
+          "latency_ms": 4157,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 67,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "id: ST-0034; merchant_id: M-10; net_minor: 492101; net_major: 4921.01; currency: EUR. [sql:1].",
+          "case": "EC-24",
+          "correctness": 1.0,
+          "cost_usd": "0.0006108",
+          "input_tokens": 1259,
+          "latency_ms": 2956,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 67,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "Chargeback fee [policy:fees-and-pricing#chargeback-fee]. Chargeback fee [policy:chargeback-handling#fee-reference]. Each dispute opened creates a fixed fee charged to the merchant, even if the merchant wins the defense. The fee amount and the rule for charging it per period are in the fees and pricing policy. The fee is deducted in the settlement of the period in which the dispute was opened. [policy:chargeback-handling#fee-reference]. Fee currency [policy:fees-and-pricing#fee-currency]. Fees are charged in the merchant's settlement currency. The fixed chargeback fee is 15.00 in that currency, with no conversion: a merchant that settles in Brazilian reais pays 15.00 reais, and one that settles in euros pays 15.00 euros. Payments in another currency do not count in the gross volume and so do not generate the weekly processing fee. [policy:fees-and-pricing#fee-currency]. Rounding [policy:fees-and-pricing#rounding].",
+          "case": "EC-25",
+          "correctness": 1.0,
+          "cost_usd": "0.0006612",
+          "input_tokens": 1257,
+          "latency_ms": 3391,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 99,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "Duplicate charges [policy:refund-policy#duplicate-exception]. Failures and retries [policy:duplicate-charges#retries-after-failure]. A declined attempt followed by an approved attempt is not a duplicate, because only the second payment was captured. The detection rule considers only captured payments. The analyst must ignore attempts with a failed status when looking for duplicates. [policy:duplicate-charges#retries-after-failure]. Overview [policy:duplicate-charges#overview]. A duplicate charge happens when the same payment is captured twice by mistake, for example because the customer clicked pay twice or because the merchant sent it again. This policy defines how to recognize a duplicate and how to return the amount to the customer. [policy:duplicate-charges#overview]. Detection rule [policy:duplicate-charges#detection-rule].",
+          "case": "EC-26",
+          "correctness": 1.0,
+          "cost_usd": "0.0006472",
+          "input_tokens": 1250,
+          "latency_ms": 3007,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 92,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "Overview [policy:fx-reference-rates#overview]. The reference exchange rate is the market value used to compare with the rate the merchant applied in a conversion. This policy says which source to use, how to handle weekends and holidays and what to do when the rate is not available. [policy:fx-reference-rates#overview]. Official source [policy:fx-reference-rates#source]. Explanation for the customer [policy:cross-currency-refunds#customer-explanation]. Currency with no rate [policy:fx-reference-rates#unsupported-currency-handling]. When the currency has no reference rate, the analyst must not make up an estimate or use another source without saying so. The answer says the reference rate does not exist for that currency, states what prevents the comparison and points to what would resolve the case, for example an official source for that currency. The case goes to human review. [policy:fx-reference-rates#unsupported-currency-handling].",
+          "case": "EC-27",
+          "correctness": 1.0,
+          "cost_usd": "0.0006496",
+          "input_tokens": 1252,
+          "latency_ms": 2140,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 93,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "",
+          "case": "EC-28",
+          "correctness": 0.0,
+          "cost_usd": "0.0006772",
+          "input_tokens": 1253,
+          "latency_ms": 1375,
+          "missing_facts": [
+            "escalation-and-review#when-to-escalate"
+          ],
+          "money_reason": "",
+          "output_tokens": 110,
+          "reason": "the triage gave no plan",
+          "tool_calls": 0
+        },
+        {
+          "answer": "Merchant markup [policy:cross-currency-refunds#merchant-fx-markup]. Merchants on the `markup` plan can apply up to 3.0% over the reference rate when converting a refund. The markup lowers the applied rate: the applied rate is the reference rate on the refund date multiplied by one minus the markup. The markup must be in the merchant's settlement terms, and a markup above the limit must be taken to human review. [policy:cross-currency-refunds#merchant-fx-markup]. Merchants on the standard plan [policy:cross-currency-refunds#standard-plan]. Merchants on the `standard` plan apply no markup. For them, the rate applied to the refund is the reference rate on the refund date itself. If the analyst finds a difference larger than rounding for a merchant on the standard plan, the difference is not a markup and the case must be investigated and, if needed, escalated. [policy:cross-currency-refunds#standard-plan]. Overview [policy:fx-reference-rates#overview]. The reference exchange rate is the market value used to compare with the rate the merchant applied in a conversion. This policy says which source to use, how to handle weekends and holidays and what to do when the rate is not available. [policy:fx-reference-rates#overview]. Worked example [policy:cross-currency-refunds#worked-example]. Take a payment of EUR 200.00 converted on the charge at 5.5000, which gives BRL 1,100.00. On the refund day the reference rate is 5.4000 and the merchant applies a 2.0% markup, so the applied rate is 5.2920 and the customer receives BRL 1,058.40. The difference is BRL 41.60: BRL 20.00 comes from the rate movement and BRL 21.60 comes from the markup. [policy:cross-currency-refunds#worked-example].",
+          "case": "EC-29",
+          "correctness": 1.0,
+          "cost_usd": "0.0006528",
+          "input_tokens": 1256,
+          "latency_ms": 2944,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 94,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "Evidence for not received [policy:chargeback-handling#evidence-nrc]. In a dispute for a product not received, the main evidence is the proof of delivery with a date and a signature, or the tracking code with the carrier's confirmation. For digital services, the record of the customer's access to the service serves as proof. The delivery time promised to the customer must also be attached. [policy:chargeback-handling#evidence-nrc]. Evidence for not as described [policy:chargeback-handling#evidence-nad]. In a dispute for a product different from the description, the merchant must show the description published at the time of purchase, photos of the product shipped and the exchange policy the customer accepted. If the customer already got a partial refund or an exchange, the proof must be attached, because it lowers the disputed amount. [policy:chargeback-handling#evidence-nad]. Evidence checklist [policy:chargeback-handling#evidence-checklist]. The evidence depends on the reason code. For `FRD`, attach the confirmation of the device, the delivery address and contact with the customer. For `NRC`, attach the proof of delivery or of access to the service. For `NAD`, attach the product description, the photos and the message exchange. For `DUP`, attach the proof that the two charges come from different orders. The reason code picks the list. [policy:chargeback-handling#evidence-checklist]. Overview [policy:chargeback-handling#overview]. A chargeback is a dispute the cardholder opens with the issuing bank to ask for a payment back. Acme Payments gets the notice from the card network, informs the merchant and prepares the defense. This policy defines the stages, the deadlines and the evidence required. [policy:chargeback-handling#overview].",
+          "case": "EC-30",
+          "correctness": 1.0,
+          "cost_usd": "0.0006636",
+          "input_tokens": 1259,
+          "latency_ms": 3429,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 100,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "id: TX-2096; amount_minor: 8000; amount_major: 80.00; currency: EUR. [sql:1]. transaction_id: TX-2096; requested_amount_minor: 8000; requested_amount_major: 80.00; requested_currency: EUR. [sql:2]. Calculation difference: result 0.00. Formula: 80.00 - 80.00 = 0.00. [calc:1].",
+          "case": "EC-31",
+          "correctness": 0.0,
+          "cost_usd": "0.0007980",
+          "input_tokens": 1259,
+          "latency_ms": 6565,
+          "missing_facts": [
+            "453.06",
+            "431.54",
+            "21.52",
+            "20.34",
+            "4.50",
+            "3.00",
+            "451.88"
+          ],
+          "money_reason": "",
+          "output_tokens": 184,
+          "reason": "",
+          "tool_calls": 3
+        }
+      ],
+      "correct_cases": {
+        "cases": 23,
+        "of": 31
+      },
+      "cost_per_correct_case_usd": {
+        "known": true,
+        "money_unknown_reason": "",
+        "total_usd": "0.0212964",
+        "usd": "0.000926"
+      },
+      "latency_p95_ms": {
+        "cases": 31,
+        "value": 5626
+      },
+      "tool_calls": {
+        "calls": 39,
+        "cases": 31
+      }
+    },
+    "single_agent": {
+      "arm": {
+        "description": "The path that the repository ships: one agent of ledgerlens/agents/integrator.py with its six tools and the deterministic verifier of ledgerlens/verify/.",
+        "name": "single_agent"
+      },
+      "cases": [
+        {
+          "answer": "The refund payout amount in BRL (549.31 BRL) is numerically higher than the original payment amount in EUR (100.00 EUR), but since these are different currencies, the refund amount appears lower when converted to EUR. The difference in currency values explains why the refund in BRL is not directly comparable to the payment in EUR [sql:1] [calc:1]. \n\nThe reason for the refund being lower than the payment in EUR terms is likely due to currency conversion between EUR and BRL.",
+          "case": "EC-01",
+          "correctness": 0.25,
+          "cost_usd": "0.0042116",
+          "input_tokens": 8889,
+          "latency_ms": 6879,
+          "missing_facts": [
+            "566.79",
+            "17.48",
+            "14.08"
+          ],
+          "money_reason": "",
+          "output_tokens": 410,
+          "reason": "",
+          "tool_calls": 2
+        },
+        {
+          "answer": "The transactions TX-2051 and TX-2052 for customer C-0733 are both for the same amount of $49.90 USD. They were charged using the same card fingerprint (fp_d7f33ce5911d) and card brand (Visa). The transactions were captured within a short time frame on 2026-10-05, with TX-2051 captured at 14:03:12 and TX-2052 captured at 14:03:50. Both transactions have the status \"captured\" and originate from the same scenario \"S02\" [sql:2][sql:1].\n\nBased on these details, it appears that TX-2051 and TX-2052 are duplicate charges for the same amount on the same card for the same customer.",
+          "case": "EC-02",
+          "correctness": 1.0,
+          "cost_usd": "0.0035748",
+          "input_tokens": 7269,
+          "latency_ms": 7100,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 417,
+          "reason": "",
+          "tool_calls": 2
+        },
+        {
+          "answer": "The deadline for dispute CB-0310 is 2026-11-09 [sql:1]. \n\nThe dispute has the reason code NRC, which means \"product or service not received.\" At the evidence_requested stage, the required action is to attach proof of delivery or proof of access to the service as evidence [policy:chargeback-handling#evidence-checklist]. \n\nThe merchant is responsible for gathering this evidence, and the Acme Payments disputes team will check it and send it to the card network. The analyst handling the case confirms that the dispute is at the right stage, the internal cutoff has not passed, and the evidence list for the reason code is complete [policy:chargeback-handling#who-submits].",
+          "case": "EC-03",
+          "correctness": 1.0,
+          "cost_usd": "0.0045160",
+          "input_tokens": 9586,
+          "latency_ms": 8897,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 426,
+          "reason": "",
+          "tool_calls": 2
+        },
+        {
+          "answer": "The transaction TX-9999 does not exist in the ledger, so its status cannot be determined [sql:1].",
+          "case": "EC-04",
+          "correctness": 0.5,
+          "cost_usd": "0.0026052",
+          "input_tokens": 6065,
+          "latency_ms": 4117,
+          "missing_facts": [
+            "row_count 0"
+          ],
+          "money_reason": "",
+          "output_tokens": 112,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "Customer C-0205 made two purchases of EUR 75.00 each. Both transactions, TX-2060 and TX-2061, have the status \"captured,\" meaning the payments were successfully processed and captured by the merchant [sql:1].",
+          "case": "EC-05",
+          "correctness": 0.5,
+          "cost_usd": "0.0029216",
+          "input_tokens": 6404,
+          "latency_ms": 4719,
+          "missing_facts": [
+            "M-03",
+            "M-17"
+          ],
+          "money_reason": "",
+          "output_tokens": 225,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "The refund request for transaction TX-2090 was rejected with the reason \"outside_refund_window\" [sql:1]. According to the refund policy, refunds are accepted for 30 calendar days after the payment is captured, unless the merchant sets a different window in the refund_window_days field [policy:refund-policy#refund-window]. For this transaction, the capture date was 2026-08-30 and the merchant's refund window is 30 days [sql:2]. Since the refund request was made on 2026-10-12, which is beyond the 30-day refund window from the capture date, the rejection of the refund request is correct according to policy [policy:refund-policy#rejection-reasons].",
+          "case": "EC-06",
+          "correctness": 1.0,
+          "cost_usd": "0.0061012",
+          "input_tokens": 13313,
+          "latency_ms": 10143,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 485,
+          "reason": "",
+          "tool_calls": 3
+        },
+        {
+          "answer": "The refund R-0720 for transaction TX-2030 is correct. The refund amount of 80.00 USD matches exactly the transaction amount of 80.00 USD, so there is no difference between the refund and the original transaction amount [sql:2] [sql:1] [calc:1].",
+          "case": "EC-07",
+          "correctness": 0.5,
+          "cost_usd": "0.0046540",
+          "input_tokens": 9971,
+          "latency_ms": 6396,
+          "missing_facts": [
+            "0.00"
+          ],
+          "money_reason": "",
+          "output_tokens": 416,
+          "reason": "",
+          "tool_calls": 3
+        },
+        {
+          "answer": "The payout ST-0044 for merchant M-03 (Casa Verde Foods) was calculated as follows: The gross amount was BRL 30,919.54, with no refunds during the period, and fees of BRL 926.67 were deducted. This resulted in a net payout amount of BRL 29,992.87. The payout was expected and actually paid on 2026-10-14 [sql:1].",
+          "case": "EC-08",
+          "correctness": 1.0,
+          "cost_usd": "0.0031812",
+          "input_tokens": 6485,
+          "latency_ms": 5770,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 367,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "The status of refund R-0750 for transaction TX-2095 is \"requested\" [sql:1].",
+          "case": "EC-09",
+          "correctness": 1.0,
+          "cost_usd": "0.0027776",
+          "input_tokens": 6240,
+          "latency_ms": 3775,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 176,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "The reference FX rate for the transaction TX-2099 paid in ARS cannot be provided because ARS (Argentine Peso) is not supported in the reference FX rate database used, so no recorded rate for ARS to USD or EUR is available on the transaction date 2026-10-27 [api:1].",
+          "case": "EC-10",
+          "correctness": 0.5,
+          "cost_usd": "0.0034956",
+          "input_tokens": 8015,
+          "latency_ms": 4405,
+          "missing_facts": [
+            "2500000"
+          ],
+          "money_reason": "",
+          "output_tokens": 181,
+          "reason": "",
+          "tool_calls": 2
+        },
+        {
+          "answer": "The payment date is 2026-10-15 and the refund date is 2026-10-20 for transaction TX-2048 [sql:2]. However, I am unable to retrieve the market reference exchange rate between EUR and BRL on the refund date 2026-10-20 due to a data source issue [get_reference_fx]. \n\nWithout the correct exchange rate on the refund date, I cannot accurately explain why the BRL refund amount is lower than the EUR payment amount. The date used previously (2024-06-01) was incorrect and the correct date is from the ledger. Please note that the exchange rate data source is currently unavailable, so the analysis cannot be completed at this time. The reference rate EUR-BRL 2024-06-01, EUR-BRL 2026-10-20 could not be obtained: the FX source was unavailable. What depends on it was not calculated and the case was sent to human review.",
+          "case": "EC-11",
+          "correctness": 0.5,
+          "cost_usd": "0.0086864",
+          "input_tokens": 18624,
+          "latency_ms": 13026,
+          "missing_facts": [
+            "5.4931"
+          ],
+          "money_reason": "",
+          "output_tokens": 773,
+          "reason": "",
+          "tool_calls": 5
+        },
+        {
+          "answer": "Merchant M-17 has no recorded similar cases of a refund involving foreign exchange (FX) in the past according to the case recall search [functions.recall_cases].",
+          "case": "EC-12",
+          "correctness": 0.0,
+          "cost_usd": "0.0024160",
+          "input_tokens": 5484,
+          "latency_ms": 3669,
+          "missing_facts": [
+            "CASE-0001"
+          ],
+          "money_reason": "",
+          "output_tokens": 139,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "The status of transaction TX-0001 is \"captured\" [sql:1].",
+          "case": "EC-13",
+          "correctness": 1.0,
+          "cost_usd": "0.0025972",
+          "input_tokens": 6069,
+          "latency_ms": 3517,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 106,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "The status of transaction TX-0007 is \"failed\" [sql:1].",
+          "case": "EC-14",
+          "correctness": 1.0,
+          "cost_usd": "0.0025928",
+          "input_tokens": 6066,
+          "latency_ms": 3515,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 104,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "The status of transaction TX-0008 is \"partially_refunded\" [sql:1].",
+          "case": "EC-15",
+          "correctness": 1.0,
+          "cost_usd": "0.0026012",
+          "input_tokens": 6071,
+          "latency_ms": 3183,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 108,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "The status of transaction TX-0138 is \"refunded\" [sql:1].",
+          "case": "EC-16",
+          "correctness": 1.0,
+          "cost_usd": "0.0025948",
+          "input_tokens": 6067,
+          "latency_ms": 3265,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 105,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "The status of transaction TX-1177 is disputed [sql:1].",
+          "case": "EC-17",
+          "correctness": 1.0,
+          "cost_usd": "0.0025900",
+          "input_tokens": 6067,
+          "latency_ms": 3461,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 102,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "The status of transaction TX-0265 is \"charged_back\" [sql:1].",
+          "case": "EC-18",
+          "correctness": 1.0,
+          "cost_usd": "0.0026036",
+          "input_tokens": 6069,
+          "latency_ms": 3380,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 110,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "The net amount of payout ST-0002 for merchant M-02 was 741.07 EUR [sql:1].",
+          "case": "EC-19",
+          "correctness": 1.0,
+          "cost_usd": "0.0027000",
+          "input_tokens": 6146,
+          "latency_ms": 3640,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 151,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "The net amount of payout ST-0003 for merchant M-03 was 35,229.94 BRL [sql:1].",
+          "case": "EC-20",
+          "correctness": 1.0,
+          "cost_usd": "0.0027032",
+          "input_tokens": 6146,
+          "latency_ms": 4355,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 153,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "The net amount of payout ST-0009 for merchant M-09 was 8,248.36 USD [sql:1].",
+          "case": "EC-21",
+          "correctness": 1.0,
+          "cost_usd": "0.0027324",
+          "input_tokens": 6155,
+          "latency_ms": 4192,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 169,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "The net amount of payout ST-0019 for merchant M-19 was 5041.21 EUR [sql:1].",
+          "case": "EC-22",
+          "correctness": 1.0,
+          "cost_usd": "0.0026992",
+          "input_tokens": 6144,
+          "latency_ms": 3893,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 151,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "The net amount of payout ST-0025 for merchant M-01 was 44,964.83 BRL [sql:1].",
+          "case": "EC-23",
+          "correctness": 1.0,
+          "cost_usd": "0.0027060",
+          "input_tokens": 6149,
+          "latency_ms": 3727,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 154,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "The net amount of payout ST-0034 for merchant M-10 was 4921.01 EUR [sql:1].",
+          "case": "EC-24",
+          "correctness": 1.0,
+          "cost_usd": "0.0026932",
+          "input_tokens": 6141,
+          "latency_ms": 3918,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 148,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "The fixed fee charged for each chargeback opened in the period is 15.00 in the merchant's settlement currency. This fee applies to each chargeback opened in the period regardless of whether the merchant wins or loses the dispute. The fee is charged based on the date the dispute was opened, not the date of the original payment. The fee is deducted in the settlement of the period in which the dispute was opened. There is no conversion for this fee; it is charged exactly as 15.00 in the merchant's settlement currency, for example, 15.00 reais or 15.00 euros depending on the merchant's settlement currency [policy:fees-and-pricing#chargeback-fee, policy:chargeback-handling#fee-reference, policy:fees-and-pricing#fee-currency, policy:fees-and-pricing#rounding].",
+          "case": "EC-25",
+          "correctness": 1.0,
+          "cost_usd": "0.0029588",
+          "input_tokens": 6161,
+          "latency_ms": 6324,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 309,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "The duplicate charge detection rule states that two captures count as duplicates when they have the same merchant, the same card (identified by the card fingerprint), the same amount, and the same currency, and the second one happens within 5 minutes after the first. All four conditions must hold at the same time. The rule looks at the difference between the capture times, not between the authorization times [policy:duplicate-charges#detection-rule].",
+          "case": "EC-26",
+          "correctness": 1.0,
+          "cost_usd": "0.0027708",
+          "input_tokens": 6083,
+          "latency_ms": 4155,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 211,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "The source of the reference exchange rate is the European Central Bank's daily rate, obtained through the Frankfurter service in the version that uses only that source. On weekends and holidays, the rate of the previous business day applies. This reference rate is a market reference and is not the rate the merchant or the acquirer applied, which is recorded separately on the conversion record [policy:fx-reference-rates#source].",
+          "case": "EC-27",
+          "correctness": 1.0,
+          "cost_usd": "0.0027928",
+          "input_tokens": 6118,
+          "latency_ms": 4972,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 216,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "Which case or issue are you referring to for escalation to a human analyst?",
+          "case": "EC-28",
+          "correctness": 0.0,
+          "cost_usd": "0.0006756",
+          "input_tokens": 1253,
+          "latency_ms": 1655,
+          "missing_facts": [
+            "escalation-and-review#when-to-escalate"
+          ],
+          "money_reason": "",
+          "output_tokens": 109,
+          "reason": "",
+          "tool_calls": 0
+        },
+        {
+          "answer": "The maximum markup that a merchant on the \"markup\" plan can apply over the reference exchange rate when converting a refund is up to 3.0% over the reference rate. This markup must be included in the merchant's settlement terms, and any markup above this limit must be taken to human review. Merchants on the \"standard\" plan apply no markup and must use the reference rate on the refund date itself [policy:cross-currency-refunds#merchant-fx-markup] [policy:cross-currency-refunds#standard-plan].",
+          "case": "EC-29",
+          "correctness": 1.0,
+          "cost_usd": "0.0028796",
+          "input_tokens": 6207,
+          "latency_ms": 5085,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens": 248,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "For a dispute regarding a product not received, the main evidence you should attach includes the proof of delivery with a date and a signature, or the tracking code with the carrier's confirmation. If it is a digital service, the record of the customer's access to the service serves as proof. Additionally, you should attach the delivery time promised to the customer [policy:chargeback-handling#evidence-nrc].",
+          "case": "EC-30",
+          "correctness": 0.0,
+          "cost_usd": "0.0029160",
+          "input_tokens": 6266,
+          "latency_ms": 4560,
+          "missing_facts": [
+            "chargeback-handling#evidence-checklist"
+          ],
+          "money_reason": "",
+          "output_tokens": 256,
+          "reason": "",
+          "tool_calls": 1
+        },
+        {
+          "answer": "The refund payout amount in BRL is 431.54, which is higher than the original payment amount of 80.00 EUR by 351.54 in their respective currencies [sql:1] [calc:1]. I will now explain the reason for the refund being lower than the payment, considering currency conversion or fees.\nThe refund amount in BRL appears higher than the original payment amount in EUR when looking at the raw numbers, but this is due to the currency difference. The original payment was 80.00 EUR, and the refund was 431.54 BRL. The refund being \"lower\" or \"higher\" in value must be assessed by converting one currency to the other using the exchange rates applied at the time of payment and refund. The difference in currency and exchange rates explains why the refund amount in BRL looks different from the payment amount in EUR. There is no indication from the data that the refund was actually lower in value; it is a matter of currency conversion. Further analysis of the exchange rates applied would clarify the exact equivalence.",
+          "case": "EC-31",
+          "correctness": 0.14285714285714285,
+          "cost_usd": "0.0043828",
+          "input_tokens": 8873,
+          "latency_ms": 8211,
+          "missing_facts": [
+            "453.06",
+            "21.52",
+            "20.34",
+            "4.50",
+            "3.00",
+            "451.88"
+          ],
+          "money_reason": "",
+          "output_tokens": 521,
+          "reason": "",
+          "tool_calls": 2
+        }
+      ],
+      "correct_cases": {
+        "cases": 21,
+        "of": 31
+      },
+      "cost_per_correct_case_usd": {
+        "known": true,
+        "money_unknown_reason": "",
+        "total_usd": "0.1003312",
+        "usd": "0.004778"
+      },
+      "latency_p95_ms": {
+        "cases": 31,
+        "value": 10143
+      },
+      "tool_calls": {
+        "calls": 43,
+        "cases": 31
+      }
+    }
+  },
+  "cohort": {
+    "cases": 31,
+    "digest": "5909f0fc62f8ef89d09b7a2da69b26d1c427182fb0c424a5ba934b72e855caaa",
+    "ids": [
+      "EC-01",
+      "EC-02",
+      "EC-03",
+      "EC-04",
+      "EC-05",
+      "EC-06",
+      "EC-07",
+      "EC-08",
+      "EC-09",
+      "EC-10",
+      "EC-11",
+      "EC-12",
+      "EC-13",
+      "EC-14",
+      "EC-15",
+      "EC-16",
+      "EC-17",
+      "EC-18",
+      "EC-19",
+      "EC-20",
+      "EC-21",
+      "EC-22",
+      "EC-23",
+      "EC-24",
+      "EC-25",
+      "EC-26",
+      "EC-27",
+      "EC-28",
+      "EC-29",
+      "EC-30",
+      "EC-31"
+    ],
+    "source": "eval_cases.jsonl"
+  },
+  "commit": "5ac84c5e5935a853f0d882623424d85f40c8f583",
+  "decision": {
+    "outcome": "gain",
+    "reason": "the flag of the studio may open for the experiment that is registered here and for nothing else"
+  },
+  "difference": {
+    "cases": 2,
+    "interval": {
+      "high": 0.0923,
+      "low": 0.0367,
+      "method": "the paired difference of the correctness, with the standard error of the discordant cases and the normal approximation of 95 percent"
+    },
+    "single_only": 2,
+    "studio_only": 4
+  },
+  "judge": {
+    "comparable_with": "the other arm of this comparison and not with the published online report",
+    "correctness": "the deterministic judge of the repository",
+    "fx": "the fixtures of the exchange of the repository",
+    "nli": "the stub of the NLI of the repository, the real model of the NLI is not called",
+    "runs_per_case": 1
+  },
+  "ledger": {
+    "sha256": "b1f1e6aedcd72fc20cabc1be83bbf4c00c3d0ef5b7fca1690dafc04d4552f678",
+    "source": "the versioned sample of the repository"
+  },
+  "manifest": {
+    "path": "data/runtime/orchestration/comparison.json",
+    "sha256": "f10952ad2a1dce31d85cae2fbfeecc77a5a98b6e4e181878651c328e5f8b3650"
+  },
+  "measured_at": "2026-11-24T15:10:50+00:00",
+  "mode": "online",
+  "model": "gpt-4.1-mini",
+  "note": "Real run of the two arms over the same set of cases, over the same ledger, with the same model and with the deterministic judge of the repository. One run per case: the numbers are a trend and not a statistical significance. The answer of the studio is composed and not written by a model: it renders the evidence the verifier supported, and a case the studio did not resolve counts in the denominator like any other. The dollars of a model whose price nobody verified are unknown, and unknown is never zero.",
+  "rule": {
+    "decision": "The studio is a gain only when it resolves strictly more cases than the single agent over the same 31 cases, with a difference of at least 2 cases, and its cost per resolved case is not higher than the cost per resolved case of the single agent. A difference of 0 or 1 case is a trend and not a gain. A studio that costs more and answers the same is not a gain. When the money of an arm is unknown, the comparison of the money is not established and the flag stays off. The flag stays off in every other case, and the result is published either way.",
+    "threshold_cases": 2
+  },
+  "uncertainty": "One run per case over 31 cases makes the difference of the arms a trend and not a statistical significance. The page of the result publishes the interval of the difference of the correctness, and an interval that covers zero keeps the flag off. The threshold of 2 cases is a decision of the repository and not a significance, and the page says so."
+}
