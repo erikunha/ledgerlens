@@ -1,0 +1,74 @@
+{
+  "view": "the eval lab",
+  "route": "/eval-lab",
+  "width": 390,
+  "decidedBy": "ADR-051",
+  "tolerance": 8,
+  "clientWidth": 390,
+  "boxes": [
+    {
+      "id": "banner",
+      "role": "banner",
+      "name": "LedgerLens",
+      "title": "",
+      "left": 0,
+      "width": 390
+    },
+    {
+      "id": "main",
+      "role": "main",
+      "name": "",
+      "title": "Eval Lab",
+      "left": 0,
+      "width": 390
+    },
+    {
+      "id": "contentinfo",
+      "role": "contentinfo",
+      "name": "",
+      "title": "",
+      "left": 0,
+      "width": 390
+    },
+    {
+      "id": "container",
+      "role": "generic",
+      "name": "",
+      "title": "Eval Lab",
+      "left": 0,
+      "width": 390
+    },
+    {
+      "id": "verification",
+      "role": "region",
+      "name": "The verification",
+      "title": "The verification",
+      "left": 24,
+      "width": 342
+    },
+    {
+      "id": "confusion",
+      "role": "region",
+      "name": "The confusion matrix of the verifier",
+      "title": "The confusion matrix of the verifier",
+      "left": 24,
+      "width": 342
+    },
+    {
+      "id": "evaluation",
+      "role": "region",
+      "name": "The evaluation of the agent",
+      "title": "The evaluation of the agent",
+      "left": 24,
+      "width": 342
+    },
+    {
+      "id": "failed",
+      "role": "region",
+      "name": "The cases that failed",
+      "title": "The cases that failed",
+      "left": 24,
+      "width": 342
+    }
+  ]
+}

@@ -115,6 +115,14 @@ export const PAGES_UNDER_TEST: readonly PageUnderTest[] = [
     },
   },
   {
+    name: "the eval lab",
+    path: "/eval-lab",
+    settle: async (page: Page) => {
+      await expect(page.getByRole("heading", { level: 1, name: "Eval Lab" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "The confusion matrix of the verifier" })).toBeVisible();
+    },
+  },
+  {
     name: "the page of a proof of work",
     path: "/proof",
     settle: async (page: Page) => {

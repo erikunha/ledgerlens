@@ -282,6 +282,16 @@ def get_nli(offline: bool | None = None, *, require_real: bool = False) -> Nli:
     return _cache.setdefault(MODEL_ID, HuggingFaceNli(MODEL_ID))
 
 
+def verification_status(nli: Nli) -> str:
+    """The status of the verification: `unavailable` with the stand-in, `available` with any real model.
+
+    Why a missing model is not a pass: the stand-in decides by word rules, and a verification that ran with
+    the stand-in is not a measurement of the model. The stand-in is the sign that the real model is missing,
+    and a case whose verification is unavailable is never counted as a pass.
+    """
+    return "unavailable" if isinstance(nli, StubNli) else "available"
+
+
 __all__ = [
     "MAX_LENGTH",
     "MODEL_ID",
@@ -292,4 +302,5 @@ __all__ = [
     "StubNli",
     "get_nli",
     "nli_revision",
+    "verification_status",
 ]

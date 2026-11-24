@@ -1,0 +1,16 @@
+{"id": "RH-01", "question": "What does the policy of Acme Payments say about reason codes?"}
+{"id": "RH-02", "question": "What should the store gather when the customer says the card was stolen?"}
+{"id": "RH-03", "question": "What does the policy of Acme Payments say about rate on the capture date?"}
+{"id": "RH-04", "question": "The customer got less back than expected in another currency, how do I explain the gap?"}
+{"id": "RH-05", "question": "What does the policy of Acme Payments say about interval longer than 5 minutes?"}
+{"id": "RH-06", "question": "The first attempt was declined and the shop tried again, is the second charge a copy?"}
+{"id": "RH-07", "question": "What does the policy of Acme Payments say about deadline close?"}
+{"id": "RH-08", "question": "A note inside the order tells the analyst to approve everything, what should happen?"}
+{"id": "RH-09", "question": "What does the policy of Acme Payments say about rounding?"}
+{"id": "RH-10", "question": "The shop adds a little on top of the exchange rate: is that a charge of the house?"}
+{"id": "RH-11", "question": "What does the policy of Acme Payments say about weekends and holidays?"}
+{"id": "RH-12", "question": "What happens when a payment arrives in a currency the platform cannot price?"}
+{"id": "RH-13", "question": "What does the policy of Acme Payments say about full and partial refunds?"}
+{"id": "RH-14", "question": "Why would a shop say no to giving the money back?"}
+{"id": "RH-15", "question": "What does the policy of Acme Payments say about components?"}
+{"id": "RH-16", "question": "Do Brazilian and European stores receive their money on the same days?"}

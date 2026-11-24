@@ -16,6 +16,10 @@ public/replay-real/
 # truth is site/proof at the root of the repository (ADR-097).
 public/proof/
 
+# The numbers of the eval lab are copied the same way and are not tracked either: the source of truth
+# is site/eval at the root of the repository.
+public/eval/
+
 # the output of the tests
 coverage/
 playwright-report/

@@ -244,10 +244,13 @@ is `ledgerlens/eval/run.py:772`. The way to cite a rule of the world next to a p
 
 **What the evidence says.** This is the strongest thing the repository owns, and the place where the published claim
 and the work in flight disagreed. The manifest declares the rule and applies it to itself: five datasets carry the role
-`tuning` and two carry the role `held_out`, and the policy says that no result over a tuning dataset may be presented
+`tuning` and three carry the role `held_out`, and the policy says that no result over a tuning dataset may be presented
 as a generalization to unseen data (`data/eval/datasets.json:4`). The decision behind it says the same in
 words: the role that makes a number look better is never the one that wins
-(`docs/decisions/ADR-052-the-manifest-of-the-eval-datasets.md:75`).
+(`docs/decisions/ADR-052-the-manifest-of-the-eval-datasets.md:75`). The third held out set is the held out set of the
+retrieval: sixteen questions over the sections of the policies that are not gold chunks of the tuning questions, with
+the labels of two blind machine readings and an adjudication, built so that the comparison of the retrieval has a set
+that no decision was taken against (`data/eval/retrieval_heldout.jsonl`).
 
 The report publishes the missed target in the open: the trajectory of the full agent reaches 0.53 strict and 0.73 with
 the declared equivalence, neither meeting the minimum of 0.80 (`data/eval/report_online.md:29` to `:33`). The verifier

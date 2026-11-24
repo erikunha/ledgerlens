@@ -120,10 +120,19 @@ HELD_OUT_SOURCE_PATHS: tuple[str, ...] = (
     "data/eval/heldout/labels_reader_a.jsonl",
     "data/eval/heldout/labels_reader_b.jsonl",
     "data/eval/heldout/recipes.jsonl",
+    # The sources of the held out set of the retrieval, reserved for the same reason: the questions the
+    # readers saw, the labels of the two readings and of the adjudication, and the answer key of the generator.
+    "data/eval/heldout/retrieval_cases.jsonl",
+    "data/eval/heldout/retrieval_labels_adjudicated.jsonl",
+    "data/eval/heldout/retrieval_labels_reader_a.jsonl",
+    "data/eval/heldout/retrieval_labels_reader_b.jsonl",
+    "data/eval/heldout/retrieval_recipes.jsonl",
 )
 
 HELD_OUT_RESERVED_PATHS: tuple[str, ...] = (
     "data/eval/verification_heldout.jsonl",
+    # The held out set of the retrieval: the questions and the adjudicated labels of the two blind readings.
+    "data/eval/retrieval_heldout.jsonl",
     *HELD_OUT_SOURCE_PATHS,
     # The pre-registration of the comparison of the orchestration studio. It names the set of the comparison and it
     # carries the role `held_out`, so the path is reserved for the same reason the path of the set is: a dataset

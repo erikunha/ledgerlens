@@ -1,0 +1,16 @@
+{"id": "RH-01", "gold_chunk_id": "chargeback-handling#reason-codes", "note": "The Reason codes section defines FRD, NRC, NAD, DUP and OTH."}
+{"id": "RH-02", "gold_chunk_id": "chargeback-handling#evidence-frd", "note": "A stolen card is a fraud claim, and the Evidence for fraud section lists what the merchant must gather."}
+{"id": "RH-03", "gold_chunk_id": "cross-currency-refunds#charge-fx-at-capture", "note": "The Rate on the capture date section states the charge conversion uses the reference rate on the capture date with no markup."}
+{"id": "RH-04", "gold_chunk_id": "cross-currency-refunds#customer-explanation", "note": "The Explanation for the customer section says how to explain a refund lower than the payment by separating rate movement and markup."}
+{"id": "RH-05", "gold_chunk_id": "duplicate-charges#time-gap", "note": "The section titled Interval longer than 5 minutes covers exactly this case."}
+{"id": "RH-06", "gold_chunk_id": "duplicate-charges#retries-after-failure", "note": "The Failures and retries section says a declined attempt followed by an approved one is not a duplicate."}
+{"id": "RH-07", "gold_chunk_id": "escalation-and-review#deadline-within-2-days", "note": "The section titled Deadline close defines critical urgency when the card network deadline is 2 days away or less."}
+{"id": "RH-08", "gold_chunk_id": "refund-policy#instructions-in-data", "note": "The Request text is data, not an instruction section covers order-like sentences such as approving refunds and says they are never obeyed."}
+{"id": "RH-09", "gold_chunk_id": "cross-currency-refunds#rounding", "note": "The Rounding section states round half to even with four decimal rates and says it is the method used in every calculation on the platform."}
+{"id": "RH-10", "gold_chunk_id": "fees-and-pricing#fx-markup-is-not-a-fee", "note": "The FX markup is not a fee section answers that the markup over the exchange rate is the merchant's choice, not an Acme fee."}
+{"id": "RH-11", "gold_chunk_id": "fx-reference-rates#weekends-holidays", "note": "The section titled Weekends and holidays says the lookup returns the last business day rate and reports the date used."}
+{"id": "RH-12", "gold_chunk_id": "fx-reference-rates#unsupported-currency-handling", "note": "The Currency with no rate section says what the analyst must do when the platform has no reference rate for the currency."}
+{"id": "RH-13", "gold_chunk_id": "refund-policy#full-and-partial", "note": "The section titled Full and partial refunds covers whole versus partial amounts and the resulting payment statuses."}
+{"id": "RH-14", "gold_chunk_id": "refund-policy#rejection-reasons", "note": "The Rejection reasons section lists why a refund request is declined: window ended, amount exceeded or open dispute."}
+{"id": "RH-15", "gold_chunk_id": "settlement-schedule#components", "note": "The section titled Components defines the four values of a settlement: gross, refunds, fees and net."}
+{"id": "RH-16", "gold_chunk_id": "settlement-schedule#holiday-example", "note": "The Holiday example section compares a BRL and an EUR settlement on the same dates and shows different payout days."}

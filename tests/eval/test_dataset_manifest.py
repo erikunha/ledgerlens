@@ -798,10 +798,10 @@ def test_a_manifest_that_is_a_link_outside_the_root_is_refused_and_not_read(tmp_
 # --- the manifest that ships --------------------------------------------------------------------------------
 
 
-def test_the_manifest_of_the_repository_declares_the_seven_datasets() -> None:
-    """The manifest of the repository declares the seven datasets with the roles the archaeology decided.
+def test_the_manifest_of_the_repository_declares_the_eight_datasets() -> None:
+    """The manifest of the repository declares the eight datasets with the roles the archaeology decided.
 
-    Why the list has seven entries and not eight: the held out set of the verification came with the blind reading
+    Why the list has eight entries and not nine: the held out set of the verification came with the blind reading
     of ADR-059, and the answer key of the generator came with it too, and the key is not published and is not
     declared here. A key that is public is not a key, so the tree keeps the cases and the labels and leaves the key
     out, and the guard refuses the path of the key because no entry of the manifest names it (ADR-062).
@@ -809,6 +809,11 @@ def test_the_manifest_of_the_repository_declares_the_seven_datasets() -> None:
     Why the seventh is the pre-registration of the comparison of the studio: it names the set of the comparison, and
     a set that a tuning script may read is a set that a threshold may be chosen against, so it carries the role
     `held_out` like the blind reading does.
+
+    Why the eighth is the held out set of the retrieval: the twelve questions of the tuning set were the set the
+    embedding and the query transform were chosen against, and a comparison of the retrieval needs a set that no
+    decision was taken against. The labels of the set are the adjudication of two blind machine readings, under
+    ADR-059, and the set carries the role `held_out`.
     """
     manifests = load_manifests(MANIFEST_PATH)
 
@@ -816,6 +821,7 @@ def test_the_manifest_of_the_repository_declares_the_seven_datasets() -> None:
         "eval_cases",
         "orchestration_comparison",
         "policy_questions",
+        "retrieval_heldout",
         "triage_cases",
         "verification_heldout",
         "verification_live",
@@ -825,6 +831,7 @@ def test_the_manifest_of_the_repository_declares_the_seven_datasets() -> None:
         "eval_cases": "tuning",
         "orchestration_comparison": "held_out",
         "policy_questions": "tuning",
+        "retrieval_heldout": "held_out",
         "triage_cases": "tuning",
         "verification_heldout": "held_out",
         "verification_live": "tuning",

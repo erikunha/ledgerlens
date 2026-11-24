@@ -101,4 +101,10 @@ uv run python scripts/measure_replay_budget.py --site site/replay-real
 echo "== proof check (offline)"
 uv run python scripts/export_proof_site.py --check
 
+# The published eval lab must match the reports it was built from: a number that drifts from its report is a
+# number that asks the reader to trust the page and not the measurement. The check rebuilds the export,
+# writes nothing, and refuses with a readable reason and a non zero exit code.
+echo "== eval lab check (offline)"
+uv run python scripts/export_eval_lab.py --check
+
 echo "gate: ok"

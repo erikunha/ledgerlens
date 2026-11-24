@@ -64,6 +64,11 @@ const CATALOGS = [
     source: join(REPOSITORY_ROOT, "site", "proof"),
     destination: join(REPOSITORY_ROOT, "apps", "web", "public", "proof"),
   },
+  {
+    name: "eval",
+    source: join(REPOSITORY_ROOT, "site", "eval"),
+    destination: join(REPOSITORY_ROOT, "apps", "web", "public", "eval"),
+  },
 ];
 
 /**

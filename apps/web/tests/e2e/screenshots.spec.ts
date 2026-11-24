@@ -179,6 +179,18 @@ const VIEWS: readonly ViewSpec[] = [
     ],
   },
   {
+    view: "the eval lab",
+    slug: "eval-lab",
+    route: "/eval-lab",
+    boxes: [
+      ...SHELL_BOXES,
+      { id: "verification", selector: "section[aria-labelledby='eval-lab-verification']" },
+      { id: "confusion", selector: "section[aria-labelledby='eval-lab-confusion']" },
+      { id: "evaluation", selector: "section[aria-labelledby='eval-lab-evaluation']" },
+      { id: "failed", selector: "section[aria-labelledby='eval-lab-failed']" },
+    ],
+  },
+  {
     view: "the recording of S01, the tab of the execution",
     slug: "scenario-s01-execution",
     route: "/replay/scenario/S01",
