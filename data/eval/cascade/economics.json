@@ -1,0 +1,506 @@
+{
+  "cohort": {
+    "assumptions": {
+      "prices": {
+        "openai:gpt-4.1": {
+          "input_per_1m_usd": null,
+          "last_verified": null,
+          "output_per_1m_usd": null,
+          "source": "unstated",
+          "verified": false
+        },
+        "openai:gpt-4.1-mini": {
+          "input_per_1m_usd": null,
+          "last_verified": null,
+          "output_per_1m_usd": null,
+          "source": "unstated",
+          "verified": false
+        }
+      },
+      "review": {
+        "cost_usd": "15.00",
+        "hourly_rate_usd": "60.00",
+        "minutes": "15",
+        "source": "manual",
+        "stated_on": null
+      }
+    },
+    "cases": [
+      {
+        "case_id": "EC-01",
+        "categories": [
+          {
+            "known": false,
+            "name": "model",
+            "reason": "the price of openai:gpt-4.1 was never verified",
+            "usd": null
+          }
+        ],
+        "resolved": false,
+        "total_usd": null,
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-02",
+        "categories": [
+          {
+            "known": false,
+            "name": "model",
+            "reason": "the price of openai:gpt-4.1 was never verified",
+            "usd": null
+          }
+        ],
+        "resolved": true,
+        "total_usd": null,
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-03",
+        "categories": [
+          {
+            "known": false,
+            "name": "model",
+            "reason": "the price of openai:gpt-4.1 was never verified",
+            "usd": null
+          }
+        ],
+        "resolved": false,
+        "total_usd": null,
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-04",
+        "categories": [
+          {
+            "known": false,
+            "name": "model",
+            "reason": "the price of openai:gpt-4.1 was never verified",
+            "usd": null
+          }
+        ],
+        "resolved": false,
+        "total_usd": null,
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-05",
+        "categories": [
+          {
+            "known": false,
+            "name": "model",
+            "reason": "the price of openai:gpt-4.1 was never verified",
+            "usd": null
+          }
+        ],
+        "resolved": false,
+        "total_usd": null,
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-06",
+        "categories": [
+          {
+            "known": false,
+            "name": "model",
+            "reason": "the price of openai:gpt-4.1 was never verified",
+            "usd": null
+          }
+        ],
+        "resolved": true,
+        "total_usd": null,
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-07",
+        "categories": [
+          {
+            "known": false,
+            "name": "model",
+            "reason": "the price of openai:gpt-4.1 was never verified",
+            "usd": null
+          }
+        ],
+        "resolved": true,
+        "total_usd": null,
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-08",
+        "categories": [
+          {
+            "known": false,
+            "name": "model",
+            "reason": "the price of openai:gpt-4.1 was never verified",
+            "usd": null
+          }
+        ],
+        "resolved": true,
+        "total_usd": null,
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-09",
+        "categories": [
+          {
+            "known": false,
+            "name": "model",
+            "reason": "the price of openai:gpt-4.1 was never verified",
+            "usd": null
+          }
+        ],
+        "resolved": true,
+        "total_usd": null,
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-10",
+        "categories": [
+          {
+            "known": false,
+            "name": "model",
+            "reason": "the price of openai:gpt-4.1 was never verified",
+            "usd": null
+          }
+        ],
+        "resolved": false,
+        "total_usd": null,
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-11",
+        "categories": [
+          {
+            "known": false,
+            "name": "model",
+            "reason": "the price of openai:gpt-4.1 was never verified",
+            "usd": null
+          }
+        ],
+        "resolved": false,
+        "total_usd": null,
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-12",
+        "categories": [
+          {
+            "known": false,
+            "name": "model",
+            "reason": "the price of openai:gpt-4.1 was never verified",
+            "usd": null
+          }
+        ],
+        "resolved": true,
+        "total_usd": null,
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-13",
+        "categories": [
+          {
+            "known": false,
+            "name": "model",
+            "reason": "the price of openai:gpt-4.1 was never verified",
+            "usd": null
+          }
+        ],
+        "resolved": true,
+        "total_usd": null,
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-14",
+        "categories": [
+          {
+            "known": false,
+            "name": "model",
+            "reason": "the price of openai:gpt-4.1 was never verified",
+            "usd": null
+          }
+        ],
+        "resolved": true,
+        "total_usd": null,
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-15",
+        "categories": [
+          {
+            "known": false,
+            "name": "model",
+            "reason": "the price of openai:gpt-4.1 was never verified",
+            "usd": null
+          }
+        ],
+        "resolved": true,
+        "total_usd": null,
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-16",
+        "categories": [
+          {
+            "known": false,
+            "name": "model",
+            "reason": "the price of openai:gpt-4.1 was never verified",
+            "usd": null
+          }
+        ],
+        "resolved": true,
+        "total_usd": null,
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-17",
+        "categories": [
+          {
+            "known": false,
+            "name": "model",
+            "reason": "the price of openai:gpt-4.1 was never verified",
+            "usd": null
+          }
+        ],
+        "resolved": true,
+        "total_usd": null,
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-18",
+        "categories": [
+          {
+            "known": false,
+            "name": "model",
+            "reason": "the price of openai:gpt-4.1 was never verified",
+            "usd": null
+          }
+        ],
+        "resolved": true,
+        "total_usd": null,
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-19",
+        "categories": [
+          {
+            "known": false,
+            "name": "model",
+            "reason": "the price of openai:gpt-4.1 was never verified",
+            "usd": null
+          }
+        ],
+        "resolved": true,
+        "total_usd": null,
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-20",
+        "categories": [
+          {
+            "known": false,
+            "name": "model",
+            "reason": "the price of openai:gpt-4.1 was never verified",
+            "usd": null
+          }
+        ],
+        "resolved": true,
+        "total_usd": null,
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-21",
+        "categories": [
+          {
+            "known": false,
+            "name": "model",
+            "reason": "the price of openai:gpt-4.1 was never verified",
+            "usd": null
+          }
+        ],
+        "resolved": true,
+        "total_usd": null,
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-22",
+        "categories": [
+          {
+            "known": false,
+            "name": "model",
+            "reason": "the price of openai:gpt-4.1 was never verified",
+            "usd": null
+          }
+        ],
+        "resolved": true,
+        "total_usd": null,
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-23",
+        "categories": [
+          {
+            "known": false,
+            "name": "model",
+            "reason": "the price of openai:gpt-4.1 was never verified",
+            "usd": null
+          }
+        ],
+        "resolved": true,
+        "total_usd": null,
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-24",
+        "categories": [
+          {
+            "known": false,
+            "name": "model",
+            "reason": "the price of openai:gpt-4.1 was never verified",
+            "usd": null
+          }
+        ],
+        "resolved": true,
+        "total_usd": null,
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-25",
+        "categories": [
+          {
+            "known": false,
+            "name": "model",
+            "reason": "the price of openai:gpt-4.1 was never verified",
+            "usd": null
+          }
+        ],
+        "resolved": true,
+        "total_usd": null,
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-26",
+        "categories": [
+          {
+            "known": false,
+            "name": "model",
+            "reason": "the price of openai:gpt-4.1 was never verified",
+            "usd": null
+          }
+        ],
+        "resolved": false,
+        "total_usd": null,
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-27",
+        "categories": [
+          {
+            "known": false,
+            "name": "model",
+            "reason": "the price of openai:gpt-4.1 was never verified",
+            "usd": null
+          }
+        ],
+        "resolved": true,
+        "total_usd": null,
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-28",
+        "categories": [
+          {
+            "known": true,
+            "name": "model",
+            "reason": "",
+            "usd": "0.0006756"
+          }
+        ],
+        "resolved": false,
+        "total_usd": "0.0006756",
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-29",
+        "categories": [
+          {
+            "known": false,
+            "name": "model",
+            "reason": "the price of openai:gpt-4.1 was never verified",
+            "usd": null
+          }
+        ],
+        "resolved": true,
+        "total_usd": null,
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-30",
+        "categories": [
+          {
+            "known": false,
+            "name": "model",
+            "reason": "the price of openai:gpt-4.1 was never verified",
+            "usd": null
+          }
+        ],
+        "resolved": false,
+        "total_usd": null,
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-31",
+        "categories": [
+          {
+            "known": false,
+            "name": "model",
+            "reason": "the price of openai:gpt-4.1 was never verified",
+            "usd": null
+          }
+        ],
+        "resolved": false,
+        "total_usd": null,
+        "went_to_person": false
+      }
+    ],
+    "cases_to_person": [],
+    "cohort_digest": "5909f0fc62f8ef89d09b7a2da69b26d1c427182fb0c424a5ba934b72e855caaa",
+    "cohort_id": "cascade",
+    "cost_per_resolved_reason": "the money of the cohort is unknown: EC-01: model: the price of openai:gpt-4.1 was never verified; EC-02: model: the price of openai:gpt-4.1 was never verified; EC-03: model: the price of openai:gpt-4.1 was never verified; EC-04: model: the price of openai:gpt-4.1 was never verified; EC-05: model: the price of openai:gpt-4.1 was never verified; EC-06: model: the price of openai:gpt-4.1 was never verified; EC-07: model: the price of openai:gpt-4.1 was never verified; EC-08: model: the price of openai:gpt-4.1 was never verified; EC-09: model: the price of openai:gpt-4.1 was never verified; EC-10: model: the price of openai:gpt-4.1 was never verified; EC-11: model: the price of openai:gpt-4.1 was never verified; EC-12: model: the price of openai:gpt-4.1 was never verified; EC-13: model: the price of openai:gpt-4.1 was never verified; EC-14: model: the price of openai:gpt-4.1 was never verified; EC-15: model: the price of openai:gpt-4.1 was never verified; EC-16: model: the price of openai:gpt-4.1 was never verified; EC-17: model: the price of openai:gpt-4.1 was never verified; EC-18: model: the price of openai:gpt-4.1 was never verified; EC-19: model: the price of openai:gpt-4.1 was never verified; EC-20: model: the price of openai:gpt-4.1 was never verified; EC-21: model: the price of openai:gpt-4.1 was never verified; EC-22: model: the price of openai:gpt-4.1 was never verified; EC-23: model: the price of openai:gpt-4.1 was never verified; EC-24: model: the price of openai:gpt-4.1 was never verified; EC-25: model: the price of openai:gpt-4.1 was never verified; EC-26: model: the price of openai:gpt-4.1 was never verified; EC-27: model: the price of openai:gpt-4.1 was never verified; EC-29: model: the price of openai:gpt-4.1 was never verified; EC-30: model: the price of openai:gpt-4.1 was never verified; EC-31: model: the price of openai:gpt-4.1 was never verified",
+    "cost_per_resolved_usd": null,
+    "resolved_cases": 21,
+    "total_usd": null,
+    "unknown_reasons": [
+      "EC-01: model: the price of openai:gpt-4.1 was never verified",
+      "EC-02: model: the price of openai:gpt-4.1 was never verified",
+      "EC-03: model: the price of openai:gpt-4.1 was never verified",
+      "EC-04: model: the price of openai:gpt-4.1 was never verified",
+      "EC-05: model: the price of openai:gpt-4.1 was never verified",
+      "EC-06: model: the price of openai:gpt-4.1 was never verified",
+      "EC-07: model: the price of openai:gpt-4.1 was never verified",
+      "EC-08: model: the price of openai:gpt-4.1 was never verified",
+      "EC-09: model: the price of openai:gpt-4.1 was never verified",
+      "EC-10: model: the price of openai:gpt-4.1 was never verified",
+      "EC-11: model: the price of openai:gpt-4.1 was never verified",
+      "EC-12: model: the price of openai:gpt-4.1 was never verified",
+      "EC-13: model: the price of openai:gpt-4.1 was never verified",
+      "EC-14: model: the price of openai:gpt-4.1 was never verified",
+      "EC-15: model: the price of openai:gpt-4.1 was never verified",
+      "EC-16: model: the price of openai:gpt-4.1 was never verified",
+      "EC-17: model: the price of openai:gpt-4.1 was never verified",
+      "EC-18: model: the price of openai:gpt-4.1 was never verified",
+      "EC-19: model: the price of openai:gpt-4.1 was never verified",
+      "EC-20: model: the price of openai:gpt-4.1 was never verified",
+      "EC-21: model: the price of openai:gpt-4.1 was never verified",
+      "EC-22: model: the price of openai:gpt-4.1 was never verified",
+      "EC-23: model: the price of openai:gpt-4.1 was never verified",
+      "EC-24: model: the price of openai:gpt-4.1 was never verified",
+      "EC-25: model: the price of openai:gpt-4.1 was never verified",
+      "EC-26: model: the price of openai:gpt-4.1 was never verified",
+      "EC-27: model: the price of openai:gpt-4.1 was never verified",
+      "EC-29: model: the price of openai:gpt-4.1 was never verified",
+      "EC-30: model: the price of openai:gpt-4.1 was never verified",
+      "EC-31: model: the price of openai:gpt-4.1 was never verified"
+    ]
+  },
+  "cohort_digest": "5909f0fc62f8ef89d09b7a2da69b26d1c427182fb0c424a5ba934b72e855caaa",
+  "sha256": "81f4c9c5d3ae048ab761ca96bc63e0736b0162c53def86cc0258d26eb93ba04f"
+}

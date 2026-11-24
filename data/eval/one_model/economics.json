@@ -1,0 +1,475 @@
+{
+  "cohort": {
+    "assumptions": {
+      "prices": {
+        "openai:gpt-4.1": {
+          "input_per_1m_usd": null,
+          "last_verified": null,
+          "output_per_1m_usd": null,
+          "source": "unstated",
+          "verified": false
+        },
+        "openai:gpt-4.1-mini": {
+          "input_per_1m_usd": null,
+          "last_verified": null,
+          "output_per_1m_usd": null,
+          "source": "unstated",
+          "verified": false
+        }
+      },
+      "review": {
+        "cost_usd": "15.00",
+        "hourly_rate_usd": "60.00",
+        "minutes": "15",
+        "source": "manual",
+        "stated_on": null
+      }
+    },
+    "cases": [
+      {
+        "case_id": "EC-01",
+        "categories": [
+          {
+            "known": true,
+            "name": "model",
+            "reason": "",
+            "usd": "0.0085796"
+          }
+        ],
+        "resolved": true,
+        "total_usd": "0.0085796",
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-02",
+        "categories": [
+          {
+            "known": true,
+            "name": "model",
+            "reason": "",
+            "usd": "0.0037468"
+          }
+        ],
+        "resolved": true,
+        "total_usd": "0.0037468",
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-03",
+        "categories": [
+          {
+            "known": true,
+            "name": "model",
+            "reason": "",
+            "usd": "0.0042892"
+          }
+        ],
+        "resolved": true,
+        "total_usd": "0.0042892",
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-04",
+        "categories": [
+          {
+            "known": true,
+            "name": "model",
+            "reason": "",
+            "usd": "0.0026052"
+          }
+        ],
+        "resolved": false,
+        "total_usd": "0.0026052",
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-05",
+        "categories": [
+          {
+            "known": true,
+            "name": "model",
+            "reason": "",
+            "usd": "0.0029216"
+          }
+        ],
+        "resolved": false,
+        "total_usd": "0.0029216",
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-06",
+        "categories": [
+          {
+            "known": true,
+            "name": "model",
+            "reason": "",
+            "usd": "0.0058200"
+          }
+        ],
+        "resolved": false,
+        "total_usd": "0.0058200",
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-07",
+        "categories": [
+          {
+            "known": true,
+            "name": "model",
+            "reason": "",
+            "usd": "0.0051416"
+          }
+        ],
+        "resolved": false,
+        "total_usd": "0.0051416",
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-08",
+        "categories": [
+          {
+            "known": true,
+            "name": "model",
+            "reason": "",
+            "usd": "0.0030752"
+          }
+        ],
+        "resolved": true,
+        "total_usd": "0.0030752",
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-09",
+        "categories": [
+          {
+            "known": true,
+            "name": "model",
+            "reason": "",
+            "usd": "0.0028188"
+          }
+        ],
+        "resolved": true,
+        "total_usd": "0.0028188",
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-10",
+        "categories": [
+          {
+            "known": true,
+            "name": "model",
+            "reason": "",
+            "usd": "0.0041236"
+          }
+        ],
+        "resolved": false,
+        "total_usd": "0.0041236",
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-11",
+        "categories": [
+          {
+            "known": true,
+            "name": "model",
+            "reason": "",
+            "usd": "0.0072164"
+          }
+        ],
+        "resolved": true,
+        "total_usd": "0.0072164",
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-12",
+        "categories": [
+          {
+            "known": true,
+            "name": "model",
+            "reason": "",
+            "usd": "0.0024128"
+          }
+        ],
+        "resolved": false,
+        "total_usd": "0.0024128",
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-13",
+        "categories": [
+          {
+            "known": true,
+            "name": "model",
+            "reason": "",
+            "usd": "0.0032232"
+          }
+        ],
+        "resolved": true,
+        "total_usd": "0.0032232",
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-14",
+        "categories": [
+          {
+            "known": true,
+            "name": "model",
+            "reason": "",
+            "usd": "0.0032212"
+          }
+        ],
+        "resolved": true,
+        "total_usd": "0.0032212",
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-15",
+        "categories": [
+          {
+            "known": true,
+            "name": "model",
+            "reason": "",
+            "usd": "0.0025940"
+          }
+        ],
+        "resolved": true,
+        "total_usd": "0.0025940",
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-16",
+        "categories": [
+          {
+            "known": true,
+            "name": "model",
+            "reason": "",
+            "usd": "0.0025972"
+          }
+        ],
+        "resolved": true,
+        "total_usd": "0.0025972",
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-17",
+        "categories": [
+          {
+            "known": true,
+            "name": "model",
+            "reason": "",
+            "usd": "0.0025900"
+          }
+        ],
+        "resolved": true,
+        "total_usd": "0.0025900",
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-18",
+        "categories": [
+          {
+            "known": true,
+            "name": "model",
+            "reason": "",
+            "usd": "0.0025972"
+          }
+        ],
+        "resolved": true,
+        "total_usd": "0.0025972",
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-19",
+        "categories": [
+          {
+            "known": true,
+            "name": "model",
+            "reason": "",
+            "usd": "0.0026972"
+          }
+        ],
+        "resolved": true,
+        "total_usd": "0.0026972",
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-20",
+        "categories": [
+          {
+            "known": true,
+            "name": "model",
+            "reason": "",
+            "usd": "0.0027032"
+          }
+        ],
+        "resolved": true,
+        "total_usd": "0.0027032",
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-21",
+        "categories": [
+          {
+            "known": true,
+            "name": "model",
+            "reason": "",
+            "usd": "0.0027020"
+          }
+        ],
+        "resolved": true,
+        "total_usd": "0.0027020",
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-22",
+        "categories": [
+          {
+            "known": true,
+            "name": "model",
+            "reason": "",
+            "usd": "0.0026992"
+          }
+        ],
+        "resolved": true,
+        "total_usd": "0.0026992",
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-23",
+        "categories": [
+          {
+            "known": true,
+            "name": "model",
+            "reason": "",
+            "usd": "0.0033668"
+          }
+        ],
+        "resolved": true,
+        "total_usd": "0.0033668",
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-24",
+        "categories": [
+          {
+            "known": true,
+            "name": "model",
+            "reason": "",
+            "usd": "0.0026992"
+          }
+        ],
+        "resolved": true,
+        "total_usd": "0.0026992",
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-25",
+        "categories": [
+          {
+            "known": true,
+            "name": "model",
+            "reason": "",
+            "usd": "0.0047960"
+          }
+        ],
+        "resolved": true,
+        "total_usd": "0.0047960",
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-26",
+        "categories": [
+          {
+            "known": true,
+            "name": "model",
+            "reason": "",
+            "usd": "0.0027500"
+          }
+        ],
+        "resolved": true,
+        "total_usd": "0.0027500",
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-27",
+        "categories": [
+          {
+            "known": true,
+            "name": "model",
+            "reason": "",
+            "usd": "0.0027920"
+          }
+        ],
+        "resolved": true,
+        "total_usd": "0.0027920",
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-28",
+        "categories": [
+          {
+            "known": true,
+            "name": "model",
+            "reason": "",
+            "usd": "0.0006772"
+          }
+        ],
+        "resolved": false,
+        "total_usd": "0.0006772",
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-29",
+        "categories": [
+          {
+            "known": true,
+            "name": "model",
+            "reason": "",
+            "usd": "0.0029164"
+          }
+        ],
+        "resolved": true,
+        "total_usd": "0.0029164",
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-30",
+        "categories": [
+          {
+            "known": true,
+            "name": "model",
+            "reason": "",
+            "usd": "0.0028616"
+          }
+        ],
+        "resolved": false,
+        "total_usd": "0.0028616",
+        "went_to_person": false
+      },
+      {
+        "case_id": "EC-31",
+        "categories": [
+          {
+            "known": true,
+            "name": "model",
+            "reason": "",
+            "usd": "0.0084360"
+          }
+        ],
+        "resolved": false,
+        "total_usd": "0.0084360",
+        "went_to_person": false
+      }
+    ],
+    "cases_to_person": [],
+    "cohort_digest": "5909f0fc62f8ef89d09b7a2da69b26d1c427182fb0c424a5ba934b72e855caaa",
+    "cohort_id": "one_model",
+    "cost_per_resolved_reason": null,
+    "cost_per_resolved_usd": "0.005075927272727272727272727273",
+    "resolved_cases": 22,
+    "total_usd": "0.1116704",
+    "unknown_reasons": []
+  },
+  "cohort_digest": "5909f0fc62f8ef89d09b7a2da69b26d1c427182fb0c424a5ba934b72e855caaa",
+  "sha256": "ced8543b1de09d175d29f87360da943b188e196ee2d54403bced3f22263d0a30"
+}

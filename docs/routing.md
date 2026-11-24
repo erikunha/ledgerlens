@@ -151,6 +151,41 @@ path and not of the wiring.
 The rate of the fallback of the comparison of the routes is still not measured: the comparison builds no runner, so
 the zero it publishes says that the question was not asked.
 
+## The economics of a cohort
+
+The cost of a run is what the coordinator of the budget counts. The cost of a cohort is what the economics module
+computes, and it is a different number: the total of the cohort, the number of cases the code resolved and the money
+of a case that was actually settled.
+
+The module reads the results of the runs that already happened and it never calls a model
+([ADR-086](decisions/ADR-086-the-economics-module-computes-and-never-calls-a-model-and-an-unknown-stays-unknown.md)).
+The oracle of a resolved case comes from the code that resolved it, and a case that went to a person is not a
+resolved case: it pays the money of its review and it is not in the denominator.
+
+Every amount is a `Decimal`, and every result carries the assumptions that produced it: the minutes of a review, the
+rate of an hour and the price snapshot are assumptions of the reader and not facts of the repository.
+
+The economics of the cohort of the comparison above are published in `data/eval/`, and the script
+`scripts/export_economics.py` writes them from the published measurement:
+
+| The measure | The arm `one_model` | The arm `cascade` |
+| --- | --- | --- |
+| the total of the cohort | 0.1116704 dollars | unknown |
+| the cases the code resolved | 22 of 31 | 21 of 31 |
+| the cost of a resolved case | 0.005076 dollars | unknown |
+| the cases that went to a person | 0 | 0 |
+
+The money of the arm of the cascade is unknown because the price of `gpt-4.1` was never verified in this repository,
+and unknown is never zero. The cost of a resolved case of the arm of one model is the same number the comparison
+above publishes, because the denominator is the same: the cases the code resolved with every expected fact found.
+
+The comparison of the two arms publishes no difference, because the money of one of them is unknown, and the artifact
+names the reason instead of printing a difference of nothing. The cost of a review is an assumption, and the cohort
+of this measurement holds no case that went to a person, so no review money enters the published total.
+
+[ADR-086](decisions/ADR-086-the-economics-module-computes-and-never-calls-a-model-and-an-unknown-stays-unknown.md)
+is the decision that says what the economics module computes and what it refuses to publish.
+
 [ADR-084](decisions/ADR-084-the-fallback-of-a-run-happens-only-with-a-consent-of-the-deployment-and-with-the-budget-that-is-left.md)
 is the decision that says what a fallback has to carry to be allowed, and
 [ADR-085](decisions/ADR-085-the-retry-of-a-failed-model-is-wired-into-the-triage-of-the-run-and-into-the-model-of-the-graph.md)
