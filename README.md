@@ -8,6 +8,8 @@
 
 A LangChain agent that investigates payment complaints. It queries a transaction ledger, searches operations policies, compares against a reference exchange rate, does the arithmetic in code, and checks every claim in its own answer against the evidence it used. When the evidence is not enough, the answer says what is missing and the case goes to human review.
 
+A run has four model tasks, and the model of each one is chosen by the task: the plan of the investigation, the statement that reads the ledger, the rewrite of the search of the policies and the answer with the tools ([ADR-078](docs/decisions/ADR-078-the-model-of-each-slot-is-chosen-by-the-work-it-does.md)). The runtime is still one agent with a deterministic verifier. A studio of specialist agents is under construction behind a flag, and it ships only if a paired comparison measures a gain ([ADR-P007](docs/v3/adrs/ADR-P007-no-multiagent-by-default.md)).
+
 ![LedgerLens Pay full screen on a MacBook Pro 16-inch: the statement with TX-2048 open and marked "asked about" and "read by assistant", and in Help the question, the trace summary and the agent trace opened (investigate, triage, prompt, model call, parser, agent)](docs/img/streamlit_hero.png)
 
 ## Why an agent
@@ -35,6 +37,14 @@ A fixed chain either runs every step every time or leaves cases out. The agent p
 - Escalates to human review by rule: a dispute deadline close to expiring, suspicious text in a record, an exchange-rate source that is down, claims with no evidence.
 - Returns an `InvestigationResult`: the answer, each claim with its evidence, a verdict per claim (`supported`, `contradicted`, `not_enough_evidence`), what is missing, and whether human review is needed.
 - Never changes data. The agent only recommends.
+
+## The direction of the work
+
+The roadmap of this repository is the design package imported in [`docs/v3/`](docs/v3/), and the plan that runs it is [`docs/roadmap-v3.md`](docs/roadmap-v3.md) and the folders of [`specs/`](specs/). Three things are moving at once, and each one says what it has proved and what it has not.
+
+- **The model of each task is chosen by the task.** The four slots of a run are the plan of the investigation, the statement that reads the ledger, the rewrite of the search of the policies and the answer with the tools. A deployment declares the cascade of models it may run, from the lightest to the most capable, and every slot takes the cheapest model of the cascade that fits its task and that really calls the tools when the task needs it ([ADR-078](docs/decisions/ADR-078-the-model-of-each-slot-is-chosen-by-the-work-it-does.md)). The decision is written before the run starts and published with the recording, so a reader sees which model did which part.
+- **A studio of specialist agents is being built, and it is experimental.** The dispatcher of the specialists, the checkpoints of the graph and the budget that bounds them are specified in [`specs/013-r11-multiagent-orchestration-studio/`](specs/013-r11-multiagent-orchestration-studio/). It runs behind a flag, the main runtime stays one agent with a deterministic verifier, and it only becomes the default when a paired comparison over the same cases measures a gain ([ADR-P007](docs/v3/adrs/ADR-P007-no-multiagent-by-default.md)). No such measurement exists yet, and this README does not claim one.
+- **The routing of the inference and the cost of a case are being measured.** The router that ADR-078 starts, the budget that holds the run and the price of each model with the day it was verified are specified in [`specs/016-r15-inference-routing-and-finops/`](specs/016-r15-inference-routing-and-finops/).
 
 ## Architecture
 
@@ -148,7 +158,7 @@ LEDGERLENS_CORS_ORIGINS=http://localhost:3000 uv run ledgerlens-demo --port 8010
 
 `LEDGERLENS_CORS_ORIGINS` takes a comma separated list of the exact origins of the browser, and the backend sends the CORS headers only to the origins of that list. This site is served on `http://localhost:3000`, so that is the origin to declare. Without it the browser blocks the calls and the page reports `NETWORK_ERROR` instead of the catalogue of the models.
 
-The recorded half of the site serves the recorded artifacts of the repository and calls nobody, so it works with no key, no account and no network. A visitor opens three routes: `/replay`, the catalog of the published scenarios; `/replay/scenario/<id>`, one recorded investigation, for example `/replay/scenario/S01`; and `/sandbox`, the sandbox of the visitor, where a published case is forked into a private branch of the session. The sandbox is the one route that reaches the backend of the demo, and it needs no key. A fourth route, `/live`, is the live mode and it needs a key of your own. The tour of the architecture is at `/engineering`.
+The recorded half of the site serves the recorded artifacts of the repository and calls nobody, so it works with no key, no account and no network. It publishes two catalogs of the same nine scenarios. `/replay` is the catalog of the recordings made with the scripted model, and `/replay/scenario/<id>`, for example `/replay/scenario/S01`, is one of them: the recording is a formula, and anybody can run the capture again and get the same bytes. `/replay-real` is the catalog of the recordings made with a real model, and `/replay-real/scenario/<id>` is one of those: the recording is a run, and it is not reproducible byte for byte. A visitor opens `/sandbox` as well, the sandbox of the visitor, where a published case is forked into a private branch of the session. The sandbox is the one route that reaches the backend of the demo, and it needs no key. A fourth route, `/live`, is the live mode and it needs a key of your own. The tour of the architecture is at `/engineering`.
 
 [`apps/web/README.md`](apps/web/README.md) has the commands, the tests and the rules of the folder. [`docs/frontend.md`](docs/frontend.md) has the three rooms of the site and the contract of its URL.
 
@@ -233,7 +243,8 @@ app/          Streamlit demo portal (LedgerLens Pay) with the Help assistant
 scripts/      gate, build_index, fetch_public_data, record_fixtures
 data/         policies, fixtures, prebuilt FAISS index, sample, evaluation sets and reports
 tests/        pytest suites mirroring the package
-docs/         architecture, tools, contracts and decisions (ADRs)
+specs/        the specifications of the work, one folder per feature
+docs/         architecture, tools, contracts, the roadmap and decisions (ADRs)
 ```
 
 ## Limitations
@@ -244,6 +255,7 @@ docs/         architecture, tools, contracts and decisions (ADRs)
 - Policy retrieval from the offline index misses some hard questions; query rewriting recovers most of them ([ADR-006](docs/decisions/ADR-006-embeddings-and-index.md)).
 - The NLI model often marks true sentences as not enough evidence, so many real answers still go to human review. Numbers, rates and exchange-rate dates are checked by code.
 - The answer is produced by an AI agent, and a person reviews the cases that need review.
+- The model of each task of a run is chosen by the task, and the claim that this costs less for the same answer is a hypothesis until the paired comparison of the evaluation measures it. The studio of specialist agents is experimental and becomes the default only if that comparison measures a gain ([ADR-P007](docs/v3/adrs/ADR-P007-no-multiagent-by-default.md)).
 - The agent only recommends. It does not move money or change records.
 - The live mode never writes the key to a file, a log or a trace and drops it when the credential ends, but no runtime can promise that no copy of the text of the key survives in the memory of the interpreter or in a swap of the operating system.
 - A live run is paid for by the visitor: the provider of the visitor may charge the visitor for the calls of the run.
