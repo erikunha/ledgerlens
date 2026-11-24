@@ -62,7 +62,7 @@ weights that were never used.
 
 ## Links
 
-- [ADR-007, the verification with the NLI model](../ADR-007-nli-verification.md)
+- [ADR-007, the verification with the NLI model](ADR-007-nli-verification.md)
 - [ADR-067, the measurement of the held out set is published without its answer key](ADR-067-the-measurement-of-the-held-out-set-is-published-without-its-answer-key.md)
 - [the script of the pin](../../scripts/pin_calibration.py)
 - [the file of the thresholds](../../ledgerlens/verify/thresholds.json)

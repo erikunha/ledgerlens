@@ -34,6 +34,13 @@ uv run python scripts/check_policy_index.py
 echo "== docs index (offline)"
 uv run python scripts/build_docs_index.py --check
 
+# Every link of the documentation must point to a file of the repository, because a link that points to nothing
+# is a promise the repository does not keep, and the index of the documentation is built from the names of the
+# files and not from the links inside them. The check reads the disk, writes nothing, and refuses with a readable
+# reason and a non zero exit code, so the gate stops on the reason and not on a traceback.
+echo "== doc links (offline)"
+uv run python scripts/check_doc_links.py
+
 # The published artifacts must match the bundle they claim to show, or the site shows a recording that is not the
 # one that was made. The check writes nothing and fails the gate when it finds a difference.
 echo "== export check (offline)"

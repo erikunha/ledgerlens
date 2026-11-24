@@ -160,6 +160,6 @@ is a product that repeats its own fiction as a fact.
 ## Links
 
 - [the document of the truth of the policies](../policies-of-acme.md)
-- [the tasks of the correction](../specs/006-r4-the-truth-of-the-policies-and-the-money/tasks.md)
+- [the tasks of the correction](../../specs/006-r4-the-truth-of-the-policies-and-the-money/tasks.md)
 - [the blind reading of the held out set](ADR-059-the-held-out-set-is-read-by-two-blind-machines-and-adjudicated.md)
 - [the evaluation of the verifier](ADR-052-the-manifest-of-the-eval-datasets.md)

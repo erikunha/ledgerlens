@@ -265,6 +265,16 @@ def _with_provider(name: str) -> str:
     return f"openai:{name}"
 
 
+def model_name(name: str) -> str:
+    """The name of a model with the provider it belongs to, as the deployment names it.
+
+    Why it is public: the report of the comparison names the model of each slot, and the name of the model is
+    the name with the provider, because a model alone is not a model (two providers may know a model by the
+    same name).
+    """
+    return _with_provider(name.strip())
+
+
 def model_profile(settings: Settings | None = None) -> str:
     """The name of the model with the provider that serves it, as the provenance of a recording states it.
 

@@ -127,7 +127,7 @@ the page has no fault to inject.
 
 ## Links
 
-- [the design package, the evidence tracing and provenance](../../v3/docs/08-EVIDENCE-TRACING-AND-PROVENANCE.md)
+- [the design package, the evidence tracing and provenance](../v3/docs/08-EVIDENCE-TRACING-AND-PROVENANCE.md)
 - [the readiness audit](../readiness-2027.md)
 - [the scripts of the demo](../../ledgerlens/demo.py)
 - [the capture of the replay](../../scripts/capture_replay.py)
