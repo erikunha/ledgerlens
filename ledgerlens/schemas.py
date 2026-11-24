@@ -232,6 +232,10 @@ class InvestigationResult(Strict):
     requires_human_review: bool
     tool_trace: list[ToolCallRecord] = Field(default_factory=list)
     plan_deviations: list[str] = Field(default_factory=list)  # where the trace strayed from the triage plan
+    # What the turn spent against what it was allowed: the calls, the tokens and the two costs, or nothing
+    # when no coordinator saw the turn. The money is a text or nothing at all, because a zero would read as
+    # "the model was free" (ADR-054).
+    usage: dict[str, Any] | None = None
 
 
 # The trust tiers of a record of the versioned memory: what one case observed, what two sources corroborated and

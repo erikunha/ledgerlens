@@ -39,12 +39,12 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
-from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 
 from ledgerlens.config import PROJECT_ROOT, get_embeddings
 from ledgerlens.embeddings import embedding_id
+from ledgerlens.vectorstore import VectorStore, add_to_index, load_index, search_index
 
 __all__ = [
     "CaseIdTaken",
@@ -119,7 +119,11 @@ class CaseMemory:
         self._embeddings = embeddings
         self._seed_path = Path(seed_path)
         self._case_id = case_id
-        self._index: FAISS | None = None
+        self._index: VectorStore | None = None
+        # Whether the store of the last read was rebuilt from the saved cases: the recall says it, because a
+        # reader of the recall has to know when the index of the answer is a rebuild and not the index of the
+        # disk.
+        self._rebuilt = False
 
     # --- leitura ----------------------------------------------------------------------------
 
@@ -148,9 +152,10 @@ class CaseMemory:
         if store is None:
             return []
         records = {str(record["case_id"]): record for record in self.records()}
-        hits = store.similarity_search_with_score(query, k=max(int(store.index.ntotal), 1))
+        hits = search_index(store, query, k=max(store.count, 1))
         results: list[dict[str, Any]] = []
-        for document, score in hits:
+        for hit in hits:
+            document, score = hit.document, hit.distance
             record = records.get(str(document.metadata.get("case_id", "")))
             if record is None:
                 continue
@@ -234,7 +239,7 @@ class CaseMemory:
     def _active_embeddings(self) -> Embeddings:
         return self._embeddings if self._embeddings is not None else get_embeddings()
 
-    def _store(self) -> FAISS | None:
+    def _store(self) -> VectorStore | None:
         """The ready index, or a new index built from the saved cases."""
         if self._index is not None:
             return self._index
@@ -249,30 +254,28 @@ class CaseMemory:
                     f"'{embedding_id(embeddings)}'; rebuild it with the active embedding"
                 )
             if int(meta.get("cases", -1)) == len(records) and self._index_files_exist():
-                self._index = FAISS.load_local(
-                    str(self.index_dir), embeddings, allow_dangerous_deserialization=True, normalize_L2=True
-                )
+                self._index = load_index(self.index_dir, embeddings)
+                self._rebuilt = False
                 return self._index
         self._index = self._build(embeddings, records)
+        self._rebuilt = self._index is not None
         return self._index
 
-    def _build(self, embeddings: Embeddings, records: list[dict[str, Any]]) -> FAISS | None:
+    def _build(self, embeddings: Embeddings, records: list[dict[str, Any]]) -> VectorStore | None:
         if not records:
             return None
         documents = [Document(page_content=record["finding"], metadata=_metadata(record)) for record in records]
-        store = FAISS.from_documents(
-            documents, embeddings, ids=[str(record["case_id"]) for record in records], normalize_L2=True
-        )
+        store = add_to_index(documents, embeddings, ids=[str(record["case_id"]) for record in records])
         self._save(store)
         return store
 
-    def _save(self, store: FAISS) -> None:
+    def _save(self, store: VectorStore) -> None:
         self.index_dir.mkdir(parents=True, exist_ok=True)
         store.save_local(str(self.index_dir))
         meta = {
             "embedding": embedding_id(self._active_embeddings()),
-            "dimension": int(store.index.d),
-            "cases": int(store.index.ntotal),
+            "dimension": store.dimension,
+            "cases": store.count,
             "metric": METRIC,
             "built_on": datetime.now(UTC).date().isoformat(),
         }
@@ -290,6 +293,11 @@ class CaseMemory:
     def _index_files_exist(self) -> bool:
         return all((self.index_dir / name).is_file() for name in ("index.faiss", "index.pkl", META_FILE))
 
+    @property
+    def last_store_rebuilt(self) -> bool:
+        """Whether the store of the last read was rebuilt from the saved cases, and not loaded from the disk."""
+        return self._rebuilt
+
     def _append(self, record: dict[str, Any]) -> None:
         """Appends the case to the runtime file, materializing the seeded file first."""
         self.runtime_dir.mkdir(parents=True, exist_ok=True)
@@ -303,7 +311,7 @@ class CaseMemory:
             return  # with no index loaded, the next read rebuilds it from the file
         document = Document(page_content=record["finding"], metadata=_metadata(record))
         try:
-            self._index.add_documents([document], ids=[str(record["case_id"])])
+            add_to_index([document], self._active_embeddings(), [str(record["case_id"])], into=self._index)
             self._save(self._index)
         except Exception:  # pragma: no cover - the index is rebuilt on the next read
             self._index = None

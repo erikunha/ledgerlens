@@ -139,6 +139,7 @@ and one line that says what the file holds.
 - [ADR-095: The registry of the structural functions is the only source of a dependency](decisions/ADR-095-the-registry-of-the-structural-functions-is-the-only-source-of-a-dependency.md): Status: accepted. Date: 2026-11-24.
 - [ADR-096: The deterministic verdict is the gate of the training data](decisions/ADR-096-the-deterministic-verdict-is-the-gate-of-the-training-data.md): Status: accepted. Date: 2026-11-24.
 - [ADR-097: The proof of work carries the provenance and the digest discipline of the catalogs](decisions/ADR-097-the-proof-of-work-carries-the-provenance-and-the-digest-discipline-of-the-catalogs.md): Status: accepted. Date: 2026-11-24.
+- [ADR-098: The latency and the cost of a turn](decisions/ADR-098-the-latency-and-the-cost-of-a-turn.md): Status: accepted. Date: 2026-11-24.
 - [Decision records](decisions/README.md): Every decision that restricts the future of the work is a record in this folder, and this index lists them in the order of their number, with their status...
 
 ## docs/orchestration

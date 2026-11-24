@@ -103,6 +103,7 @@ from langchain_core.tools import BaseTool, StructuredTool
 from langgraph.checkpoint.memory import InMemorySaver
 from pydantic import Field
 
+from ledgerlens.agents.budget import TurnBudget
 from ledgerlens.agents.integrator import Integrator, _tool_failure_content, build_integrator, investigate
 from ledgerlens.api.live_run import LIVE_MODE, LiveRunError, LiveRunPlan, ModelCaller, RunCancelled
 from ledgerlens.byok import arguments_text
@@ -499,8 +500,11 @@ class DemoCase:
         self._contexts[plan.run_id] = options["run_context"]
         thread = plan.session_id or plan.run_id
         _remember_the_history(demo.agent, thread, plan.messages)
+        # The coordinator of the run is the budget of the agent: the caller counts every call of the provider,
+        # and the agent counts nothing of its own, so no call is counted twice (ADR-054).
+        turn = TurnBudget(caps=plan.budget, coordinator=caller.budget, owner="caller")
         try:
-            result = investigate(demo.agent, plan.question, thread_id=thread)
+            result = investigate(demo.agent, plan.question, thread_id=thread, budget=turn)
         except RunCancelled:
             raise
         except BaseException as failure:  # noqa: BLE001 - the failure is re-raised below, or the run was cancelled

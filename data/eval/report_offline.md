@@ -12,6 +12,22 @@
 | B: ReAct agent (legacy_react) | 0.77 | 0.63 | 0.77 | 0.77 | 1.00 | 0.77 | 0.77 | 0.77 | 16 |
 | C: full agent (integrator with verifier) | 1.00 | 0.86 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 10 |
 
+## Latency of the full agent
+
+The latency of the cases of eval_cases over the full agent, by the nearest_rank method, over a denominator of 31 cases that produced a measurement.
+
+| stage | p50 (ms) | p95 (ms) |
+|---|---|---|
+| end to end | 9.0 | 19.0 |
+| triage | 1.0 | 1.0 |
+| agent | 7.0 | 17.0 |
+| verify | 1.0 | 1.0 |
+
+## Cost of a turn
+
+The total of the run is not published: the price of the model of the run is unknown, and an unknown price is unknown and never zero: the total of the run is not published.
+No case of the run was cut by a cap.
+
 ## Quality goal
 
 - C beats A in correctness: yes.

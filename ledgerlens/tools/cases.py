@@ -87,7 +87,10 @@ def _recall_with(
         log.info("case memory unavailable: %s", exc)
         return ok([], {"results": [], "note": f"CASE_INDEX_UNAVAILABLE: {exc}"})
 
-    return ok([f"case:{hit['case_id']}" for hit in hits], {"results": hits})
+    data: dict[str, Any] = {"results": hits, "index_rebuilt": memory.last_store_rebuilt}
+    if memory.last_store_rebuilt:
+        data["note"] = "the case index was rebuilt from the saved cases"
+    return ok([f"case:{hit['case_id']}" for hit in hits], data)
 
 
 def _default_memory() -> CaseMemory:

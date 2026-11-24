@@ -1,9 +1,10 @@
-"""Retrieval: splits the policies into excerpts, builds the FAISS index and loads the ready index.
+"""Retrieval: splits the policies into excerpts, builds the index of the policies and loads the ready index.
 
 Why it exists: the agent answers rule questions ("how many days to ask for a refund?") by finding the right
-policy excerpts instead of memorizing them. This module owns the index of the POLICIES. It is not the only
-place of the project that talks to FAISS: the case memory keeps its own vectors
-(`ledgerlens/memory/long_term.py`), and ADR-056 decides the two vector sites and the protocol they share.
+policy excerpts instead of memorizing them. This module owns the index of the POLICIES, and it talks to the
+vector library only through the protocol of `ledgerlens/vectorstore.py`: the case memory keeps its own
+vectors (`ledgerlens/memory/long_term.py`) over the same protocol, and ADR-056 decides the two vector sites
+and the protocol they share.
 
 Two separate moments, on purpose
 -------------------------------------
@@ -13,8 +14,8 @@ Two separate moments, on purpose
     data/policies/*.md                               data/index/policies_<embedding>/
       -> load_policy_documents (excerpts + metadata)   -> checks index_meta.json against the active embedding
       -> embeddings.embed_documents                    -> and against the corpus of the policies
-      -> FAISS + index_meta.json on disk               -> FAISS.load_local
-                                                       -> similarity_search_with_score
+      -> the index + index_meta.json on disk           -> the protocol loads the index
+                                                       -> the protocol searches the index
 
 The tool never rebuilds the index: if it does not exist, it says how to build it.
 
@@ -24,7 +25,7 @@ is split with an overlap of 100, and the following parts get `-2`, `-3`. Every e
 section heading, so the excerpt explains itself when read outside the document.
 
 Distance: vectors are normalized (length 1) when they go into the index and into the query, so
-FAISS L2 distance orders the same as cosine similarity. Lower is closer.
+the L2 distance orders the same as cosine similarity. Lower is closer.
 
 Compatibility: each index carries `index_meta.json` with the embedding name, the dimension and the digest of
 the corpus it was built from. The loader refuses an index from another embedding, because neighbors from
@@ -42,13 +43,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from ledgerlens.config import PROJECT_ROOT
 from ledgerlens.embeddings import embedding_id
+from ledgerlens.vectorstore import VectorStore, add_to_index, load_index, search_index
 
 POLICIES_DIR = PROJECT_ROOT / "data" / "policies"
 CHUNK_SIZE = 800
@@ -197,7 +198,7 @@ def build_policy_index(
     *,
     policies_dir: Path | str = POLICIES_DIR,
 ) -> dict[str, Any]:
-    """Generates the vectors, writes the FAISS index and `index_meta.json` in `index_dir`. Returns the meta.
+    """Generates the vectors, writes the index and `index_meta.json` in `index_dir`. Returns the meta.
 
     Only `scripts/build_index.py` calls this. The FAISS ids are the `chunk_id`s, so rebuilding with the
     same vectors gives the same bytes (no random uuid in `index.pkl`).
@@ -206,16 +207,14 @@ def build_policy_index(
     so the loader can refuse an index that describes another corpus. The default is the folder of the
     repository, which is the corpus every caller of this function reads today.
     """
-    store = FAISS.from_documents(
-        documents, embeddings, ids=[d.metadata["chunk_id"] for d in documents], normalize_L2=True
-    )
+    store = add_to_index(documents, embeddings, ids=[d.metadata["chunk_id"] for d in documents])
     folder = Path(index_dir)
     folder.mkdir(parents=True, exist_ok=True)
     store.save_local(str(folder))
     meta = {
         "embedding": embedding_id(embeddings),
-        "dimension": int(store.index.d),
-        "chunks": int(store.index.ntotal),
+        "dimension": store.dimension,
+        "chunks": store.count,
         "metric": METRIC,
         "chunk_size": CHUNK_SIZE,
         "chunk_overlap": CHUNK_OVERLAP,
@@ -231,7 +230,7 @@ def load_policy_index(
     embeddings: Embeddings,
     *,
     policies_dir: Path | str = POLICIES_DIR,
-) -> FAISS:
+) -> VectorStore:
     """Loads the ready index. Raises `IndexUnavailable`, `IndexMismatch` or `IndexStale`; never builds anything.
 
     The corpus is compared before the store is opened: an index built from another corpus answers with the
@@ -266,21 +265,17 @@ def load_policy_index(
             f"the policy index was built with '{built_with}' but the active embedding is '{active}'; "
             f"rebuild it with the active embedding ({BUILD_HINT})"
         )
-    # The index is ours: it was written by `build_policy_index` and is only read from `data/index/`. FAISS keeps
-    # the excerpt text in a pickle, and LangChain requires this consent to open it. This is the only place in the
-    # project that gives it for the policy index (the case memory gives it for its own index); never point this
-    # function at an outside file.
-    store = FAISS.load_local(str(folder), embeddings, allow_dangerous_deserialization=True, normalize_L2=True)
-    if store.index.d != dimension:
-        raise IndexMismatch(f"the index has {store.index.d} dimensions but {META_FILE} says {dimension}")
+    store = load_index(folder, embeddings)
+    if store.dimension != dimension:
+        raise IndexMismatch(f"the index has {store.dimension} dimensions but {META_FILE} says {dimension}")
     return store
 
 
-def search_policy_index(store: FAISS, query: str, k: int = 4) -> list[dict[str, Any]]:
+def search_policy_index(store: VectorStore, query: str, k: int = 4) -> list[dict[str, Any]]:
     """The `k` closest excerpts to `query`, from closest to farthest, with the L2 distance."""
     results = []
-    for document, distance in store.similarity_search_with_score(query, k=k):
-        meta = document.metadata
+    for hit in search_index(store, query, k=k):
+        meta = hit.document.metadata
         results.append(
             {
                 "chunk_id": meta["chunk_id"],
@@ -289,8 +284,8 @@ def search_policy_index(store: FAISS, query: str, k: int = 4) -> list[dict[str, 
                 "topic": meta["topic"],
                 "version": meta["version"],
                 "language": meta["language"],
-                "text": document.page_content,
-                "score": float(distance),
+                "text": hit.document.page_content,
+                "score": hit.distance,
             }
         )
     return results

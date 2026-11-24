@@ -420,6 +420,8 @@ def investigate(
         trace.finish(root, error=f"{type(exc).__name__}: {exc}")
         raise
     usage = _usage_of_turn(turn)
+    if usage:
+        result.usage = usage
     close_trace(trace, root, result, usage=usage, caps=caps_of(turn.caps))
     return result
 

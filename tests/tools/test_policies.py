@@ -352,7 +352,7 @@ def test_the_committed_index_matches_the_documents_and_the_default_model() -> No
     assert meta["embedding"] == f"fastembed:{DEFAULT_FASTEMBED_MODEL}"
     assert meta["chunks"] == len(load_policy_documents(POLICIES)), "rebuild with scripts/build_index.py"
     store = load_policy_index(COMMITTED, FastEmbedEmbeddings())  # does not load the model: it only reads the files
-    assert store.index.ntotal == meta["chunks"] and store.index.d == meta["dimension"]
+    assert store.count == meta["chunks"] and store.dimension == meta["dimension"]
 
 
 @needs_committed_index
