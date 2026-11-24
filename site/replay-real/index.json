@@ -244,10 +244,10 @@
     "status": "Recorded"
   },
   {
-    "bundle_digest": "edec09eaa7c9bd85adee3fae7ee96861447bb33d2caed8844b5e2e1eac68d2c4",
+    "bundle_digest": "c7cdd0254dfaacd53cd8eb16f930adc89d59defbc07bf6111ce4a238f3ed899b",
     "bundle_path": "s11",
     "capture_kind": "real_model_recorded",
-    "code_sha": "b52e208b8a5f83c8442cc7a698c64521fe7d7669",
+    "code_sha": "c4f688f33f23f974c6aa5971b682836c5fe7a2b8",
     "concepts": [
       "read_only_ledger_query",
       "exchange_rate_reference",
@@ -262,7 +262,7 @@
       "seed": 42
     },
     "id": "S11",
-    "ledger_sha256": "8da0d9e0c55a650451ddb1d9910e5fabe20c5f3b8c37315f799c93f18ead10cc",
+    "ledger_sha256": "1422c98b5ad2755cc416daca070ff4c220fd5d2f81fad0e7efaa0e391e18e14b",
     "model_profiles": {
       "agent": "openai:gpt-4.1",
       "policy": "openai:gpt-4.1-mini",
@@ -270,7 +270,7 @@
       "triage": "openai:gpt-4.1-mini"
     },
     "name": "fx_upstream_down",
-    "provenance_sha256": "72ca9f3f0c65721f2fd79eb0e8431bed3ee8e7718d14dc15eb346364c1fffbdc",
+    "provenance_sha256": "f75e9cfba3629fcd1fb8b5b8e883d84e56768977337e117dbc1221dad8d7cd1a",
     "question": "Why was the BRL refund for TX-2048 lower than the EUR payment?",
     "status": "Recorded"
   }
