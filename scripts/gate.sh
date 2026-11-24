@@ -41,6 +41,12 @@ uv run python scripts/build_docs_index.py --check
 echo "== doc links (offline)"
 uv run python scripts/check_doc_links.py
 
+# The twin of the operations must stay honest: a run of the seed 42 is deterministic, and the two published
+# catalogs of the recordings of the agent are untouched by a run of the twin. The check writes nothing and
+# fails the gate with a readable reason, so the gate stops on the reason and not on a traceback.
+echo "== twin (offline)"
+uv run python scripts/check_twin.py
+
 # The published artifacts must match the bundle they claim to show, or the site shows a recording that is not the
 # one that was made. The check writes nothing and fails the gate when it finds a difference.
 echo "== export check (offline)"
