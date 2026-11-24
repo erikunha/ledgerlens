@@ -231,3 +231,37 @@ class InvestigationResult(Strict):
     requires_human_review: bool
     tool_trace: list[ToolCallRecord] = Field(default_factory=list)
     plan_deviations: list[str] = Field(default_factory=list)  # where the trace strayed from the triage plan
+
+
+# The trust tiers of a record of the versioned memory: what one case observed, what two sources corroborated and
+# what a promotion approved. The tier travels with the record, because the reader of a recall has to see how the
+# fact entered the memory.
+TrustTier = Literal["observed", "corroborated", "approved"]
+# The approval state of a record: a record that was never promoted and a record whose promotion was approved.
+ApprovalState = Literal["none", "approved"]
+# The states of a record: the quarantine is a state and not a deletion, so the attempt stays readable.
+RecordState = Literal["active", "quarantined"]
+
+
+class MemoryRecord(Strict):
+    """A record of the versioned memory: what it asserts, which version it is and how much it can be trusted.
+
+    Why the version is monotonic per record: a run of an old case points at the version it read, and a new
+    version never overwrites the old one, because the run of last week still points at it.
+
+    Why the record carries the owner: the memory of a session lives in the folder of that session, and a record
+    that names no owner is a record that could be read by another session.
+    """
+
+    record_id: str = Field(pattern=r"^REC-[0-9a-f]{12}$")
+    version: int = Field(ge=1)
+    assertion: str
+    scope: str
+    owner: str
+    trust_tier: TrustTier = "observed"
+    approval_state: ApprovalState = "none"
+    sources: list[str] = Field(default_factory=list)
+    valid_until: str | None = None
+    state: RecordState = "active"
+    quarantine_reason: str | None = None
+    created_at: str = ""

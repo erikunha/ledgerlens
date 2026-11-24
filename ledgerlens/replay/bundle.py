@@ -101,6 +101,7 @@ class BundleManifest:
     prompt_hash: str | None = None
     policy_version: str | None = None
     redaction_version: str | None = None
+    memory_snapshot_sha256: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """The manifest as a dictionary, with what the reader needs to check it."""
@@ -116,6 +117,10 @@ class BundleManifest:
         }
         if self.snapshot_sha256:
             data["snapshot_sha256"] = self.snapshot_sha256
+        if self.memory_snapshot_sha256:
+            # The digest of the snapshot of the memory of the run: a replay of an old case reads the memory of
+            # its generation, and the reader of the bundle checks it against the file of the snapshot.
+            data["memory_snapshot_sha256"] = self.memory_snapshot_sha256
         if self.model_profiles:
             # The model of each slot of the run, when the run used more than one. The map is the division of work
             # the recording shows, and it is what lets a reader see which model did which task (ADR-078).
@@ -147,6 +152,7 @@ class BundleManifest:
             prompt_hash=_optional_text(data.get("prompt_hash")),
             policy_version=_optional_text(data.get("policy_version")),
             redaction_version=_optional_text(data.get("redaction_version")),
+            memory_snapshot_sha256=_optional_text(data.get("memory_snapshot_sha256")),
         )
 
 
@@ -192,6 +198,7 @@ def write_bundle(
     prompt_hash: str | None = None,
     policy_version: str | None = None,
     redaction_version: str | None = None,
+    memory_snapshot: Any = None,
 ) -> BundleManifest:
     """Writes the bundle and returns the manifest.
 
@@ -252,12 +259,24 @@ def write_bundle(
     ):
         recorded_at = created_at
 
+    files = {EVENTS_FILE: _sha256(events_path)}
+    memory_snapshot_sha256: str | None = None
+    if memory_snapshot is not None:
+        # The snapshot of the memory of the run travels with the bundle, so a replay of an old case reads the
+        # memory of its generation and the reader of the bundle can check it (ADR-073).
+        from ledgerlens.memory.snapshot import SNAPSHOT_FILE, write_snapshot
+
+        snapshot_path = directory / SNAPSHOT_FILE
+        write_snapshot(snapshot_path, memory_snapshot)
+        files[SNAPSHOT_FILE] = _sha256(snapshot_path)
+        memory_snapshot_sha256 = memory_snapshot.digest
+
     manifest = BundleManifest(
         run_id=ordered[0].run_id,
         mode=mode,
         scenario=scenario,
         events=len(events),
-        files={EVENTS_FILE: _sha256(events_path)},
+        files=files,
         snapshot_sha256=snapshot_sha256,
         created_at=created_at,
         note=note,
@@ -269,6 +288,7 @@ def write_bundle(
         prompt_hash=prompt_hash,
         policy_version=policy_version,
         redaction_version=redaction_version,
+        memory_snapshot_sha256=memory_snapshot_sha256,
     )
     (directory / MANIFEST_FILE).write_text(
         json.dumps(manifest.to_dict(), ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8"

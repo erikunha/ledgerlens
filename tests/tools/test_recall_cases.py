@@ -81,10 +81,21 @@ def test_the_tool_returns_the_case_with_its_evidence_id(tool) -> None:
     assert all(EVIDENCE.match(evidence_id) for evidence_id in result["evidence_ids"])
 
     first = result["data"]["results"][0]
-    assert set(first) == {"case_id", "kind", "finding", "created_at", "confidence", "entities", "score"}
+    assert set(first) == {
+        "case_id",
+        "kind",
+        "finding",
+        "created_at",
+        "confidence",
+        "trust_tier",
+        "entities",
+        "score",
+    }
     assert first["case_id"] == "CASE-0001"
     assert first["kind"] == "semantic"
     assert first["confidence"] == "high"
+    # A record of the case memory of today carries no tier, and the tier of it is the tier of what one case observed.
+    assert first["trust_tier"] == "observed"
     assert first["entities"]["merchant_ids"] == ["M-17"]
     assert isinstance(first["score"], float)
 

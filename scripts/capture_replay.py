@@ -150,6 +150,12 @@ def capture(scenario_id: str, out: Path, root: Path = ROOT) -> Path:
         investigate(agent, question, thread_id=f"replay-{scenario_id.lower()}", on_event=stream.on_span)
         events = sink.read_from(f"replay-{scenario_id.lower()}", after_seq=0, limit=10000)
 
+        # The snapshot of the memory of the run travels with the bundle: a replay of an old case reads the
+        # memory of its generation, and the reader of the bundle checks the digest of it (ADR-073).
+        from ledgerlens.memory.snapshot import snapshot_of_memory
+
+        memory_snapshot = snapshot_of_memory(context.resolve_memory_dir())
+
         manifest_bundle = write_bundle(
             out,
             events,
@@ -164,6 +170,7 @@ def capture(scenario_id: str, out: Path, root: Path = ROOT) -> Path:
             model_profile=MODEL_PROFILE,
             code_sha=commit,
             policy_version=POLICY_VERSION,
+            memory_snapshot=memory_snapshot,
         )
         print(f"bundle in {out}")
         print(f"events: {manifest_bundle.events}")

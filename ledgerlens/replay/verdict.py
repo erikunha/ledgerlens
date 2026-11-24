@@ -34,6 +34,7 @@ from ledgerlens.verify.checks import verify_result
 
 __all__ = [
     "differences",
+    "memory_snapshot_differences",
     "published_labels",
     "published_result",
     "reverified_labels",
@@ -258,3 +259,32 @@ def differences(bundle_dir: Path) -> list[str]:
         if left != right:
             lines.append(f"{claim_id}: the bundle publishes {left} and the code gives {right}")
     return lines
+
+
+def memory_snapshot_differences(bundle_dir: Path) -> list[str]:
+    """The differences of the snapshot of the memory of the run, when the bundle names one.
+
+    Why the check exists: a replay of an old case reads the memory of its generation, and the digest of the
+    snapshot of the memory travels in the manifest of the bundle. A bundle whose snapshot does not match the
+    digest it names is a bundle that asks the reader to trust the name and not the bytes, and the verifier
+    refuses it. A bundle that names no snapshot of the memory is a bundle of the versions before the snapshot
+    existed, and it is checked as it always was.
+    """
+    import hashlib
+
+    manifest_path = bundle_dir / "manifest.json"
+    if not manifest_path.is_file():
+        return []
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    declared = manifest.get("memory_snapshot_sha256")
+    if not declared:
+        return []
+    snapshot_path = bundle_dir / "memory_snapshot.json"
+    if not snapshot_path.is_file():
+        return [f"the manifest names the snapshot of the memory {declared} and the file of it is not in the bundle"]
+    digest = hashlib.sha256(snapshot_path.read_bytes()).hexdigest()
+    if digest != declared:
+        return [
+            f"the snapshot of the memory of the bundle has the digest {digest} and the manifest names {declared}"
+        ]
+    return []

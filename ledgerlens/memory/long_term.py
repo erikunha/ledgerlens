@@ -167,6 +167,10 @@ class CaseMemory:
                     "finding": record.get("finding", ""),
                     "created_at": record.get("created_at", ""),
                     "confidence": record.get("confidence", "medium"),
+                    # The tier of trust of the record, when the record carries one: the reader of a recall has
+                    # to see how the fact entered the memory. A record of the case memory of today carries no
+                    # tier, and the tier of it is the tier of what one case observed.
+                    "trust_tier": record.get("trust_tier", "observed"),
                     "entities": record.get("entities") or {},
                     "score": float(score),
                 }
