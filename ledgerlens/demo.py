@@ -106,6 +106,7 @@ def planted(manifest: dict[str, Any]) -> list[Planted]:
         Planted("S07", q["S07"], None, ("TX-2030",)),
         Planted("S09", q["S09"], None, ("TX-2095", "R-0750")),
         Planted("S10", q["S10"], None, ("TX-2099",)),
+        Planted("S13", q["S13"], None, ("TX-2096", "R-0751")),
     ]
 
 
@@ -377,6 +378,57 @@ def _s11(truth: dict[str, Any]) -> tuple[list[AIMessage], list[str]]:
     return [*calls, text_message(answer)], [sql]
 
 
+def _s13(truth: dict[str, Any]) -> tuple[list[AIMessage], list[str]]:
+    """The refund whose markup is above the limit of the plan of the merchant: the case goes to a person.
+
+    Why the answer says the markup is above the limit and not only how much it is: the policy sends a markup above
+    the limit of the plan to a person, and the decision belongs to the code, which reads the applied rate, the
+    reference rate and the plan out of the ledger and of the run. The answer states what the calculation found and
+    names the rule that decides, and the answer does not decide anything the code did not decide.
+    """
+    sql = (
+        "SELECT f.kind, f.applied_rate, f.applied_at, m.id AS merchant_id, m.name AS merchant_name, m.fx_plan "
+        "FROM fx_applied f JOIN transactions t ON t.id = f.transaction_id JOIN merchants m ON m.id = t.merchant_id "
+        "WHERE f.transaction_id = 'TX-2096' ORDER BY f.applied_at"
+    )
+    calls = [
+        tool_call_message("query_ledger", {"question": "FX rates applied to TX-2096 and the plan of its merchant"}),
+        tool_call_message("search_policies", {"query": "refund in another currency", "transform": "none"}),
+        tool_call_message("get_reference_fx", {"from_currency": "EUR", "to_currency": "BRL", "date": "2026-10-23"}),
+        tool_call_message(
+            "calculate",
+            {
+                "operation": "fx_markup_check",
+                "plan": "markup",
+                "values": {
+                    "units": truth["units"],
+                    "charge_rate": truth["charge_rate"],
+                    "refund_reference_rate": truth["reference_rate_refund_date"],
+                    "refund_applied_rate": truth["applied_rate"],
+                },
+            },
+        ),
+    ]
+    units = Decimal(truth["units"])
+    reference = Decimal(truth["reference_rate_refund_date"])
+    markup_pct = Decimal(truth["implied_markup_pct"]).quantize(_CENT, ROUND_HALF_EVEN)
+    at_reference = (units * reference).quantize(_CENT, ROUND_HALF_EVEN)
+    limit = FX_MARKUP_LIMIT_PCT.quantize(_CENT, ROUND_HALF_EVEN)
+    answer = (
+        f"The payment came to BRL {truth['charge_brl']} and the refund to BRL {truth['refund_brl']}, "
+        f"a difference of BRL {truth['gap_brl']}. [sql:1, calc:1] "
+        f"Of that, BRL {truth['rate_move_brl']} is the movement of the rate and "
+        f"BRL {truth['markup_brl']} is the markup over the reference rate. [calc:1] "
+        f"The reference rate on {truth['refund_date']} was {truth['reference_rate_refund_date']}. "
+        f"[fx:2026-10-23:EUR-BRL] "
+        f"The markup was {markup_pct}% of that rate, above the {limit}% the plan allows. [calc:1] "
+        f"{truth['merchant_name']} ({truth['merchant']}) is on the markup plan. [sql:1] "
+        f"At the reference rate the refund would have been BRL {at_reference}, so the BRL {truth['markup_brl']} in "
+        "between is the markup of the plan, and a case like this goes to a person. [calc:1]"
+    )
+    return [*calls, text_message(answer)], [sql]
+
+
 _SCRIPTS = {
     "S01": _s01,
     "S02": _s02,
@@ -387,6 +439,7 @@ _SCRIPTS = {
     "S09": _s09,
     "S10": _s10,
     "S11": _s11,
+    "S13": _s13,
 }
 
 

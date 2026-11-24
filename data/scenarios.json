@@ -1,16 +1,16 @@
 {
   "counts": {
     "chargebacks": 10,
-    "customers": 1418,
-    "events": 8911,
+    "customers": 1419,
+    "events": 8918,
     "merchants": 24,
     "public_origin_transactions": 2100,
-    "refunds": 359,
+    "refunds": 360,
     "settlements": 286,
-    "transactions": 2114
+    "transactions": 2115
   },
   "days": 90,
-  "db_canonical_sha256": "5a05133c4e78fc0c8a563313e3e0ef86de09a38116be1a0c3e40d31be14ae38f",
+  "db_canonical_sha256": "a1a8c35f8564d516429deea2117eadae6fe3e731ad6e524b2f8d8b61b90fe7f4",
   "end": "2026-11-07",
   "merchant_truth": {
     "M-02": {
@@ -53,11 +53,14 @@
       "C-0733",
       "C-0777",
       "C-0888",
-      "C-0900"
+      "C-0900",
+      "C-0951"
     ],
     "fx": [
       "FX-9001",
-      "FX-9002"
+      "FX-9002",
+      "FX-9003",
+      "FX-9004"
     ],
     "merchants": [
       "M-03",
@@ -70,7 +73,8 @@
       "R-0720",
       "R-0731",
       "R-0740",
-      "R-0750"
+      "R-0750",
+      "R-0751"
     ],
     "settlements": [
       "ST-0044"
@@ -89,6 +93,7 @@
       "TX-2084",
       "TX-2090",
       "TX-2095",
+      "TX-2096",
       "TX-2099"
     ]
   },
@@ -524,6 +529,59 @@
         "fx_markup_pct": "2.5",
         "kind": "semantic",
         "seed_file": "data/seed/cases.jsonl"
+      }
+    },
+    {
+      "expected_action": "escalate_to_human",
+      "expected_intent": "refund_discrepancy",
+      "expected_tools": [
+        "query_ledger",
+        "search_policies",
+        "get_reference_fx",
+        "calculate"
+      ],
+      "id": "S13",
+      "ids": {
+        "customer_ids": [
+          "C-0951"
+        ],
+        "merchant_ids": [
+          "M-19"
+        ],
+        "refund_ids": [
+          "R-0751"
+        ],
+        "transaction_ids": [
+          "TX-2096"
+        ]
+      },
+      "name": "fx_markup_above_limit",
+      "questions": [
+        "Why was the BRL refund for TX-2096 lower than the EUR payment?",
+        "The customer says the refund for TX-2096 came in lower than what they paid."
+      ],
+      "requires_human_review": true,
+      "truth": {
+        "applied_rate": "5.3943",
+        "charge_brl": "453.06",
+        "charge_date": "2026-10-19",
+        "charge_rate": "5.6633",
+        "gap_brl": "21.52",
+        "implied_markup_pct": "4.5003",
+        "markup_brl": "20.34",
+        "markup_limit_pct": "3.0",
+        "merchant": "M-19",
+        "merchant_name": "Seine Gourmet SAS",
+        "payout_brl": "431.54",
+        "plan": "markup",
+        "rate_move_brl": "1.18",
+        "reference_rate_charge_date": "5.6633",
+        "reference_rate_refund_date": "5.6485",
+        "reference_source": "ECB through Frankfurter v1",
+        "refund_brl": "431.54",
+        "refund_date": "2026-10-23",
+        "units": "80.00",
+        "within_limit": "no"
       }
     }
   ],

@@ -1,5 +1,5 @@
 {
-  "cases": 30,
+  "cases": 31,
   "expectation_changes": [
     {
       "after": [
@@ -778,6 +778,34 @@
       "recommended_action": "escalate_to_human",
       "requires_human_review": true,
       "scenario": null,
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "variant": "A"
+    },
+    {
+      "answer": "I have no access to the ledger or the policies, so I cannot confirm this case. Check the payments system.",
+      "case": "EC-31",
+      "expected_tools": [
+        "query_ledger",
+        "search_policies",
+        "get_reference_fx",
+        "calculate"
+      ],
+      "kind": "scenario",
+      "missing_facts": "missing: 453.06, 431.54, 21.52, 20.34, 4.50, 3.00, 451.88",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": "S13",
       "scores": {
         "correctness": 0.0,
         "groundedness": 0.0,
@@ -1606,6 +1634,39 @@
       },
       "tools": [
         "search_policies"
+      ],
+      "variant": "B"
+    },
+    {
+      "answer": "charge_brl 453.06 [sql:1, calc:1]. refund_brl 431.54 [sql:1, calc:1]. gap_brl 21.52 [calc:1]. rate_move_brl 1.18 [calc:1]. markup_brl 20.34 [calc:1]. markup_pct 4.50 [calc:1]. markup_limit_pct 3.00 [calc:1]. within_limit no [calc:1]. refund_at_reference 451.88 [calc:1]. refund applied_rate 5.3943 [sql:1]. The implied markup is one minus the applied rate divided by the reference rate on the refund date, expressed as a percentage [policy:fx-reference-rates#comparing-with-applied].",
+      "case": "EC-31",
+      "expected_tools": [
+        "query_ledger",
+        "search_policies",
+        "get_reference_fx",
+        "calculate"
+      ],
+      "kind": "scenario",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": "S13",
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 0.5,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger",
+        "search_policies",
+        "get_reference_fx",
+        "calculate"
       ],
       "variant": "B"
     },
@@ -2442,6 +2503,39 @@
         "search_policies"
       ],
       "variant": "C"
+    },
+    {
+      "answer": "charge_brl 453.06 [sql:1, calc:1]. refund_brl 431.54 [sql:1, calc:1]. gap_brl 21.52 [calc:1]. rate_move_brl 1.18 [calc:1]. markup_brl 20.34 [calc:1]. markup_pct 4.50 [calc:1]. markup_limit_pct 3.00 [calc:1]. within_limit no [calc:1]. refund_at_reference 451.88 [calc:1]. refund applied_rate 5.3943 [sql:1]. The implied markup is one minus the applied rate divided by the reference rate on the refund date, expressed as a percentage [policy:fx-reference-rates#comparing-with-applied].",
+      "case": "EC-31",
+      "expected_tools": [
+        "query_ledger",
+        "search_policies",
+        "get_reference_fx",
+        "calculate"
+      ],
+      "kind": "scenario",
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": "S13",
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 0.5,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger",
+        "search_policies",
+        "get_reference_fx",
+        "calculate"
+      ],
+      "variant": "C"
     }
   ],
   "variants": {
@@ -2477,7 +2571,8 @@
           "EC-27",
           "EC-28",
           "EC-29",
-          "EC-30"
+          "EC-30",
+          "EC-31"
         ],
         "groundedness": [
           "EC-01",
@@ -2509,7 +2604,8 @@
           "EC-27",
           "EC-28",
           "EC-29",
-          "EC-30"
+          "EC-30",
+          "EC-31"
         ],
         "trajectory_equivalent_strict_match": [
           "EC-01",
@@ -2541,7 +2637,8 @@
           "EC-27",
           "EC-28",
           "EC-29",
-          "EC-30"
+          "EC-30",
+          "EC-31"
         ],
         "trajectory_equivalent_unordered_match": [
           "EC-01",
@@ -2573,7 +2670,8 @@
           "EC-27",
           "EC-28",
           "EC-29",
-          "EC-30"
+          "EC-30",
+          "EC-31"
         ],
         "trajectory_strict_match": [
           "EC-01",
@@ -2605,7 +2703,8 @@
           "EC-27",
           "EC-28",
           "EC-29",
-          "EC-30"
+          "EC-30",
+          "EC-31"
         ],
         "trajectory_subset_match": [],
         "trajectory_superset_match": [
@@ -2638,7 +2737,8 @@
           "EC-27",
           "EC-28",
           "EC-29",
-          "EC-30"
+          "EC-30",
+          "EC-31"
         ],
         "trajectory_unordered_match": [
           "EC-01",
@@ -2670,10 +2770,11 @@
           "EC-27",
           "EC-28",
           "EC-29",
-          "EC-30"
+          "EC-30",
+          "EC-31"
         ]
       },
-      "human_review": 30,
+      "human_review": 31,
       "label": "chain with no tools",
       "metrics": {
         "correctness": 0.0,
@@ -2710,7 +2811,8 @@
           "EC-17",
           "EC-18",
           "EC-26",
-          "EC-30"
+          "EC-30",
+          "EC-31"
         ],
         "trajectory_equivalent_strict_match": [
           "EC-12",
@@ -2759,17 +2861,17 @@
           "EC-18"
         ]
       },
-      "human_review": 15,
+      "human_review": 16,
       "label": "ReAct agent (legacy_react)",
       "metrics": {
-        "correctness": 0.7667,
-        "groundedness": 0.6389,
-        "trajectory_equivalent_strict_match": 0.7667,
-        "trajectory_equivalent_unordered_match": 0.7667,
-        "trajectory_strict_match": 0.7667,
+        "correctness": 0.7742,
+        "groundedness": 0.6344,
+        "trajectory_equivalent_strict_match": 0.7742,
+        "trajectory_equivalent_unordered_match": 0.7742,
+        "trajectory_strict_match": 0.7742,
         "trajectory_subset_match": 1.0,
-        "trajectory_superset_match": 0.7667,
-        "trajectory_unordered_match": 0.7667
+        "trajectory_superset_match": 0.7742,
+        "trajectory_unordered_match": 0.7742
       }
     },
     "C": {
@@ -2781,7 +2883,8 @@
           "EC-06",
           "EC-11",
           "EC-26",
-          "EC-30"
+          "EC-30",
+          "EC-31"
         ],
         "trajectory_equivalent_strict_match": [],
         "trajectory_equivalent_unordered_match": [],
@@ -2790,11 +2893,11 @@
         "trajectory_superset_match": [],
         "trajectory_unordered_match": []
       },
-      "human_review": 9,
+      "human_review": 10,
       "label": "full agent (integrator with verifier)",
       "metrics": {
         "correctness": 1.0,
-        "groundedness": 0.8722,
+        "groundedness": 0.8602,
         "trajectory_equivalent_strict_match": 1.0,
         "trajectory_equivalent_unordered_match": 1.0,
         "trajectory_strict_match": 1.0,

@@ -1,4 +1,4 @@
-"""Planted scenarios S01 to S12: every one exists with its stated facts, the manifest agrees with the
+"""Planted scenarios S01 to S13: every one exists with its stated facts, the manifest agrees with the
 database, and the TX-2048 numbers equal 566.79, 549.31, 17.48, 3.40 and 14.08."""
 
 from __future__ import annotations
@@ -44,7 +44,7 @@ def scenario(manifest, scenario_id):
 # -- manifest shape -------------------------------------------------------------------------------
 
 
-def test_the_manifest_lists_s01_to_s12_in_order_with_the_agreed_fields(manifest):
+def test_the_manifest_lists_s01_to_s13_in_order_with_the_agreed_fields(manifest):
     assert [item["id"] for item in manifest["scenarios"]] == list(SCENARIO_IDS)
     for item in manifest["scenarios"]:
         assert {"id", "name", "ids", "questions", "expected_intent", "expected_tools", "truth"} <= set(item)
@@ -305,6 +305,52 @@ def test_s10_unsupported_currency(db):
     assert one(db, "SELECT country, billing_currency FROM customers WHERE id = 'C-0777'") == ("AR", "ARS")
     assert one(db, "SELECT country, settlement_currency FROM merchants WHERE id = 'M-22'") == ("AR", "USD")
     assert one(db, "SELECT count(*) FROM fx_applied WHERE transaction_id = 'TX-2099'")[0] == 0
+
+
+def test_s13_the_markup_of_the_refund_is_above_the_limit_of_the_plan(db, manifest):
+    """The scenario S13: the rows of the ledger carry the markup the policy sends to a person.
+
+    Why the rows and not only the truth: the truth is what the manifest says, and the rows are what the agent
+    reads. The case decides on the rows, so the rows have to carry the violation.
+    """
+    s = scenario(manifest, "S13")
+    assert one(db, "SELECT name, country, fx_plan FROM merchants WHERE id = 'M-19'") == (
+        "Seine Gourmet SAS",
+        "FR",
+        "markup",
+    )
+    assert one(db, "SELECT country, billing_currency FROM customers WHERE id = 'C-0951'") == ("BR", "BRL")
+    tx = one(
+        db,
+        "SELECT merchant_id, customer_id, amount_minor, currency, created_at FROM transactions WHERE id = 'TX-2096'",
+    )
+    assert tx[:4] == ("M-19", "C-0951", 8000, "EUR")
+    assert tx[4].startswith("2026-10-19")
+    charge = one(
+        db,
+        "SELECT transaction_id, kind, from_currency, to_currency, applied_rate, applied_at FROM fx_applied "
+        "WHERE id = 'FX-9003'",
+    )
+    assert charge[:5] == ("TX-2096", "charge", "EUR", "BRL", "5.6633")
+    refund_fx = one(
+        db,
+        "SELECT transaction_id, refund_id, kind, from_currency, to_currency, applied_rate FROM fx_applied "
+        "WHERE id = 'FX-9004'",
+    )
+    assert refund_fx == ("TX-2096", "R-0751", "refund", "EUR", "BRL", "5.3943")
+    refund = one(
+        db,
+        "SELECT transaction_id, requested_amount_minor, requested_currency, payout_amount_minor, payout_currency, "
+        "fx_applied_id, status FROM refunds WHERE id = 'R-0751'",
+    )
+    assert refund[:7] == ("TX-2096", 8000, "EUR", 43154, "BRL", "FX-9004", "paid")
+    # The markup of the refund is over the limit of the plan: that is the violation the case exists for.
+    truth = s["truth"]
+    markup = (1 - Decimal(truth["applied_rate"]) / Decimal(truth["reference_rate_refund_date"])) * 100
+    assert markup.quantize(Decimal("0.0001"), rounding=ROUND_HALF_EVEN) == Decimal(truth["implied_markup_pct"])
+    assert markup > Decimal(truth["markup_limit_pct"]) + Decimal("0.01")
+    assert truth["within_limit"] == "no"
+    assert s["expected_action"] == "escalate_to_human" and s["requires_human_review"] is True
 
 
 def test_s11_and_s12_are_manifest_only_scenarios(manifest, db):

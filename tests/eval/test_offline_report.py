@@ -38,12 +38,12 @@ def report(tmp_path_factory: pytest.TempPathFactory) -> dict:
 
 
 def test_the_report_has_the_three_variants_and_all_metrics(report: dict) -> None:
-    assert report["mode"] == "offline" and report["cases"] == 30
+    assert report["mode"] == "offline" and report["cases"] == 31
     assert set(report["variants"]) == {"A", "B", "C"}
     for summary in report["variants"].values():
         assert list(summary["metrics"]) == METRICS
         assert all(0.0 <= value <= 1.0 for value in summary["metrics"].values())
-    assert len(report["per_case"]) == 90
+    assert len(report["per_case"]) == 93
 
 
 def test_the_report_says_offline_numbers_measure_the_plumbing(report: dict) -> None:
@@ -85,7 +85,7 @@ def test_the_report_does_not_depend_on_the_ledger_of_the_machine(
 
 def test_the_files_are_written_where_asked(report: dict, tmp_path: Path) -> None:
     eval_run.write_report(report, tmp_path)
-    assert json.loads((tmp_path / "report_offline.json").read_text("utf-8"))["cases"] == 30
+    assert json.loads((tmp_path / "report_offline.json").read_text("utf-8"))["cases"] == 31
     assert (tmp_path / "report_offline.md").read_text("utf-8").startswith("# ")
 
 

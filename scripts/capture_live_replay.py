@@ -100,9 +100,9 @@ RUN_MODE = "live_agent"
 # The folder of the catalog of the recordings of a real model, beside the folder of the sandbox catalog.
 DEFAULT_OUT = ROOT / "data" / "eval" / "replay-real"
 
-# The nine scenarios the catalog of the site publishes. The capture of this script records the same nine, so that
+# The ten scenarios the catalog of the site publishes. The capture of this script records the same ten, so that
 # the two catalogs can be compared scenario by scenario.
-PUBLISHED_SCENARIOS = ("S01", "S02", "S03", "S04", "S07", "S08", "S09", "S10", "S11")
+PUBLISHED_SCENARIOS = ("S01", "S02", "S03", "S04", "S07", "S08", "S09", "S10", "S11", "S13")
 
 # The scenarios whose run has the reference source in fault: the scenario S11 is the scenario S01 with the source
 # broken, and the recording is the proof that the agent then says less.
@@ -133,7 +133,7 @@ def capture(scenario_id: str, catalog: Path, root: Path = ROOT) -> Path:
     would be the scripted one, and the label of the recording would be a lie.
 
     The whole catalog is left out of the check of the tree, and not only the folder of the scenario: this script
-    records the nine scenarios of the catalog in one run, and the bundle that the first one wrote would otherwise
+    records the ten scenarios of the catalog in one run, and the bundle that the first one wrote would otherwise
     block the second one. The catalog is the output of the capture, so what is in it is never part of the claim
     about the commit.
     """
@@ -247,7 +247,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     """Runs the capture of every requested scenario and returns the exit code of the answer."""
     parser = argparse.ArgumentParser(description="Captures the replay bundle of a scenario with a real model.")
     parser.add_argument("--scenario", default=None, help="identifier of the scenario to record")
-    parser.add_argument("--all", action="store_true", help="records the nine scenarios the site publishes")
+    parser.add_argument("--all", action="store_true", help="records the ten scenarios the site publishes")
     parser.add_argument("--out", default=str(DEFAULT_OUT), help="folder of the catalog (data/eval/replay-real)")
     args = parser.parse_args(argv)
 

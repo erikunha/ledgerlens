@@ -1,9 +1,9 @@
-"""Evaluation set: 30 cases with an expected answer and an expected tool trajectory.
+"""Evaluation set: 31 cases with an expected answer and an expected tool trajectory.
 
 Why it exists: evaluating with a few good cases does not show whether the agent works, and evaluating with no
 answer key shows nothing. The cases have two origins:
 
-- **12 from scenarios**: one per planted scenario in `data/scenarios.json`. The question, the expected tools
+- **13 from scenarios**: one per planted scenario in `data/scenarios.json`. The question, the expected tools
   and the expected values come from the manifest; the choice of queries is made here.
 - **18 natural**: taken from the generated database (6 transaction statuses, 6 payouts, 6 policy questions).
   The expected values come from the tables by code, never from hand-written text.
@@ -26,7 +26,7 @@ import json
 import sqlite3
 import tempfile
 from datetime import UTC, datetime
-from decimal import Decimal
+from decimal import ROUND_HALF_EVEN, Decimal
 from pathlib import Path
 from typing import Any
 
@@ -45,6 +45,9 @@ POLICY_QUESTION_IDS = ("PQ-01", "PQ-02", "PQ-03", "PQ-04", "PQ-05", "PQ-06")
 # One transaction status per natural case, from least to most rare.
 STATUS_CASES = ("captured", "failed", "partially_refunded", "refunded", "disputed", "charged_back")
 SETTLEMENT_CASES = 6
+
+# How many scenarios were published when the numbers of the cases were fixed. See `_case_ids`.
+PUBLISHED_SCENARIO_COUNT = 12
 
 # Evidence id prefix by the tool that produces it.
 EVIDENCE_PREFIX = {
@@ -65,6 +68,14 @@ EVIDENCE_PREFIX = {
 RECORD_LOOKUP_TOOLS = ("get_ledger_record", "query_ledger")
 
 FX_SQL = "SELECT kind, applied_rate, applied_at FROM fx_applied WHERE transaction_id = 'TX-2048' ORDER BY applied_at"
+
+# The query of the scenario S13: the applied rates of the transaction and the plan of its merchant. The plan is a
+# fact of the ledger, and the model has to read it before it can state it to the calculator.
+S13_SQL = (
+    "SELECT f.kind, f.applied_rate, f.applied_at, m.id AS merchant_id, m.name AS merchant_name, m.fx_plan "
+    "FROM fx_applied f JOIN transactions t ON t.id = f.transaction_id JOIN merchants m ON m.id = t.merchant_id "
+    "WHERE f.transaction_id = 'TX-2096' ORDER BY f.applied_at"
+)
 
 
 class ExpectationChange(Strict):
@@ -158,10 +169,24 @@ def _money(minor: int) -> str:
 
 
 def _scenario_cases(scenarios: dict[str, Any], sentences: dict[str, str]) -> list[dict[str, Any]]:
-    """The 12 scenario cases. The expected values come from the manifest (`truth`)."""
+    """The 13 scenario cases. The expected values come from the manifest (`truth`)."""
     truth = {s["id"]: s["truth"] for s in scenarios["scenarios"]}
-    t1, t8, t11, t12 = truth["S01"], truth["S08"], truth["S11"], truth["S12"]
+    t1, t8, t11, t12, t13 = truth["S01"], truth["S08"], truth["S11"], truth["S12"], truth["S13"]
     fx_rate_args = {"from_currency": "EUR", "to_currency": "BRL", "date": "2026-10-20"}
+
+    # The three numbers the calculator states of the scenario S13, rounded the way the calculator rounds them.
+    #
+    # Why they are computed here and not written by hand: the answer key and the evidence of the run have to agree
+    # on the number, and the calculator rounds the markup, the limit and the amount at the reference rate to two
+    # places. A number written by hand in the answer key would drift from the evidence the first time the rounding
+    # of the calculator changes.
+    s13_markup_pct = str(Decimal(t13["implied_markup_pct"]).quantize(Decimal("0.01"), rounding=ROUND_HALF_EVEN))
+    s13_limit_pct = str(Decimal(t13["markup_limit_pct"]).quantize(Decimal("0.01"), rounding=ROUND_HALF_EVEN))
+    s13_at_reference = str(
+        (Decimal(t13["units"]) * Decimal(t13["reference_rate_refund_date"])).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_EVEN
+        )
+    )
 
     def policy(chunk: str) -> Line:
         return Line(text=sentences[chunk], evidence=[f"policy:{chunk}"])
@@ -388,6 +413,54 @@ def _scenario_cases(scenarios: dict[str, Any], sentences: dict[str, str]) -> lis
             "lines": [Line(text=t12["finding"], evidence=[f"case:{t12['case_id']}"])],
             "facts": [t12["case_id"]],
         },
+        "S13": {
+            "steps": [
+                Step(tool="query_ledger", args={"question": "FX rates applied to TX-2096"}, sql=S13_SQL),
+                Step(
+                    tool="search_policies",
+                    args={"query": "refund in another currency exchange rate", "k": 8, "transform": "none"},
+                ),
+                Step(
+                    tool="get_reference_fx",
+                    args={"from_currency": "EUR", "to_currency": "BRL", "date": "2026-10-23"},
+                ),
+                Step(
+                    tool="calculate",
+                    args={
+                        "operation": "fx_markup_check",
+                        "plan": "markup",
+                        "values": {
+                            "units": t13["units"],
+                            "charge_rate": t13["charge_rate"],
+                            "refund_reference_rate": t13["reference_rate_refund_date"],
+                            "refund_applied_rate": t13["applied_rate"],
+                        },
+                    },
+                ),
+            ],
+            "lines": [
+                Line(text=f"charge_brl {t13['charge_brl']}", evidence=["sql:1", "calc:1"]),
+                Line(text=f"refund_brl {t13['refund_brl']}", evidence=["sql:1", "calc:1"]),
+                Line(text=f"gap_brl {t13['gap_brl']}", evidence=["calc:1"]),
+                Line(text=f"rate_move_brl {t13['rate_move_brl']}", evidence=["calc:1"]),
+                Line(text=f"markup_brl {t13['markup_brl']}", evidence=["calc:1"]),
+                Line(text=f"markup_pct {s13_markup_pct}", evidence=["calc:1"]),
+                Line(text=f"markup_limit_pct {s13_limit_pct}", evidence=["calc:1"]),
+                Line(text=f"within_limit {t13['within_limit']}", evidence=["calc:1"]),
+                Line(text=f"refund_at_reference {s13_at_reference}", evidence=["calc:1"]),
+                Line(text=f"refund applied_rate {t13['applied_rate']}", evidence=["sql:1"]),
+                policy("fx-reference-rates#comparing-with-applied"),
+            ],
+            "facts": [
+                t13["charge_brl"],
+                t13["refund_brl"],
+                t13["gap_brl"],
+                t13["markup_brl"],
+                s13_markup_pct,
+                s13_limit_pct,
+                s13_at_reference,
+            ],
+        },
     }
     cases = []
     for scenario in scenarios["scenarios"]:
@@ -480,16 +553,45 @@ def _natural_cases(conn: sqlite3.Connection, sentences: dict[str, str]) -> list[
     return cases
 
 
+def _case_ids(scenarios: int, naturals: int) -> tuple[list[str], list[str]]:
+    """The numbers of the scenario cases and of the natural cases, each in the order of its own block.
+
+    Why a number is fixed once the case is published: the online reports and the recorded runs name the cases by
+    their number, so a case added later cannot move the numbers of the ones that came before it, or the published
+    report of a past run would name other cases than it did. The twelve scenarios of the first version take 1 to 12,
+    the natural cases take 13 to 30, and a scenario published later takes the next free number, after the last
+    natural case.
+    """
+    published = min(scenarios, PUBLISHED_SCENARIO_COUNT)
+    scenario_ids = [f"EC-{index:02d}" for index in range(1, published + 1)]
+    scenario_ids += [
+        f"EC-{PUBLISHED_SCENARIO_COUNT + naturals + index:02d}"
+        for index in range(1, scenarios - PUBLISHED_SCENARIO_COUNT + 1)
+    ]
+    natural_ids = [
+        f"EC-{index:02d}" for index in range(PUBLISHED_SCENARIO_COUNT + 1, PUBLISHED_SCENARIO_COUNT + naturals + 1)
+    ]
+    return scenario_ids, natural_ids
+
+
 def build_cases(db_path: Path | str, *, scenarios_path: Path = SCENARIOS_PATH) -> list[EvalCase]:
-    """The 30 cases, in order: 12 from scenarios, then 18 natural. Deterministic for the same database."""
+    """The 31 cases, in the order of their numbers: 13 from the scenarios and 18 natural.
+
+    Deterministic for the same database.
+    """
     scenarios = json.loads(scenarios_path.read_text(encoding="utf-8"))
     sentences = _policy_sentences()
     conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
     try:
-        raw = _scenario_cases(scenarios, sentences) + _natural_cases(conn, sentences)
+        scenario_items = _scenario_cases(scenarios, sentences)
+        natural_items = _natural_cases(conn, sentences)
     finally:
         conn.close()
-    return [EvalCase(id=f"EC-{index:02d}", **item) for index, item in enumerate(raw, start=1)]
+    scenario_ids, natural_ids = _case_ids(len(scenario_items), len(natural_items))
+    cases = [EvalCase(id=ident, **item) for ident, item in zip(scenario_ids, scenario_items, strict=True)]
+    cases += [EvalCase(id=ident, **item) for ident, item in zip(natural_ids, natural_items, strict=True)]
+    # The file is in the order of the numbers, so a reader finds the case of a number where the number says.
+    return sorted(cases, key=lambda case: case.id)
 
 
 def write_cases(cases: list[EvalCase], path: Path = CASES_PATH) -> None:
