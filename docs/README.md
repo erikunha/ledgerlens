@@ -112,6 +112,8 @@ and one line that says what the file holds.
 - [ADR-078: The model of each slot is chosen by the work it does](decisions/ADR-078-the-model-of-each-slot-is-chosen-by-the-work-it-does.md): Status: accepted. Date: 2026-11-24.
 - [ADR-079: The records of a result are published whole, because the claims are checked against them](decisions/ADR-079-the-records-of-a-result-are-published-whole-because-the-claims-are-checked-against-them.md): Status: accepted. Date: 2026-11-24.
 - [ADR-080: The rule of the dashes governs the writing of the repository, and the recording of a real model is published as it is](decisions/ADR-080-the-rule-of-the-dashes-governs-the-writing-of-the-repository-and-the-recording-of-a-real-model-is-published-as-it-is.md): Status: accepted. Date: 2026-11-24.
+- [ADR-081: The stream the simulator invents holds no violation of the policy, and a scenario plants one explicitly](decisions/ADR-081-the-stream-the-simulator-invents-holds-no-violation-of-the-policy-and-a-scenario-plants-one-explicitly.md): Status: accepted. Date: 2026-11-24.
+- [ADR-082: The number of an evaluation case is fixed once the case is published](decisions/ADR-082-the-number-of-an-evaluation-case-is-fixed-once-the-case-is-published.md): Status: accepted. Date: 2026-11-24.
 - [Decision records](decisions/README.md): Every decision that restricts the future of the work is a record in this folder, and this index lists them in the order of their number, with their status...
 
 ## docs/pt-BR
