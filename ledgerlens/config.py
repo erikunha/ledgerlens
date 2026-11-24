@@ -23,6 +23,10 @@ hold, `LEDGERLENS_SANDBOX_RATE_LIMIT_REQUESTS` is the number of requests one ses
 The limits of one branch: `LEDGERLENS_SANDBOX_MAX_COMMITTED_MUTATIONS` is the number of the mutations a branch may
 commit and `LEDGERLENS_SANDBOX_MAX_EVENTS` is the number of the events its log may hold. Their defaults are the limits
 of the branch layer, so a deployment that declares nothing keeps the limits of today.
+
+The studio of the orchestration: `LEDGERLENS_ORCHESTRATION_STUDIO` opens the experimental variant of the runtime that
+dispatches parts of a case to specialists. It is off by default and it stays off until a paired comparison measures
+a gain, under ADR-P007.
 """
 
 from __future__ import annotations
@@ -69,6 +73,10 @@ class Settings(BaseModel):
     # the run did not ask for, and nobody asked for it until somebody says so (ADR-084).
     fallback_attempts: int = 0
     fallback_direction: Literal["up", "down"] = "up"
+    # The flag of the studio of the orchestration: off in the shipped configuration, because ADR-P007 keeps the
+    # runtime a single agent with a deterministic verifier until a paired comparison measures a gain. It opens only
+    # for an experiment that is registered before it runs.
+    orchestration_studio: bool = False
     embeddings: Literal["fastembed", "openai"] = "fastembed"
     openai_api_key: SecretStr | None = None
     langsmith_api_key: SecretStr | None = None
@@ -205,6 +213,7 @@ def get_settings(env: Mapping[str, str] | None = None) -> Settings:
             )
     settings = Settings(
         offline=_flag(values.get("LEDGERLENS_OFFLINE")),
+        orchestration_studio=_flag(values.get("LEDGERLENS_ORCHESTRATION_STUDIO")),
         model=_text(values.get("LEDGERLENS_MODEL")),
         model_cascade=_cascade(values.get("LEDGERLENS_MODEL_CASCADE")),
         embeddings=embeddings,  # type: ignore[arg-type]

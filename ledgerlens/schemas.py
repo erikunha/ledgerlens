@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 Intent = Literal[
     "status_lookup",
@@ -142,6 +142,78 @@ class ToolCallRecord(Strict):
 # An escalation reason enters `missing_information` with this prefix (`verify/escalation.py`); whoever shows the
 # result strips it to state only the reason. Both sides read this constant, so the text cannot drift apart.
 ESCALATION_PREFIX = "escalation: "
+
+# The status of a step of the studio of the orchestration: it answered, it was refused before it ran, it failed or
+# it never ran because the run stopped before it.
+StepStatus = Literal["ok", "refused", "failed", "skipped"]
+
+
+class OrchestrationStep(Strict):
+    """One step of the plan of the studio: what it does, which specialist does it and what it waits for.
+
+    Why the plan is typed and not a sentence: the dispatcher reads the steps of the plan and decides what may run,
+    and a plan that is a sentence is a plan that only a model can read.
+
+    Why the account is a field of the step and not of the run: the scope of a run is the scope of the parent, and a
+    step that names an account has to be checked against it (FR-004).
+    """
+
+    id: str = Field(pattern=r"^[A-Za-z0-9_-]+$")
+    goal: str
+    # The specialist of the registry that does the step. None means the step of the run itself.
+    specialist: str | None = None
+    tool: ToolName | None = None
+    depends_on: list[str] = Field(default_factory=list)
+    # The account the step reads, when it reads one.
+    account: str | None = None
+    arguments: dict = Field(default_factory=dict)
+
+
+class OrchestrationPlan(Strict):
+    """The plan of a case of the studio: the steps and the snapshot they were computed against.
+
+    Why the plan carries the snapshot: two steps that read two snapshots are two steps of two questions, and the join
+    of their results is a join of nothing (FR-006).
+    """
+
+    steps: list[OrchestrationStep] = Field(min_length=1)
+    snapshot: str = ""
+
+
+class StepResult(Strict):
+    """The result of one step of the studio: its status, its evidence, what it spent and what stopped it.
+
+    Why the money is a `Decimal` and never a float: the spend of a step is money, and a float is already a rounded
+    number (FR-010).
+
+    Why an unknown spend is None and never zero: a price that was never verified leaves the money unmeasured, and a
+    zero would say that the step was free (FR-011).
+    """
+
+    step_id: str
+    status: StepStatus
+    evidence_refs: list[str] = Field(default_factory=list)
+    spend_usd: Decimal | None = None
+    error: str | None = None
+    # The row of the ledger the amount is about, and the amount itself. Two results that disagree over the amount of
+    # the same row are settled by the calculator and never by a vote (FR-006).
+    row: str | None = None
+    amount: Decimal | None = None
+    # The specialist that answered the step, and the version of its spec.
+    specialist: str | None = None
+    specialist_version: str | None = None
+
+    @field_validator("spend_usd", "amount", mode="before")
+    @classmethod
+    def _no_float_money(cls, value: Any) -> Any:
+        """The money of a step is a `Decimal`, and a float is refused and not converted.
+
+        Why it is refused and not converted: a float is already a rounded number, and converting it hides the
+        rounding inside the money (FR-010).
+        """
+        if isinstance(value, float):
+            raise ValueError("the money of a step is a Decimal, not a float")
+        return value
 
 
 class InvestigationResult(Strict):

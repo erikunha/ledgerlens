@@ -200,6 +200,15 @@ class BudgetCoordinator:
         """How long the run took, as the injected clock sees it."""
         return self._clock() - self._start
 
+    @property
+    def caps(self) -> RunBudget:
+        """The caps the coordinator enforces, for the trace that names the budget a step had.
+
+        Why it is a property and not a second copy of the value: a caller that published its own copy of the caps
+        could publish the caps of another run, and the trace would name a budget that is not the one that was spent.
+        """
+        return self._budget
+
     def restart(self) -> None:
         """Anchors the elapsed time again, for a run that starts now."""
         self._start = self._clock()

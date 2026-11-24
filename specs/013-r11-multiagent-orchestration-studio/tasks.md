@@ -71,42 +71,86 @@ reference.
 **Purpose**: the dispatcher validates, schedules and spends. It never widens the scope and it never decides an
 amount.
 
-- [ ] T183 [P] Create the package `ledgerlens/orchestration/` with the module `__init__.py` and the module
+- [x] T183 [P] Create the package `ledgerlens/orchestration/` with the module `__init__.py` and the module
   `ledgerlens/orchestration/plan.py`, whose docstring says what a plan is and why the plan of a case is
   validated before any step runs, and write the test in `tests/orchestration/test_plan_validation.py` that
   expects a plan with a cycle to be refused at the planning and expects that no step ran
-- [ ] T184 [P] Add the typed plan and the typed result of a step to `ledgerlens/schemas.py`, with the docstring
+  - **DELIVERED**: the package `ledgerlens/orchestration/` with the module `plan.py`, whose docstring says what a plan
+    is and why the plan of a case is validated before any step runs. The test is in
+    `tests/orchestration/test_plan_validation.py`: a plan with a cycle is refused at the planning, a step
+    that waits for itself is refused, a step that waits for a step that does not exist is refused, two
+    steps with the same id are refused, and the order of the steps is the order of the dependencies and
+    not the order they were written down.
+- [x] T184 [P] Add the typed plan and the typed result of a step to `ledgerlens/schemas.py`, with the docstring
   of each class saying what it carries and why, and write the test in `tests/orchestration/test_step_result.py`
   that expects the status, the evidence references, the spend and the error of a step to be present and to be
   typed
-- [ ] T185 [P] Write the module `ledgerlens/orchestration/specialists.py` with the versioned spec of a
+  - **DELIVERED**: the typed plan and the typed result of a step are in `ledgerlens/schemas.py`, with the docstring of
+    each class saying what it carries and why. The test is in `tests/orchestration/test_step_result.py`:
+    the status, the evidence references, the spend and the error are present and typed, the money of a
+    step is a `Decimal` and a float is refused, an unknown spend is None and never a zero, and the plan
+    forbids the fields that nobody wrote.
+- [x] T185 [P] Write the module `ledgerlens/orchestration/specialists.py` with the versioned spec of a
   specialist, the docstring saying what a specialist may read, which tools it may call, what it may spend and
   what it must return, and the registry of the specialists, and write the test in
   `tests/orchestration/test_specialist_spec.py` that expects a specialist of the registry to refuse a tool
   that is not in its allowlist
-- [ ] T186 Write the module `ledgerlens/orchestration/dispatcher.py` with the docstring saying that the
+  - **DELIVERED**: the module `ledgerlens/orchestration/specialists.py` holds the versioned spec of a specialist and the
+    registry of the specialists. The docstring says what a specialist may read, which tools it may call,
+    what it may spend and what it must return. The test is in
+    `tests/orchestration/test_specialist_spec.py`: a specialist refuses a tool that is not in its
+    allowlist, every spec of the registry carries a version and a return, the specialists call the six
+    tools of the shipped path and no other, and a specialist that the registry does not hold is refused.
+- [x] T186 Write the module `ledgerlens/orchestration/dispatcher.py` with the docstring saying that the
   dispatcher owns the policy and the registry of the tools and that the permissions of a specialist are the
   intersection of the permissions of its parent with the permissions of its own spec, and write the test in
   `tests/orchestration/test_dispatch_scope.py` that expects the refusal of a tool outside the allowlist and the
   refusal of an account outside the scope of the run, and that expects no tool call
-- [ ] T187 Write the module `ledgerlens/orchestration/scheduler.py` with the docstring saying that the scheduler
+  - **DELIVERED**: the module `ledgerlens/orchestration/dispatcher.py` owns the policy of the run and the registry of
+    the tools, and the permissions of a specialist are the intersection of the permissions of its parent
+    with the permissions of its own spec. The test is in `tests/orchestration/test_dispatch_scope.py`: a
+    tool outside the allowlist is refused and no tool is called, an account outside the scope of the run
+    is refused and nothing is read, and the permissions of a specialist never widen the scope of the run.
+- [x] T187 Write the module `ledgerlens/orchestration/scheduler.py` with the docstring saying that the scheduler
   runs the independent steps of a plan under a concurrency cap and that every step spends from the budget of
   the run, and write the test in `tests/orchestration/test_dispatch_budget.py` that expects the run to stop at
   the cap of `ledgerlens/byok/budget.py`, with the name of the cap and the partial result, and that expects no
   call outside the budget
-- [ ] T188 [P] Write the module `ledgerlens/orchestration/join.py` with the docstring saying that two results are
+  - **DELIVERED**: the module `ledgerlens/orchestration/scheduler.py` runs the independent steps of a plan under a
+    concurrency cap and every step spends from the budget of the run, through the coordinator that
+    enforces the caps. The test is in `tests/orchestration/test_dispatch_budget.py`: the run stops at the
+    cap of `ledgerlens/byok/budget.py` with the name of the cap and the partial result, no call happens
+    outside the budget, a plan with a cycle never runs a step and the money the run spent is published
+    with the result.
+- [x] T188 [P] Write the module `ledgerlens/orchestration/join.py` with the docstring saying that two results are
   joined only on a matching snapshot and on evidence identifiers that resolve to a record of the run, and write
   the test in `tests/orchestration/test_join_and_conflict.py` that expects the refusal of an invented evidence
   identifier and expects the value of the deterministic calculator, or a named abstention, over two results that
   disagree over an amount
-- [ ] T189 [P] Read the flag of the studio in `ledgerlens/config.py` as `LEDGERLENS_ORCHESTRATION_STUDIO`, off by
+  - **DELIVERED**: the module `ledgerlens/orchestration/join.py` joins two results only on a matching snapshot and on
+    evidence identifiers that resolve to a record of the run. The test is in
+    `tests/orchestration/test_join_and_conflict.py`: an invented evidence identifier is refused, two
+    results that disagree over an amount end with the value of the deterministic calculator or with a
+    named abstention, and a result of another snapshot is refused.
+- [x] T189 [P] Read the flag of the studio in `ledgerlens/config.py` as `LEDGERLENS_ORCHESTRATION_STUDIO`, off by
   default, and write the test in `tests/orchestration/test_studio_flag.py` that expects the flag off in the
   shipped configuration and that expects the refusal of a run that asks for the studio without a registered
   experiment in `data/runtime/orchestration/comparison.json`
-- [ ] T190 [P] Write the test in `tests/orchestration/test_trace_of_dispatch.py` that reads the events of
+  - **DELIVERED**: the flag of the studio is read in `ledgerlens/config.py` as `LEDGERLENS_ORCHESTRATION_STUDIO`, off by
+    default, and the module `ledgerlens/orchestration/studio.py` opens the studio only for an experiment
+    that is registered before it runs. The test is in `tests/orchestration/test_studio_flag.py`: the flag
+    is off in the shipped configuration, a run that asks for the studio with the flag off is refused, and
+    a run that asks for it without a registered experiment in
+    `data/runtime/orchestration/comparison.json` is refused and the refusal names what is missing.
+- [x] T190 [P] Write the test in `tests/orchestration/test_trace_of_dispatch.py` that reads the events of
   `ledgerlens/observability/trace_event.py` produced by a run of the studio and expects one event per step
   with the budget it had and the reason it stopped, and that expects the trace to name the specialist that
   answered each part of the question
+  - **DELIVERED**: the test is in `tests/orchestration/test_trace_of_dispatch.py`: it reads the events of
+    `ledgerlens/observability/trace_event.py` produced by a run of the studio, expects one event per step
+    with the budget it had and the reason it stopped, and expects the trace to name the specialist that
+    answered each part of the question. The trace uses the event types of the public contract and does
+    not extend it.
 
 ## Part C, the journal and the resume
 
