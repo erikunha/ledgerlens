@@ -20,6 +20,13 @@ uv run pytest -q
 echo "== eval datasets (offline)"
 uv run python scripts/check_eval_datasets.py
 
+# The registry of the feedback must match the records on the disk: a record that moves without the registry
+# moving makes the loop describe a file that is not on the disk anymore, and a record of a visitor must never
+# enter the shared set. The check reads the disk, writes nothing, and refuses with a readable reason and a
+# non zero exit code, so the gate stops on the reason and not on a traceback.
+echo "== feedback registry (offline)"
+uv run python scripts/check_feedback_registry.py
+
 # The committed policy index must describe the policies of the repository, because an index built from another
 # corpus answers with text that is not on the disk, and every other check of the gate stays green while it
 # happens. The check reads the disk, writes nothing, needs no model and no network, and refuses with a

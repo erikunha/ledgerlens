@@ -1,0 +1,19 @@
+{
+  "bundle": "data/eval/replay/s02",
+  "bundle_digest": "9262ef065a9f00a479a298180e24574d0f5957425744fb1c717257e94bae45ed",
+  "catalog": "replay",
+  "claim_id": "CL3",
+  "corrected_value": "the deadline of the dispute is not stated without the evidence of the chargeback",
+  "corrected_value_kind": "text",
+  "evidence_refs": [
+    "TX:1001"
+  ],
+  "failure": "the answer of the run of s02 states the deadline of the dispute, and the published evidence of the bundle does not carry it",
+  "model_suggested": false,
+  "nli_label": null,
+  "permission": "evaluation",
+  "record_id": "FR-0001",
+  "reviewer": "erik",
+  "reviewer_role": "maintainer",
+  "source": "catalog"
+}
