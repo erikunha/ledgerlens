@@ -1,0 +1,32 @@
+{
+  "accounts": [
+    {
+      "id": "C-0888",
+      "kind": "customer",
+      "name": "Daniel Brooks",
+      "reads": [],
+      "rows": [
+        {
+          "amount": "60.00",
+          "at": "2026-11-03T10:00:00Z",
+          "currency": "USD",
+          "id": "TX-2095",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "0.00",
+          "at": "2026-11-04T08:00:00Z",
+          "currency": "USD",
+          "id": "R-0750",
+          "kind": "refund",
+          "status": "requested"
+        }
+      ]
+    }
+  ],
+  "page_size": 50,
+  "scenario": "S09",
+  "schema_version": "1",
+  "snapshot_sha256": "81fedc6817ad2c905177ea9886edfca751c51b118100033aeced7a1339cef212"
+}

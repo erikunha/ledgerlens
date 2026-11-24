@@ -21,7 +21,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import LivePage from "@/app/(public)/live/page";
 
-/** One model of the catalogue of the server, in the shape the contract publishes. */
+/** One model of the catalog of the server, in the shape the contract publishes. */
 const MODEL = {
   profile_id: "openai-small",
   provider: "openai",

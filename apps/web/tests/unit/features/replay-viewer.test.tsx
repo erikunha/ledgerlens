@@ -620,7 +620,7 @@ describe("the reader of the recorded run", () => {
       return { ok: true, status: 200, text: async () => body } as unknown as Response;
     }) as unknown as typeof fetch;
 
-    const loaded = await loadReplay(SCENARIO, impl);
+    const loaded = await loadReplay(SCENARIO, { fetch: impl });
 
     expect("error" in loaded).toBe(true);
     if ("error" in loaded) {

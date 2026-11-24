@@ -1,0 +1,32 @@
+{
+  "accounts": [
+    {
+      "id": "C-0733",
+      "kind": "customer",
+      "name": "James Whitaker",
+      "reads": [],
+      "rows": [
+        {
+          "amount": "49.90",
+          "at": "2026-10-05T14:03:10Z",
+          "currency": "USD",
+          "id": "TX-2051",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "49.90",
+          "at": "2026-10-05T14:03:48Z",
+          "currency": "USD",
+          "id": "TX-2052",
+          "kind": "transaction",
+          "status": "captured"
+        }
+      ]
+    }
+  ],
+  "page_size": 50,
+  "scenario": "S02",
+  "schema_version": "1",
+  "snapshot_sha256": "df1102a46bc9fbc70f85ba877fd71a81002c040f49e1ba8e4a63d8c992d715d0"
+}

@@ -15,6 +15,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import ReplayPage from "@/app/(public)/replay/page";
 import { ScenarioCatalogProvider } from "@/lib/api/provider";
 
+/** The URLs that the case asked for, so that the case can prove which root it read. */
+const askedFor: string[] = [];
+
 /** The card of the scenario in the published catalog, as `site/replay/index.json` holds it. */
 const PUBLISHED_CARD = {
   bundle_digest: "bbbe1e54fcae712df66a3a6096838ab5b7f8c938e2e47b7ef6681e43cafa84ac",
@@ -82,6 +85,32 @@ function renderPage(catalog: unknown): void {
 }
 
 /**
+ * Renders the page of the catalog with no provider around it.
+ *
+ * Why the page is rendered without a provider around it in this case: the page brings its own provider, the one that
+ * reads the catalog of the scripted model, and a provider around it would be inherited by that one, which would then
+ * never read anything. A test that puts a provider around the page proves nothing about which catalog the page reads.
+ */
+function renderPageWithoutAProviderAroundIt(catalog: unknown): void {
+  const body = JSON.stringify(catalog);
+  askedFor.length = 0;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      askedFor.push(url);
+      return {
+        ok: true,
+        status: 200,
+        text: async () => (url.endsWith("index.json") ? body : ""),
+      } as unknown as Response;
+    }),
+  );
+
+  render(<ReplayPage />);
+}
+
+/**
  * Renders the page of the catalog while the catalog is still being read.
  *
  * Why the loader never answers: the case has to see the page in the state that the visitor sees
@@ -118,6 +147,18 @@ afterEach(() => {
 });
 
 describe("the page of the catalog of the scenarios", () => {
+  it("reads the catalog of the scripted model from its own root", async () => {
+    // It proves that the page reads the catalog of the scripted model and not the root of the catalog of a real
+    // model: a page that asked for the other root would show the recordings of a real model under the name of the
+    // recordings of the scripted model (ADR-075).
+    renderPageWithoutAProviderAroundIt([PUBLISHED_CARD]);
+
+    await screen.findByRole("heading", { name: "The scenarios" });
+
+    expect(askedFor).toContain("/replay/index.json");
+    expect(askedFor).not.toContain("/replay-real/index.json");
+  });
+
   it("shows the scenarios of the published catalog", async () => {
     // It proves that the catalog shows the card of the scenario exactly as the repository publishes it.
     renderPage([PUBLISHED_CARD]);

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Captures the replay bundle of a scenario with a real model, in a real execution.
 
-Why it exists: the catalogue the site publishes holds the recordings of the scripted model, and that is a
+Why it exists: the catalog the site publishes holds the recordings of the scripted model, and that is a
 reproducible proof of what the product does. It is not the product: a real model reads the ledger, asks the
 reference source and writes its own answer, and nothing in the repository recorded that. This script records it, and
-the recording is published as a second catalogue, distinct from the first in every part a reader can check
+the recording is published as a second catalog, distinct from the first in every part a reader can check
 (ADR-075).
 
 What it writes is the bundle of the run, in `data/eval/replay-real/<scenario>/`: the events of the execution as JSON
@@ -18,18 +18,18 @@ What it refuses, and why:
 
 - **It refuses to run offline.** An offline machine runs the scripted model and the recorded exchange rate, so a
   recording made there would carry the mode `live_agent` and the label would be a lie.
-- **It refuses to run without a key.** A recording without a model is the recording of the other catalogue.
+- **It refuses to run without a key.** A recording without a model is the recording of the other catalog.
 - **It refuses to run on a dirty tracked tree**, because the recording names the commit it was made from and the
   claim has to be true.
 
 The judge of the verdicts is the deterministic verifier of the repository, the same one that computes the verdicts
-of the sandbox catalogue. The reason is the verifier that ADR-073 published: it re-verifies a bundle offline, with
+of the sandbox catalog. The reason is the verifier that ADR-073 published: it re-verifies a bundle offline, with
 no model and with no network, and a bundle whose verdicts came from the model of the NLI could not be re-verified by
 the code of the repository. The note of the manifest says which judge computed the verdicts, in words (ADR-075).
 
 What a recording of this script is and is not: it is the recording of a real run, and it is not reproducible byte
 for byte. The same question asked twice of a real model does not give the same answer, so the digests of this
-catalogue are the digests of that run and not the digests of a formula.
+catalog are the digests of that run and not the digests of a formula.
 
 Usage:
 
@@ -56,8 +56,19 @@ sys.path.insert(0, str(ROOT))
 
 from ledgerlens import demo  # noqa: E402  (the path is set up before the import)
 from ledgerlens.agents.integrator import build_integrator, investigate  # noqa: E402
+from ledgerlens.agents.routing import (  # noqa: E402
+    SLOT_AGENT,
+    SLOT_POLICY,
+    SLOT_SQL,
+    SLOT_TRIAGE,
+    budget_of,
+    candidates_of,
+    models_of,
+    route,
+)
 from ledgerlens.api.accounts import scoped_ledger  # noqa: E402
-from ledgerlens.config import get_chat_model, get_settings, model_profile  # noqa: E402
+from ledgerlens.byok.registry import ALLOWLIST, profiles_by_name  # noqa: E402
+from ledgerlens.config import get_chat_model, get_settings, model_cascade, model_profile  # noqa: E402
 from ledgerlens.memory.long_term import CaseMemory, scenario_case_id  # noqa: E402
 from ledgerlens.observability.trace_event import InMemoryTraceSink, TraceEventStream  # noqa: E402
 from ledgerlens.replay.bundle import bundle_digest, write_bundle  # noqa: E402
@@ -69,7 +80,7 @@ from ledgerlens.replay.capture import (  # noqa: E402  (the path is set up befor
     planted_question,
     sha256_of,
 )
-from ledgerlens.run_context import POLICY_VERSION, RunContext  # noqa: E402
+from ledgerlens.run_context import POLICY_VERSION, SHIPPED_RUN_BUDGET, RunContext  # noqa: E402
 from ledgerlens.sim.config import SimConfig  # noqa: E402
 from ledgerlens.sim.pipeline import build_ledger  # noqa: E402
 from ledgerlens.tools.fx import FxClient  # noqa: E402
@@ -86,11 +97,11 @@ __all__ = [
 CAPTURE_KIND = "real_model_recorded"
 RUN_MODE = "live_agent"
 
-# The folder of the catalogue of the recordings of a real model, beside the folder of the sandbox catalogue.
+# The folder of the catalog of the recordings of a real model, beside the folder of the sandbox catalog.
 DEFAULT_OUT = ROOT / "data" / "eval" / "replay-real"
 
-# The nine scenarios the catalogue of the site publishes. The capture of this script records the same nine, so that
-# the two catalogues can be compared scenario by scenario.
+# The nine scenarios the catalog of the site publishes. The capture of this script records the same nine, so that
+# the two catalogs can be compared scenario by scenario.
 PUBLISHED_SCENARIOS = ("S01", "S02", "S03", "S04", "S07", "S08", "S09", "S10", "S11")
 
 # The scenarios whose run has the reference source in fault: the scenario S11 is the scenario S01 with the source
@@ -103,7 +114,7 @@ def _deterministic_verifier(db_path: Path):
 
     Why the judge is the deterministic one: the verifier that ADR-073 published re-verifies a bundle offline, with
     no model and with no network. A bundle whose verdicts came from the model of the NLI could not be re-verified by
-    the code of the repository, and a catalogue of claims is not a catalogue of proofs (ADR-075).
+    the code of the repository, and a catalog of claims is not a catalog of proofs (ADR-075).
     """
     from ledgerlens.verify import verify_result
     from ledgerlens.verify.nli import StubNli
@@ -131,7 +142,7 @@ def capture(scenario_id: str, out: Path, root: Path = ROOT) -> Path:
     if settings.openai_api_key is None:
         raise SystemExit(
             "the capture of a real model refuses to run without a key: the recording would be the recording of the "
-            "other catalogue. Put OPENAI_API_KEY in the file of the environment."
+            "other catalog. Put OPENAI_API_KEY in the file of the environment."
         )
 
     try:
@@ -143,6 +154,18 @@ def capture(scenario_id: str, out: Path, root: Path = ROOT) -> Path:
     profile = model_profile(settings)
     manifest = demo.load_manifest()
     question, account_id = planted_question(manifest, scenario_id)
+
+    # The router chooses the model of each slot by the task the slot does, and the decision is written down before
+    # the run starts, because a run whose model changes in the middle is a run nobody can reason about (ADR-078).
+    cascade = model_cascade(settings)
+    candidates = candidates_of(cascade, profiles_by_name(ALLOWLIST))
+    decisions = route(
+        candidates,
+        case_id=f"replay-real-{scenario_id.lower()}",
+        case_type=scenario_id,
+        budget=budget_of(SHIPPED_RUN_BUDGET),
+    )
+    models = models_of(decisions)
 
     with tempfile.TemporaryDirectory(prefix="ledgerlens_live_replay_") as work:
         work_root = Path(work)
@@ -166,11 +189,11 @@ def capture(scenario_id: str, out: Path, root: Path = ROOT) -> Path:
         )
         memory = CaseMemory(context.resolve_memory_dir(), case_id=scenario_case_id(scenario_id))
         agent = build_integrator(
-            get_chat_model(),
+            get_chat_model(settings, model=models[SLOT_AGENT]),
             db_path=account_db,
-            query_model=get_chat_model(),
-            triage_model=get_chat_model(),
-            policy_model=get_chat_model(),
+            query_model=get_chat_model(settings, model=models[SLOT_SQL]),
+            triage_model=get_chat_model(settings, model=models[SLOT_TRIAGE]),
+            policy_model=get_chat_model(settings, model=models[SLOT_POLICY]),
             # The reference rate comes from the live source, because the live mode of the product asks the live
             # source, and a recording of the live mode that read the recorded rates would not be a recording of it.
             fx_client=FxClient(mode="live", fault=SCENARIO_FX_FAULT.get(scenario_id, False)),
@@ -191,13 +214,17 @@ def capture(scenario_id: str, out: Path, root: Path = ROOT) -> Path:
             snapshot_sha256=snapshot,
             note=(
                 f"Real execution of the scenario {scenario_id}, account {account_id}, with the model {profile} and "
-                "the live reference rate. This is the recording of a real run and it is not reproducible byte for "
-                "byte. The verdicts of the claims were computed by the deterministic verifier of the repository, "
-                "the judge the sandbox catalogue uses, so that anybody can re-verify this bundle offline."
+                "the live reference rate. The work was split by the task: the triage and the rewrite of the search "
+                f"of the policies ran on {models[SLOT_TRIAGE]}, the statement that reads the ledger ran on "
+                f"{models[SLOT_SQL]} and the answer with the tools ran on {models[SLOT_AGENT]}. This is the "
+                "recording of a real run and it is not reproducible byte for byte. The verdicts of the claims were "
+                "computed by the deterministic verifier of the repository, the judge the sandbox catalog uses, "
+                "so that anybody can re-verify this bundle offline."
             ),
             capture_kind=CAPTURE_KIND,
             recorded_at=datetime.now(UTC).isoformat(timespec="seconds"),
             model_profile=profile,
+            model_profiles=models,
             code_sha=commit,
             policy_version=POLICY_VERSION,
         )
@@ -212,7 +239,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Captures the replay bundle of a scenario with a real model.")
     parser.add_argument("--scenario", default=None, help="identifier of the scenario to record")
     parser.add_argument("--all", action="store_true", help="records the nine scenarios the site publishes")
-    parser.add_argument("--out", default=str(DEFAULT_OUT), help="folder of the catalogue (data/eval/replay-real)")
+    parser.add_argument("--out", default=str(DEFAULT_OUT), help="folder of the catalog (data/eval/replay-real)")
     args = parser.parse_args(argv)
 
     scenarios = PUBLISHED_SCENARIOS if args.all else (args.scenario or "S01",)

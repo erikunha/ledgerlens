@@ -9,7 +9,7 @@
  * server is rendered where the action was, with the code and the message of the server, and a
  * refusal is never dressed up as a run.
  *
- * The page opens a session and reads the catalogue of the models when it opens, and it touches no route
+ * The page opens a session and reads the catalog of the models when it opens, and it touches no route
  * that holds or spends a credential: the routes that hold or spend a credential are the routes that
  * refuse, and a probe of them would create a credential. What the opening requests tell the visitor is
  * whether the server is there at all, and the refusal of the server is rendered where the action was.
@@ -95,7 +95,7 @@ function describeFailure(caught: unknown, origin: string): string {
 /**
  * The page of the live mode.
  *
- * The page is a client component because the live mode is an interaction: the catalogue of the
+ * The page is a client component because the live mode is an interaction: the catalog of the
  * models, the key of the visitor and the stream of the run all happen in the browser.
  */
 export default function LivePage() {
@@ -112,27 +112,27 @@ export default function LivePage() {
   const [disclosure, setDisclosure] = useState<DisclosureHeaders | null>(null);
   const [credentialError, setCredentialError] = useState<string | null>(null);
   const [credentialBusy, setCredentialBusy] = useState(false);
-  const [catalogueError, setCatalogueError] = useState<string | null>(null);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
   const [liveRefusal, setLiveRefusal] = useState<{ code: string; message: string } | null>(null);
 
-  // The session of the visitor is opened once, and the catalogue of the models comes with it.
+  // The session of the visitor is opened once, and the catalog of the models comes with it.
   useEffect(() => {
     let alive = true;
 
     async function load(): Promise<void> {
       try {
         await client.startSession();
-        const catalogue = await client.models();
+        const catalog = await client.models();
         if (!alive) {
           return;
         }
-        setModels(catalogue.models);
-        setCatalogueError(null);
+        setModels(catalog.models);
+        setCatalogError(null);
       } catch (caught) {
         if (!alive) {
           return;
         }
-        setCatalogueError(describeFailure(caught, client.baseUrl));
+        setCatalogError(describeFailure(caught, client.baseUrl));
       }
     }
 
@@ -248,10 +248,10 @@ export default function LivePage() {
         </p>
       </header>
 
-      {catalogueError ? (
+      {catalogError ? (
         <div role="alert" className="rounded-lg border border-danger/40 bg-danger-light p-4">
-          <h2 className="text-base font-semibold text-danger-dark">The catalogue is not available</h2>
-          <p className="text-sm text-danger-dark">{catalogueError}</p>
+          <h2 className="text-base font-semibold text-danger-dark">The catalog is not available</h2>
+          <p className="text-sm text-danger-dark">{catalogError}</p>
         </div>
       ) : null}
 
@@ -292,7 +292,7 @@ export default function LivePage() {
 
       <CardSection
         title="The model of the run"
-        description="Only the models the catalogue of the server enables for the public demo are offered."
+        description="Only the models the catalog of the server enables for the public demo are offered."
         titleLevel="h2"
       >
         <ModelSelector

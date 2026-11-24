@@ -1,10 +1,10 @@
-"""The suite of the facade of the live mode: the routes of the credential, of the catalogue and of the run.
+"""The suite of the facade of the live mode: the routes of the credential, of the catalog and of the run.
 
 What they guarantee, and why: (a) the answer of the credential route never carries the key of the visitor and
 carries the handle, the provider and the expiry (FR-004, FR-005); (b) the answer carries the headers that say that
 nothing is stored, that the memory of the machine cannot be guaranteed to be erased and that the provider may charge
 the visitor (FR-003, FR-008, FR-021); (c) the "forget key" action is always there and takes effect at once (FR-014);
-(d) the catalogue shows only the models that were tested, with their status and their capabilities (FR-016, FR-030);
+(d) the catalog shows only the models that were tested, with their status and their capabilities (FR-016, FR-030);
 (e) the price of a model comes with its provenance, and a model whose price was never verified shows no amount at
 all and never claims a verification (FR-011, FR-031); (f) the live mode is refused while the product runs offline,
 with an answer that names the reason, and the rest of the demo keeps working (FR-001, FR-029); (g) the route of the
@@ -372,11 +372,11 @@ def test_the_forget_route_always_answers(client: TestClient) -> None:
     assert response.json()["forgotten"] is False
 
 
-# --- the catalogue ---------------------------------------------------------------------------------
+# --- the catalog ---------------------------------------------------------------------------------
 
 
-def test_the_catalogue_lists_only_the_models_that_were_tested(client: TestClient) -> None:
-    """FR-016, FR-030: the catalogue shows the tested models, with their status and their capabilities."""
+def test_the_catalog_lists_only_the_models_that_were_tested(client: TestClient) -> None:
+    """FR-016, FR-030: the catalog shows the tested models, with their status and their capabilities."""
     response = client.get("/v1/models")
 
     assert response.status_code == 200
@@ -1863,15 +1863,15 @@ def test_the_routes_that_hold_no_key_answer_normally(client: TestClient) -> None
     Why the absence matters: the disclaimer of the erasure is about the key of the visitor, and a route that holds
     no key and spends nothing has nothing to disclose.
     """
-    catalogue = client.get("/v1/models")
+    catalog = client.get("/v1/models")
     price = client.get(f"/v1/models/{PROFILE_ID}")
     forgotten = client.post("/v1/credentials/forget", json={"handle": "a-handle-that-never-existed"})
 
-    assert catalogue.status_code == 200
+    assert catalog.status_code == 200
     assert price.status_code == 200
     assert forgotten.status_code == 200
     assert forgotten.json()["forgotten"] is False
-    for answer in (catalogue, price, forgotten):
+    for answer in (catalog, price, forgotten):
         assert byok_api.KEY_ERASURE_HEADER not in answer.headers
 
 

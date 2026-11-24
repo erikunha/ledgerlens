@@ -13,6 +13,11 @@ import { CardSection } from "@/components/ui/Card";
  * of the demo and asks for the key of the visitor. All three are offered here, each one with the
  * mode it runs in written down, because a recorded run is never labelled live and a live run is
  * never labelled recorded (ADR-040, ADR-044).
+ *
+ * Why the catalog of a real model is a link and not a fourth card: the site publishes two catalogs of
+ * the recorded scenarios, and the second one is a second way to read the same nine cases, not a fourth
+ * mode of the demo. The card of the recorded demo therefore names it, so that a visitor who arrives at
+ * the door of the site finds both catalogs without having to know that the second one exists (ADR-075).
  */
 
 export default function HomePage() {
@@ -48,9 +53,18 @@ export default function HomePage() {
               Deterministic execution, with the scripted model and the recorded exchange rate. This is not a
               live execution and it calls no model.
             </p>
-            <div>
+            <div className="flex flex-wrap items-center gap-2">
               <Link className={buttonClasses("primary", "md")} href="/replay">
                 Open the recorded demo
+              </Link>
+              {/*
+                The site publishes two catalogs of the recorded scenarios, the recordings of the scripted model and
+                the recordings of a real model, and each one has its own route (ADR-075). The link names the second
+                one here, so that a visitor who arrives at the door of the site finds the catalog of a real run
+                without having to know that it exists.
+              */}
+              <Link className={buttonClasses("secondary", "md")} href="/replay-real">
+                Open the catalog of a real model
               </Link>
             </div>
           </div>

@@ -498,6 +498,54 @@ def test_the_export_refuses_a_bundle_of_another_mode_when_the_caller_names_the_c
         build_export([bundle], expected_mode="deterministic_sandbox")
 
 
+def test_the_folder_of_the_site_names_the_catalog_it_publishes(tmp_path: Path):
+    """The folder of the site says which catalog goes in it, and the two cannot be swapped (ADR-075)."""
+    bundle = _copy_scenario(tmp_path)
+    _frozen_ledger(tmp_path, json.loads(FROZEN_LEDGER.read_text(encoding="utf-8")))
+    _as_a_real_recording(bundle)
+
+    with pytest.raises(ExportError) as refusal:
+        build_export([bundle], expected_mode="live_agent", output=tmp_path / "replay")
+    assert "replay" in str(refusal.value)
+
+    with pytest.raises(ExportError):
+        build_export([bundle], expected_mode="deterministic_sandbox", output=tmp_path / "replay-real")
+
+
+def test_the_folder_of_the_site_refuses_a_bundle_of_another_mode_even_without_a_mode(tmp_path: Path):
+    """The destination is enough to know the mode, so a command that forgets `--mode` cannot mix the catalogs."""
+    bundle = _copy_scenario(tmp_path)
+    _frozen_ledger(tmp_path, json.loads(FROZEN_LEDGER.read_text(encoding="utf-8")))
+    _as_a_real_recording(bundle)
+
+    with pytest.raises(ExportError):
+        build_export([bundle], output=tmp_path / "replay")
+
+
+def test_a_folder_that_publishes_no_catalog_accepts_the_mode_the_caller_names(tmp_path: Path):
+    """A temporary folder of a test names no catalog, so the mode the caller names is the one that counts."""
+    bundle = _copy_scenario(tmp_path)
+    _frozen_ledger(tmp_path, json.loads(FROZEN_LEDGER.read_text(encoding="utf-8")))
+    _as_a_real_recording(bundle)
+
+    artifacts = build_export([bundle], expected_mode="live_agent", output=tmp_path / "somewhere")
+    assert "s01/events.jsonl" in artifacts
+
+
+def test_the_script_refuses_to_write_the_real_catalog_into_the_folder_of_the_sandbox(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+):
+    """The command line cannot do what the module refuses, and nothing is written when it refuses."""
+    bundle = _copy_scenario(tmp_path)
+    _frozen_ledger(tmp_path, json.loads(FROZEN_LEDGER.read_text(encoding="utf-8")))
+    _as_a_real_recording(bundle)
+    out = tmp_path / "replay"
+
+    assert export_replay_site.main([str(bundle), "--out", str(out), "--mode", "live_agent"]) == 1
+    capsys.readouterr()
+    assert not out.exists() or not any(out.iterdir())
+
+
 def test_a_bundle_whose_scenario_is_not_in_the_shape_of_the_contract_is_refused(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ):

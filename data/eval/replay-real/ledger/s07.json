@@ -1,0 +1,32 @@
+{
+  "accounts": [
+    {
+      "id": "C-0600",
+      "kind": "customer",
+      "name": "Susan Ortega",
+      "reads": [],
+      "rows": [
+        {
+          "amount": "80.00",
+          "at": "2026-10-08T13:00:00Z",
+          "currency": "USD",
+          "id": "TX-2030",
+          "kind": "transaction",
+          "status": "refunded"
+        },
+        {
+          "amount": "80.00",
+          "at": "2026-10-10T09:00:00Z",
+          "currency": "USD",
+          "id": "R-0720",
+          "kind": "refund",
+          "status": "paid"
+        }
+      ]
+    }
+  ],
+  "page_size": 50,
+  "scenario": "S07",
+  "schema_version": "1",
+  "snapshot_sha256": "8e95db422c0005ae0fc77648cf7696becd7d14b8620364d340337c1c3f6b07eb"
+}

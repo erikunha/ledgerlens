@@ -48,9 +48,16 @@ npm run build
 # heading and with the six labels of the nodes.
 # The check itself lives in a script of its own, so that it can be tested: a check that lives inside this file
 # cannot be proved to fail when it has to fail.
+#
+# The site publishes TWO catalogs, the recordings of the scripted model and the recordings of a real model, and
+# each one has its own folder and its own page in the export (ADR-075). The check runs once for each of them: a
+# gate that checked only the first one would let a build with no page of the second catalog pass, and a visitor
+# of that catalog would land on nothing.
 echo "== the build wrote one page per scenario of the catalog, with the content of the scenario"
 echo "== the build wrote the page of the architecture, with a heading and the six labels of the nodes"
-export LEDGERLENS_REPLAY_OUT="${REPOSITORY_ROOT}/apps/web/out/replay"
-node "${REPOSITORY_ROOT}/scripts/check_export_pages.mjs" "${LEDGERLENS_REPLAY_OUT}"
+node "${REPOSITORY_ROOT}/scripts/check_export_pages.mjs" \
+  "${REPOSITORY_ROOT}/apps/web/out/replay" replay
+node "${REPOSITORY_ROOT}/scripts/check_export_pages.mjs" \
+  "${REPOSITORY_ROOT}/apps/web/out/replay-real" replay-real
 
 echo "gate_web: ok"

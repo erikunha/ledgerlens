@@ -2,7 +2,7 @@
  * The test of the picker of the model.
  *
  * Why this test exists: the picker is the only place where the visitor chooses what the live run
- * thinks with, so the catalogue of the server has to be filtered before it is shown. A profile that
+ * thinks with, so the catalog of the server has to be filtered before it is shown. A profile that
  * is not tested, or that the public demo does not enable, must never be offered.
  *
  * Every case runs with no key and no network: the profiles are given to the component directly.
@@ -15,7 +15,7 @@ import { describe, expect, it, vi } from "vitest";
 import { ModelSelector } from "@/features/models/ModelSelector";
 import type { ModelProfile } from "@/lib/api/live";
 
-/** One profile of the catalogue, with the fields a case wants to change. */
+/** One profile of the catalog, with the fields a case wants to change. */
 function profile(overrides: Partial<ModelProfile>): ModelProfile {
   return {
     profile_id: "openai-gpt-4.1-mini",

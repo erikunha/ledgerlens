@@ -38,7 +38,7 @@ export interface PageUnderTest {
 /**
  * Waits until the page has no request of its own in flight.
  *
- * Why the wait: the sandbox and the live mode read the catalogue of the scenarios from the backend
+ * Why the wait: the sandbox and the live mode read the catalog of the scenarios from the backend
  * of the demo, and the answer arrives after the page has already drawn its shell. A scan that ran in
  * the middle of that answer would report the state of a page that nobody ever sees.
  *
@@ -96,6 +96,23 @@ export const PAGES_UNDER_TEST: readonly PageUnderTest[] = [
     settle: async (page: Page) => {
       await expect(page.getByRole("heading", { name: "The scenarios" })).toBeVisible();
       await expect(page.getByRole("link", { name: "S01 - fx_markup_refund" })).toBeVisible();
+    },
+  },
+  {
+    name: "the catalog of the scenarios of a real model",
+    path: "/replay-real",
+    settle: async (page: Page) => {
+      await expect(page.getByRole("heading", { name: "The scenarios" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "S01 - fx_markup_refund" })).toBeVisible();
+    },
+  },
+  {
+    name: "the recording of S01 made with a real model",
+    path: "/replay-real/scenario/S01",
+    settle: async (page: Page) => {
+      const recordedRun = page.getByRole("region", { name: "The recorded run" });
+      await expect(recordedRun).toBeVisible();
+      await expect(recordedRun.getByText("mode: live_agent")).toBeVisible();
     },
   },
   {

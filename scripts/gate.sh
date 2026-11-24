@@ -50,10 +50,29 @@ for bundle in data/eval/replay/s*; do
   uv run python scripts/verify_replay_digests.py --bundle "$bundle" --published "site/replay/$slug"
 done
 
+# The second catalogue, the recordings of a real model, is published with the same rules and is checked with the
+# same scripts: the export must match the bundles, and every published scenario must carry the digests of the
+# canonical bundle. The mode of the catalogue is named, so that a recording of a real model cannot land in the
+# folder of the sandbox and the other way round (ADR-075).
+echo "== export check of the catalogue of a real model (offline)"
+uv run python scripts/export_replay_site.py data/eval/replay-real --out site/replay-real --mode live_agent --check
+
+echo "== replay digests of the catalogue of a real model (offline)"
+for bundle in data/eval/replay-real/s*; do
+  slug="$(basename "$bundle")"
+  uv run python scripts/verify_replay_digests.py --bundle "$bundle" --published "site/replay-real/$slug" \
+    --index site/replay-real/index.json
+done
+
 # The published payload must stay inside the budget the specification declares (SC-004), and the number of events
 # must agree with the manifest. The check reads the disk, writes nothing, and refuses with a readable reason and a
 # non zero exit code, so the gate stops on the reason and not on a traceback.
 echo "== replay budget (offline)"
 uv run python scripts/measure_replay_budget.py
+
+# The payload of the second catalogue is inside the same budget: a recording of a real model answers in more
+# characters than a scripted one, and the budget is the promise of the specification for every scenario.
+echo "== replay budget of the catalogue of a real model (offline)"
+uv run python scripts/measure_replay_budget.py --site site/replay-real
 
 echo "gate: ok"

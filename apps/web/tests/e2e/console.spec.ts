@@ -44,13 +44,13 @@ interface ConsoleFailure {
 }
 
 /**
- * The model of the catalogue of the fake backend, in the shape the contract publishes.
+ * The model of the catalog of the fake backend, in the shape the contract publishes.
  *
  * Why the fake exists: the live mode is the one room of the site that asks the backend of the
  * demo, and the static export of the site carries no backend. Without an answer the browser logs
  * the connection that never happened, and that message says nothing about the page: the page
  * answers that failure with its own alert. The gate gives the room a backend that answers the
- * catalogue of the models, the way the suite of the live path does, so that the console of the
+ * catalog of the models, the way the suite of the live path does, so that the console of the
  * page shows what the page itself does and nothing else.
  */
 const MODEL = {

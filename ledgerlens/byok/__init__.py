@@ -79,7 +79,7 @@ from ledgerlens.byok.registry import (
     ALLOWLIST,
     ARCHITECTURE_CAPABILITIES,
     CAPABILITIES,
-    CATALOGUE_CAPABILITY,
+    CATALOG_CAPABILITY,
     PROVIDERS,
     STATUSES,
     Capability,
@@ -88,6 +88,7 @@ from ledgerlens.byok.registry import (
     Pricing,
     ProfileStatus,
     ProviderRegistry,
+    profiles_by_name,
     required_capabilities,
 )
 from ledgerlens.byok.vault import (
@@ -103,7 +104,7 @@ __all__ = [
     "ALLOWLIST",
     "ARCHITECTURE_CAPABILITIES",
     "CAPABILITIES",
-    "CATALOGUE_CAPABILITY",
+    "CATALOG_CAPABILITY",
     "DEFAULT_MAX_ENTRIES",
     "DEFAULT_MAX_FAILURES",
     "DEFAULT_TTL_SECONDS",
@@ -141,6 +142,7 @@ __all__ = [
     "ProviderCallFailed",
     "ProviderMessage",
     "ProviderRegistry",
+    "profiles_by_name",
     "ProviderRequest",
     "ProviderResponse",
     "ToolCall",

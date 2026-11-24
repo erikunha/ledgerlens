@@ -1,0 +1,32 @@
+{
+  "accounts": [
+    {
+      "id": "C-0412",
+      "kind": "customer",
+      "name": "Mariana Albuquerque Costa",
+      "reads": [],
+      "rows": [
+        {
+          "amount": "100.00",
+          "at": "2026-10-15T09:12:00Z",
+          "currency": "EUR",
+          "id": "TX-2048",
+          "kind": "transaction",
+          "status": "refunded"
+        },
+        {
+          "amount": "549.31",
+          "at": "2026-10-20T14:05:00Z",
+          "currency": "BRL",
+          "id": "R-0731",
+          "kind": "refund",
+          "status": "paid"
+        }
+      ]
+    }
+  ],
+  "page_size": 50,
+  "scenario": "S01",
+  "schema_version": "1",
+  "snapshot_sha256": "26849ada6f60c63fa30a0b085fd1ff473508d18a5892498cade13b7dc436ee2f"
+}

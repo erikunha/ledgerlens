@@ -72,12 +72,15 @@ function escapeRegExp(text) {
  * Why the folder is looked up: the export of the site holds the recorded demo in the folder `replay`, and the caller
  * can name either the export or the recorded demo itself. The folder that holds the catalog of the scenarios is the
  * one the check reads.
+ *
+ * Why the name of the catalog is an argument: the site publishes two catalogs, the recordings of the scripted model
+ * and the recordings of a real model, and each one has its own folder and its own page (ADR-075).
  */
-function resolveReplayFolder(folder) {
+function resolveReplayFolder(folder, catalog) {
   if (existsSync(join(folder, "index.json"))) {
     return folder;
   }
-  const nested = join(folder, "replay");
+  const nested = join(folder, catalog);
   if (existsSync(join(nested, "index.json"))) {
     return nested;
   }
@@ -94,9 +97,9 @@ function resolveReplayFolder(folder) {
  * that proves it runs in no job of the continuous integration, so the gate of the frontend is the only place that
  * can catch a catalog page that is missing or that is the page of 404.
  */
-function findCatalogPage(folder, replayFolder) {
-  const candidates = [join(folder, "replay.html")];
-  candidates.push(join(dirname(replayFolder), "replay.html"));
+function findCatalogPage(folder, replayFolder, catalog) {
+  const candidates = [join(folder, `${catalog}.html`)];
+  candidates.push(join(dirname(replayFolder), `${catalog}.html`));
   for (const candidate of candidates) {
     if (existsSync(candidate)) {
       return candidate;
@@ -200,9 +203,9 @@ function checkEngineeringPage(folder, replayFolder) {
  * Why the page has to carry a heading: a page that carries no heading is not the page of the catalog of the site,
  * whatever the file is called.
  */
-function checkCatalogPage(folder, replayFolder) {
+function checkCatalogPage(folder, replayFolder, catalog) {
   const problems = [];
-  const page = findCatalogPage(folder, replayFolder);
+  const page = findCatalogPage(folder, replayFolder, catalog);
 
   if (!existsSync(page)) {
     problems.push(`the export does not hold the page of the catalog of the scenarios: ${page} is missing`);
@@ -248,11 +251,11 @@ function checkCatalogPage(folder, replayFolder) {
  * Why the count of the scenarios comes back too: the message that says that the export is good names the number of
  * the scenarios that were checked.
  */
-export function checkExportPages(folder) {
+export function checkExportPages(folder, catalog = "replay") {
   const problems = [];
   let scenarioCount = 0;
 
-  const replayFolder = resolveReplayFolder(folder);
+  const replayFolder = resolveReplayFolder(folder, catalog);
 
   // The page of the architecture is checked first and it is checked on its own: the tour of the subsystems does not
   // depend on the recorded demo, and a build that loses the page of the tour has to fail whatever the catalog holds.
@@ -269,32 +272,32 @@ export function checkExportPages(folder) {
     return { problems, scenarioCount };
   }
 
-  let catalog = null;
+  let publishedCatalog = null;
   try {
-    catalog = JSON.parse(readFileSync(catalogPath, "utf8"));
+    publishedCatalog = JSON.parse(readFileSync(catalogPath, "utf8"));
   } catch (error) {
     problems.push(`the catalog of the scenarios is not a JSON document: ${error.message}`);
   }
 
-  if (catalog === null) {
+  if (publishedCatalog === null) {
     return { problems, scenarioCount };
   }
 
-  if (!Array.isArray(catalog)) {
+  if (!Array.isArray(publishedCatalog)) {
     problems.push(`the catalog of the scenarios is not a list: ${catalogPath}`);
     return { problems, scenarioCount };
   }
 
-  if (catalog.length === 0) {
+  if (publishedCatalog.length === 0) {
     problems.push(`the catalog of the scenarios is empty: ${catalogPath}`);
     return { problems, scenarioCount };
   }
 
-  scenarioCount = catalog.length;
+  scenarioCount = publishedCatalog.length;
 
-  problems.push(...checkCatalogPage(folder, replayFolder));
+  problems.push(...checkCatalogPage(folder, replayFolder, catalog));
 
-  for (const card of catalog) {
+  for (const card of publishedCatalog) {
     const directory = card.bundle_path || String(card.id || "").toLowerCase();
     for (const file of ["manifest.json", "events.jsonl"]) {
       const artifact = join(replayFolder, directory, file);
@@ -363,19 +366,22 @@ export function checkExportPages(folder) {
 }
 
 /**
- * Reads the argument of the command line.
+ * Reads the arguments of the command line.
  *
  * Why the folder can be named: the test of the check works in a temporary folder, and it must never read the export
  * of the repository.
+ *
+ * Why the name of the catalog can be named: the site publishes two catalogs and the check proves one of them at a
+ * time, so the gate calls it once for each one (ADR-075).
  */
 function parseArguments(argv) {
-  if (argv.length > 1) {
-    throw new Error("the check takes the folder of the export as its only argument");
+  if (argv.length > 2) {
+    throw new Error("the check takes the folder of the export and the name of a catalog");
   }
   if (argv.length === 0) {
-    return DEFAULT_EXPORT_FOLDER;
+    return { folder: DEFAULT_EXPORT_FOLDER, catalog: "replay" };
   }
-  return resolve(argv[0]);
+  return { folder: resolve(argv[0]), catalog: argv[1] ?? "replay" };
 }
 
 /**
@@ -385,8 +391,8 @@ function parseArguments(argv) {
  * has to name them one per line.
  */
 function main(argv) {
-  const folder = parseArguments(argv);
-  const { problems, scenarioCount } = checkExportPages(folder);
+  const { folder, catalog } = parseArguments(argv);
+  const { problems, scenarioCount } = checkExportPages(folder, catalog);
 
   if (problems.length > 0) {
     for (const problem of problems) {

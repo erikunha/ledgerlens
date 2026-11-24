@@ -14,6 +14,12 @@
  * Why the copy takes files away: a scenario that left the set of the published artifacts must
  * leave the site too, otherwise the site keeps offering a recording the repository does not
  * publish.
+ *
+ * Why there are two catalogs: the site publishes the recordings of the scripted model and the
+ * recordings of a real model, and each one has its own folder of published artifacts and its own
+ * root in the export (ADR-075). Both catalogs are required: the route of a scenario of each one
+ * reads the catalog of that route while the export is built, so a checkout without one of them has
+ * no page for that catalog, and the copy fails with a readable reason.
  */
 
 /* global process, console */
@@ -33,6 +39,27 @@ const DEFAULT_SOURCE = join(REPOSITORY_ROOT, "site", "replay");
 
 /** The folder of the frontend the static export reads the artifacts from. */
 const DEFAULT_DESTINATION = join(REPOSITORY_ROOT, "apps", "web", "public", "replay");
+
+/**
+ * The catalogs of the site and the folders of the published artifacts of each one.
+ *
+ * Why both catalogs are required: the site publishes two catalogs, and the route of a scenario of
+ * each one reads the catalog of that route from the disk while the export is built. A checkout
+ * without the catalog of a real model has no page for that catalog, and a build that serves half
+ * the site is a build that lies about the site, so the copy fails with a readable reason (ADR-075).
+ */
+const CATALOGS = [
+  {
+    name: "replay",
+    source: join(REPOSITORY_ROOT, "site", "replay"),
+    destination: join(REPOSITORY_ROOT, "apps", "web", "public", "replay"),
+  },
+  {
+    name: "replay-real",
+    source: join(REPOSITORY_ROOT, "site", "replay-real"),
+    destination: join(REPOSITORY_ROOT, "apps", "web", "public", "replay-real"),
+  },
+];
 
 /**
  * Lists every file of a folder, with the paths relative to that folder.
@@ -157,8 +184,30 @@ function parseArguments(argv) {
  */
 function main(argv) {
   const options = parseArguments(argv);
-  const outcome = syncReplayArtifacts(options);
-  console.log(`the published artifacts of ${options.source} are now in ${options.destination}`);
+
+  // A caller that names a source and a destination copies that one catalog and nothing else, and the
+  // copy fails loudly when the source is not there.
+  if (options.source !== DEFAULT_SOURCE || options.destination !== DEFAULT_DESTINATION) {
+    report(options.source, options.destination, syncReplayArtifacts(options));
+    return;
+  }
+
+  for (const catalog of CATALOGS) {
+    if (!existsSync(catalog.source)) {
+      throw new Error(`the published artifacts are not there: ${catalog.source} does not exist`);
+    }
+    report(catalog.source, catalog.destination, syncReplayArtifacts(catalog));
+  }
+}
+
+/**
+ * Says what the copy did, one line per file.
+ *
+ * Why the reader of a build has to see every file: the reader has to be able to see which recording
+ * the site is going to serve without opening the folder.
+ */
+function report(source, destination, outcome) {
+  console.log(`the published artifacts of ${source} are now in ${destination}`);
   for (const relativePath of outcome.copied) {
     console.log(`  copied ${relativePath}`);
   }

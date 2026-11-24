@@ -74,7 +74,7 @@ One port, one application, the two facades of the demo:
 
 | Route group | What it serves |
 | --- | --- |
-| the eleven routes of the live mode (the section [the eleven routes](#the-eleven-routes)) | the credential, the catalogue and the run |
+| the eleven routes of the live mode (the section [the eleven routes](#the-eleven-routes)) | the credential, the catalog and the run |
 | the eleven routes of the sandbox | the branch of the visitor, its ledger, its mutations and its history |
 
 The application serves ONE session of each kind, and the choice is written in the factory, never in the order of two
@@ -114,7 +114,7 @@ Three things about that wiring are worth naming out loud:
   holds.
 - The cookie carries no port, so the same cookie jar is the same visitor in the two of them.
 
-The answer that proves that the demo is up is the catalogue, which needs no key and no network:
+The answer that proves that the demo is up is the catalog, which needs no key and no network:
 
 ```bash
 curl -sS http://127.0.0.1:8010/v1/models
@@ -179,7 +179,7 @@ HTTP/1.1 503 Service Unavailable
 {"code":"BRANCH_LAYER_MISSING","message":"this deployment has no branch layer, so there is no ledger of the visitor to read: the run is refused instead of reading the ledger of the configuration","retryable":false,"request_id":"req_d2b5d388b5612abc"}
 ```
 
-The rest of that server works: the catalogue, the session and the credential answer as usual. Only the run needs the
+The rest of that server works: the catalog, the session and the credential answer as usual. Only the run needs the
 branch layer, and a deployment that serves the live mode has to wire one. The command of the section 3 is that
 deployment, written down in the repository.
 
@@ -278,9 +278,9 @@ C-0412
 
 Keep the two numbers at hand, the id of the branch and the account of the scenario. The next section needs both.
 
-## 6. The catalogue and the price
+## 6. The catalog and the price
 
-The catalogue is the only list of models the visitor may pick. It shows the models the server really tested, with
+The catalog is the only list of models the visitor may pick. It shows the models the server really tested, with
 their capabilities and their price.
 
 ```bash
@@ -292,7 +292,7 @@ curl -sS http://127.0.0.1:8010/v1/models
 ```
 
 Only a profile whose tool calling was really exercised and that is enabled in the public demo enters that list. A
-model of the allowlist that was not tested is not in the catalogue, and the server refuses it by itself when a
+model of the allowlist that was not tested is not in the catalog, and the server refuses it by itself when a
 request names it.
 
 The price of one model, with its provenance and the day it was last checked:
@@ -404,7 +404,7 @@ What each field of the body means:
 
 - `mode` is `live_agent` for a live run. The route of the live mode refuses `deterministic_sandbox`, because the
   sandbox has its own route.
-- `model_profile_id` is a `profile_id` of the catalogue. A name that is not in the allowlist of the server is
+- `model_profile_id` is a `profile_id` of the catalog. A name that is not in the allowlist of the server is
   refused, and a profile whose status is not `tested` is refused with the reason.
 - `variant` is the architecture of the case. `A` runs without the tools of the agent, `B` and `C` need a model that
   calls tools natively, and `D` needs the strict requirement. A model that lacks the capability is refused with the
@@ -561,7 +561,7 @@ rm -f jar.txt jar-plain.txt jar-offline.txt credential.json run.json run-start.j
 | `DELETE /v1/sessions/current` | Ends the session and drops every credential of that session. |
 | `POST /v1/credentials` | Accepts the key of the visitor and answers with a handle. |
 | `POST /v1/credentials/forget` | Drops one credential at once. |
-| `GET /v1/models` | The catalogue of the models the visitor may pick. |
+| `GET /v1/models` | The catalog of the models the visitor may pick. |
 | `GET /v1/models/{profile_id}` | The price of one model, with its provenance. |
 | `POST /v1/live-runs` | Starts a live run and answers with its identifier. |
 | `GET /v1/live-runs/{run_id}` | The state of a run, its answer and the reason it ended. |
@@ -743,7 +743,7 @@ Promised, and covered by the tests of the repository:
   forget it, when its time to live passes, when it fails too often or when the server restarts.
 - The answer of the credential route never carries the key. It carries the handle, the provider and the expiry.
 - A handle of another session is refused with the same answer as a handle that never existed.
-- The catalogue shows only the models that were really tested, and the price of a model that was never verified is
+- The catalog shows only the models that were really tested, and the price of a model that was never verified is
   absent and never a guess.
 - Every run ends with exactly one terminal event, and a run that would pass a cap stops at once and names the cap
   that stopped it: the report of the run carries that name in `cut_by`.

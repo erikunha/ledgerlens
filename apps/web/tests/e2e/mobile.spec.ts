@@ -147,7 +147,16 @@ test.describe("the narrow screen of 390 pixels", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test("the pages of the site do not scroll sideways", async ({ page }) => {
-    for (const route of ["/", "/replay", "/replay/scenario/S01", "/sandbox", "/live", "/engineering"]) {
+    for (const route of [
+      "/",
+      "/replay",
+      "/replay/scenario/S01",
+      "/replay-real",
+      "/replay-real/scenario/S01",
+      "/sandbox",
+      "/live",
+      "/engineering",
+    ]) {
       await page.goto(route);
       await expect(page.getByRole("main")).toBeVisible();
 

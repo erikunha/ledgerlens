@@ -1,11 +1,11 @@
 """The model registry: the allowlist the server answers, and the price that is never a guess.
 
-What they guarantee, and why: (a) the catalogue holds only the profiles of the allowlist and only the ones whose
+What they guarantee, and why: (a) the catalog holds only the profiles of the allowlist and only the ones whose
 tool calling was tested, so the visitor never picks a model the agent cannot drive (FR-016, SC-009); (b) a model
 identifier that is not in the allowlist is refused by the server and not by the interface alone (FR-027); (c) a
 profile that lacks a capability the architecture needs is refused with the missing capability named (FR-015);
 (d) a price that was not verified is absent and never a guess, so the cost panel can say unknown (FR-011);
-(e) a price is money, so it is a Decimal and never a float; (f) the catalogue exposes the tested status and the
+(e) a price is money, so it is a Decimal and never a float; (f) the catalog exposes the tested status and the
 capabilities of each profile (FR-030) and a price carries its provenance and the date of the last verification
 (FR-031); (h) no refusal of the registry names the identifier that the visitor sent, and it names the reason
 instead (FR-018, SC-001); (i) the contract of the profile and the dataclass of the domain agree field for field, so
@@ -45,7 +45,7 @@ CREDENTIAL_HANDLE_SCHEMA = CONTRACTS / "credential-handle.schema.json"
 
 
 def priced_profile(profile_id: str = "openai-gpt-4.1-mini") -> ModelProfile:
-    """A profile with a verified price, the shape the shipped catalogue uses."""
+    """A profile with a verified price, the shape the shipped catalog uses."""
     return ModelProfile(
         profile_id=profile_id,
         provider="openai",
@@ -77,31 +77,31 @@ def unpriced_profile(profile_id: str = "openai-gpt-4.1") -> ModelProfile:
     )
 
 
-def test_the_catalogue_lists_only_tested_models_with_tool_calling() -> None:
-    """FR-016 and SC-009: the catalogue is the tested part of the allowlist and nothing else."""
-    catalogue = ProviderRegistry().catalogue()
+def test_the_catalog_lists_only_tested_models_with_tool_calling() -> None:
+    """FR-016 and SC-009: the catalog is the tested part of the allowlist and nothing else."""
+    catalog = ProviderRegistry().catalog()
 
-    assert catalogue, "the allowlist ships at least one model the visitor may run"
-    for profile in catalogue:
+    assert catalog, "the allowlist ships at least one model the visitor may run"
+    for profile in catalog:
         assert profile.status == "tested", f"{profile.profile_id} is offered without being tested"
         assert profile.enabled_in_public_demo is True
         assert "tool_calling" in profile.capabilities, f"{profile.profile_id} was offered without tool calling"
 
 
-def test_each_rule_of_the_catalogue_is_proved_by_a_profile_that_fails_it() -> None:
-    """SC-009: the catalogue filters on the status, on the flag and on the capability, and each filter is proved.
+def test_each_rule_of_the_catalog_is_proved_by_a_profile_that_fails_it() -> None:
+    """SC-009: the catalog filters on the status, on the flag and on the capability, and each filter is proved.
 
     The four profiles are the ones that tell the filters apart: a profile that breaks one rule and holds the three
-    others stays out of the catalogue, so a catalogue that forgot one of its rules would show it.
+    others stays out of the catalog, so a catalog that forgot one of its rules would show it.
     """
     good = priced_profile(profile_id="good")
     without_tools = replace(priced_profile(profile_id="without-tools"), capabilities=("chat",))
     experimental = replace(priced_profile(profile_id="experimental"), status="experimental")
     disabled = replace(priced_profile(profile_id="disabled"), enabled_in_public_demo=False)
 
-    catalogue = ProviderRegistry([good, without_tools, experimental, disabled]).catalogue()
+    catalog = ProviderRegistry([good, without_tools, experimental, disabled]).catalog()
 
-    assert [profile.profile_id for profile in catalogue] == ["good"]
+    assert [profile.profile_id for profile in catalog] == ["good"]
 
 
 def test_a_model_outside_the_allowlist_is_refused_by_the_server() -> None:
@@ -212,11 +212,11 @@ def test_a_price_is_money_and_never_a_float() -> None:
     assert isinstance(profile.pricing.last_verified, date)
 
 
-def test_the_catalogue_exposes_the_tested_status_and_the_capabilities() -> None:
+def test_the_catalog_exposes_the_tested_status_and_the_capabilities() -> None:
     """FR-030: the interface needs the status and the capabilities of every model it lists."""
-    catalogue = ProviderRegistry().catalogue()
+    catalog = ProviderRegistry().catalog()
 
-    for profile in catalogue:
+    for profile in catalog:
         assert profile.status in {"tested", "experimental", "disabled", "retired"}
         assert profile.capabilities
         assert "tool_calling" in profile.capabilities
@@ -252,7 +252,7 @@ def test_the_allowlist_is_data_and_the_registry_does_not_mutate_it() -> None:
     registry = ProviderRegistry()
 
     assert registry.all_profiles() == ALLOWLIST
-    assert ProviderRegistry().catalogue() == ProviderRegistry().catalogue()
+    assert ProviderRegistry().catalog() == ProviderRegistry().catalog()
 
 
 def test_the_model_profile_contract_agrees_with_the_dataclass_field_for_field() -> None:

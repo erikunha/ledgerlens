@@ -1,0 +1,1072 @@
+{
+  "accounts": [
+    {
+      "id": "M-03",
+      "kind": "merchant",
+      "name": "Casa Verde Foods",
+      "reads": [],
+      "rows": [
+        {
+          "amount": "3315.43",
+          "at": "2026-08-10T12:09:00Z",
+          "currency": "BRL",
+          "id": "TX-0008",
+          "kind": "transaction",
+          "status": "partially_refunded"
+        },
+        {
+          "amount": "23.67",
+          "at": "2026-08-10T12:14:00Z",
+          "currency": "GBP",
+          "id": "R-0001",
+          "kind": "refund",
+          "status": "paid"
+        },
+        {
+          "amount": "8874.64",
+          "at": "2026-08-10T12:45:00Z",
+          "currency": "BRL",
+          "id": "TX-0010",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "2098.94",
+          "at": "2026-08-10T14:01:00Z",
+          "currency": "BRL",
+          "id": "TX-0014",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "1749.57",
+          "at": "2026-08-10T14:09:00Z",
+          "currency": "BRL",
+          "id": "TX-0015",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "915.96",
+          "at": "2026-08-10T15:11:00Z",
+          "currency": "BRL",
+          "id": "TX-0019",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "1394.71",
+          "at": "2026-08-10T15:47:00Z",
+          "currency": "BRL",
+          "id": "TX-0023",
+          "kind": "transaction",
+          "status": "partially_refunded"
+        },
+        {
+          "amount": "494.11",
+          "at": "2026-08-11T12:32:00Z",
+          "currency": "BRL",
+          "id": "TX-0033",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "2191.19",
+          "at": "2026-08-11T12:45:00Z",
+          "currency": "BRL",
+          "id": "TX-0035",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "3458.79",
+          "at": "2026-08-11T13:38:00Z",
+          "currency": "BRL",
+          "id": "TX-0038",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "1170.85",
+          "at": "2026-08-11T16:06:00Z",
+          "currency": "BRL",
+          "id": "TX-0044",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "22.76",
+          "at": "2026-08-13T11:39:00Z",
+          "currency": "GBP",
+          "id": "R-0002",
+          "kind": "refund",
+          "status": "paid"
+        },
+        {
+          "amount": "6937.78",
+          "at": "2026-08-14T14:05:00Z",
+          "currency": "BRL",
+          "id": "TX-0102",
+          "kind": "transaction",
+          "status": "partially_refunded"
+        },
+        {
+          "amount": "2270.20",
+          "at": "2026-08-15T12:17:00Z",
+          "currency": "BRL",
+          "id": "TX-0116",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "1742.17",
+          "at": "2026-08-15T15:07:00Z",
+          "currency": "BRL",
+          "id": "TX-0121",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "5352.85",
+          "at": "2026-08-17T12:15:00Z",
+          "currency": "BRL",
+          "id": "TX-0129",
+          "kind": "transaction",
+          "status": "partially_refunded"
+        },
+        {
+          "amount": "2127.42",
+          "at": "2026-08-19T09:13:00Z",
+          "currency": "BRL",
+          "id": "TX-0157",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "3493.21",
+          "at": "2026-08-19T11:16:00Z",
+          "currency": "BRL",
+          "id": "TX-0163",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "840.36",
+          "at": "2026-08-19T14:00:00Z",
+          "currency": "BRL",
+          "id": "TX-0172",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "2084.90",
+          "at": "2026-08-20T15:39:00Z",
+          "currency": "BRL",
+          "id": "TX-0196",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "34336.05",
+          "at": "2026-08-21T10:38:00Z",
+          "currency": "BRL",
+          "id": "TX-0202",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "1166.57",
+          "at": "2026-08-21T12:41:00Z",
+          "currency": "BRL",
+          "id": "TX-0210",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "2950.67",
+          "at": "2026-08-21T15:51:00Z",
+          "currency": "BRL",
+          "id": "TX-0222",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "9.94",
+          "at": "2026-08-24T12:18:00Z",
+          "currency": "GBP",
+          "id": "R-0019",
+          "kind": "refund",
+          "status": "paid"
+        },
+        {
+          "amount": "1895.78",
+          "at": "2026-08-24T13:13:00Z",
+          "currency": "BRL",
+          "id": "TX-0259",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "2312.43",
+          "at": "2026-08-24T13:42:00Z",
+          "currency": "BRL",
+          "id": "TX-0263",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "2314.43",
+          "at": "2026-08-26T09:24:00Z",
+          "currency": "BRL",
+          "id": "TX-0297",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "7333.21",
+          "at": "2026-08-28T17:36:00Z",
+          "currency": "BRL",
+          "id": "TX-0376",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "2104.40",
+          "at": "2026-08-29T09:05:00Z",
+          "currency": "BRL",
+          "id": "TX-0382",
+          "kind": "transaction",
+          "status": "partially_refunded"
+        },
+        {
+          "amount": "2147.75",
+          "at": "2026-08-31T15:49:00Z",
+          "currency": "BRL",
+          "id": "TX-0412",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "640.00",
+          "at": "2026-09-02T12:00:00Z",
+          "currency": "BRL",
+          "id": "TX-2083",
+          "kind": "transaction",
+          "status": "disputed"
+        },
+        {
+          "amount": "2.99",
+          "at": "2026-09-02T17:31:00Z",
+          "currency": "GBP",
+          "id": "R-0045",
+          "kind": "refund",
+          "status": "paid"
+        },
+        {
+          "amount": "549.93",
+          "at": "2026-09-03T11:16:00Z",
+          "currency": "BRL",
+          "id": "TX-0464",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "2586.27",
+          "at": "2026-09-03T16:09:00Z",
+          "currency": "BRL",
+          "id": "TX-0484",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "910.00",
+          "at": "2026-09-04T09:30:00Z",
+          "currency": "BRL",
+          "id": "TX-2084",
+          "kind": "transaction",
+          "status": "disputed"
+        },
+        {
+          "amount": "2709.47",
+          "at": "2026-09-04T11:24:00Z",
+          "currency": "BRL",
+          "id": "TX-0499",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "551.88",
+          "at": "2026-09-04T12:13:00Z",
+          "currency": "BRL",
+          "id": "TX-0501",
+          "kind": "transaction",
+          "status": "partially_refunded"
+        },
+        {
+          "amount": "3145.03",
+          "at": "2026-09-05T15:18:00Z",
+          "currency": "BRL",
+          "id": "TX-0546",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "772.29",
+          "at": "2026-09-08T12:35:00Z",
+          "currency": "BRL",
+          "id": "TX-0575",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "7.65",
+          "at": "2026-09-08T17:01:00Z",
+          "currency": "GBP",
+          "id": "R-0072",
+          "kind": "refund",
+          "status": "paid"
+        },
+        {
+          "amount": "1829.05",
+          "at": "2026-09-09T09:53:00Z",
+          "currency": "BRL",
+          "id": "TX-0595",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "23.45",
+          "at": "2026-09-09T10:14:00Z",
+          "currency": "GBP",
+          "id": "R-0074",
+          "kind": "refund",
+          "status": "paid"
+        },
+        {
+          "amount": "5306.00",
+          "at": "2026-09-09T14:59:00Z",
+          "currency": "BRL",
+          "id": "TX-0616",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "1167.83",
+          "at": "2026-09-10T11:32:00Z",
+          "currency": "BRL",
+          "id": "TX-0625",
+          "kind": "transaction",
+          "status": "failed"
+        },
+        {
+          "amount": "2383.06",
+          "at": "2026-09-10T13:30:00Z",
+          "currency": "BRL",
+          "id": "TX-0635",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "244.39",
+          "at": "2026-09-11T12:07:00Z",
+          "currency": "BRL",
+          "id": "TX-0649",
+          "kind": "transaction",
+          "status": "partially_refunded"
+        },
+        {
+          "amount": "488.78",
+          "at": "2026-09-12T10:48:00Z",
+          "currency": "BRL",
+          "id": "TX-0669",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "2514.20",
+          "at": "2026-09-15T09:36:00Z",
+          "currency": "BRL",
+          "id": "TX-0698",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "762.41",
+          "at": "2026-09-17T09:48:00Z",
+          "currency": "BRL",
+          "id": "TX-0751",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "2.97",
+          "at": "2026-09-17T13:37:00Z",
+          "currency": "GBP",
+          "id": "R-0098",
+          "kind": "refund",
+          "status": "paid"
+        },
+        {
+          "amount": "3369.23",
+          "at": "2026-09-21T11:42:00Z",
+          "currency": "BRL",
+          "id": "TX-0822",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "2062.53",
+          "at": "2026-09-21T12:46:00Z",
+          "currency": "BRL",
+          "id": "TX-0824",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "1111.42",
+          "at": "2026-09-21T14:30:00Z",
+          "currency": "BRL",
+          "id": "TX-0827",
+          "kind": "transaction",
+          "status": "partially_refunded"
+        },
+        {
+          "amount": "5007.92",
+          "at": "2026-09-22T10:18:00Z",
+          "currency": "BRL",
+          "id": "TX-0838",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "1501.56",
+          "at": "2026-09-22T10:23:00Z",
+          "currency": "BRL",
+          "id": "TX-0839",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "9782.16",
+          "at": "2026-09-23T10:27:00Z",
+          "currency": "BRL",
+          "id": "TX-0859",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "1366.49",
+          "at": "2026-09-23T10:32:00Z",
+          "currency": "BRL",
+          "id": "TX-0860",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "10292.05",
+          "at": "2026-09-25T13:43:00Z",
+          "currency": "BRL",
+          "id": "TX-0925",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "2108.11",
+          "at": "2026-09-29T11:32:00Z",
+          "currency": "BRL",
+          "id": "TX-0997",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "3787.41",
+          "at": "2026-10-02T11:43:00Z",
+          "currency": "BRL",
+          "id": "TX-1071",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "3144.68",
+          "at": "2026-10-02T14:42:00Z",
+          "currency": "BRL",
+          "id": "TX-1083",
+          "kind": "transaction",
+          "status": "partially_refunded"
+        },
+        {
+          "amount": "6883.78",
+          "at": "2026-10-02T16:56:00Z",
+          "currency": "BRL",
+          "id": "TX-1091",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "4209.72",
+          "at": "2026-10-03T10:28:00Z",
+          "currency": "BRL",
+          "id": "TX-1101",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "769.01",
+          "at": "2026-10-03T10:37:00Z",
+          "currency": "BRL",
+          "id": "TX-1102",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "555.54",
+          "at": "2026-10-03T11:03:00Z",
+          "currency": "BRL",
+          "id": "TX-1105",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "2188.81",
+          "at": "2026-10-03T11:04:00Z",
+          "currency": "BRL",
+          "id": "TX-1106",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "2260.01",
+          "at": "2026-10-03T13:15:00Z",
+          "currency": "BRL",
+          "id": "TX-1117",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "1391.42",
+          "at": "2026-10-05T13:32:00Z",
+          "currency": "BRL",
+          "id": "TX-1142",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "747.56",
+          "at": "2026-10-05T15:43:00Z",
+          "currency": "BRL",
+          "id": "TX-1152",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "1250.00",
+          "at": "2026-10-06T14:00:00Z",
+          "currency": "BRL",
+          "id": "TX-2081",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "2759.05",
+          "at": "2026-10-06T16:34:00Z",
+          "currency": "BRL",
+          "id": "TX-1177",
+          "kind": "transaction",
+          "status": "disputed"
+        },
+        {
+          "amount": "640.00",
+          "at": "2026-10-07T10:00:00Z",
+          "currency": "BRL",
+          "id": "CB-0311",
+          "kind": "chargeback",
+          "status": "opened"
+        },
+        {
+          "amount": "0.00",
+          "at": "2026-10-07T11:38:00Z",
+          "currency": "BRL",
+          "id": "R-0179",
+          "kind": "refund",
+          "status": "rejected"
+        },
+        {
+          "amount": "2694.03",
+          "at": "2026-10-07T11:45:00Z",
+          "currency": "BRL",
+          "id": "TX-1192",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "5266.03",
+          "at": "2026-10-07T12:58:00Z",
+          "currency": "BRL",
+          "id": "TX-1199",
+          "kind": "transaction",
+          "status": "partially_refunded"
+        },
+        {
+          "amount": "1597.91",
+          "at": "2026-10-07T14:30:00Z",
+          "currency": "BRL",
+          "id": "TX-1206",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "2736.81",
+          "at": "2026-10-08T13:17:00Z",
+          "currency": "BRL",
+          "id": "TX-1234",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "2168.59",
+          "at": "2026-10-08T13:46:00Z",
+          "currency": "BRL",
+          "id": "TX-1237",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "2740.39",
+          "at": "2026-10-08T15:50:00Z",
+          "currency": "BRL",
+          "id": "TX-1245",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "780.50",
+          "at": "2026-10-08T16:30:00Z",
+          "currency": "BRL",
+          "id": "TX-2082",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "910.00",
+          "at": "2026-10-09T10:00:00Z",
+          "currency": "BRL",
+          "id": "CB-0312",
+          "kind": "chargeback",
+          "status": "opened"
+        },
+        {
+          "amount": "179.90",
+          "at": "2026-10-09T14:03:00Z",
+          "currency": "BRL",
+          "id": "R-0207",
+          "kind": "refund",
+          "status": "paid"
+        },
+        {
+          "amount": "2274.86",
+          "at": "2026-10-09T16:15:00Z",
+          "currency": "BRL",
+          "id": "TX-1280",
+          "kind": "transaction",
+          "status": "partially_refunded"
+        },
+        {
+          "amount": "4512.39",
+          "at": "2026-10-10T16:57:00Z",
+          "currency": "BRL",
+          "id": "TX-1316",
+          "kind": "transaction",
+          "status": "partially_refunded"
+        },
+        {
+          "amount": "2861.05",
+          "at": "2026-10-12T12:03:00Z",
+          "currency": "BRL",
+          "id": "TX-1325",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "1586.13",
+          "at": "2026-10-12T14:11:00Z",
+          "currency": "BRL",
+          "id": "TX-1334",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "1251.06",
+          "at": "2026-10-12T15:44:00Z",
+          "currency": "BRL",
+          "id": "TX-1340",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "6800.83",
+          "at": "2026-10-13T13:00:00Z",
+          "currency": "BRL",
+          "id": "TX-1361",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "6.13",
+          "at": "2026-10-13T13:38:00Z",
+          "currency": "GBP",
+          "id": "R-0222",
+          "kind": "refund",
+          "status": "paid"
+        },
+        {
+          "amount": "2066.94",
+          "at": "2026-10-14T11:56:00Z",
+          "currency": "BRL",
+          "id": "TX-1391",
+          "kind": "transaction",
+          "status": "partially_refunded"
+        },
+        {
+          "amount": "1150.78",
+          "at": "2026-10-14T12:33:00Z",
+          "currency": "BRL",
+          "id": "TX-1393",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "1757.47",
+          "at": "2026-10-14T13:19:00Z",
+          "currency": "BRL",
+          "id": "TX-1396",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "2481.00",
+          "at": "2026-10-15T13:27:00Z",
+          "currency": "BRL",
+          "id": "TX-1429",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "2371.28",
+          "at": "2026-10-15T15:21:00Z",
+          "currency": "BRL",
+          "id": "TX-1436",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "1381.85",
+          "at": "2026-10-15T16:06:00Z",
+          "currency": "BRL",
+          "id": "TX-1444",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "2759.81",
+          "at": "2026-10-15T16:42:00Z",
+          "currency": "BRL",
+          "id": "TX-1448",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "2464.65",
+          "at": "2026-10-16T12:54:00Z",
+          "currency": "BRL",
+          "id": "TX-1467",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "3073.53",
+          "at": "2026-10-16T13:16:00Z",
+          "currency": "BRL",
+          "id": "TX-1471",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "369.88",
+          "at": "2026-10-16T13:21:00Z",
+          "currency": "BRL",
+          "id": "TX-1473",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "12.40",
+          "at": "2026-10-16T15:24:00Z",
+          "currency": "GBP",
+          "id": "R-0241",
+          "kind": "refund",
+          "status": "paid"
+        },
+        {
+          "amount": "4.83",
+          "at": "2026-10-17T17:15:00Z",
+          "currency": "GBP",
+          "id": "R-0253",
+          "kind": "refund",
+          "status": "paid"
+        },
+        {
+          "amount": "2482.89",
+          "at": "2026-10-19T11:28:00Z",
+          "currency": "BRL",
+          "id": "TX-1532",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "40.95",
+          "at": "2026-10-19T14:48:00Z",
+          "currency": "GBP",
+          "id": "R-0256",
+          "kind": "refund",
+          "status": "paid"
+        },
+        {
+          "amount": "2206.15",
+          "at": "2026-10-20T08:37:00Z",
+          "currency": "BRL",
+          "id": "TX-1559",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "867.60",
+          "at": "2026-10-20T11:50:00Z",
+          "currency": "BRL",
+          "id": "TX-1565",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "3389.95",
+          "at": "2026-10-20T12:36:00Z",
+          "currency": "BRL",
+          "id": "TX-1568",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "887.16",
+          "at": "2026-10-21T14:43:00Z",
+          "currency": "BRL",
+          "id": "TX-1617",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "1646.50",
+          "at": "2026-10-22T10:55:00Z",
+          "currency": "BRL",
+          "id": "TX-1641",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "478.98",
+          "at": "2026-10-23T11:47:00Z",
+          "currency": "BRL",
+          "id": "TX-1684",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "2752.45",
+          "at": "2026-10-24T11:12:00Z",
+          "currency": "BRL",
+          "id": "TX-1711",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "2501.04",
+          "at": "2026-10-27T11:07:00Z",
+          "currency": "BRL",
+          "id": "TX-1753",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "3891.68",
+          "at": "2026-10-27T14:12:00Z",
+          "currency": "BRL",
+          "id": "TX-1771",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "186.16",
+          "at": "2026-10-28T11:05:00Z",
+          "currency": "BRL",
+          "id": "TX-1794",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "5717.16",
+          "at": "2026-10-28T11:48:00Z",
+          "currency": "BRL",
+          "id": "TX-1800",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "2619.97",
+          "at": "2026-10-28T17:23:00Z",
+          "currency": "BRL",
+          "id": "TX-1821",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "1293.12",
+          "at": "2026-10-29T10:44:00Z",
+          "currency": "BRL",
+          "id": "TX-1830",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "5421.28",
+          "at": "2026-10-29T10:54:00Z",
+          "currency": "BRL",
+          "id": "TX-1833",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "56.66",
+          "at": "2026-10-30T09:00:00Z",
+          "currency": "BRL",
+          "id": "R-0299",
+          "kind": "refund",
+          "status": "paid"
+        },
+        {
+          "amount": "75.00",
+          "at": "2026-10-30T10:15:00Z",
+          "currency": "EUR",
+          "id": "TX-2060",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "3828.03",
+          "at": "2026-10-30T15:12:00Z",
+          "currency": "BRL",
+          "id": "TX-1880",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "2263.70",
+          "at": "2026-10-31T17:06:00Z",
+          "currency": "BRL",
+          "id": "TX-1925",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "2759.05",
+          "at": "2026-10-31T20:42:05Z",
+          "currency": "BRL",
+          "id": "CB-0005",
+          "kind": "chargeback",
+          "status": "evidence_submitted"
+        },
+        {
+          "amount": "444.97",
+          "at": "2026-11-03T11:38:00Z",
+          "currency": "BRL",
+          "id": "TX-1955",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "1614.79",
+          "at": "2026-11-03T12:08:00Z",
+          "currency": "BRL",
+          "id": "TX-1957",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "3533.11",
+          "at": "2026-11-03T13:58:00Z",
+          "currency": "BRL",
+          "id": "TX-1968",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "2234.37",
+          "at": "2026-11-03T14:29:00Z",
+          "currency": "BRL",
+          "id": "TX-1970",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "2211.75",
+          "at": "2026-11-03T17:13:00Z",
+          "currency": "BRL",
+          "id": "TX-1981",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "1478.98",
+          "at": "2026-11-04T09:35:00Z",
+          "currency": "BRL",
+          "id": "TX-1989",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "1496.84",
+          "at": "2026-11-04T11:41:00Z",
+          "currency": "BRL",
+          "id": "TX-1995",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "1020.05",
+          "at": "2026-11-04T14:56:00Z",
+          "currency": "BRL",
+          "id": "TX-2008",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "3454.11",
+          "at": "2026-11-05T14:12:00Z",
+          "currency": "BRL",
+          "id": "TX-2042",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "1755.48",
+          "at": "2026-11-06T14:15:00Z",
+          "currency": "BRL",
+          "id": "TX-2079",
+          "kind": "transaction",
+          "status": "captured"
+        }
+      ]
+    }
+  ],
+  "page_size": 50,
+  "scenario": "S08",
+  "schema_version": "1",
+  "snapshot_sha256": "930b8d73637f6410fb997ee822967a0c7c0efb7e0e21b1cb20fc44c7ea74981c"
+}

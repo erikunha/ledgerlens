@@ -10,6 +10,9 @@
  * a unit test that runs before the copy exists used to see a catalog with no scenario at all, and it failed with a
  * page of 404 in the middle of a test that had nothing to do with the 404.
  *
+ * Why the catalog is an argument: the site publishes two catalogs, the recordings of the scripted model and the
+ * recordings of a real model, and each one has its own folder of published artifacts (ADR-075).
+ *
  * Why the failure is loud: a catalog that cannot be read, or that does not pass the contract of the published
  * artifacts, stops the build with a reason a reader can act on. It never becomes a catalog with no scenario, because a
  * catalog with no scenario produces an export with no page of a scenario, and a visitor who follows a card of the
@@ -20,6 +23,8 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 import type { ScenarioIndexEntry } from "@/lib/api/schemas";
+import { DEFAULT_CATALOG, catalogOf } from "@/lib/replay/catalogs";
+import type { ReplayCatalogId } from "@/lib/replay/catalogs";
 import { validateScenarioIndex } from "@/lib/replay/validate";
 
 /**
@@ -34,10 +39,14 @@ import { validateScenarioIndex } from "@/lib/replay/validate";
  * Why the root is a parameter: the reader is a function of the folder it works on, so a test can prove the order of
  * the two places with a folder of its own, outside the repository.
  */
-export function catalogCandidates(root: string = process.cwd()): string[] {
+export function catalogCandidates(
+  root: string = process.cwd(),
+  catalog: ReplayCatalogId = DEFAULT_CATALOG,
+): string[] {
+  const folder = catalogOf(catalog).folder;
   return [
-    path.join(root, "public", "replay", "index.json"),
-    path.join(root, "..", "..", "site", "replay", "index.json"),
+    path.join(root, "public", folder, "index.json"),
+    path.join(root, "..", "..", "site", folder, "index.json"),
   ];
 }
 
@@ -50,8 +59,11 @@ export function catalogCandidates(root: string = process.cwd()): string[] {
  * Why the first place is returned when none of them exists: the caller reads that file and fails with a reason that
  * names the place where the catalog was expected.
  */
-export function resolveCatalogPath(root: string = process.cwd()): string {
-  const candidates = catalogCandidates(root);
+export function resolveCatalogPath(
+  root: string = process.cwd(),
+  catalog: ReplayCatalogId = DEFAULT_CATALOG,
+): string {
+  const candidates = catalogCandidates(root, catalog);
   for (const candidate of candidates) {
     if (existsSync(candidate)) {
       return candidate;
@@ -66,15 +78,18 @@ export function resolveCatalogPath(root: string = process.cwd()): string {
  * Why the reader throws and never returns an empty catalog: an empty catalog is a valid answer to a question nobody
  * asked, and it builds a site with no page of a scenario. A reason a reader can act on is the answer.
  */
-export function readPublishedCatalog(root: string = process.cwd()): ScenarioIndexEntry[] {
-  const file = resolveCatalogPath(root);
+export function readPublishedCatalog(
+  root: string = process.cwd(),
+  catalog: ReplayCatalogId = DEFAULT_CATALOG,
+): ScenarioIndexEntry[] {
+  const file = resolveCatalogPath(root, catalog);
 
   let raw: string;
   try {
     raw = readFileSync(file, "utf8");
   } catch {
     throw new Error(
-      `the published catalog of the scenarios was not found: ${catalogCandidates(root).join(" or ")}`,
+      `the published catalog of the scenarios was not found: ${catalogCandidates(root, catalog).join(" or ")}`,
     );
   }
 
@@ -86,14 +101,14 @@ export function readPublishedCatalog(root: string = process.cwd()): ScenarioInde
     throw new Error(`the published catalog of the scenarios is not a JSON document: ${file} (${reason})`);
   }
 
-  const catalog = validateScenarioIndex(parsed);
-  if (!catalog.ok) {
+  const validated = validateScenarioIndex(parsed);
+  if (!validated.ok) {
     throw new Error(
-      `the published catalog of the scenarios does not pass the contract of the published artifacts: ${file} (${catalog.reasons.join("; ")})`,
+      `the published catalog of the scenarios does not pass the contract of the published artifacts: ${file} (${validated.reasons.join("; ")})`,
     );
   }
 
-  return catalog.value;
+  return validated.value;
 }
 
 export const __all__ = ["catalogCandidates", "readPublishedCatalog", "resolveCatalogPath"] as const;

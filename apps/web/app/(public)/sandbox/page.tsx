@@ -44,7 +44,6 @@ import { createSandboxClient } from "@/features/sandbox/api/sandboxClient";
 import type { BranchHistoryEvent } from "@/features/sandbox/types";
 import type { BranchState } from "@/features/sandbox/useBranch";
 import { useBranch } from "@/features/sandbox/useBranch";
-import { loadScenarioCatalog } from "@/lib/api/replay";
 import { ScenarioCatalogProvider, useScenarioCatalog } from "@/lib/api/provider";
 
 /** The identifier of the reason of the fork, so that the control points at it. */
@@ -166,7 +165,7 @@ function announcementOf(state: BranchState): string {
  */
 export default function SandboxPage(): ReactElement {
   return (
-    <ScenarioCatalogProvider loader={loadScenarioCatalog}>
+    <ScenarioCatalogProvider catalog="sandbox">
       <SandboxRoom />
     </ScenarioCatalogProvider>
   );

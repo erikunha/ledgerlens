@@ -44,7 +44,7 @@ import { readPublishedCatalog } from "@/lib/replay/catalog";
  * catalog that does not pass the contract of the published artifacts (ADR-042, ADR-043).
  */
 export function generateStaticParams(): Array<{ scenario: string }> {
-  return readPublishedCatalog().map((entry) => ({ scenario: entry.id }));
+  return readPublishedCatalog(process.cwd(), "sandbox").map((entry) => ({ scenario: entry.id }));
 }
 
 /**
@@ -77,7 +77,7 @@ interface ReplayScenarioPageProps {
  */
 export async function generateMetadata({ params }: ReplayScenarioPageProps): Promise<Metadata> {
   const { scenario } = await params;
-  const card = readPublishedCatalog().find((entry) => entry.id === scenario);
+  const card = readPublishedCatalog(process.cwd(), "sandbox").find((entry) => entry.id === scenario);
 
   if (!card) {
     return {
@@ -106,7 +106,7 @@ export async function generateMetadata({ params }: ReplayScenarioPageProps): Pro
  */
 export default async function ReplayScenarioPage({ params }: ReplayScenarioPageProps) {
   const { scenario } = await params;
-  const card = readPublishedCatalog().find((entry) => entry.id === scenario);
+  const card = readPublishedCatalog(process.cwd(), "sandbox").find((entry) => entry.id === scenario);
 
   if (!card) {
     notFound();

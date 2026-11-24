@@ -1,7 +1,7 @@
 """The wired application of the demo: the two facades as one visitor, over one issuer, one store and one vault.
 
 Why it exists: the demo has two facades. The sandbox of the visitor serves the branch of the visitor, and the live
-mode serves the credential, the catalogue and the run. A live run reads the ledger of the branch of the visitor
+mode serves the credential, the catalog and the run. A live run reads the ledger of the branch of the visitor
 (ADR-038), so the two facades have to be the same visitor for a live case to mean anything. This module is the
 deployment that makes them one: it builds one application over one session issuer, one store of branches, one base
 resolver, one branch layer, one vault of the credentials and one runtime folder, and it serves the two facades

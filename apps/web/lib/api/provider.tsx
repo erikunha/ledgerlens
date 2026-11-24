@@ -25,6 +25,8 @@ import type { ReactElement, ReactNode } from "react";
 
 import { loadScenarioCatalog } from "@/lib/api/replay";
 import type { ScenarioIndexEntry } from "@/lib/api/schemas";
+import { DEFAULT_CATALOG } from "@/lib/replay/catalogs";
+import type { ReplayCatalogId } from "@/lib/replay/catalogs";
 
 /**
  * The function that reads the catalog of the scenarios.
@@ -62,18 +64,28 @@ export interface ScenarioCatalogProviderProps {
   readonly children: ReactNode;
   /** The function that reads the catalog. The default reads the published one. */
   readonly loader?: ScenarioCatalogLoader;
+  /**
+   * The catalog of the scenarios the provider reads.
+   *
+   * Why the catalog is a prop: the site publishes two catalogs, the recordings of the scripted model and the
+   * recordings of a real model, and each one has its own root of artifacts (ADR-075). The default is the sandbox,
+   * the catalog that existed before the second one.
+   */
+  readonly catalog?: ReplayCatalogId;
 }
 
 /** The context that holds the state of the catalog. */
 const ScenarioCatalogContext = createContext<ScenarioCatalogState | null>(null);
 
 /**
- * The loader of the published catalog.
+ * The loader of the published catalog of a catalog of the site.
  *
  * Why it is a function of its own: the provider reads the catalog through it, and the reference
  * that holds it has to be a function and never nothing.
  */
-const publishedCatalogLoader: ScenarioCatalogLoader = () => loadScenarioCatalog();
+function publishedCatalogLoader(catalog: ReplayCatalogId): ScenarioCatalogLoader {
+  return () => loadScenarioCatalog({ catalog });
+}
 
 /**
  * The provider of the catalog of the scenarios.
@@ -86,7 +98,7 @@ const publishedCatalogLoader: ScenarioCatalogLoader = () => loadScenarioCatalog(
  * the same file a second time.
  */
 export function ScenarioCatalogProvider(props: ScenarioCatalogProviderProps): ReactElement {
-  const { children, loader } = props;
+  const { children, loader, catalog = DEFAULT_CATALOG } = props;
 
   // The state of the provider that is above this one, when there is one.
   const inherited = useContext(ScenarioCatalogContext);
@@ -98,8 +110,12 @@ export function ScenarioCatalogProvider(props: ScenarioCatalogProviderProps): Re
 
   // The loader is kept in a reference, so that a caller that hands over a new function does not
   // make the provider read the catalog again. The reading is decided by the attempt alone.
-  const loaderRef = useRef<ScenarioCatalogLoader>(loader ?? publishedCatalogLoader);
-  loaderRef.current = loader ?? publishedCatalogLoader;
+  //
+  // Why the default loader is remembered: it closes over the catalog, and a function that is
+  // built on every render would make the provider read the catalog again and again.
+  const defaultLoader = useMemo(() => publishedCatalogLoader(catalog), [catalog]);
+  const loaderRef = useRef<ScenarioCatalogLoader>(loader ?? defaultLoader);
+  loaderRef.current = loader ?? defaultLoader;
 
   useEffect(() => {
     // The catalog is read once. When a provider above already read it, this provider shows that

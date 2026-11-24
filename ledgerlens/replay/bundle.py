@@ -68,6 +68,7 @@ PROVENANCE_FIELDS = (
     "capture_kind",
     "recorded_at",
     "model_profile",
+    "model_profiles",
     "code_sha",
     "prompt_hash",
     "policy_version",
@@ -95,6 +96,7 @@ class BundleManifest:
     capture_kind: str | None = None
     recorded_at: str | None = None
     model_profile: str | None = None
+    model_profiles: dict[str, str] | None = None
     code_sha: str | None = None
     prompt_hash: str | None = None
     policy_version: str | None = None
@@ -114,6 +116,10 @@ class BundleManifest:
         }
         if self.snapshot_sha256:
             data["snapshot_sha256"] = self.snapshot_sha256
+        if self.model_profiles:
+            # The model of each slot of the run, when the run used more than one. The map is the division of work
+            # the recording shows, and it is what lets a reader see which model did which task (ADR-078).
+            data["model_profiles"] = dict(self.model_profiles)
         # The provenance is declared field by field: a field the bundle does not declare never reaches the file.
         for name in PROVENANCE_FIELDS:
             value = getattr(self, name)
@@ -136,6 +142,7 @@ class BundleManifest:
             capture_kind=_optional_text(data.get("capture_kind")),
             recorded_at=_optional_text(data.get("recorded_at")),
             model_profile=_optional_text(data.get("model_profile")),
+            model_profiles=_optional_map(data.get("model_profiles")),
             code_sha=_optional_text(data.get("code_sha")),
             prompt_hash=_optional_text(data.get("prompt_hash")),
             policy_version=_optional_text(data.get("policy_version")),
@@ -148,6 +155,19 @@ def _optional_text(value: Any) -> str | None:
     if value is None:
         return None
     return str(value) or None
+
+
+def _optional_map(value: Any) -> dict[str, str] | None:
+    """A field of the manifest that is either a map of names or nothing at all.
+
+    Why the map is read strictly: the field says which model ran which slot of the run, and a map with a value
+    that is not a name would say something the reader cannot check.
+    """
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        raise BundleError("the model_profiles of the manifest is not a map of names")
+    return {str(key): str(item) for key, item in value.items()}
 
 
 def _sha256(path: Path) -> str:
@@ -167,6 +187,7 @@ def write_bundle(
     capture_kind: str | None = None,
     recorded_at: str | None = None,
     model_profile: str | None = None,
+    model_profiles: dict[str, str] | None = None,
     code_sha: str | None = None,
     prompt_hash: str | None = None,
     policy_version: str | None = None,
@@ -219,7 +240,15 @@ def write_bundle(
     # previous version, key for key, and then the moment stays only in created_at.
     if recorded_at is None and any(
         value is not None
-        for value in (capture_kind, model_profile, code_sha, prompt_hash, policy_version, redaction_version)
+        for value in (
+            capture_kind,
+            model_profile,
+            model_profiles,
+            code_sha,
+            prompt_hash,
+            policy_version,
+            redaction_version,
+        )
     ):
         recorded_at = created_at
 
@@ -235,6 +264,7 @@ def write_bundle(
         capture_kind=capture_kind,
         recorded_at=recorded_at,
         model_profile=model_profile,
+        model_profiles=dict(model_profiles) if model_profiles else None,
         code_sha=code_sha,
         prompt_hash=prompt_hash,
         policy_version=policy_version,

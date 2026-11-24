@@ -1,0 +1,21 @@
+{
+  "artifacts": {
+    "events.jsonl": "a8ec010853022e9c1c04c1cf4ff3008be0d20c366f0190e6643e5ecc9197933d",
+    "ledger.json": "49a7c6bc4dcb42c3fab5c17a0cb534280a19ead69d61afa9764eb611fb0b96ad",
+    "manifest.json": "8db92baf1f7d4f20fc75fb0f96d807f5f5352737fe0fe515f0074fa9d2a5528b"
+  },
+  "bundle_digest": "8db92baf1f7d4f20fc75fb0f96d807f5f5352737fe0fe515f0074fa9d2a5528b",
+  "capture_kind": "real_model_recorded",
+  "code_sha": "9ffb3cbcfcb1a17883a63a56a7e5954a753322b1",
+  "created_at": "2026-11-23T21:43:15+00:00",
+  "dataset_sha256": "cab6cd1eeefd08ae58b138501c2c69431547fcbb7434f1a47720cc81aefe84ba",
+  "files": {
+    "events.jsonl": "a8ec010853022e9c1c04c1cf4ff3008be0d20c366f0190e6643e5ecc9197933d"
+  },
+  "mode": "live_agent",
+  "model_profile": "openai:gpt-4.1",
+  "note": "Real execution of the scenario S10, account C-0777, with the model openai:gpt-4.1 and the live reference rate. This is the recording of a real run and it is not reproducible byte for byte. The verdicts of the claims were computed by the deterministic verifier of the repository, the judge the sandbox catalogue uses, so that anybody can re-verify this bundle offline.",
+  "policy_version": "policies-v1",
+  "recorded_at": "2026-11-23T21:43:15+00:00",
+  "snapshot_sha256": "4f9bace0aa80730f077b35a7e7ad7bcf9e6b48bcfd6519091b57f9e496cb9990"
+}

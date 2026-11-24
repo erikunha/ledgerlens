@@ -84,3 +84,5 @@ by hand: run `uv run python scripts/build_docs_index.py` and commit the result.
 | 074 | [ADR-074: A case ends in a decision, and the decision belongs to the code](ADR-074-a-case-ends-in-a-decision-and-the-decision-belongs-to-the-code.md) | accepted | 2026-11-24 |
 | 075 | [ADR-075: The site publishes two catalogs, and each bundle declares the one it belongs to](ADR-075-the-site-publishes-two-catalogs-and-each-bundle-declares-the-one-it-belongs-to.md) | accepted | 2026-11-24 |
 | 076 | [ADR-076: The answer of the run is published whole, because the claims are extracted from it](ADR-076-the-answer-of-the-run-is-published-whole-because-the-claims-are-extracted-from-it.md) | accepted | 2026-11-24 |
+| 077 | [ADR-077: The published bundle is verified against the answer the run verified](ADR-077-the-published-bundle-is-verified-against-the-answer-the-run-verified.md) | accepted | 2026-11-24 |
+| 078 | [ADR-078: The model of each slot is chosen by the work it does](ADR-078-the-model-of-each-slot-is-chosen-by-the-work-it-does.md) | accepted | 2026-11-24 |

@@ -1,8 +1,8 @@
-"""The facade of the live mode: the routes of the credential, of the catalogue and of the run.
+"""The facade of the live mode: the routes of the credential, of the catalog and of the run.
 
 Why it exists: the visitor of the demo browses the site with no key at all, and the live mode is an opt-in branch of
 it. This module is the server side of that branch: it accepts the key of the visitor and answers with a handle, it
-forgets the key on demand, it publishes the catalogue of the models that were really tested, and it runs a case with
+forgets the key on demand, it publishes the catalog of the models that were really tested, and it runs a case with
 the key of the visitor inside a budget.
 
 What the routes promise:
@@ -12,7 +12,7 @@ What the routes promise:
 * the answer of the credential route carries the headers that say that nothing is stored, and the disclosure that the
   provider of the visitor may charge the visitor (FR-003, FR-008);
 * the "forget key" action is always there and takes effect at once (FR-014);
-* the catalogue shows only the models of the allowlist that were tested, with their status and their capabilities
+* the catalog shows only the models of the allowlist that were tested, with their status and their capabilities
   (FR-016, FR-030);
 * the price of a model comes with its provenance and the day it was verified, and a model whose price was never
   verified shows no amount at all (FR-011, FR-031);
@@ -651,9 +651,9 @@ def build_router(
         return JSONResponse(status_code=200, content=body, headers={SCHEMA_VERSION_HEADER: SCHEMA_VERSION})
 
     @router.get("/v1/models")
-    def catalogue() -> JSONResponse:
+    def catalog() -> JSONResponse:
         """The models the visitor may pick: the tested ones, with their status and their capabilities (FR-030)."""
-        body = {"models": [profile.to_contract() for profile in registry.catalogue()]}
+        body = {"models": [profile.to_contract() for profile in registry.catalog()]}
         return JSONResponse(status_code=200, content=body, headers={SCHEMA_VERSION_HEADER: SCHEMA_VERSION})
 
     @router.get("/v1/models/{profile_id}")

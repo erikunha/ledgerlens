@@ -8,6 +8,9 @@
  * the state of the interface.
  */
 
+import { DEFAULT_CATALOG, catalogOf } from "@/lib/replay/catalogs";
+import type { ReplayCatalogId } from "@/lib/replay/catalogs";
+
 /**
  * The tabs of the replay, in the order they are shown.
  *
@@ -37,8 +40,8 @@ export interface ViewPreferences {
 /** The preferences of a visitor who changed nothing. */
 export const DEFAULT_VIEW_PREFERENCES: ViewPreferences = { tab: "execution", speed: 1 };
 
-/** The prefix of the path of a scenario. */
-const SCENARIO_PATH_PREFIX = "/replay/scenario/";
+/** The prefix of the path of a scenario, after the route of its catalog. */
+const SCENARIO_PATH_PREFIX = "/scenario/";
 
 /**
  * Says whether a word is one of the tabs of the replay.
@@ -97,9 +100,16 @@ export function writeViewPreferences(preferences: ViewPreferences): string {
 
 /**
  * Builds the path of a scenario, with the identifier as the catalog publishes it.
+ *
+ * Why the catalog is an argument: the site publishes two catalogs of scenarios, and the path of a scenario of one
+ * is not the path of a scenario of the other, because the folder of the artifacts of a catalog is under the route of
+ * that catalog (ADR-075).
  */
-export function scenarioPath(scenarioId: string): string {
-  return `${SCENARIO_PATH_PREFIX}${encodeURIComponent(scenarioId)}`;
+export function scenarioPath(
+  scenarioId: string,
+  catalog: ReplayCatalogId = DEFAULT_CATALOG,
+): string {
+  return `${catalogOf(catalog).route}${SCENARIO_PATH_PREFIX}${encodeURIComponent(scenarioId)}`;
 }
 
 /**
@@ -113,7 +123,9 @@ export function parseScenarioId(pathname: string): string | null {
   }
   // The path of a location never carries a query string, but a caller may hand over a whole URL.
   const path = pathname.split("?")[0]?.split("#")[0] ?? "";
-  const match = /^\/?replay\/scenario\/([^/]+)\/?$/.exec(path);
+  // The path of a scenario of any catalog: the route of the catalog comes first, and the two catalogs publish
+  // the same identifiers.
+  const match = /^\/?(?:replay|replay-real)\/scenario\/([^/]+)\/?$/.exec(path);
   const raw = match?.[1];
   if (raw === undefined || raw === "") {
     return null;

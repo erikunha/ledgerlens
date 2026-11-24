@@ -245,6 +245,13 @@ export interface ReplayBundleManifest {
   recorded_at?: string;
   /** The profile of the model the run used, when the export declares it. */
   model_profile?: string;
+  /**
+   * The model that ran each task of the run, when the run used more than one.
+   *
+   * Why the field is optional: a run with one model in every slot declares no map, and a manifest that
+   * declares no map says nothing about a division of work that did not happen (ADR-078).
+   */
+  model_profiles?: Record<string, string>;
   /** The hash of the code commit, when the export declares it. */
   code_sha?: string;
   /** The hash of the prompt, when the export declares it. */
@@ -306,6 +313,13 @@ export interface ScenarioIndexEntry {
    * ledger, and a card that carries no digest is a card that publishes no ledger.
    */
   ledger_sha256?: string;
+  /**
+   * The model that ran each task of the run, when the run used more than one.
+   *
+   * Why the field is optional: a run with one model in every slot publishes no division of work, and
+   * a card that carries no map is a card that says nothing about it (ADR-078).
+   */
+  model_profiles?: Record<string, string>;
 }
 
 /**

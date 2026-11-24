@@ -71,6 +71,22 @@ The capture **refuses to run on a dirty tracked tree**, because the recording na
 from and that claim has to be true. Commit or drop the changes and capture again. The refusal names the
 files that are in the way.
 
+### The second catalog: the recordings of a real model
+
+The site publishes two catalogs. The one above holds the recordings of the scripted model, and it is a
+formula: the same commit gives the same bytes. The second one holds the recordings of a real model, and it is
+a run: the same commit gives a different answer every time.
+
+```bash
+LEDGERLENS_OFFLINE= LEDGERLENS_MODEL=gpt-4.1 uv run python scripts/capture_live_replay.py --all
+```
+
+This capture needs a key in the file of the environment (`OPENAI_API_KEY`), it calls the provider and it asks
+the live reference source for the exchange rate. It **refuses to run offline**, because an offline machine runs
+the scripted model and the mode `live_agent` would be a lie. It writes the bundles in
+`data/eval/replay-real/<scenario>/`, and the verdicts of the claims are computed by the deterministic verifier
+of the repository, so that anybody can re-verify a bundle offline (ADR-075).
+
 ## 5. Publish the artifacts
 
 ```bash
@@ -85,6 +101,13 @@ To check what is already on the disk, without writing anything:
 
 ```bash
 uv run python scripts/export_replay_site.py --check
+```
+
+The second catalog is exported with the same command and its own folder, and the mode of the catalog is
+named, so that a recording of a real model cannot land in the folder of the sandbox:
+
+```bash
+uv run python scripts/export_replay_site.py data/eval/replay-real --out site/replay-real --mode live_agent
 ```
 
 ## 6. Check the digests and the budget
@@ -127,7 +150,11 @@ The export is a folder of plain files, so the preview answers the files by their
 
 - <http://localhost:3000/replay.html>, the catalog of the scenarios (the file `out/replay.html`);
 - <http://localhost:3000/replay/scenario/S01.html>, the recording of the scenario `S01` (the file
-  `out/replay/scenario/S01.html`).
+  `out/replay/scenario/S01.html`);
+- <http://localhost:3000/replay-real.html>, the catalog of the recordings of a real model (the file
+  `out/replay-real.html`);
+- <http://localhost:3000/replay-real/scenario/S01.html>, the recording of the scenario `S01` made with a real
+  model (the file `out/replay-real/scenario/S01.html`).
 
 The folder `out/replay/` is not the page: it holds the artifacts that the page reads (`index.json` and the
 folder of every bundle), which is why the route of a scenario carries the extra segment `scenario`. The
@@ -141,7 +168,9 @@ cd apps/web && npm run dev
 ```
 
 - <http://localhost:3000/replay>, the catalog of the scenarios;
-- <http://localhost:3000/replay/scenario/S01>, the recording of the scenario `S01`.
+- <http://localhost:3000/replay/scenario/S01>, the recording of the scenario `S01`;
+- <http://localhost:3000/replay-real>, the catalog of the recordings of a real model;
+- <http://localhost:3000/replay-real/scenario/S01>, the recording of the scenario `S01` made with a real model.
 
 ## 8. The two gates
 
@@ -172,6 +201,8 @@ cd apps/web && npm run test:e2e
 |---|---|---|
 | `uv run python scripts/capture_replay.py` | The recording is fresh and it names the commit it was made from | it refuses on a dirty tracked tree, and it writes the bundle in `data/eval/replay/s01/` |
 | `uv run python scripts/export_replay_site.py` | The published artifacts are the ones the export produces | it writes `site/replay/` and prints one line per artifact with its sha256 |
+| `uv run python scripts/capture_live_replay.py --all` | The recordings of a real model are fresh and they name the commit they were made from | it refuses to run offline and it writes the bundles in `data/eval/replay-real/` |
+| `uv run python scripts/export_replay_site.py data/eval/replay-real --out site/replay-real --mode live_agent` | The second catalog is published | it writes `site/replay-real/` and prints one line per artifact with its sha256 |
 | `uv run python scripts/export_replay_site.py --check` | The published artifacts still match the bundle | `the artifacts in site/replay match the bundle` |
 | `uv run python scripts/verify_replay_digests.py` | The digests the site publishes are the digests the Python loader computes | `the published artifacts match the canonical bundle`, and the gate of the repository runs it after the check of the export |
 | `uv run python scripts/measure_replay_budget.py` | The published payload is inside the budget of the repository | the table of the files, the total and `the published artifacts are inside the budget`, and the gate of the repository runs it after the cross check of the digests |

@@ -50,7 +50,11 @@ __all__ = [
     "LEDGER_FILE",
     "LEDGER_PAGE_SIZE",
     "LEDGER_SCHEMA_VERSION",
+    "LEDGER_TOOL",
+    "LEDGER_TOOLS",
     "LedgerArtifactError",
+    "RECORD_COLLECTIONS",
+    "RECORD_TOOL",
     "account_of_manifest",
     "build_ledger_artifact",
     "check_ledger_artifact",
@@ -70,17 +74,40 @@ LEDGER_SCHEMA_VERSION = "1"
 # the note: an identifier that is not in this shape is not an account and never reaches the artifact.
 ACCOUNT_PATTERN = re.compile(r"^[CM]-[0-9]+$")
 
-# The tool that reads the ledger. A read of the artifact is one call of this tool, and the projection looks for no
-# other: the recording that called another tool read no ledger.
+# The tools that read the ledger. A read of the artifact is one call of one of these, and the projection looks for
+# no other: the recording that called another tool read no ledger.
+#
+# The two tools read the ledger in two different ways, and the artifact publishes both. `query_ledger` returns the
+# rows of a statement, and the read publishes those rows and the statement that fetched them. `get_ledger_record`
+# returns the records of one identifier, and the read publishes those records. The run that used the first shows a
+# statement and the run that used the second shows the records, because that is what each tool really returned.
+LEDGER_TOOLS = ("query_ledger", "get_ledger_record")
+
+# The tool that reads the ledger with a statement. Its output carries the columns, the rows and the statement.
 LEDGER_TOOL = "query_ledger"
+
+# The tool that reads one record of the ledger. Its output carries the collections of the record: the transaction
+# itself, its refunds, the rates applied to it and its chargebacks.
+RECORD_TOOL = "get_ledger_record"
+
+# The collections of the output of the record tool, in the order the artifact publishes them. The order is fixed so
+# that the same recording always gives the same rows in the same order.
+RECORD_COLLECTIONS = ("transaction", "refunds", "fx_applied", "chargebacks")
+
+# The column that says which collection a row came from. Without it a row of a refund and a row of the payment it
+# refunds would look the same.
+RECORD_COLUMN = "collection"
 
 # The candidates of an account inside the free text of a note. The note is prose written by the capture, so the rule
 # looks for the shape of an identifier and lets the pattern of the account decide.
 _ACCOUNT_CANDIDATE_PATTERN = re.compile(r"\b[A-Z]{1,2}-[0-9]+\b")
 
 # The identifiers of the records of the ledger, in the shape the core gives them. The reads publish the identifiers
-# that the statement named, and the statement is read as it was recorded.
-_RECORD_PATTERN = re.compile(r"\b(?:TX|R|CB|ST)-[0-9]{4}\b|\bM-[0-9]{2}\b|\bC-[0-9]{4}\b")
+# that the statement named, and the statement is read as it was recorded. The rate applied to a movement is a record
+# of the ledger too, so its identifier is in the shape as well.
+_RECORD_PATTERN = re.compile(
+    r"\b(?:TX|R|CB|ST|FX)-[0-9]{4}\b|\bM-[0-9]{2}\b|\bC-[0-9]{4}\b"
+)
 
 # The tables of the ledger that hold the movements of an account, in the order the branch layer reads them.
 _MOVEMENT_TABLES = ("transactions", "refunds", "chargebacks")
@@ -126,7 +153,7 @@ def account_of_manifest(manifest: BundleManifest) -> str | None:
 
 
 def ledger_reads_from_events(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """The reads of the ledger that the recorded events hold, one per call of the tool of the ledger.
+    """The reads of the ledger that the recorded events hold, one per call of a tool of the ledger.
 
     Why it is a projection: the recording is the witness. The projection reads the event of the tool, takes the data of
     its output and publishes the citation, the sequence number, the statement, the columns, the number of rows, the
@@ -136,7 +163,10 @@ def ledger_reads_from_events(events: list[dict[str, Any]]) -> list[dict[str, Any
     reads: list[dict[str, Any]] = []
     for event in events:
         payload = event.get("payload")
-        if not isinstance(payload, dict) or payload.get("name") != LEDGER_TOOL:
+        if not isinstance(payload, dict):
+            continue
+        tool = str(payload.get("name") or "")
+        if tool not in LEDGER_TOOLS:
             continue
         outputs = payload.get("outputs")
         if not isinstance(outputs, dict):
@@ -144,7 +174,7 @@ def ledger_reads_from_events(events: list[dict[str, Any]]) -> list[dict[str, Any
         data = outputs.get("data")
         if not isinstance(data, dict):
             continue
-        reads.append(_read_of(event, outputs, data))
+        reads.append(_read_of(event, tool, outputs, data))
     return reads
 
 
@@ -167,8 +197,25 @@ def _text_of(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False)
 
 
-def _read_of(event: dict[str, Any], outputs: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
+def _read_of(event: dict[str, Any], tool: str, outputs: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
     """One read of the ledger, as the artifact publishes it.
+
+    The two tools of the ledger read it in two ways, and the read is published in the shape of the tool that made
+    it. A statement publishes the statement, the columns and the rows it returned. A record publishes the records
+    it returned and no statement, because the tool that read the record never wrote one.
+    """
+    if tool == RECORD_TOOL:
+        return _record_read_of(event, tool, outputs, data)
+    return _statement_read_of(event, tool, outputs, data)
+
+
+def _statement_read_of(
+    event: dict[str, Any],
+    tool: str,
+    outputs: dict[str, Any],
+    data: dict[str, Any],
+) -> dict[str, Any]:
+    """One read of the ledger made with a statement.
 
     The values of the rows are the values the recording wrote and the names of the columns are the names the recording
     declared, in the order it declared them. A value that the recording wrote as a list is named with the columns of
@@ -197,7 +244,7 @@ def _read_of(event: dict[str, Any], outputs: dict[str, Any], data: dict[str, Any
     return {
         "evidence_id": evidence_id,
         "seq": int(event.get("seq") or 0),
-        "tool": LEDGER_TOOL,
+        "tool": tool,
         "sql": sql,
         "columns": columns,
         "row_count": int(data.get("row_count") or 0),
@@ -205,6 +252,76 @@ def _read_of(event: dict[str, Any], outputs: dict[str, Any], data: dict[str, Any
         "records": _records_of(sql),
         "rows": rows,
     }
+
+
+def _record_read_of(
+    event: dict[str, Any],
+    tool: str,
+    outputs: dict[str, Any],
+    data: dict[str, Any],
+) -> dict[str, Any]:
+    """One read of the ledger made by the tool that reads a record.
+
+    The rows are the records the tool returned, one row per record, and the first column says which collection of
+    the record the row came from. The values are the values the recording wrote, as text, and a value that the
+    recording did not write for one row is absent from that row and never a guess.
+
+    The statement is empty because the tool never wrote one: the read went through the interface of the ledger and
+    not through a query, so there is no statement to publish and an empty one is honest.
+    """
+    rows: list[dict[str, str]] = []
+    for collection in RECORD_COLLECTIONS:
+        value = data.get(collection)
+        if value is None:
+            continue
+        records = value if isinstance(value, list) else [value]
+        for record in records:
+            if not isinstance(record, dict):
+                # A collection of something that is not a record is a recording the artifact cannot publish without
+                # repairing it, and the artifact never repairs a value.
+                raise LedgerArtifactError(
+                    f"the read of the sequence {event.get('seq')} holds a {collection} that is not a record"
+                )
+            row = {RECORD_COLUMN: collection}
+            for key, item in record.items():
+                row[str(key)] = _text_of(item)
+            rows.append(row)
+
+    columns: list[str] = [RECORD_COLUMN]
+    for row in rows:
+        for key in row:
+            if key not in columns:
+                columns.append(key)
+
+    evidence_ids = outputs.get("evidence_ids")
+    evidence_id = ""
+    if isinstance(evidence_ids, list) and evidence_ids:
+        evidence_id = str(evidence_ids[0])
+    return {
+        "evidence_id": evidence_id,
+        "seq": int(event.get("seq") or 0),
+        "tool": tool,
+        "sql": "",
+        "columns": columns,
+        "row_count": len(rows),
+        "truncated": False,
+        "records": _records_of_rows(rows),
+        "rows": rows,
+    }
+
+
+def _records_of_rows(rows: list[dict[str, str]]) -> list[str]:
+    """The identifiers of the records that the rows carry, in the order the rows carry them.
+
+    Why they are read out of the rows: a read that returned no record publishes an empty list and never an invented
+    one. The identifiers keep the order of the rows, so the reader of the artifact sees them as the run saw them.
+    """
+    found: list[str] = []
+    for row in rows:
+        for candidate in _RECORD_PATTERN.findall(str(row.get("id") or "")):
+            if candidate not in found:
+                found.append(candidate)
+    return found
 
 
 def _records_of(sql: str) -> list[str]:

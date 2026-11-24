@@ -45,6 +45,13 @@ _CLAIM_NAME = re.compile(r"^CL\d+$")
 # The span of the investigation, the one that holds the answer and the recommendation of the run.
 _INVESTIGATION = "investigate"
 
+# The span of the verifier, the one that holds the answer the run verified.
+#
+# Why the rebuild reads the answer from there and not from the span of the investigation: the escalation adds a
+# notice to the answer after the verification, and that notice was never a claim of the run. The claims were
+# extracted from the text the verifier received, so the rebuild has to read that same text (ADR-077).
+_VERIFIER = "verify"
+
 # The span of a tool of the agent, the one that holds the evidence of the run.
 _TOOL = "tool"
 
@@ -155,9 +162,15 @@ def published_result(bundle_dir: Path) -> InvestigationResult:
 
     The claims are left empty on purpose: the verifier extracts them from the answer and the evidence, exactly
     as the run did, so the check runs on the claims of the recording.
+
+    The answer is the one the run verified, which the bundle publishes in the span of the verifier. The final answer
+    of the investigation carries the notice of the escalation, and that notice was never a claim of the run, so a
+    rebuild that used it would find claims the run never had (ADR-077). A recording without a span of the verifier
+    falls back to the final answer, because it has no claims to rebuild and no text to rebuild them from.
     """
     events = _recorded_events(bundle_dir)
     answer = ""
+    verified_answer = ""
     question = ""
     recommended_action = "none"
     requires_human_review = False
@@ -167,9 +180,13 @@ def published_result(bundle_dir: Path) -> InvestigationResult:
     for event in events:
         payload = _payload_of(event)
         name = str(payload.get("name") or "")
-        if name == _INVESTIGATION and event.get("event_type") == "span.started":
+        if event.get("event_type") == "span.started":
             inputs = payload.get("inputs")
-            question = str((inputs or {}).get("question") or "")
+            inputs = inputs if isinstance(inputs, dict) else {}
+            if name == _INVESTIGATION:
+                question = str(inputs.get("question") or "")
+            if name == _VERIFIER:
+                verified_answer = str(inputs.get("answer") or "")
         if event.get("event_type") != "span.ended":
             continue
         outputs = payload.get("outputs")
@@ -189,7 +206,7 @@ def published_result(bundle_dir: Path) -> InvestigationResult:
     return InvestigationResult(
         session_id=str(events[0].get("run_id") or "") if events else "",
         question=question,
-        answer=answer,
+        answer=verified_answer or answer,
         claims=[],
         evidence=evidence,
         verdicts=[],

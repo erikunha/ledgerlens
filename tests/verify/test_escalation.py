@@ -702,7 +702,7 @@ def scenario_s10(amount_minor: int = 2500000) -> InvestigationResult:
 
 
 def test_a_currency_the_source_does_not_publish_requires_review_and_names_the_pair_and_the_policy() -> None:
-    """The catalogue sells S10 as the failure of the currency: the code has to escalate it as such."""
+    """The catalog sells S10 as the failure of the currency: the code has to escalate it as such."""
     out = apply_escalation(scenario_s10(), as_of=date(2026, 11, 2))
     assert out.requires_human_review is True and out.recommended_action == "escalate_to_human"
     assert any(UNSUPPORTED_PAIR in item and MISSING_DATA_POLICY in item for item in out.missing_information)

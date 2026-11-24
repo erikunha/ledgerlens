@@ -24,7 +24,7 @@ import type {
   LiveRunAccepted,
   LiveRunRequest,
   LiveRunState,
-  ModelCatalogueResponse,
+  ModelCatalogResponse,
   ModelPriceResponse,
   SandboxBody,
   SessionBody,
@@ -121,8 +121,8 @@ export interface ApiClient {
   /** Issues the session of the visitor and sets the cookie of the demo. */
   startSession(): Promise<SessionBody>;
 
-  /** The catalogue of the models the visitor may pick. */
-  models(): Promise<ModelCatalogueResponse>;
+  /** The catalog of the models the visitor may pick. */
+  models(): Promise<ModelCatalogResponse>;
 
   /** The price of a model and where it comes from. */
   priceOfModel(profileId: string): Promise<ModelPriceResponse>;
@@ -290,9 +290,9 @@ export function createApiClient(options: ApiClientOptions = {}): ApiClient {
       return answer.body as SessionBody;
     },
 
-    async models(): Promise<ModelCatalogueResponse> {
+    async models(): Promise<ModelCatalogResponse> {
       const answer = await send("/v1/models", "GET");
-      return answer.body as ModelCatalogueResponse;
+      return answer.body as ModelCatalogResponse;
     },
 
     async priceOfModel(profileId: string): Promise<ModelPriceResponse> {

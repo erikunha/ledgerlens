@@ -28,7 +28,7 @@ import LivePage from "@/app/(public)/live/page";
 const OFFLINE_MESSAGE =
   "the live mode is off because the product runs offline (LEDGERLENS_OFFLINE=1); the replay and the sandbox keep working exactly as before";
 
-/** One model of the catalogue of the server, in the shape the contract publishes. */
+/** One model of the catalog of the server, in the shape the contract publishes. */
 const MODEL = {
   profile_id: "openai-small",
   provider: "openai",

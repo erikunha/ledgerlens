@@ -480,6 +480,27 @@ flowchart TB
 
 The two facades alone are still two visitors, each one with its own issuer, and the plain factory of uvicorn is not touched either: it still serves a live mode without a branch layer and it still refuses every run with `503 BRANCH_LAYER_MISSING` and a readable reason. The wired application is one visitor because the factory gives the two facades the same issuer, and that is a decision of the deployment that ADR-035 allows.
 
+## 8. The published recordings
+
+The public site plays recorded investigations, and it publishes two catalogues of the same nine scenarios.
+
+| | The catalogue of the sandbox | The catalogue of a real model |
+|---|---|---|
+| The mode of the recordings | `deterministic_sandbox` | `live_agent` |
+| The kind of the capture | `scripted_fixture` | `real_model_recorded` |
+| The model | the scripted model of the repository | a real model, named in the provenance of each bundle |
+| The reference rate | the recorded one | the live source |
+| The verdict of a claim | the deterministic verifier of the repository | the same deterministic verifier |
+| Reproducible byte for byte | yes | no |
+
+A catalogue is one mode: the export refuses a bundle whose mode does not match its kind and refuses a set that mixes two modes, and the browser refuses a bundle of the mode of the other catalogue ([ADR-075](decisions/ADR-075-the-site-publishes-two-catalogs-and-each-bundle-declares-the-one-it-belongs-to.md)).
+
+The judge of the verdicts is the same in the two catalogues, the deterministic verifier that runs offline with the stand-in of the NLI model. The reason is that the verifier of the published bundle has to run offline with no key and no network: a bundle whose verdicts only a model can give is a bundle that the code of the repository cannot stand behind.
+
+Two rules of the trace keep a published bundle checkable. The answer of the run is published whole, because the claims of the run are extracted from it and a cut answer takes the claims away ([ADR-076](decisions/ADR-076-the-answer-of-the-run-is-published-whole-because-the-claims-are-extracted-from-it.md)). And the bundle is verified against the answer the run verified, which is the answer of the span of the verifier, because the escalation may add a notice to the answer after the verification ([ADR-077](decisions/ADR-077-the-published-bundle-is-verified-against-the-answer-the-run-verified.md)).
+
+The capture of the catalogue of a real model is `scripts/capture_live_replay.py`. It needs a key, it refuses to run offline and it refuses to run on a dirty tracked tree, and the key never reaches the bundle: the redaction of the trace is the last wall before the file is written.
+
 ## Terms used
 
 - **Agent**: a language model in a loop that picks actions, runs tools and observes the results.

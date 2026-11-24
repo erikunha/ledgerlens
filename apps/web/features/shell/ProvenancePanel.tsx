@@ -22,7 +22,7 @@
 
 import type { ReactElement } from "react";
 
-import { formatDigest, type ProvenanceSummary } from "@/lib/replay/provenance";
+import { formatDigest, slotLabel, type ProvenanceSummary } from "@/lib/replay/provenance";
 
 /**
  * The props of the panel of the provenance.
@@ -115,6 +115,20 @@ export function ProvenancePanel(props: ProvenancePanelProps): ReactElement {
         <Row name="Freshness of the snapshot" value={summary.freshness} />
         <Row name="Integrity of the bundle" value={summary.integrity} />
       </dl>
+
+      {Object.keys(summary.modelProfiles).length > 0 ? (
+        <div className="border-t border-line px-4 py-3">
+          <h4 className="text-xs font-medium text-text-subtle">The model of each task of the run</h4>
+          <dl className="mt-2 grid gap-3 sm:grid-cols-2">
+            {Object.entries(summary.modelProfiles).map(([slot, model]) => (
+              <div key={slot} className="flex flex-col gap-1">
+                <dt className="text-xs font-medium text-text-subtle">{slotLabel(slot)}</dt>
+                <dd className="text-sm text-foreground">{model}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      ) : null}
 
       <div className="border-t border-line px-4 py-3">
         <p className="text-sm text-text-muted">{summary.freshnessReason}</p>

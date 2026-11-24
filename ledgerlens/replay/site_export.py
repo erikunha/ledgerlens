@@ -84,6 +84,27 @@ CATALOG_MODES = {
     "live_agent": "real_model_recorded",
 }
 
+# The folder of the site each catalog is published in. The folder names the catalog, so a recording of a real
+# model cannot land in the folder of the sandbox and the other way round, even when the command line does not say
+# which mode is being written (ADR-075).
+CATALOG_FOLDERS = {
+    "deterministic_sandbox": "replay",
+    "live_agent": "replay-real",
+}
+
+
+def catalog_mode_of_folder(folder: Path) -> str | None:
+    """The mode of the catalog a folder of the site holds, or None when the folder names no catalog.
+
+    Why the folder names the catalog: the site publishes two catalogs and each one has its own folder. A folder
+    that the site does not publish, such as a temporary folder of a test, names no catalog and the caller says
+    with `--mode` which mode is being written.
+    """
+    for mode, name in CATALOG_FOLDERS.items():
+        if folder.name == name:
+            return mode
+    return None
+
 # The name of the file that holds the provenance of a scenario, next to the events and the manifest.
 PROVENANCE_FILE = "provenance.json"
 
@@ -493,6 +514,10 @@ def _scenario_artifacts(
     if manifest.code_sha:
         # The card is what the visitor reads first, so it says which commit produced the recording.
         card["code_sha"] = manifest.code_sha
+    if manifest.model_profiles:
+        # The card says which model ran which task of the run, so a reader sees the division of work and not only
+        # the name of the model that wrote the answer (ADR-078).
+        card["model_profiles"] = dict(manifest.model_profiles)
     return slug, files, card, str(manifest.mode)
 
 
@@ -502,6 +527,7 @@ def build_export(
     schema_path: Path = TRACE_EVENT_SCHEMA,
     dataset_path: Path = DATASET_FILE,
     expected_mode: str | None = None,
+    output: Path | None = None,
 ) -> dict[str, bytes]:
     """The bytes of every file the export would write, keyed by the path relative to the output folder.
 
@@ -512,14 +538,24 @@ def build_export(
     are refused, because a folder with two modes has no honest name and the visitor of the index would not know what
     a card of it is (ADR-075).
 
-    `expected_mode` names the mode of the catalog the caller is writing. When it is given, a bundle of another mode
-    is refused, so a recording of a real model cannot be written into the folder of the sandbox by a mistake of the
-    command line.
+    `expected_mode` names the mode of the catalog the caller is writing, and `output` names the folder the catalog
+    goes to. The two have to agree: the folder of the site publishes one mode, and a recording of a real model
+    written into the folder of the sandbox would publish a live execution under the label of a fixture. When the
+    folder names no catalog of the site, the mode of the bundles is the mode of the write, and the caller may still
+    state it with `expected_mode`.
     """
     if expected_mode is not None and expected_mode not in CATALOG_MODES:
         raise ExportError(
             f"the mode {expected_mode} is not the mode of a catalog of the site: {sorted(CATALOG_MODES)}"
         )
+    folder_mode = catalog_mode_of_folder(output) if output is not None else None
+    if folder_mode is not None and expected_mode is not None and folder_mode != expected_mode:
+        raise ExportError(
+            f"the catalog of the mode {expected_mode} does not go to the folder {output.name}, which publishes the "
+            f"catalog of the mode {folder_mode}"
+        )
+    if expected_mode is None:
+        expected_mode = folder_mode
     dataset, dataset_sha256 = _load_dataset(dataset_path)
     files: dict[str, bytes] = {}
     cards: list[dict[str, Any]] = []

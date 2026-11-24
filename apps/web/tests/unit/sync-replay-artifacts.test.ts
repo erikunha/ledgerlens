@@ -189,4 +189,17 @@ describe("the copy of the published artifacts", () => {
     expect(manifest.scripts?.["pretest"]).toBe("node scripts/sync-replay-artifacts.mjs");
     expect(manifest.scripts?.["prebuild"]).toBe("node scripts/sync-replay-artifacts.mjs");
   });
+
+  it("copies the two catalogs of the site when the caller names no source and no destination", () => {
+    // It proves that the copy of the build takes the recordings of the scripted model AND the recordings of a real
+    // model, each one into the folder of its own catalog: the site publishes two catalogs and each one has to be in
+    // the export, or the page of that catalog is a page of nothing (ADR-075).
+    const result = runCopy([]);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain(join("site", "replay"));
+    expect(result.stdout).toContain(join("public", "replay"));
+    expect(result.stdout).toContain(join("site", "replay-real"));
+    expect(result.stdout).toContain(join("public", "replay-real"));
+  });
 });

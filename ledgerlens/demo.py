@@ -14,8 +14,8 @@ line. Offline, a scripted model answers; this module holds those scripts, so the
 
 The scripts cover the complaints that end in a verdict and the ones that end in a handover: the refund that paid
 exactly what was charged (S07), the refund whose reason field carries an order (S09), the payment in a currency the
-reference source does not publish (S10) and the refund whose reference rate could not be read (S11). A catalogue
-that holds only the cases the agent resolves is a catalogue that never shows what it does with the ones it cannot.
+reference source does not publish (S10) and the refund whose reference rate could not be read (S11). A catalog
+that holds only the cases the agent resolves is a catalog that never shows what it does with the ones it cannot.
 
 Numbers in the scripted answers come from the scenario's ground truth and are checked by the verifier like any
 other answer.
@@ -283,7 +283,7 @@ def _s08(truth: dict[str, Any]) -> tuple[list[AIMessage], list[str]]:
 def _s07(truth: dict[str, Any]) -> tuple[list[AIMessage], list[str]]:
     """The control: a refund that paid exactly what was charged, so there is no difference to explain.
 
-    Why the control matters: a catalogue that only holds the cases with a discrepancy never shows that the agent
+    Why the control matters: a catalog that only holds the cases with a discrepancy never shows that the agent
     finds nothing when there is nothing to find.
     """
     sql = (

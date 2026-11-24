@@ -6,8 +6,9 @@ read it; (b) the values of a record and the names of the columns of a result are
 evidence of the signature scenario, the one where a number would be easy to make up, is published with the
 values that sustain it; (c) the values the signature scenario cites are in the evidence it publishes.
 
-Why the check reads the published set and not one scenario: the catalog publishes nine recordings and a check
-that only read the first one would let the other eight carry a verdict nobody redid.
+Why the check reads both catalogs: the site publishes the recordings of the scripted model and the recordings of
+a real model, and a check that read only the first one would let the second carry a verdict nobody redid. The
+two catalogs hold the same nine scenarios, so the same check runs on the two of them.
 
 Why the check is red before the bundles are captured again: the published bundles were recorded with the cut
 that took the values of a record and the names of the columns away, so the evidence they publish does not
@@ -28,7 +29,10 @@ import pytest
 from ledgerlens.replay.verdict import differences
 
 ROOT = Path(__file__).resolve().parents[2]
+
+# The two catalogs the site publishes: the recordings of the scripted model and the recordings of a real model.
 PUBLISHED = ROOT / "site" / "replay"
+PUBLISHED_REAL = ROOT / "site" / "replay-real"
 
 # The nine scenarios the catalog publishes, in the order of the index.
 SCENARIOS = ("s01", "s02", "s03", "s04", "s07", "s08", "s09", "s10", "s11")
@@ -43,16 +47,16 @@ __all__ = [
 ]
 
 
-def _events(slug: str) -> list[dict[str, Any]]:
+def _events(slug: str, published: Path = PUBLISHED) -> list[dict[str, Any]]:
     """The recorded events of a published scenario."""
-    text = (PUBLISHED / slug / "events.jsonl").read_text(encoding="utf-8")
+    text = (published / slug / "events.jsonl").read_text(encoding="utf-8")
     return [json.loads(line) for line in text.splitlines() if line.strip()]
 
 
-def _reads(slug: str) -> list[dict[str, Any]]:
+def _reads(slug: str, published: Path = PUBLISHED) -> list[dict[str, Any]]:
     """The reads of the ledger of a published scenario, with the data they returned."""
     reads: list[dict[str, Any]] = []
-    for event in _events(slug):
+    for event in _events(slug, published):
         payload = event.get("payload") or {}
         outputs = payload.get("outputs") or {}
         if payload.get("name") == "query_ledger" and outputs.get("ok"):
@@ -62,24 +66,28 @@ def _reads(slug: str) -> list[dict[str, Any]]:
     return reads
 
 
+@pytest.mark.parametrize("published", [PUBLISHED, PUBLISHED_REAL], ids=["sandbox", "real"])
 @pytest.mark.parametrize("slug", SCENARIOS)
-def test_the_published_verdict_is_reproduced_from_the_published_evidence(slug: str):
+def test_the_published_verdict_is_reproduced_from_the_published_evidence(slug: str, published: Path):
     """The label the bundle publishes is the label the code gives for the published evidence.
 
     Why the evidence and not the label alone: a label without the evidence that sustains it is a claim, and the
     reader of the bundle has to be able to redo it with the code of the repository, which is what this does.
     """
-    assert differences(PUBLISHED / slug) == [], f"the published verdict of {slug} is not reachable from its evidence"
+    assert differences(published / slug) == [], (
+        f"the published verdict of {slug} in {published.name} is not reachable from its evidence"
+    )
 
 
+@pytest.mark.parametrize("published", [PUBLISHED, PUBLISHED_REAL], ids=["sandbox", "real"])
 @pytest.mark.parametrize("slug", SCENARIOS)
-def test_the_published_records_are_whole_and_keep_their_columns(slug: str):
+def test_the_published_records_are_whole_and_keep_their_columns(slug: str, published: Path):
     """The records the bundle publishes are whole and every value of them keeps its column.
 
     Why the alignment matters: a cut that takes the values of a record away leaves a record whose values no
     reader can put under a column, and the evidence of the claim with it.
     """
-    for data in _reads(slug):
+    for data in _reads(slug, published):
         columns = data.get("columns") or []
         assert not any(str(column).startswith(_CUT_MARKER) for column in columns), (
             f"the bundle of {slug} publishes cut names of columns"
@@ -101,16 +109,17 @@ def test_the_published_evidence_carries_the_values_the_answer_cites():
     what the verdict of the first claim rests on, and a bundle that cut them away publishes a verdict that
     cannot be redone.
     """
-    evidence = ""
-    answer = ""
-    for event in _events("s11"):
-        payload = event.get("payload") or {}
-        outputs = payload.get("outputs") or {}
-        if payload.get("name") == "investigate" and outputs.get("answer"):
-            answer = str(outputs["answer"])
-        if payload.get("run_type") == "tool" and outputs.get("ok"):
-            evidence += json.dumps(outputs.get("data") or {}, ensure_ascii=False)
+    for published in (PUBLISHED, PUBLISHED_REAL):
+        evidence = ""
+        answer = ""
+        for event in _events("s11", published):
+            payload = event.get("payload") or {}
+            outputs = payload.get("outputs") or {}
+            if payload.get("name") == "investigate" and outputs.get("answer"):
+                answer = str(outputs["answer"])
+            if payload.get("run_type") == "tool" and outputs.get("ok"):
+                evidence += json.dumps(outputs.get("data") or {}, ensure_ascii=False)
 
-    assert "5.4931" in answer and "2026-10-20" in answer
-    assert "5.4931" in evidence, "the published evidence of S11 does not carry the rate the answer cites"
-    assert "2026-10-20" in evidence, "the published evidence of S11 does not carry the day the answer cites"
+        assert "5.4931" in answer and "2026-10-20" in answer, f"the answer of S11 in {published.name} cites no rate"
+        assert "5.4931" in evidence, f"the published evidence of S11 in {published.name} does not carry the rate"
+        assert "2026-10-20" in evidence, f"the published evidence of S11 in {published.name} does not carry the day"

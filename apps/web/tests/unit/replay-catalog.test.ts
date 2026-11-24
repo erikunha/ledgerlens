@@ -71,6 +71,35 @@ describe("the reader of the published catalog of the scenarios", () => {
     }
   });
 
+  it("reads the catalog of a real model from the folder of that catalog", () => {
+    // It proves that the two catalogs live in two folders of their own, and that the reader of the catalog of a real
+    // model never reads the folder of the sandbox: a route that read the other catalog would publish the pages of the
+    // wrong recordings (ADR-075).
+    const sandbox = catalogCandidates(process.cwd());
+    const real = catalogCandidates(process.cwd(), "real");
+
+    expect(sandbox[0]).toContain(join("public", "replay"));
+    expect(real[0]).toContain(join("public", "replay-real"));
+    expect(real[1]).toContain(join("site", "replay-real"));
+
+    const catalog = readPublishedCatalog(process.cwd(), "real");
+    expect(catalog.length).toBeGreaterThan(0);
+    for (const card of catalog) {
+      expect(card.capture_kind).toBe("real_model_recorded");
+    }
+  });
+
+  it("fails loudly when the catalog of a real model is not there", () => {
+    // It proves that the reader refuses a missing catalog with a reason that names the places where it was expected,
+    // and that it never builds an export with no page of a scenario (ADR-075).
+    const root = temporaryFolder();
+
+    expect(() => readPublishedCatalog(join(root, "apps", "web"), "real")).toThrow(
+      /published catalog of the scenarios/,
+    );
+    expect(() => readPublishedCatalog(join(root, "apps", "web"), "real")).toThrow(/replay-real/);
+  });
+
   it("looks for the copy that the site serves first, and for the published source second", () => {
     // It proves the order of the two places: the copy is the file the visitor reads, so it wins over the source.
     const root = temporaryFolder();

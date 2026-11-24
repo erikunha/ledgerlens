@@ -7,7 +7,10 @@ out/
 
 # the copy of the published artifacts of the recorded demo, made by the build of the frontend.
 # The folder is not tracked: the source of truth is site/replay at the root of the repository (ADR-042).
+# The second catalog, the recordings of a real model, is copied the same way and is not tracked
+# either: the source of truth is site/replay-real at the root of the repository (ADR-075).
 public/replay/
+public/replay-real/
 
 # the output of the tests
 coverage/

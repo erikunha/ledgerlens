@@ -60,6 +60,10 @@ class Settings(BaseModel):
 
     offline: bool = False
     model: str | None = None
+    # The cascade of the deployment: the models it may run, from the lightest to the most capable. It is empty when
+    # the deployment declares nothing, and the run then uses the model of `LEDGERLENS_MODEL` in every slot, which
+    # is how the product behaved before the router existed (ADR-078).
+    model_cascade: tuple[str, ...] = ()
     embeddings: Literal["fastembed", "openai"] = "fastembed"
     openai_api_key: SecretStr | None = None
     langsmith_api_key: SecretStr | None = None
@@ -114,6 +118,18 @@ def _secret(value: str | None) -> SecretStr | None:
     return SecretStr(value) if value else None
 
 
+def _cascade(value: str | None) -> tuple[str, ...]:
+    """The models of the cascade, in the order the deployment declared them.
+
+    Why the order is kept: the cascade is read from the lightest model to the most capable one, and the router
+    reads the level of a task against that order. A model that is named twice stays twice, because the deployment
+    may want the same model at two levels, and the router decides by the position and not by the name.
+    """
+    if not value:
+        return ()
+    return tuple(name.strip() for name in value.split(",") if name.strip())
+
+
 def _origins(value: str | None) -> tuple[str, ...]:
     """The origins of the CORS, read from a comma separated list of exact origins.
 
@@ -165,6 +181,7 @@ def get_settings(env: Mapping[str, str] | None = None) -> Settings:
     settings = Settings(
         offline=_flag(values.get("LEDGERLENS_OFFLINE")),
         model=_text(values.get("LEDGERLENS_MODEL")),
+        model_cascade=_cascade(values.get("LEDGERLENS_MODEL_CASCADE")),
         embeddings=embeddings,  # type: ignore[arg-type]
         openai_api_key=_secret(values.get("OPENAI_API_KEY")),
         langsmith_api_key=_secret(values.get("LANGSMITH_API_KEY")),
@@ -200,28 +217,37 @@ def http_mode(settings: Settings | None = None) -> Literal["fixtures", "live"]:
 
 
 def get_chat_model(
-    settings: Settings | None = None, *, script: list[ScriptItem] | None = None, **kwargs: Any
+    settings: Settings | None = None,
+    *,
+    script: list[ScriptItem] | None = None,
+    model: str | None = None,
+    **kwargs: Any,
 ) -> BaseChatModel:
     """The chat model for the current mode.
 
     Offline: a `ScriptedChatModel` replaying `script` (empty by default). Online: the model named in
     `LEDGERLENS_MODEL` as `<provider>:<name>`, built by `init_chat_model` with `kwargs`.
+
+    `model` names another model of the same deployment, and it exists because the router gives each slot of the
+    run the model that fits its task (ADR-078). The name is never a URL and never a free text: it is a model
+    name, and the provider is added the same way it is added to the name of the environment.
     """
     settings = settings or get_settings()
     if settings.offline:
         log.debug("chat model: scripted (offline), %d scripted message(s)", len(script or []))
         return ScriptedChatModel(script=list(script or []))
 
-    if not settings.model:
+    name = (model or settings.model or "").strip()
+    if not name:
         raise ConfigError("LEDGERLENS_MODEL is not set; name the chat model as '<provider>:<model>'")
-    model = _with_provider(settings.model)
-    if settings.openai_api_key is not None and model.split(":", 1)[0] == "openai":
+    resolved = _with_provider(name)
+    if settings.openai_api_key is not None and resolved.split(":", 1)[0] == "openai":
         kwargs.setdefault("api_key", settings.openai_api_key.get_secret_value())
-    log.debug("chat model: %s (online)", model)
+    log.debug("chat model: %s (online)", resolved)
     try:
-        return init_chat_model(model, **kwargs)
+        return init_chat_model(resolved, **kwargs)
     except Exception as exc:
-        raise ConfigError(f"could not build chat model '{model}': {_redact(str(exc), settings)}") from None
+        raise ConfigError(f"could not build chat model '{resolved}': {_redact(str(exc), settings)}") from None
 
 
 # Prefixes that init_chat_model assigns to OpenAI when the name comes with no provider.
@@ -249,6 +275,20 @@ def model_profile(settings: Settings | None = None) -> str:
     settings = settings or get_settings()
     name = (settings.model or "").strip()
     return _with_provider(name) if name else ""
+
+
+def model_cascade(settings: Settings | None = None) -> tuple[str, ...]:
+    """The models the deployment may run, from the lightest to the most capable.
+
+    Why it exists: the router reads the level of the task of a slot against this order, and the order is what the
+    deployment declares. A deployment that declares no cascade gets the model of `LEDGERLENS_MODEL` in every slot,
+    which is the behaviour the product had before the router existed (ADR-078).
+    """
+    settings = settings or get_settings()
+    if settings.model_cascade:
+        return tuple(_with_provider(name) for name in settings.model_cascade)
+    name = (settings.model or "").strip()
+    return (_with_provider(name),) if name else ()
 
 
 def get_embeddings(settings: Settings | None = None) -> Embeddings:

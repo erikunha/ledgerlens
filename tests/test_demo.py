@@ -370,7 +370,7 @@ def test_the_answer_of_the_unknown_id_is_supported_by_the_query_that_found_nothi
 
     Why it matters: the bundle of the scenario S04 is published with the verdict of the verifier, and the dataset
     says the case needs no human. A sentence that the verifier cannot support turns the case into an escalation,
-    and the published catalogue would show a case the product hands to a person and that the dataset says it does
+    and the published catalog would show a case the product hands to a person and that the dataset says it does
     not.
     """
     manifest = demo.load_manifest()

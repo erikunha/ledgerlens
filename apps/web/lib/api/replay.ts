@@ -19,10 +19,14 @@
  * the Web Crypto is not a refusal: the check is then unknown, and the panel says that the
  * integrity was not checked.
  *
- * Why a bundle that declares a live run is refused here: this site publishes only the
- * deterministic sandbox, and the label of the mode of a live run must never reach a visitor of the
- * replay. The refusal happens in the ONE place that reads the artifacts, so no other door can let
- * a live bundle through (ADR-043).
+ * Why the catalog is an argument of the loaders: the site publishes two catalogs, the recordings
+ * of the scripted model and the recordings of a real model, and each one has its own root, its own
+ * mode and its own route (ADR-075). A loader that read the artifacts of one catalog and showed them
+ * under the name of the other one would be a lie about a recording.
+ *
+ * Why a bundle of the mode of the other catalog is refused here: a catalog is one mode, and the mode
+ * of a bundle is the label a visitor reads. The refusal happens in the ONE place that reads the
+ * artifacts, so no other door can let a bundle of the wrong mode through (ADR-043).
  */
 
 import type {
@@ -31,23 +35,9 @@ import type {
   ScenarioIndexEntry,
   TraceEvent,
 } from "@/lib/api/schemas";
+import { DEFAULT_CATALOG, catalogOf, isReplayCatalogId } from "@/lib/replay/catalogs";
+import type { ReplayCatalogId } from "@/lib/replay/catalogs";
 import { validateLedgerArtifact, validateManifest, validateScenarioIndex, validateTraceEvent } from "@/lib/replay/validate";
-
-/**
- * The root of the published artifacts of the site.
- *
- * Why the path is fixed: the artifacts are part of the static export, under `public/replay`, and
- * the site is served from the root of that export.
- */
-export const ARTIFACT_ROOT = "/replay";
-
-/**
- * The catalog of the scenarios, as the static export publishes it.
- *
- * Why the path is fixed: the catalog is the index of the export, next to the folders of the
- * bundles.
- */
-const CATALOG_URL = `${ARTIFACT_ROOT}/index.json`;
 
 /**
  * A recorded run that the site read and accepted.
@@ -201,20 +191,56 @@ function readDigestMap(source: unknown): Record<string, string> {
 }
 
 /**
+ * The options of the loaders of the published artifacts.
+ *
+ * Why the options are named and not positional: the site publishes two catalogs, so every loader has to know
+ * which one it reads, and the fetch of the caller is the second thing a caller may want to say. Two
+ * positional arguments of two different kinds are a trap: a function passed where an identifier of a catalog
+ * is expected reads the root of nothing. Named options say which is which, and a loader that is given no
+ * option at all reads the catalog of the sandbox, the one that existed before the second (ADR-075).
+ */
+export interface ReplayLoadOptions {
+  /**
+   * The catalog whose artifacts the loader reads.
+   *
+   * Why it is optional: the catalog of the sandbox is the default, so a caller that names no catalog reads
+   * the catalog of the recorded demo.
+   */
+  readonly catalog?: ReplayCatalogId;
+  /**
+   * The fetch the loader uses.
+   *
+   * Why it is injectable: a unit test has to be able to answer with an artifact that is broken, or with an
+   * artifact that never arrives, without a network and without a server.
+   */
+  readonly fetch?: typeof fetch;
+}
+
+/**
  * Reads the catalog of the scenarios from the published artifacts of the site.
  *
  * The loader never throws at the caller: it returns the catalog it read, or the reason it refused
  * it. A catalog that does not pass the contract is refused with the reasons of the validator, so
  * the reader knows which card is broken.
+ *
+ * Why the catalog is an option: the site publishes two catalogs, and each one has its own root of
+ * artifacts. A loader that read the root of the sandbox when it was asked for the catalog of a real
+ * model would show the recordings of the scripted model under the name of the other one (ADR-075).
  */
 export async function loadScenarioCatalog(
-  fetchImpl?: typeof fetch,
+  options: ReplayLoadOptions = {},
 ): Promise<ScenarioIndexEntry[] | { error: string }> {
-  const doFetch = resolveFetch(fetchImpl);
+  const catalog = options.catalog ?? DEFAULT_CATALOG;
+  if (!isReplayCatalogId(catalog)) {
+    return { error: `the catalog ${String(catalog)} is not one of the catalogs of the site` };
+  }
+
+  const doFetch = resolveFetch(options.fetch);
+  const catalogUrl = `${catalogOf(catalog).root}/index.json`;
 
   let catalogText: string;
   try {
-    const response = await doFetch(CATALOG_URL);
+    const response = await doFetch(catalogUrl);
     if (!response.ok) {
       return {
         error: `the catalog of the scenarios could not be read: the site answered ${response.status}`,
@@ -232,14 +258,14 @@ export async function loadScenarioCatalog(
     return { error: "the catalog of the scenarios is not a JSON document" };
   }
 
-  const catalog = validateScenarioIndex(rawCatalog);
-  if (!catalog.ok) {
+  const validated = validateScenarioIndex(rawCatalog);
+  if (!validated.ok) {
     return {
-      error: `the catalog of the scenarios did not pass the contract of the published artifacts: ${catalog.reasons.join("; ")}`,
+      error: `the catalog of the scenarios did not pass the contract of the published artifacts: ${validated.reasons.join("; ")}`,
     };
   }
 
-  return catalog.value;
+  return validated.value;
 }
 
 /**
@@ -257,21 +283,27 @@ export async function loadScenarioCatalog(
  * events, and a file whose digest does not match the digest that was declared is refused with the
  * expected digest and the observed one (FR-038).
  *
- * Why a bundle that declares a live run is refused: this site publishes only the deterministic
- * sandbox, so a bundle that declares another mode is refused with the reason that the visitor can
- * act on, and the label of a live run never reaches the screen (ADR-043).
+ * Why a bundle of the mode of the other catalog is refused: a catalog is one mode, so a bundle that
+ * declares another mode is refused with the reason that the visitor can act on, and the label of the
+ * other catalog never reaches the screen (ADR-043).
  */
 export async function loadReplay(
   index: ScenarioIndexEntry,
-  fetchImpl?: typeof fetch,
+  options: ReplayLoadOptions = {},
 ): Promise<LoadedReplay | { error: string }> {
-  const doFetch = resolveFetch(fetchImpl);
+  const catalog = options.catalog ?? DEFAULT_CATALOG;
+  if (!isReplayCatalogId(catalog)) {
+    return { error: `the catalog ${String(catalog)} is not one of the catalogs of the site` };
+  }
+
+  const doFetch = resolveFetch(options.fetch);
 
   const directory = bundleDirectory(index);
-  const manifestUrl = `${ARTIFACT_ROOT}/${directory}/${MANIFEST_FILE}`;
-  const eventsUrl = `${ARTIFACT_ROOT}/${directory}/${EVENTS_FILE}`;
-  const provenanceUrl = `${ARTIFACT_ROOT}/${directory}/provenance.json`;
-  const ledgerUrl = `${ARTIFACT_ROOT}/${directory}/${LEDGER_FILE}`;
+  const root = catalogOf(catalog).root;
+  const manifestUrl = `${root}/${directory}/${MANIFEST_FILE}`;
+  const eventsUrl = `${root}/${directory}/${EVENTS_FILE}`;
+  const provenanceUrl = `${root}/${directory}/provenance.json`;
+  const ledgerUrl = `${root}/${directory}/${LEDGER_FILE}`;
 
   let manifestText: string;
   try {
@@ -300,12 +332,14 @@ export async function loadReplay(
     };
   }
 
-  // A bundle that declares a live run is not a recording of this site. The site publishes only the
-  // deterministic sandbox, so the bundle is refused here, in the ONE place that reads the
-  // artifacts, and the label of a live run never reaches a visitor of the replay (ADR-043).
-  if (manifest.value.mode === "live_agent") {
+  // A bundle of the mode of the other catalog is not a recording of this one. The catalog of the
+  // sandbox holds the recordings of the scripted model and the catalog of a real model holds the
+  // recordings of a real one, so the bundle is refused here, in the ONE place that reads the
+  // artifacts, and the label of the other catalog never reaches a visitor of this one (ADR-043).
+  const expectedMode = catalogOf(catalog).mode;
+  if (manifest.value.mode !== expectedMode) {
     return {
-      error: `the bundle of the scenario ${index.id} declares the mode live_agent, and this site publishes only the deterministic sandbox`,
+      error: `the bundle of the scenario ${index.id} declares the mode ${manifest.value.mode}, and the catalog ${catalog} holds the bundles of the mode ${expectedMode}`,
     };
   }
 
@@ -673,9 +707,9 @@ async function verifyManifestDigest(
 
 /** Every symbol this module exports, so that a reader sees the whole surface of the client at once. */
 export const __all__ = [
-  "ARTIFACT_ROOT",
   "BundleIntegrity",
   "LoadedReplay",
+  "ReplayLoadOptions",
   "Sha256Hex",
   "loadScenarioCatalog",
   "loadReplay",

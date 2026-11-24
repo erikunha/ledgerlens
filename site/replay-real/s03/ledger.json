@@ -1,0 +1,32 @@
+{
+  "accounts": [
+    {
+      "id": "C-0291",
+      "kind": "customer",
+      "name": "Linda Harper",
+      "reads": [],
+      "rows": [
+        {
+          "amount": "215.00",
+          "at": "2026-10-21T15:20:00Z",
+          "currency": "USD",
+          "id": "TX-2077",
+          "kind": "transaction",
+          "status": "disputed"
+        },
+        {
+          "amount": "215.00",
+          "at": "2026-10-28T10:00:00Z",
+          "currency": "USD",
+          "id": "CB-0310",
+          "kind": "chargeback",
+          "status": "evidence_requested"
+        }
+      ]
+    }
+  ],
+  "page_size": 50,
+  "scenario": "S03",
+  "schema_version": "1",
+  "snapshot_sha256": "cc73222856d4d21516935d6fa9d55104fdfafbaf92622a7fdae8e7f3b8425f24"
+}

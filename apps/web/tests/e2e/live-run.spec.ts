@@ -35,7 +35,7 @@ const RUN_ID = "run_0123456789abcdef";
 /** The key the visitor types in the cases of this suite. It is not a key of any provider. */
 const VISITOR_KEY = "sk-test-key-not-real";
 
-/** The model of the catalogue of the fake backend, in the shape the contract publishes. */
+/** The model of the catalog of the fake backend, in the shape the contract publishes. */
 const MODEL = {
   profile_id: "openai-small",
   provider: "openai",
@@ -298,7 +298,7 @@ async function installTheFakeBackend(
  * Walks the live path with the visitor: the key, the consent, the model and the run.
  *
  * Why the four acts: the dialog is closed until the visitor asks for it, the send waits for the
- * tick of the consent, the run needs a model of the catalogue, and the run needs a key.
+ * tick of the consent, the run needs a model of the catalog, and the run needs a key.
  */
 async function runTheCase(page: Page): Promise<void> {
   await page.getByRole("button", { name: /use your own key/i }).click();
