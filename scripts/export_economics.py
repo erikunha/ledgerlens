@@ -69,11 +69,17 @@ def _price_of(model: str) -> PriceSnapshot:
 
     Why the registry and not a number of the script: the price has a source and a day, and a price that the script
     wrote would have neither.
+
+    Why the provider is dropped before the lookup: the registry carries the bare identifier of the model and the
+    report carries the name of the deployment, which has the provider on top of it. A lookup that compared the two
+    as they are would never match, and every price would fall back to an unstated one while the money of the case
+    was computed with the verified price of the registry.
     """
     from ledgerlens.byok.registry import ALLOWLIST
 
+    bare = model.split(":", 1)[-1]
     for profile in ALLOWLIST:
-        if profile.model_id == model:
+        if profile.model_id == bare:
             pricing = profile.pricing
             return PriceSnapshot(
                 source=pricing.source,

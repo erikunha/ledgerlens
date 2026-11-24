@@ -5,15 +5,15 @@
         "input_per_1m_usd": null,
         "last_verified": null,
         "output_per_1m_usd": null,
-        "source": "unstated",
+        "source": "unknown",
         "verified": false
       },
       "openai:gpt-4.1-mini": {
-        "input_per_1m_usd": null,
-        "last_verified": null,
-        "output_per_1m_usd": null,
-        "source": "unstated",
-        "verified": false
+        "input_per_1m_usd": "0.40",
+        "last_verified": "2026-11-08",
+        "output_per_1m_usd": "1.60",
+        "source": "manual",
+        "verified": true
       }
     },
     "review": {
@@ -33,15 +33,15 @@
             "input_per_1m_usd": null,
             "last_verified": null,
             "output_per_1m_usd": null,
-            "source": "unstated",
+            "source": "unknown",
             "verified": false
           },
           "openai:gpt-4.1-mini": {
-            "input_per_1m_usd": null,
-            "last_verified": null,
-            "output_per_1m_usd": null,
-            "source": "unstated",
-            "verified": false
+            "input_per_1m_usd": "0.40",
+            "last_verified": "2026-11-08",
+            "output_per_1m_usd": "1.60",
+            "source": "manual",
+            "verified": true
           }
         },
         "review": {
@@ -535,15 +535,15 @@
             "input_per_1m_usd": null,
             "last_verified": null,
             "output_per_1m_usd": null,
-            "source": "unstated",
+            "source": "unknown",
             "verified": false
           },
           "openai:gpt-4.1-mini": {
-            "input_per_1m_usd": null,
-            "last_verified": null,
-            "output_per_1m_usd": null,
-            "source": "unstated",
-            "verified": false
+            "input_per_1m_usd": "0.40",
+            "last_verified": "2026-11-08",
+            "output_per_1m_usd": "1.60",
+            "source": "manual",
+            "verified": true
           }
         },
         "review": {
@@ -1009,5 +1009,5 @@
     "one_model": 22
   },
   "difference_usd": null,
-  "sha256": "654c2bdf8f796cc54482a675267e90d446846b232b8e64fed77d0119673254ac"
+  "sha256": "9dd860b2a0c4a659dba4cff17febf73926f5f1bb11b464eb853989309578c617"
 }

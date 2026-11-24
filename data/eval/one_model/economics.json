@@ -6,15 +6,15 @@
           "input_per_1m_usd": null,
           "last_verified": null,
           "output_per_1m_usd": null,
-          "source": "unstated",
+          "source": "unknown",
           "verified": false
         },
         "openai:gpt-4.1-mini": {
-          "input_per_1m_usd": null,
-          "last_verified": null,
-          "output_per_1m_usd": null,
-          "source": "unstated",
-          "verified": false
+          "input_per_1m_usd": "0.40",
+          "last_verified": "2026-11-08",
+          "output_per_1m_usd": "1.60",
+          "source": "manual",
+          "verified": true
         }
       },
       "review": {
@@ -471,5 +471,5 @@
     "unknown_reasons": []
   },
   "cohort_digest": "5909f0fc62f8ef89d09b7a2da69b26d1c427182fb0c424a5ba934b72e855caaa",
-  "sha256": "ced8543b1de09d175d29f87360da943b188e196ee2d54403bced3f22263d0a30"
+  "sha256": "8b050ddb9e4dd7f56ad2b9cb71855636e973638aea47f2c8528a98af5fd98cbb"
 }

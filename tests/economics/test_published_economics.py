@@ -111,3 +111,37 @@ def test_the_export_writes_the_file_and_names_it(tmp_path: Path) -> None:
     assert path.exists()
     payload = json.loads(path.read_text(encoding="utf-8"))
     assert payload["cohort"]["cohort_id"] == "cohort-1"
+
+
+def test_the_published_assumptions_carry_the_price_of_the_model_whose_money_is_published() -> None:
+    """The price that the money of the cohort was computed with travels with the cohort.
+
+    Why it matters: a reader has to be able to recompute the published money from the published assumptions. A
+    price that the registry carries under a bare identifier and the report carries under the name of the deployment
+    would not match, and the artifact would publish an unstated price next to a money computed with a verified one.
+    """
+    snapshot = PriceSnapshot(
+        source="manual",
+        last_verified=date(2026, 11, 8),
+        input_per_1m_usd=Decimal("0.40"),
+        output_per_1m_usd=Decimal("1.60"),
+    )
+    assumptions = Assumptions(review=ReviewAssumption(minutes=Decimal("15")), prices=(("gpt-4.1-mini", snapshot),))
+    cohort = CohortCost(
+        cohort_id="cohort-1",
+        cases=(
+            CaseCost(
+                case_id="EC-01",
+                categories=(CostCategory(name=CATEGORY_MODEL, usd=Decimal("0.010"), known=True),),
+                resolved=True,
+                went_to_person=False,
+            ),
+        ),
+        assumptions=assumptions,
+        cohort_digest="digest-a",
+    )
+
+    published = published_bytes(cohort)
+
+    assert published["cohort"]["assumptions"]["prices"]["gpt-4.1-mini"]["verified"]
+    assert published["cohort"]["assumptions"]["prices"]["gpt-4.1-mini"]["last_verified"] == "2026-11-08"
