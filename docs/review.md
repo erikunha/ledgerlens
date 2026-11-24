@@ -75,10 +75,15 @@ refusal, so the refusal carries no case, no evidence and no state.
 
 ## What does not exist yet
 
-The queue of the review does not exist yet, and neither does the service that opens a task when the escalation flags
-a case. The simulator of the queue is the piece of work of the next milestone of
-[specs/012](../specs/012-r10-human-review-and-approval/spec.md), and the defaults of that simulator are fictional
-and marked as such.
+The queue of the review does not exist yet, and neither does the service that opens a task when the escalation flags a
+case. What exists is a simulator of the queue, in [`ledgerlens/economics/queue.py`](../ledgerlens/economics/queue.py),
+and the page that says what it computes and what it refuses to say is [`docs/queue.md`](queue.md). The defaults of that
+simulator are fictional and marked as such.
+
+The approval of a review does not reach the sandbox yet either. The task carries the event of the branch that the
+approval binds to, and the binding itself is a piece of work of its own.
 
 [ADR-087](decisions/ADR-087-the-review-is-a-typed-task-the-identity-of-the-reviewer-is-the-session-and-the-agent-never-decides.md)
-is the decision that says what the review is and what it refuses to do.
+is the decision that says what the review is and what it refuses to do, and
+[ADR-088](decisions/ADR-088-the-queue-of-the-review-is-a-simulation-with-fictional-defaults-and-its-capacity-is-never-a-plan-of-a-team.md)
+is the decision that says what the queue of the review is.

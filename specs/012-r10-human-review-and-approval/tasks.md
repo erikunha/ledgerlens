@@ -99,32 +99,50 @@ used by `specs/001-*` through `specs/006-*`, and they never collide with them. T
 
 **Purpose**: the capacity of a review queue, computed and not guessed.
 
-- [ ] T909 Write the test in `tests/economics/test_queue.py` that fails while two runs of the same experiment with
+- [x] T909 Write the test in `tests/economics/test_queue.py` that fails while two runs of the same experiment with
   the same seed differ, that fails while a queue with no reviewer raises or publishes a utilization, that fails
   while an overloaded queue publishes a finite steady state wait, that fails while two policies are compared over
   different arrivals, that fails while the critical class is not named apart, and that fails while the queue holds
   an identifier of a visitor. The fixture holds two reviewers, four arrivals and a fixed review time, so that the
-  schedule can be worked out by hand and written in the test
-- [ ] T910 Write the module `ledgerlens/economics/queue.py` with the experiment, the stable priority queue of the
+  schedule can be worked out by hand and written in the test - **DELIVERED**: the test is in
+  `tests/economics/test_queue.py`: two runs of the same experiment with the same seed give the same report, a queue
+  with no reviewer publishes no utilization and does not divide by zero, an overloaded queue publishes no finite
+  steady state wait, two policies with different arrivals are refused, the critical class has its own line in the
+  report, and the arrival of a case carries the minute, the strength, the class and the work time and nothing about
+  a person. The fixture holds the two reviewers, the four arrivals and the five minutes of review, and the test
+  writes the schedule down: the cases start at the minutes 0, 2, 5 and 7.
+- [x] T910 Write the module `ledgerlens/economics/queue.py` with the experiment, the stable priority queue of the
   events `(at, sequence, type)`, the service of the reviewers, the utilization, the throughput, the backlog, the
   distribution of the waiting time and the overload, with the docstring of the module saying that the waiting time
-  is computed and never written by a model and that the simulator holds no identity of a visitor
-- [ ] T911 [P] Extend the export in `ledgerlens/economics/__init__.py` so that it publishes the simulator of the
+  is computed and never written by a model and that the simulator holds no identity of a visitor - **DELIVERED**:
+  the module holds the experiment, the stable queue of the events, the service of the reviewers, the utilization, the
+  throughput, the backlog over the time, the distribution of the waiting time, the overload and the mean time in the
+  system. The docstring says that the waiting time is computed and never written by a model and that the simulator
+  holds no identity of a visitor.
+- [x] T911 [P] Extend the export in `ledgerlens/economics/__init__.py` so that it publishes the simulator of the
   queue next to the cost and the utility, and extend the test in `tests/economics/test_queue.py` so that it fails
   while the report of the simulation presents the capacity of the queue as a staffing plan or the latency of the
-  interface as the work time of a reviewer
-- [ ] T912 [P] Write the test in `tests/economics/test_queue.py` that fails while a class of cases that never
+  interface as the work time of a reviewer - **DELIVERED**: the package exports the simulator next to the cost and
+  the utility, and the test refuses a report that carries a key that reads as a headcount and refuses a report that
+  carries a latency where the work time of a reviewer belongs. Every report carries the line that says that it is a
+  simulation with fictional defaults and not a staffing plan.
+- [x] T912 [P] Write the test in `tests/economics/test_queue.py` that fails while a class of cases that never
   reaches a reviewer is not reported as starved, and that expects the waiting time of the critical class to be
-  published apart from the waiting time of the other classes
+  published apart from the waiting time of the other classes - **DELIVERED**: the test is in
+  `tests/economics/test_queue.py`: a queue that serves the easy cases first leaves the critical class waiting for
+  ever and the report names it as starved, and the report publishes the waiting time of the critical class apart
+  from the waiting time of the other classes.
 
 ## Milestone D, the record of the milestone
 
 **Purpose**: the decisions the milestone took are written down where the repository keeps them.
 
-- [ ] T913 Write the record of the milestone in `docs/decisions/` with the next number after ADR-077, which states
+- [x] T913 Write the record of the milestone in `docs/decisions/` with the next number after ADR-077, which states
   that the agent prepares the evidence and never decides, that the identity of the reviewer comes from the session,
   that an approval binds to an event of a branch and never to a live payment, that the history of a task is append
   only, that the queue simulator is a simulation whose defaults are fictional and marked as such, that the review
   never changes the model of a run under ADR-037, and that any specialist dispatch of the review stays behind a flag
   until a paired comparison measures a gain under ADR-P007, and link it from `docs/decisions/README.md` with
-  `uv run python scripts/build_docs_index.py`
+  `uv run python scripts/build_docs_index.py` - **DELIVERED**: the record is ADR-088, the next number after ADR-087
+  that the milestone of the review produced, and it states every one of those rules. The index of the decisions and
+  the index of the documentation were written with `uv run python scripts/build_docs_index.py`.
