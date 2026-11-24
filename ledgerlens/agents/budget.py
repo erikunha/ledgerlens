@@ -95,14 +95,28 @@ class TurnBudget:
     coordinator: BudgetCoordinator
     owner: Owner = "integrator"
 
-    def reserve_model_call(self, model_id: str) -> None:
+    def reserve_model_call(
+        self,
+        model_id: str,
+        *,
+        planned_input_tokens: int | None = None,
+        planned_output_tokens: int | None = None,
+    ) -> None:
         """Asks the coordinator for one call of a model, when this module owns the counting.
 
         The reservation happens before the provider is called, so the money of a call the budget does not allow
         is never spent (FR-009).
+
+        Why the planned tokens are arguments: a cap of the tokens and a cap of the money are caps of a planned
+        call, and a call without a plan has no cost to check, so a retry that does not say what it plans would
+        pass a cap of the money that it does not fit.
         """
         if self.owner == "integrator":
-            self.coordinator.reserve_model_call(model_id)
+            self.coordinator.reserve_model_call(
+                model_id,
+                planned_input_tokens=planned_input_tokens,
+                planned_output_tokens=planned_output_tokens,
+            )
 
     def reserve_tool_call(self) -> None:
         """Asks the coordinator for one call of a tool, when this module owns the counting.

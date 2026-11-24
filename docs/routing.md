@@ -73,6 +73,35 @@ says that a run of the live mode has exactly one model: the four slots are four 
 model never changes in the middle of the run. The comparison below is a measurement of the routing and not of the
 live mode of a visitor.
 
+## The fallback of a run
+
+A model that fails a task is a model that was not capable enough for it, and the cascade has a model above it. The
+retry of that task with the next model of the cascade is the fallback, and it is the one place of a run where a call
+happens that the plan of the run did not ask for, so it is the one place where two rules hold.
+
+1. **The consent comes from the deployment.** `LEDGERLENS_FALLBACK_ATTEMPTS` says how many retries a failed task may
+   get, and `LEDGERLENS_FALLBACK_DIRECTION` says in which direction of the cascade they go.
+   The default is no retry at all: the shipped paths behave exactly as they behaved before, and a run that spends a
+   call nobody asked for is a run that spends money nobody approved.
+2. **The remaining budget has to cover the retry, and the check happens before the call.** The reservation of the
+   retry is what checks the caps, so the money of a retry the budget does not cover is never spent, and the caps of
+   the run are the same before and after the decision. The reservation carries the tokens the caller plans, because
+   a cap of the tokens and a cap of the money are caps of a planned call.
+
+The retry goes up the cascade by default, because a model that failed a task is a model that was not capable enough
+for it. A failure with no retry left stops the run with the reason and with no further call. The retry is never the
+model that just failed: two providers may know a model by the same name, and the neighbour of the retry is the one
+above the position of the failed model in the cascade.
+
+The decision is a value: it carries the action, the model, the reason, the number of the attempts and the strategy,
+so a reader of a recording of a run that retried sees the model of the retry and the reason of it. The decision moves
+no counter of the budget, and the reservation is a step of its own that comes after it and before the call. The
+module decides and reserves, and the caller calls, and the wiring of the retry inside the loop of the agent is not
+there yet, so the rate of the fallback of the comparison of the routes is still not measured.
+
+[ADR-084](decisions/ADR-084-the-fallback-of-a-run-happens-only-with-a-consent-of-the-deployment-and-with-the-budget-that-is-left.md)
+is the decision that says what a fallback has to carry to be allowed.
+
 ## The comparison of the routes
 
 The comparison runs the same cohort of cases twice, over the same ledger: once with one model in the four slots,

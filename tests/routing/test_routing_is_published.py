@@ -97,6 +97,21 @@ def test_the_page_says_that_a_number_without_its_dataset_is_a_claim_about_nothin
     assert "a claim about nothing in particular" in PAGE.read_text("utf-8")
 
 
+def test_the_page_states_the_rules_of_the_fallback() -> None:
+    """A reader of the page knows that a fallback needs a consent and a budget that covers it.
+
+    Why it matters: the fallback is the one place of a run where a call happens that the plan did not ask for,
+    and a page that does not say so leaves the reader to assume that the router spends what it wants.
+    """
+    text = PAGE.read_text("utf-8")
+
+    assert "The fallback of a run" in text
+    assert "LEDGERLENS_FALLBACK_ATTEMPTS" in text
+    assert "LEDGERLENS_FALLBACK_DIRECTION" in text
+    assert "the check happens before the call" in text
+    assert "no retry at all" in text
+
+
 def test_the_measurement_is_published() -> None:
     """The comparison was measured and the measurement is on the disk.
 

@@ -97,11 +97,18 @@ T241, and the tests of the registry and of the budget that the routing reads sta
   `ledgerlens/observability/trace_event.py` produced by a routed run and expects the decision of the routing,
   and that reads the bundle of `ledgerlens/replay/bundle.py` and expects the model of each slot next to the
   task it did
-- [ ] T252 [P] Write the module `ledgerlens/routing/fallback.py` with the docstring saying that a fallback
+- [x] T252 [P] Write the module `ledgerlens/routing/fallback.py` with the docstring saying that a fallback
   happens only when a pre-consented strategy allows it and the remaining budget covers it and that the router
   never raises the spend of a run by itself, and write the test in `tests/routing/test_budgeted_fallback.py`
   that expects the fallback with the strategy and that expects the run to stop with the reason and no further
-  call when the budget of `ledgerlens/byok/budget.py` is empty
+  call when the budget of `ledgerlens/byok/budget.py` is empty - **DELIVERED**: the module is
+  `ledgerlens/agents/fallback.py`, next to the router of ADR-078 and not in a package of its own, because the
+  routing of the repository lives in `ledgerlens/agents/routing.py`. It holds the strategy of the deployment
+  (`LEDGERLENS_FALLBACK_ATTEMPTS` and `LEDGERLENS_FALLBACK_DIRECTION`, with no retry as the default), the
+  decision as a value and the stop with the reason (`FallbackStopped`). The budget is asked BEFORE the call, so
+  the money of a retry the budget does not cover is never spent, and the caps of the run are never changed by the
+  decision (ADR-084). The wiring of the retry inside the loop of the agent is NOT there yet: the module decides
+  and the caller calls, and the rate of the fallback of the comparison of the routes is still not measured.
 
 ## Part D, the comparison and the publication
 

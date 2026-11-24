@@ -64,6 +64,11 @@ class Settings(BaseModel):
     # the deployment declares nothing, and the run then uses the model of `LEDGERLENS_MODEL` in every slot, which
     # is how the product behaved before the router existed (ADR-078).
     model_cascade: tuple[str, ...] = ()
+    # The consent of the deployment about the retries of a task: how many retries a failed task may get, and in
+    # which direction of the cascade they go. Zero is the default, because a retry is a call that the plan of
+    # the run did not ask for, and nobody asked for it until somebody says so (ADR-084).
+    fallback_attempts: int = 0
+    fallback_direction: Literal["up", "down"] = "up"
     embeddings: Literal["fastembed", "openai"] = "fastembed"
     openai_api_key: SecretStr | None = None
     langsmith_api_key: SecretStr | None = None
@@ -178,6 +183,26 @@ def get_settings(env: Mapping[str, str] | None = None) -> Settings:
     max_committed_mutations = _text(values.get("LEDGERLENS_SANDBOX_MAX_COMMITTED_MUTATIONS"))
     max_events = _text(values.get("LEDGERLENS_SANDBOX_MAX_EVENTS"))
     cors_origins = _text(values.get("LEDGERLENS_CORS_ORIGINS"))
+    fallback_attempts = _text(values.get("LEDGERLENS_FALLBACK_ATTEMPTS"))
+    fallback_direction = (_text(values.get("LEDGERLENS_FALLBACK_DIRECTION")) or "up").lower()
+    if fallback_direction not in ("up", "down"):
+        raise ConfigError(
+            "LEDGERLENS_FALLBACK_DIRECTION must be 'up' or 'down', because the direction of a retry in the cascade "
+            "is the only thing it can be"
+        )
+    attempts = 0
+    if fallback_attempts:
+        try:
+            attempts = int(fallback_attempts)
+        except ValueError as exc:
+            raise ConfigError(
+                f"LEDGERLENS_FALLBACK_ATTEMPTS must be a number of retries, and it is {fallback_attempts!r}"
+            ) from exc
+        if attempts < 0:
+            raise ConfigError(
+                f"LEDGERLENS_FALLBACK_ATTEMPTS must not be negative, and it is {attempts}: a consent with a negative "
+                "number of retries is not a consent"
+            )
     settings = Settings(
         offline=_flag(values.get("LEDGERLENS_OFFLINE")),
         model=_text(values.get("LEDGERLENS_MODEL")),
@@ -201,6 +226,8 @@ def get_settings(env: Mapping[str, str] | None = None) -> Settings:
         **({"sandbox_max_committed_mutations": int(max_committed_mutations)} if max_committed_mutations else {}),
         **({"sandbox_max_events": int(max_events)} if max_events else {}),
         **({"cors_origins": _origins(cors_origins)} if cors_origins else {}),
+        **({"fallback_attempts": attempts} if fallback_attempts else {}),
+        **({"fallback_direction": fallback_direction} if fallback_direction != "up" else {}),
     )
     log.debug("settings loaded: %r", settings)
     return settings
