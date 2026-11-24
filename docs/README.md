@@ -128,6 +128,7 @@ and one line that says what the file holds.
 - [ADR-089: The studio stays off in the shipped configuration, and the comparison that measured it was registered before it ran](decisions/ADR-089-the-studio-stays-off-in-the-shipped-configuration-and-the-comparison-was-registered-before-it-ran.md): Status: accepted. Date: 2026-11-24.
 - [ADR-090: The versioned memory has a quarantine that is a state, a promotion that is simulated and a snapshot that freezes a run](decisions/ADR-090-the-versioned-memory-has-a-quarantine-that-is-a-state-a-promotion-that-is-simulated-and-a-snapshot-that-freezes-a-run.md): Status: accepted. Date: 2026-11-24.
 - [ADR-091: The adversarial laboratory adds no defense of its own, and its count says nothing about an attack that is not in the list](decisions/ADR-091-the-adversarial-laboratory-adds-no-defense-of-its-own-and-its-count-says-nothing-about-an-attack-that-is-not-in-the-list.md): Status: accepted. Date: 2026-11-24.
+- [ADR-092: The journal of a run reuses the idempotence of the branch, and a step that is not idempotent is not run again](decisions/ADR-092-the-journal-of-a-run-reuses-the-idempotence-of-the-branch-and-a-step-that-is-not-idempotent-is-not-run-again.md): Status: accepted. Date: 2026-11-24.
 - [Decision records](decisions/README.md): Every decision that restricts the future of the work is a record in this folder, and this index lists them in the order of their number, with their status...
 
 ## docs/orchestration
@@ -138,6 +139,10 @@ and one line that says what the file holds.
 ## docs/pt-BR
 
 - [roadmap-v3.md](pt-BR/roadmap-v3.md): the Portuguese edition of [roadmap-v3.md](roadmap-v3.md); its own title is in Portuguese, so the file name names it here.
+
+## docs/runbook
+
+- [Runbook: the durability of a run](runbook/durability.md): This runbook is for the person who has to restart a run that died, read the state of a run, or roll the journal of a run back. The journal of a run is the...
 
 ## docs/v3
 

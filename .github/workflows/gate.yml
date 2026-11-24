@@ -54,6 +54,10 @@ jobs:
         run: uv run python scripts/apply_sandbox_schema.py
       - name: Gate (ruff, pytest offline)
         run: bash scripts/gate.sh
+      # The recovery of a run is exercised on every run of the continuous integration: the fault injection
+      # kills a run at every named point of the fixture and every kill recovers (T274 of the spec 017).
+      - name: Fault injection (the recovery of a run)
+        run: uv run pytest tests/durability/test_fault_injection.py -q
 
   # The gate of the frontend. It is a second job and not a step of the job above, because the two gates have two
   # toolchains and two caches, and because scripts/gate.sh must keep running where Node is absent.
