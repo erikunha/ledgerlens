@@ -24,13 +24,14 @@ Where the spans come from:
 
 A LangChain run with no known parent (triage, the agent) goes under the explicit span open at that moment.
 
-`inputs` and `outputs` go through `compact`: long texts and long lists are cut with a marker ("…+12 rows",
+`inputs` and `outputs` go through `compact`: long texts and long lists are cut with a marker ("…+12 items",
 "…+340 chars") and anything that looks like an API key becomes `[REDACTED]` (`redact`). The cut of a list follows
-the kind of the list: the number of the records of a result may be cut, and the fields of one record and the names
-of its columns are never cut, because they are what the answer cites. The answer of the run is the one text that
-keeps a limit of its own, because the claims of the run are extracted from it and a cut answer takes them away
-(ADR-076). Model prompts and responses enter the trace, already cut, because the trace stays in the session of the
-person who asked.
+the kind of the list: the records of a result are never cut, because the tool that read them bounded them and
+said how many it read, and a cut of a record takes the value a claim cites away (ADR-079). The fields of one
+record and the names of its columns are never cut, because they are what the answer cites. The answer of the run
+is the one text that keeps a limit of its own, because the claims of the run are extracted from it and a cut answer
+takes them away (ADR-076). Model prompts and responses enter the trace, already cut, because the trace stays in the
+session of the person who asked.
 
 `create_agent` runs each tool in a thread of its executor, so `on_event` may be called from another thread: whoever
 draws should receive the spans on a queue and draw on its own thread. The emitter calls `on_event` under a lock, and
@@ -64,7 +65,7 @@ RunType = Literal["chain", "llm", "tool", "retriever", "parser", "prompt", "veri
 SpanStatus = Literal["running", "ok", "error"]
 HIDDEN_TAG = "langsmith:hidden"  # LangGraph's mark for the graph's internal runs
 MAX_TEXT = 600  # characters of a text before the cut
-MAX_ITEMS = 8  # items of a list before the cut
+MAX_ITEMS = 8  # items of a list of plain values before the cut
 MAX_DEPTH = 6  # nesting levels before the value becomes text
 
 # The answer of the run is the one text the cut does not take away, and the limit of it is far above the answer of
@@ -74,14 +75,17 @@ MAX_DEPTH = 6  # nesting levels before the value becomes text
 MAX_ANSWER = 16000
 ANSWER_KEY = "answer"
 
-# The keys whose list holds the records of a result and the names of its columns. They are the contract the
-# tools of the ledger answer with and the contract the verifier reads, so the rule of the cut is written here
-# once and not once per tool.
+# The keys whose value is the contract of a tool: the records of a result, the identifiers the tool returned and
+# the names of its columns. What they carry is what the answer cites and what the verifier reads, so the trace
+# publishes them whole (ADR-079).
 RECORD_KEY = "rows"
+RESULT_KEY = "results"
 COLUMN_KEY = "columns"
+EVIDENCE_ID_KEY = "evidence_ids"
 
-# The kinds of list the cut treats differently. A plain list holds values; a list of records holds the records of
-# a result; the fields of one record and the names of the columns are the two that are never cut.
+# The kinds of list the cut treats differently. A plain list holds values and is cut in its number of items; a list
+# of records holds the records of a result and is never cut; the fields of one record and the names of the columns
+# are never cut either.
 UNIT_VALUES = "values"
 UNIT_RECORDS = "records"
 UNIT_RECORD = "record"
@@ -125,11 +129,13 @@ def _unit_of(key: str) -> str:
     """The kind of list a field holds: the records of a result, the names of its columns, or plain values.
 
     Why the key decides it: the tools of the ledger answer with the contract of the verifier, `columns` and
-    `rows`, and the rule of the cut follows the contract instead of guessing the shape of the value.
+    `rows`, and the rule of the cut follows the contract instead of guessing the shape of the value. The
+    identifiers of the evidence are names as well, because they are the list that links a piece of evidence to
+    its content (ADR-079).
     """
-    if key == RECORD_KEY:
+    if key in (RECORD_KEY, RESULT_KEY):
         return UNIT_RECORDS
-    if key == COLUMN_KEY:
+    if key in (COLUMN_KEY, EVIDENCE_ID_KEY):
         return UNIT_NAMES
     return UNIT_VALUES
 
@@ -137,14 +143,15 @@ def _unit_of(key: str) -> str:
 def compact(value: Any, *, key: str = "", depth: int = 0, unit: str | None = None) -> Any:
     """`value` as short JSON with no secrets: long lists and texts cut with a marker of what was left out.
 
-    The rule of the lists, and why it is this one: the number of the records of a result may be cut, because a
-    record that is left out takes no value of the evidence away and the records that remain keep their columns.
-    The fields of one record and the names of the columns are never cut, because they are what the answer cites:
-    a cut there takes the evidence of the claim away and leaves values that no reader can put under a column. Any
-    other list is cut in its number of items.
+    The rule of the lists, and why it is this one: the records of a result are never cut, because the tool that
+    read them bounded them and said how many it read, and a record that is left out can take the value a claim
+    cites away. The fields of one record and the names of the columns are never cut, because they are what the
+    answer cites: a cut there takes the evidence of the claim away and leaves values that no reader can put under
+    a column. The identifiers the tool returned are never cut either, because they are the list that links a
+    piece of evidence to its content. Any other list of values is cut in its number of items, and a list of
+    records is never cut, whatever the name of the field that holds it (ADR-079).
 
-    The marker says what was cut: "…+12 rows" for the records of a result, "…+12 items" for the values of a
-    list, and "…+340 chars" for a text.
+    The marker says what was cut: "…+12 items" for the values of a list, and "…+340 chars" for a text.
 
     The `key` names the field the value came from and the `unit` names the kind of the list the value holds. The
     unit the caller did not state is the one the key states, because the contract of the tools of the ledger is
@@ -171,18 +178,19 @@ def compact(value: Any, *, key: str = "", depth: int = 0, unit: str | None = Non
 def _compact_list(value: list[Any] | tuple[Any, ...], *, key: str, depth: int, unit: str) -> list[Any]:
     """A list as it goes into the trace, cut by the rule of its kind.
 
-    The fields of one record and the names of the columns are never cut. The records of a result are cut in their
-    number, and the marker says how many were left out. Any other list is cut in its number of items, and the
-    marker says that they were values.
+    The fields of one record and the names of the columns are never cut. The records of a result are never cut,
+    because the tool that read them bounded them and said how many it read (ADR-079). Any other list of values is
+    cut in its number of items, and the marker says how many were left out.
     """
     items = list(value)
     if unit in (UNIT_RECORD, UNIT_NAMES):
         return [compact(item, key=key, depth=depth + 1, unit=UNIT_VALUES) for item in items]
     if unit == UNIT_RECORDS:
-        kept = [compact(item, key=key, depth=depth + 1, unit=UNIT_RECORD) for item in items[:MAX_ITEMS]]
-        if len(items) > MAX_ITEMS:
-            kept.append(f"…+{len(items) - MAX_ITEMS} rows")
-        return kept
+        return [compact(item, key=key, depth=depth + 1, unit=UNIT_RECORD) for item in items]
+    if items and all(isinstance(item, dict) for item in items):
+        # A list of records, whatever the name of the field that holds it: the collections of a record (the
+        # refunds of a payment, the chargebacks, the rates applied to it) are records too.
+        return [compact(item, key=key, depth=depth + 1, unit=UNIT_RECORD) for item in items]
     kept = [compact(item, key=key, depth=depth + 1, unit=UNIT_VALUES) for item in items[:MAX_ITEMS]]
     if len(items) > MAX_ITEMS:
         kept.append(f"…+{len(items) - MAX_ITEMS} items")

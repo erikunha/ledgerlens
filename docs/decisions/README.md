@@ -86,3 +86,4 @@ by hand: run `uv run python scripts/build_docs_index.py` and commit the result.
 | 076 | [ADR-076: The answer of the run is published whole, because the claims are extracted from it](ADR-076-the-answer-of-the-run-is-published-whole-because-the-claims-are-extracted-from-it.md) | accepted | 2026-11-24 |
 | 077 | [ADR-077: The published bundle is verified against the answer the run verified](ADR-077-the-published-bundle-is-verified-against-the-answer-the-run-verified.md) | accepted | 2026-11-24 |
 | 078 | [ADR-078: The model of each slot is chosen by the work it does](ADR-078-the-model-of-each-slot-is-chosen-by-the-work-it-does.md) | accepted | 2026-11-24 |
+| 079 | [ADR-079: The records of a result are published whole, because the claims are checked against them](ADR-079-the-records-of-a-result-are-published-whole-because-the-claims-are-checked-against-them.md) | accepted | 2026-11-24 |

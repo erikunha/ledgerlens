@@ -110,6 +110,7 @@ and one line that says what the file holds.
 - [ADR-076: The answer of the run is published whole, because the claims are extracted from it](decisions/ADR-076-the-answer-of-the-run-is-published-whole-because-the-claims-are-extracted-from-it.md): Status: accepted. Date: 2026-11-24.
 - [ADR-077: The published bundle is verified against the answer the run verified](decisions/ADR-077-the-published-bundle-is-verified-against-the-answer-the-run-verified.md): Status: accepted. Date: 2026-11-24.
 - [ADR-078: The model of each slot is chosen by the work it does](decisions/ADR-078-the-model-of-each-slot-is-chosen-by-the-work-it-does.md): Status: accepted. Date: 2026-11-24.
+- [ADR-079: The records of a result are published whole, because the claims are checked against them](decisions/ADR-079-the-records-of-a-result-are-published-whole-because-the-claims-are-checked-against-them.md): Status: accepted. Date: 2026-11-24.
 - [Decision records](decisions/README.md): Every decision that restricts the future of the work is a record in this folder, and this index lists them in the order of their number, with their status...
 
 ## docs/pt-BR
