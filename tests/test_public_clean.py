@@ -98,6 +98,10 @@ SECRET_FAKES = frozenset(
         "sk-" + "visitor-key-not-real",
         "sk-" + "weighted",
         "sk-" + "weighted-decision-utility",
+        # The slug of ADR-087 holds the same shape by accident: the tail of the word "task" followed by a hyphen
+        # is the head of the shape of a key of a provider. The fake is the exact text of the slug, so a real
+        # credential written anywhere else is still refused.
+        "sk-the-identity-of-the-" + "reviewer-is-the-session-and-the-agent-never-decides",
         "Bear" + "er ...",
         "Bear" + "er abc.def-123",
     }

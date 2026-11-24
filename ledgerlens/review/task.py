@@ -95,9 +95,14 @@ class ReviewTask:
     opened_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
-        """The task as a dictionary, for the route that serves it."""
+        """The task as a dictionary, for the route that serves it.
+
+        Why the evidence is in it: the reviewer has to read what they decide about, and a task without its evidence
+        is a task that cannot be decided. The route that refuses never carries a task, so nothing leaks.
+        """
         return {
             "case_id": self.case_id,
+            "evidence": self.evidence,
             "evidence_hash": self.evidence_hash,
             "snapshot_digest": self.snapshot_digest,
             "branch_event": self.branch_event,

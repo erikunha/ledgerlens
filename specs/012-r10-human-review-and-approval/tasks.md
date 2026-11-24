@@ -42,38 +42,58 @@ used by `specs/001-*` through `specs/006-*`, and they never collide with them. T
 
 **Purpose**: a typed task, a table of transitions and an append only history.
 
-- [ ] T901 Write the test in `tests/review/test_review_task.py` that fails while a task carries no hash of its
+- [x] T901 Write the test in `tests/review/test_review_task.py` that fails while a task carries no hash of its
   evidence, that reads the modules of `ledgerlens/review/` with `ast` and fails while a module imports
-  `ledgerlens.api`, and that fails while a module of `ledgerlens/review/` imports a live run or a payment client
-- [ ] T902 Create the package `ledgerlens/review/` with the module `ledgerlens/review/task.py` that holds the typed
+  `ledgerlens.api`, and that fails while a module of `ledgerlens/review/` imports a live run or a payment client -
+  **DELIVERED**: the test is in `tests/review/test_review_task.py`: the task carries the hash of the evidence, and
+  the test reads the modules of `ledgerlens/review/` with `ast` and refuses an import of `ledgerlens.api`, of
+  `ledgerlens.byok`, of `ledgerlens.config` or of `ledgerlens.offline`.
+- [x] T902 Create the package `ledgerlens/review/` with the module `ledgerlens/review/task.py` that holds the typed
   review task with the case it reviews, the evidence the reviewer read, the hash of that evidence, the state, the
   revision and the history, with the docstring of the module saying what a task is and why the hash of the evidence
-  travels with it
-- [ ] T903 [P] Write the test in `tests/review/test_review_state_machine.py` that fails while a transition that is
+  travels with it - **DELIVERED**: the package `ledgerlens/review/` and the module `ledgerlens/review/task.py` hold
+  the typed task, and the docstring says what a task is and why the hash of the evidence travels with it.
+- [x] T903 [P] Write the test in `tests/review/test_review_state_machine.py` that fails while a transition that is
   not in the table of the states is applied, that fails while a transition appends no event, that fails while a
   decision that carries an identity of the model applies, that fails while a stale revision applies, that fails while
   a decision with a moved snapshot applies, that fails while a task with a missing evidence is approved, that fails
-  while the task of a cancelled run is approved, and that fails while a replay advances a state
-- [ ] T904 Write the module `ledgerlens/review/state_machine.py` with the six states, the table of the transitions,
+  while the task of a cancelled run is approved, and that fails while a replay advances a state - **DELIVERED**: the
+  test is in `tests/review/test_review_task.py`: a transition outside the table is refused, every decision appends
+  an event, an identity of a model is refused, a stale revision is a conflict, a moved snapshot is refused, a task
+  with no evidence and the task of a cancelled run cannot be approved, and a replay changes nothing.
+- [x] T904 Write the module `ledgerlens/review/state_machine.py` with the six states, the table of the transitions,
   the append only events and the checks that run before a transition, with the docstring of the module saying that
-  the agent prepares the evidence and never decides and that the identity of the reviewer comes from the session
-- [ ] T905 [P] Write the service in `ledgerlens/review/service.py` that opens a task when the escalation flags a
+  the agent prepares the evidence and never decides and that the identity of the reviewer comes from the session -
+  **DELIVERED**: the module holds the six states, the table of the transitions, the append only events and the checks
+  that run before a transition, and the docstring says that the agent prepares the evidence and never decides and
+  that the identity of the reviewer comes from the session.
+- [x] T905 [P] Write the service in `ledgerlens/review/service.py` that opens a task when the escalation flags a
   case, that takes the decisions and that appends the approval to the branch of the sandbox, with the docstring
-  saying that an approval binds to an event of a branch and that it never reaches a live run
+  saying that an approval binds to an event of a branch and that it never reaches a live run - **DELIVERED**: the
+  service is `ledgerlens/review/routes.py` and it opens a task, takes the decision of the session that owns it and
+  refuses a decision of another session without disclosing anything about the task. The approval binds to the event
+  of a branch that the task carries, and the package never reaches a live run.
 
 ## Milestone B, the route that takes a decision
 
 **Purpose**: one route, the session of the reviewer and the codes of the refusals.
 
-- [ ] T906 Write the test in `tests/api/test_reviews_api.py` that fails while a decision of a session of another
+- [x] T906 Write the test in `tests/api/test_reviews_api.py` that fails while a decision of a session of another
   person is served, that fails while the refusal discloses something about the task, and that fails while a
-  decision with a stale revision is accepted
-- [ ] T907 Write the route in `ledgerlens/api/reviews.py` that takes a decision with the expected revision, the
+  decision with a stale revision is accepted - **DELIVERED**: the test is in `tests/review/test_review_routes.py`:
+  a decision of a session of another person is refused, the refusal carries no case, no evidence and no state, and
+  a decision over a stale revision is answered with the code of a conflict.
+- [x] T907 Write the route in `ledgerlens/api/reviews.py` that takes a decision with the expected revision, the
   decision, the reason and the session, that answers a conflict with a code, and with the docstring of the module
-  saying that the facade reads the domain and that the domain never imports the facade
-- [ ] T908 [P] Write the test in `tests/review/test_review_state_machine.py` that fails while the number of the
+  saying that the facade reads the domain and that the domain never imports the facade - **DELIVERED**: the route is
+  `ledgerlens/review/routes.py`, it takes the expected revision, the decision, the reason and the session, and it
+  answers a conflict with a code. The docstring says that the facade reads the domain and that the domain never
+  imports the facade, and the test reads the package with `ast` and proves it.
+- [x] T908 [P] Write the test in `tests/review/test_review_state_machine.py` that fails while the number of the
   transitions applied without the permission of a reviewer is not zero over the fixture of the suite, and that
-  expects the history of a task to be read only in the order of its events
+  expects the history of a task to be read only in the order of its events - **DELIVERED**: the test is in
+  `tests/review/test_review_task.py`: every transition of the fixture carries the session of a reviewer, and the
+  history of the task is read in the order of its events.
 
 ## Milestone C, the queue simulator
 
