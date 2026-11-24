@@ -157,25 +157,53 @@ amount.
 **Purpose**: a suspended run continues from durable state without repeating an effect and without losing its
 provenance.
 
-- [ ] T191 [P] Write the module `ledgerlens/orchestration/journal.py` with the docstring saying that the journal
+- [x] T191 [P] Write the module `ledgerlens/orchestration/journal.py` with the docstring saying that the journal
   of a run records the steps, their attempts, their inputs and their outputs so that a run resumes from what
   it already did, and write the test in `tests/orchestration/test_journal.py` that expects the journal to
   refuse a step whose output does not match the digest of its inputs
-- [ ] T192 [P] Write the module `ledgerlens/orchestration/resume.py` with the docstring saying that a resume
+  - **DELIVERED**: the module `ledgerlens/orchestration/journal.py` records the steps of a run, their attempts, their
+                   inputs and their outputs, and the docstring says that a suspended run continues from what it already
+                   did. The test is in `tests/orchestration/test_journal.py`: the journal refuses an entry whose output
+                   does not match the digest it was given, the entry keeps the digest of the inputs of the step, the
+                   attempts of a step are counted, the entry of a step that completed is found, a step that failed has
+                   no completed entry and the journal survives the round trip of its records.
+- [x] T192 [P] Write the module `ledgerlens/orchestration/resume.py` with the docstring saying that a resume
   reuses the output of a completed step, runs again only a step that is idempotent and read-only, refuses a
   step whose snapshot or whose configuration version changed and never rehydrates a credential, and write the
   test in `tests/orchestration/test_resume.py` that expects the reuse, the two refusals and the absence of any
   call of a provider in the resume
-- [ ] T193 Write the test in `tests/orchestration/test_restart_idempotency.py` that commits the same command of
+  - **DELIVERED**: the module `ledgerlens/orchestration/resume.py` reuses the output of a step that completed, runs
+                   again only a step that is idempotent and read-only, refuses a step whose snapshot or whose
+                   configuration version changed and never rehydrates a credential. The test is in
+                   `tests/orchestration/test_resume.py`: the output of a step that completed is reused, a step that
+                   never completed runs again, a step that writes is never run again, a step whose snapshot or whose
+                   configuration version changed is refused, a step whose arguments changed runs again, and a step whose
+                   arguments carry a credential is refused.
+- [x] T193 Write the test in `tests/orchestration/test_restart_idempotency.py` that commits the same command of
   `ledgerlens/sandbox/mutation.py` twice with the same idempotency key and expects one event of the branch in
   `ledgerlens/sandbox/projector.py` and an unchanged projection
-- [ ] T194 [P] Write the module `ledgerlens/orchestration/verify_stage.py` with the docstring saying that the
+  - **DELIVERED**: the test is in `tests/orchestration/test_restart_idempotency.py`: it commits the same command of
+                   `ledgerlens/sandbox/mutation.py` twice with the same idempotency key and expects one event of the
+                   branch in `ledgerlens/sandbox/projector.py`, and it expects the projection of the branch to be the
+                   same after the second commit.
+- [x] T194 [P] Write the module `ledgerlens/orchestration/verify_stage.py` with the docstring saying that the
   verifier of `ledgerlens/verify/` runs on the claims of the joined steps before the summary and that it stays
   deterministic, and write the test in `tests/orchestration/test_verify_before_summary.py` that expects the
   summary of a run of the studio to exist only after the verdicts of the verifier
-- [ ] T195 [P] Write the test in `tests/orchestration/test_comparison_dataset_role.py` that expects the set of
+  - **DELIVERED**: the module `ledgerlens/orchestration/verify_stage.py` runs the verifier of `ledgerlens/verify/` on
+                   the claims of the joined steps before the summary, and the docstring says that the studio never
+                   replaces the verifier and that it stays deterministic. The test is in
+                   `tests/orchestration/test_verify_before_summary.py`: the summary exists only after the verdicts, a
+                   verification without a verdict is refused and publishes no summary, and the claims come from the
+                   results of the steps.
+- [x] T195 [P] Write the test in `tests/orchestration/test_comparison_dataset_role.py` that expects the set of
   `data/runtime/orchestration/comparison.json` to carry the role the manifest of `data/eval/datasets.json`
   gives it and that expects the refusal of `ledgerlens/eval/manifest.py` when a tuning script reads it
+  - **DELIVERED**: the test is in `tests/orchestration/test_comparison_dataset_role.py`: the set of
+                   `data/runtime/orchestration/comparison.json` carries the role that the manifest of
+                   `data/eval/datasets.json` gives it, that role is `held_out`, a tuning script that reads it is refused
+                   by `ledgerlens/eval/manifest.py` with the name of the dataset and of the rule, and the path of the
+                   manifest is reserved in the code of the guard.
 
 ## Part D, the comparison and the publication
 
