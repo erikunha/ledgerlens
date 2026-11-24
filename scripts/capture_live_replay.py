@@ -68,7 +68,7 @@ from ledgerlens.agents.routing import (  # noqa: E402
 )
 from ledgerlens.api.accounts import scoped_ledger  # noqa: E402
 from ledgerlens.byok.registry import ALLOWLIST, profiles_by_name  # noqa: E402
-from ledgerlens.config import get_chat_model, get_settings, model_cascade, model_profile  # noqa: E402
+from ledgerlens.config import get_chat_model, get_settings, model_cascade  # noqa: E402
 from ledgerlens.memory.long_term import CaseMemory, scenario_case_id  # noqa: E402
 from ledgerlens.observability.trace_event import InMemoryTraceSink, TraceEventStream  # noqa: E402
 from ledgerlens.replay.bundle import bundle_digest, write_bundle  # noqa: E402
@@ -151,7 +151,6 @@ def capture(scenario_id: str, out: Path, root: Path = ROOT) -> Path:
     except CaptureError as error:
         raise SystemExit(str(error)) from error
 
-    profile = model_profile(settings)
     manifest = demo.load_manifest()
     question, account_id = planted_question(manifest, scenario_id)
 
@@ -166,6 +165,10 @@ def capture(scenario_id: str, out: Path, root: Path = ROOT) -> Path:
         budget=budget_of(SHIPPED_RUN_BUDGET),
     )
     models = models_of(decisions)
+    # The profile the recording names is the model that wrote the answer, and not the model the environment names.
+    # The two are the same when the deployment declares one model, and they differ as soon as the cascade has more
+    # than one, and the recording has to say the truth in both cases.
+    profile = models[SLOT_AGENT]
 
     with tempfile.TemporaryDirectory(prefix="ledgerlens_live_replay_") as work:
         work_root = Path(work)
