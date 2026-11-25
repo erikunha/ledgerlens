@@ -197,6 +197,57 @@ including failed trials. Those recorded zeros count as misses. [Online measureme
 The distinction between occasional and consistent success follows the repeated-trial evaluation in
 [τ-bench](https://arxiv.org/abs/2406.12045). Here, full credit is counted separately for each recorded metric.
 
+## Transaction lookup controls
+
+Run `uv run python -m scripts.report_lookup_arguments` to compare the existing trajectory scores
+with the transaction kind and identifier in each structured lookup. The expected transaction and
+the swapped transaction each score 1 for the strict trajectory. Argument credit falls from 1 to 0
+when the identifier changes.
+
+Of six synthetic traces, four are eligible for argument scoring. One is correct, one uses the wrong
+identifier, one omits the lookup and one mixes correct and incorrect lookups. The remaining controls
+cover an absent trace and an equivalent free-text query whose arguments cannot prove which record it
+read. Across the five structured calls, two match the expected transaction. No tool is executed.
+
+## Passage IDs in the replay catalogs
+
+Run `uv run python -m scripts.report_evidence_stages` to inspect the policy tool results, tool
+messages in the final model input, and citations in the published answer. A complete record allows
+the report to establish that an ID is absent. A partial record can establish that an ID is present.
+
+| Catalog | Runs | Complete candidate records | Complete model inputs for passage IDs | Complete answers for citations |
+|---|---:|---:|---:|---:|
+| Scripted | 10 | 5 | 8 | 10 |
+| Real model | 10 | 0 | 7 | 10 |
+
+In scripted runs S02, S03 and S08, all eight candidate IDs were visible to the final model. Each
+answer cited one. An uncited passage may be irrelevant. Deciding whether the omission was an error
+requires an independently labeled target for the case. For the ten real-model replays, candidate
+coverage is unknown, so these recordings cannot establish a retrieval failure. The distinction
+between retrieval, context assembly and generation follows
+[Seven Failure Points When Engineering a Retrieval Augmented Generation System](https://arxiv.org/abs/2401.05856).
+
+## Synthetic evidence controls
+
+The claim-support experiment gives the textual entailment model a fixed passage and a proposed claim. It
+uses the chargeback response deadline as an answerable control and applies it to a refund as a
+neighboring-policy error. A pet insurance claim tests an unrelated topic. The final two controls use
+the same refund record to check a supported amount and an unsupported promise of delivery within two days.
+
+With the pinned entailment model and its calibrated thresholds, both supported claims received support
+and none of the three unsupported claims did. The two-day promise received the verdict
+`not_enough_evidence`. These five development controls score individual claims against supplied evidence.
+They bypass claim extraction and the separate numeric and coherence checks.
+Measuring whether the agent retrieves the passage and abstains in its final answer requires a separate run.
+
+Run from the repository root with the verification dependencies and cached model weights:
+
+    HF_HUB_OFFLINE=1 LEDGERLENS_OFFLINE=0 uv run python -m scripts.report_policy_support
+
+With `LEDGERLENS_OFFLINE=1` the report counts five cases without a verdict and zero eligible cases
+for both metrics. The distinction between support for individual claims and support for an entire
+answer follows [RAGAS](https://arxiv.org/abs/2309.15217).
+
 ## Where the truth lives
 
 | What you want to know | Where it is |
