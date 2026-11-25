@@ -142,6 +142,10 @@ and one line that says what the file holds.
 - [ADR-098: The latency and the cost of a turn](decisions/ADR-098-the-latency-and-the-cost-of-a-turn.md): Status: accepted. Date: 2026-11-24.
 - [ADR-099: The truth of the policies and the money is the contract of Acme, and the rules of the world carry their source](decisions/ADR-099-the-truth-of-the-policies-and-the-money-is-the-contract-of-acme-and-the-rules-of-the-world-carry-their-source.md): Status: accepted. Date: 2026-11-25.
 - [ADR-100: The guide of the cold start is data that names regions of the reader](decisions/ADR-100-the-guide-of-the-cold-start-is-data-that-names-regions-of-the-reader.md): Status: accepted. Date: 2026-11-25.
+- [ADR-101: The conformance of the sandbox runs over the seeded scenarios, the generator of the sequences is seeded, and the diff of a branch is published as data](decisions/ADR-101-the-conformance-of-the-sandbox-runs-over-the-seeded-scenarios-and-the-diff-is-published-as-data.md): Status: accepted. Date: 2026-11-25.
+- [ADR-102: The identifier of an experiment is the hash of its manifest, and a published experiment is never rewritten](decisions/ADR-102-the-identifier-of-an-experiment-is-the-hash-of-its-manifest-and-a-published-experiment-is-never-rewritten.md): Status: accepted. Date: 2026-11-25.
+- [ADR-103: The evidence graph is a read over the evidence of the run, and it is never a second verdict](decisions/ADR-103-the-evidence-graph-is-a-read-over-the-evidence-of-the-run-and-it-is-never-a-second-verdict.md): Status: accepted. Date: 2026-11-25.
+- [ADR-104: The routing reads the registry and the budget and never writes them, and the comparison of the routes is a hypothesis until it is measured](decisions/ADR-104-the-routing-reads-the-registry-and-the-budget-and-never-writes-them.md): Status: accepted. Date: 2026-11-25.
 - [Decision records](decisions/README.md): Every decision that restricts the future of the work is a record in this folder, and this index lists them in the order of their number, with their status...
 
 ## docs/orchestration

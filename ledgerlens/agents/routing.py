@@ -320,6 +320,15 @@ def route(
     """
     if not candidates:
         raise RoutingError("the deployment declared no model, so no slot of the run has one")
+    for candidate in candidates:
+        if "://" in candidate.name:
+            # The router chooses among the models of the registry, and it never accepts an address of a server
+            # that a visitor wrote: an address is not a model, and a model of an address of a visitor is a
+            # model the deployment never allowed.
+            raise RoutingError(
+                f"the candidate {candidate.name!r} is an address of a server and not a model of the registry, "
+                "and the router never accepts an address of a server that a visitor wrote"
+            )
     decisions: dict[str, RoutingDecision] = {}
     for slot in SLOTS:
         task = slot_task(slot)
