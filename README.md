@@ -235,7 +235,14 @@ The full report is in [`data/eval/report_online.md`](data/eval/report_online.md)
 
 ## Tests and gate
 
-`bash scripts/gate.sh` runs `ruff check` and `pytest -q` with `LEDGERLENS_OFFLINE=1`. It is the same command CI runs ([`.github/workflows/gate.yml`](.github/workflows/gate.yml)). The tests cover the SQL guard, the calculator, the tools, the verifier and escalation, both integrators with deterministic scripts, the simulator and the evaluation. The `data/ledger.db` database is generated from the versioned sample and is not needed for the gate.
+`bash scripts/gate.sh` runs `ruff check` and `pytest -q` with `LEDGERLENS_OFFLINE=1`. From a fresh checkout, build the sample database first:
+
+```bash
+uv run python -c 'from ledgerlens.eval.dataset import build_sample_ledger; build_sample_ledger("data/ledger.db")'
+bash scripts/gate.sh
+```
+
+CI runs both commands. The replay tests compare the original SQLite file digest, so the Python job uses the build that includes SQLite 3.53.1. The tests also cover the SQL guard, the calculator, the tools, the verifier and escalation, both integrators with deterministic scripts, the simulator and the evaluation. [Python CI configuration](.github/workflows/gate.yml)
 
 ## Layout
 

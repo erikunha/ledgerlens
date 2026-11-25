@@ -293,7 +293,7 @@ def test_the_control_of_the_case_whose_evidence_contradicts_itself_is_detected()
     The control is built on the rule of the negative net that the correction of the audit moved, and the
     frozen set keeps the excerpt of the corpus of its generation (ADR-061): the check reads the frozen set.
     """
-    recipes = load_recipes(RECIPES_PATH)
+    recipes = build_recipes()
     cases = {case["id"]: case for case in load_cases(CASES_PATH)}
     controls = [recipe for recipe in recipes if recipe["control"] == CONTROL_SELF_CONTRADICTION]
     assert controls
@@ -322,9 +322,9 @@ def test_the_three_negative_controls_are_present_and_the_other_cases_are_not_the
     """The frozen set carries the three controls the judge asked for, and each is detected by the machine.
 
     The controls depend on the corpus of the generation, and the frozen set keeps it (ADR-061): the check
-    reads the frozen set and its recipes.
+    reads the frozen cases and uses the seeded generator to identify the controls.
     """
-    recipes = load_recipes(RECIPES_PATH)
+    recipes = build_recipes()
     cases = {case["id"]: case for case in load_cases(CASES_PATH)}
     kinds = {recipe["control"] for recipe in recipes if recipe["control"]}
     assert kinds == {CONTROL_NO_EVIDENCE, CONTROL_SELF_CONTRADICTION, CONTROL_BENIGN_UNSUPPORTED}
