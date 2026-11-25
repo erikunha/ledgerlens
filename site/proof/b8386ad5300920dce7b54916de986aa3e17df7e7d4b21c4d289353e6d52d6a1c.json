@@ -1,5 +1,5 @@
 {
-  "artifact_id": "9262ef065a9f00a479a298180e24574d0f5957425744fb1c717257e94bae45ed",
+  "artifact_id": "b8386ad5300920dce7b54916de986aa3e17df7e7d4b21c4d289353e6d52d6a1c",
   "claim_evidence_refs": [
     "sql:1",
     "policy:refund-policy#duplicate-exception",
@@ -21,10 +21,11 @@
   "privacy_reviewed": true,
   "scenario_id": "S02",
   "schema_version": "3",
-  "snapshot_hash": "9e35262f7ef078b006504d636c54ced9813180f6c85438f809bf939de2cb7355",
-  "source_commit": "69080118ccbb4eb97e97d68bf22f13206d85d38710e2423f481546e3aad084e7",
+  "snapshot_hash": "901d58ec241029c12a42835aa4504966c73abdbf72c65f906258266f2cd30e8e",
+  "source_commit": "86ab658d259847c7272e655115f1d8cf73ce63b51dbb5eb958b5b6abef37933d",
   "trace_refs": [
-    "data/eval/replay/s02/events.jsonl"
+    "data/eval/replay/s02/events.jsonl",
+    "data/eval/replay/s02/memory_snapshot.json"
   ],
   "verdict_summary": "CL1 supported; CL2 supported; CL3 not_enough_evidence"
 }

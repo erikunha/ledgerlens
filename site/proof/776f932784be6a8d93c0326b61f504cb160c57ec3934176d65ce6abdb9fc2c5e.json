@@ -1,5 +1,5 @@
 {
-  "artifact_id": "bd4bde1a120b44917625600f6377e4d33ceff992f6759f24af045d058b3286ef",
+  "artifact_id": "776f932784be6a8d93c0326b61f504cb160c57ec3934176d65ce6abdb9fc2c5e",
   "claim_evidence_refs": [
     "sql:1",
     "policy:settlement-schedule#payout-timing",
@@ -9,7 +9,7 @@
     "policy:settlement-schedule#settlement-currency",
     "policy:settlement-schedule#holiday-example",
     "policy:settlement-schedule#status",
-    "policy:cross-currency-refunds#payout-currency",
+    "policy:chargeback-handling#outcomes",
     "calc:1"
   ],
   "cost_provenance": "replayed",
@@ -22,10 +22,11 @@
   "privacy_reviewed": true,
   "scenario_id": "S08",
   "schema_version": "3",
-  "snapshot_hash": "ffbc903e895cf456823b7bc2f31fcea167c731ba7ded68a20ee101db85bcfaa6",
-  "source_commit": "69080118ccbb4eb97e97d68bf22f13206d85d38710e2423f481546e3aad084e7",
+  "snapshot_hash": "5d12d0a7679da27f34d61dcc2b794a0f8f8e047a96fa2cb7b8a4510095afbe08",
+  "source_commit": "86ab658d259847c7272e655115f1d8cf73ce63b51dbb5eb958b5b6abef37933d",
   "trace_refs": [
-    "data/eval/replay/s08/events.jsonl"
+    "data/eval/replay/s08/events.jsonl",
+    "data/eval/replay/s08/memory_snapshot.json"
   ],
   "verdict_summary": "CL1 supported; CL2 supported; CL3 supported; CL4 not_enough_evidence"
 }

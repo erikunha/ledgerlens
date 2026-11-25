@@ -1,21 +1,23 @@
 {
   "artifacts": {
-    "events.jsonl": "587e8fb3d25e53cd17c5d9671d7bed8706ae86f3ba5e2729307d68cad1da1678",
-    "ledger.json": "5c1436aca2bdc9f3e9ad3f9b27ece2619138a28f64a60f258180a3ad3568a2e0",
-    "manifest.json": "bd4bde1a120b44917625600f6377e4d33ceff992f6759f24af045d058b3286ef"
+    "events.jsonl": "220ab0db42a200aace9318c30eeec07bb322aa0e1ddb13997a4e4abc5ee9940f",
+    "ledger.json": "562ed6b5ef9e45d1628dfbb2b6f201f9d7199bd4aa19dcc141763ce4bb52f119",
+    "manifest.json": "776f932784be6a8d93c0326b61f504cb160c57ec3934176d65ce6abdb9fc2c5e",
+    "memory_snapshot.json": "1b8b4c0b6f6ad1d32565952720bc004eeb1f188f62045e4d5525ae2af8c78432"
   },
-  "bundle_digest": "bd4bde1a120b44917625600f6377e4d33ceff992f6759f24af045d058b3286ef",
+  "bundle_digest": "776f932784be6a8d93c0326b61f504cb160c57ec3934176d65ce6abdb9fc2c5e",
   "capture_kind": "scripted_fixture",
-  "code_sha": "37aa9b66f6bb9cd120c09f00dac1f1fd95a3a5fe",
-  "created_at": "2026-11-24T03:41:20+00:00",
-  "dataset_sha256": "af34b1a17b5342de8ecef9732bd9e082cb5a4ca91e9b36173e231b71b0ebefb1",
+  "code_sha": "28147706d95bbce6c407434826332989384d84d5",
+  "created_at": "2026-11-25T11:53:06+00:00",
+  "dataset_sha256": "809f2c34cc47adde75fc5894c4d36dfb7e8fec2d7a38f48339c3af5f41118e78",
   "files": {
-    "events.jsonl": "587e8fb3d25e53cd17c5d9671d7bed8706ae86f3ba5e2729307d68cad1da1678"
+    "events.jsonl": "220ab0db42a200aace9318c30eeec07bb322aa0e1ddb13997a4e4abc5ee9940f",
+    "memory_snapshot.json": "1b8b4c0b6f6ad1d32565952720bc004eeb1f188f62045e4d5525ae2af8c78432"
   },
   "mode": "deterministic_sandbox",
   "model_profile": "scripted-fixture",
   "note": "Deterministic execution of the scenario S08, account M-03, with the scripted model and the recorded exchange rate. This is not a live execution and it calls no model.",
   "policy_version": "policies-v1",
-  "recorded_at": "2026-11-24T03:41:20+00:00",
-  "snapshot_sha256": "ffbc903e895cf456823b7bc2f31fcea167c731ba7ded68a20ee101db85bcfaa6"
+  "recorded_at": "2026-11-25T11:53:06+00:00",
+  "snapshot_sha256": "5d12d0a7679da27f34d61dcc2b794a0f8f8e047a96fa2cb7b8a4510095afbe08"
 }

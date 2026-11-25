@@ -1,18 +1,20 @@
 {
   "bundle_schema_version": "1",
   "capture_kind": "scripted_fixture",
-  "code_sha": "37aa9b66f6bb9cd120c09f00dac1f1fd95a3a5fe",
-  "created_at": "2026-11-24T03:41:20+00:00",
+  "code_sha": "28147706d95bbce6c407434826332989384d84d5",
+  "created_at": "2026-11-25T11:53:06+00:00",
   "events": 50,
   "files": {
-    "events.jsonl": "587e8fb3d25e53cd17c5d9671d7bed8706ae86f3ba5e2729307d68cad1da1678"
+    "events.jsonl": "220ab0db42a200aace9318c30eeec07bb322aa0e1ddb13997a4e4abc5ee9940f",
+    "memory_snapshot.json": "1b8b4c0b6f6ad1d32565952720bc004eeb1f188f62045e4d5525ae2af8c78432"
   },
+  "memory_snapshot_sha256": "1b8b4c0b6f6ad1d32565952720bc004eeb1f188f62045e4d5525ae2af8c78432",
   "mode": "deterministic_sandbox",
   "model_profile": "scripted-fixture",
   "note": "Deterministic execution of the scenario S08, account M-03, with the scripted model and the recorded exchange rate. This is not a live execution and it calls no model.",
   "policy_version": "policies-v1",
-  "recorded_at": "2026-11-24T03:41:20+00:00",
+  "recorded_at": "2026-11-25T11:53:06+00:00",
   "run_id": "replay-s08",
   "scenario": "S08",
-  "snapshot_sha256": "ffbc903e895cf456823b7bc2f31fcea167c731ba7ded68a20ee101db85bcfaa6"
+  "snapshot_sha256": "5d12d0a7679da27f34d61dcc2b794a0f8f8e047a96fa2cb7b8a4510095afbe08"
 }

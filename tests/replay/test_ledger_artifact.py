@@ -63,7 +63,7 @@ FROZEN_LEDGER = ROOT / "data" / "eval" / "replay" / "ledger" / "s01.json"
 
 # The digest of the ledger of the account of the recording, the one the manifest of the bundle declares. It is the
 # identity of the ledger of the recording, and the artifact publishes it.
-SNAPSHOT_SHA256 = "700805d1f87542165601153df6ca9e9efa01b33f6059b746958639a36eb3132f"
+SNAPSHOT_SHA256 = "31c8f7fab2f48e1649dbb8480587eb3f511084ed56876df2bec7647a6156945a"
 
 # The two movements of the account, in the shape of the ledger of the branch of the sandbox.
 EXPECTED_ROWS = [

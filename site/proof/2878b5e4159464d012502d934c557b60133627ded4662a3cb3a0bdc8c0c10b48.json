@@ -1,5 +1,5 @@
 {
-  "artifact_id": "2243babf6fd206b5107903feb9f78b2d2f7919bf4ffdd3808427feb45b885962",
+  "artifact_id": "2878b5e4159464d012502d934c557b60133627ded4662a3cb3a0bdc8c0c10b48",
   "claim_evidence_refs": [
     "sql:1",
     "calc:1"
@@ -14,10 +14,11 @@
   "privacy_reviewed": true,
   "scenario_id": "S07",
   "schema_version": "3",
-  "snapshot_hash": "ce8b010b5648de58501ef83cabc8e31ac2743eb1121deececd58c10c11231df4",
-  "source_commit": "69080118ccbb4eb97e97d68bf22f13206d85d38710e2423f481546e3aad084e7",
+  "snapshot_hash": "cbf2530f0de493996c45556b1cb2f32f535bdbda77b99ca2f1521166ddbf3666",
+  "source_commit": "86ab658d259847c7272e655115f1d8cf73ce63b51dbb5eb958b5b6abef37933d",
   "trace_refs": [
-    "data/eval/replay/s07/events.jsonl"
+    "data/eval/replay/s07/events.jsonl",
+    "data/eval/replay/s07/memory_snapshot.json"
   ],
   "verdict_summary": "CL1 supported; CL2 supported"
 }

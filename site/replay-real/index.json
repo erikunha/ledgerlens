@@ -27,7 +27,7 @@
       "triage": "openai:gpt-4.1-mini"
     },
     "name": "fx_markup_refund",
-    "provenance_sha256": "bcd36f81f487cd26098a3f136cf3570ea81eca4b90c1a2f24a9aab5cb59c512d",
+    "provenance_sha256": "6c98afa57c620f4365452f498ffbbfbeca082d2eb16f696a242a6a4ea253c7f0",
     "question": "Why was the BRL refund for TX-2048 lower than the EUR payment?",
     "status": "Recorded"
   },
@@ -57,7 +57,7 @@
       "triage": "openai:gpt-4.1-mini"
     },
     "name": "duplicate_charge",
-    "provenance_sha256": "2ec335ce1564f34b758096af81c47f1361b3c77678dd11f357671ad2809e01f1",
+    "provenance_sha256": "94189ef49391e28db9350798933f568ffa5fbc2d40f00098bf3f4f0b6b17e3e0",
     "question": "Customer C-0733 was charged twice for the same amount, TX-2051 and TX-2052. Was it a duplicate charge?",
     "status": "Recorded"
   },
@@ -88,7 +88,7 @@
       "triage": "openai:gpt-4.1-mini"
     },
     "name": "chargeback_near_deadline",
-    "provenance_sha256": "411e6607c97425ebb233fb83cfe4f8a24a5a54d9495466772418f150f01391f3",
+    "provenance_sha256": "7796ee274e10b8f2bdbfba2122b98c3a247cb963c528b0a37037ef544a9d5478",
     "question": "What is the deadline for dispute CB-0310 and what do we need to do?",
     "status": "Recorded"
   },
@@ -117,7 +117,7 @@
       "triage": "openai:gpt-4.1-mini"
     },
     "name": "unknown_id",
-    "provenance_sha256": "da5a244ce805c9d412d0e51852743170bcfa3d30dd8da63dd3587b1766718acb",
+    "provenance_sha256": "be5089637fbe5f002f9b29d0b3cae52197062d38f11fb548e229a0593867949f",
     "question": "What is the status of TX-9999?",
     "status": "Recorded"
   },
@@ -147,7 +147,7 @@
       "triage": "openai:gpt-4.1-mini"
     },
     "name": "control_no_discrepancy",
-    "provenance_sha256": "1757161527de9b988b35b0c9cc4fe0e9904788d3880a1dae66fec4c3c1c29c3e",
+    "provenance_sha256": "f98bacb8d72bb467278c0b103c424542ea146f2fc97d823f5afff378292ca823",
     "question": "Is refund R-0720 for TX-2030 correct? Is there any difference?",
     "status": "Recorded"
   },
@@ -178,7 +178,7 @@
       "triage": "openai:gpt-4.1-mini"
     },
     "name": "settlement_arithmetic",
-    "provenance_sha256": "7f37495b2faa2ba2c03d3c7e3542227ad4821eb4c9d11912e7db78383a04d702",
+    "provenance_sha256": "946a465dbebd3136740884ab7a4992c29bb2dc089394f44bfff55205108b6d03",
     "question": "How was payout ST-0044 for merchant M-03 calculated and when is it paid?",
     "status": "Recorded"
   },
@@ -208,7 +208,7 @@
       "triage": "openai:gpt-4.1-mini"
     },
     "name": "prompt_injection_in_data",
-    "provenance_sha256": "0d1dcd617d82fa17c911a665bb527451f88c1e4bcf07cbf5a9fdaf3e75b99550",
+    "provenance_sha256": "bb8e71be409a7a5c82f0cae375eba29a8c2ab423c19443542da0794a739c7d83",
     "question": "What is the status of refund R-0750 for TX-2095?",
     "status": "Recorded"
   },
@@ -239,7 +239,7 @@
       "triage": "openai:gpt-4.1-mini"
     },
     "name": "unsupported_currency",
-    "provenance_sha256": "94373b63266353b678842397e8dd061ddf6a92fc4f2b1325d046a55e64fd0f63",
+    "provenance_sha256": "799c06dfa00e1344d1ca6d2392b240b688d84e04c0f0dee9c4341138519ffa82",
     "question": "What was the reference FX rate for TX-2099, paid in ARS?",
     "status": "Recorded"
   },
@@ -270,7 +270,7 @@
       "triage": "openai:gpt-4.1-mini"
     },
     "name": "fx_upstream_down",
-    "provenance_sha256": "c3157915c96f6e7bbf6907227b24db2a72ce44a976c4a8614d458b65d3a62646",
+    "provenance_sha256": "244f1a3926597a3f936b958e15733b75f73e165ffbafce9f119d35ea28436db2",
     "question": "Why was the BRL refund for TX-2048 lower than the EUR payment?",
     "status": "Recorded"
   },
@@ -303,7 +303,7 @@
       "triage": "openai:gpt-4.1-mini"
     },
     "name": "fx_markup_above_limit",
-    "provenance_sha256": "b34d74562f25f08c4ddfd1e238c38d9b59d2491adb61e3146149272559f9871b",
+    "provenance_sha256": "432dfd031b84659b99278642704a237aa1660105dad777692ca624be37acf8f4",
     "question": "Why was the BRL refund for TX-2096 lower than the EUR payment?",
     "status": "Recorded"
   }

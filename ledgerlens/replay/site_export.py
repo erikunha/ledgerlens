@@ -56,6 +56,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from ledgerlens.memory.snapshot import SNAPSHOT_FILE
 from ledgerlens.replay.bundle import (
     EVENTS_FILE,
     MANIFEST_FILE,
@@ -133,9 +134,10 @@ SCENARIO_ID_PATTERN = re.compile(r"^[S][0-9]{2}$")
 # with this name is a scenario folder, so the write never removes a folder of somebody else.
 SCENARIO_SLUG_PATTERN = re.compile(r"^[sS][0-9]{2}$")
 
-# The four files of a scenario. They are the only files the export writes inside a scenario folder, and therefore
-# the only files the write may delete: a file outside this list is not an artifact of the export.
-SCENARIO_ARTIFACT_NAMES = (EVENTS_FILE, MANIFEST_FILE, PROVENANCE_FILE, LEDGER_FILE)
+# The files of a scenario. They are the only files the export writes inside a scenario folder, and therefore
+# the only files the write may delete: a file outside this list is not an artifact of the export. The snapshot of
+# the memory is published when the manifest of the bundle declares it (ADR-073).
+SCENARIO_ARTIFACT_NAMES = (EVENTS_FILE, MANIFEST_FILE, PROVENANCE_FILE, LEDGER_FILE, SNAPSHOT_FILE)
 
 # The concept each tool of the agent demonstrates, in the words a visitor of the site understands.
 TOOL_CONCEPTS = {
@@ -412,6 +414,32 @@ def _frozen_ledger(bundle_dir: Path, slug: str, manifest: BundleManifest) -> byt
     return raw
 
 
+def _memory_snapshot(bundle_dir: Path, manifest: BundleManifest) -> bytes | None:
+    """The bytes of the snapshot of the memory of the run, or None when the bundle declares none.
+
+    The snapshot travels with the bundle so that a replay of an old case reads the memory of its generation
+    (ADR-073), and the manifest declares its digest, so the site publishes the file and the reader checks it. A
+    bundle that declares the snapshot and does not carry it, or carries one whose digest is not the declared one,
+    is a bundle whose claim cannot be checked, and the export refuses it.
+    """
+    declared = manifest.files.get(SNAPSHOT_FILE)
+    if declared is None:
+        return None
+    scenario = str(manifest.scenario)
+    path = bundle_dir / SNAPSHOT_FILE
+    if not path.is_file():
+        raise ExportError(
+            f"the bundle of the scenario {scenario} declares the snapshot of the memory and the file is missing: "
+            f"{path}"
+        )
+    raw = path.read_bytes()
+    if _sha256_bytes(raw) != declared:
+        raise ExportError(
+            f"the snapshot of the memory of the scenario {scenario} does not have the digest the manifest declares"
+        )
+    return raw
+
+
 def _scenario_artifacts(
     bundle_dir: Path,
     dataset: dict[str, Any],
@@ -462,6 +490,9 @@ def _scenario_artifacts(
     # frozen one are the same file and the digest of the chain of the scenario describes both.
     ledger_bytes = _frozen_ledger(bundle_dir, slug, manifest)
 
+    # The snapshot of the memory of the run is copied byte for byte from the bundle, when the bundle carries one.
+    snapshot_bytes = _memory_snapshot(bundle_dir, manifest)
+
     provenance_payload: dict[str, Any] = {
         "mode": manifest.mode,
         "files": dict(manifest.files),
@@ -476,6 +507,8 @@ def _scenario_artifacts(
     }
     if ledger_bytes is not None:
         provenance_payload["artifacts"][LEDGER_FILE] = _sha256_bytes(ledger_bytes)
+    if snapshot_bytes is not None:
+        provenance_payload["artifacts"][SNAPSHOT_FILE] = _sha256_bytes(snapshot_bytes)
     if manifest.snapshot_sha256:
         provenance_payload["snapshot_sha256"] = manifest.snapshot_sha256
     # The provenance is declared field by field: a field the bundle does not declare never reaches the artifact,
@@ -493,6 +526,8 @@ def _scenario_artifacts(
     }
     if ledger_bytes is not None:
         files[f"{slug}/{LEDGER_FILE}"] = ledger_bytes
+    if snapshot_bytes is not None:
+        files[f"{slug}/{SNAPSHOT_FILE}"] = snapshot_bytes
     card: dict[str, Any] = {
         "id": scenario,
         "name": metadata["name"],

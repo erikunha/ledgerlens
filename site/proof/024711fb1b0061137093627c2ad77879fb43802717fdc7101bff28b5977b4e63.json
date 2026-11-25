@@ -1,5 +1,5 @@
 {
-  "artifact_id": "e14e02bf9597f908b3f779719d3f95899d2bc825b7124e3a256b3d81230446d5",
+  "artifact_id": "024711fb1b0061137093627c2ad77879fb43802717fdc7101bff28b5977b4e63",
   "claim_evidence_refs": [
     "sql:1",
     "policy:cross-currency-refunds#overview",
@@ -19,10 +19,11 @@
   "privacy_reviewed": true,
   "scenario_id": "S01",
   "schema_version": "3",
-  "snapshot_hash": "700805d1f87542165601153df6ca9e9efa01b33f6059b746958639a36eb3132f",
-  "source_commit": "69080118ccbb4eb97e97d68bf22f13206d85d38710e2423f481546e3aad084e7",
+  "snapshot_hash": "31c8f7fab2f48e1649dbb8480587eb3f511084ed56876df2bec7647a6156945a",
+  "source_commit": "86ab658d259847c7272e655115f1d8cf73ce63b51dbb5eb958b5b6abef37933d",
   "trace_refs": [
-    "data/eval/replay/s01/events.jsonl"
+    "data/eval/replay/s01/events.jsonl",
+    "data/eval/replay/s01/memory_snapshot.json"
   ],
   "verdict_summary": "CL1 supported; CL2 supported; CL3 supported; CL4 supported; CL5 supported; CL6 supported"
 }

@@ -60,11 +60,12 @@ FROZEN_LEDGER = ROOT / "data" / "eval" / "replay" / "ledger" / "s01.json"
 # artifacts of `site/replay` being regenerated. The bundle, the dataset and the frozen artifact of the ledger are the
 # only inputs of these digests.
 EXPECTED_DIGESTS = {
-    "s01/events.jsonl": "52167573995894ce0193ecfe7629fb52ae922945e8786a1f71269f71c70543cb",
-    "s01/manifest.json": "e14e02bf9597f908b3f779719d3f95899d2bc825b7124e3a256b3d81230446d5",
-    "s01/provenance.json": "d7565b77612da5fb752edce2c6aedea7ba9aa7fcc95e2fd5f52dbf07ca5a4017",
-    "s01/ledger.json": "9c7caeb5cfdda901edbfe98cd4b487bf3ff81ff8a5f4fad0f00bc4f0aca81a60",
-    "index.json": "52e57df4e510457a2a1fdd9f938203b600d7d23d1a50b485317a95c4e2ef1af7",
+    "s01/events.jsonl": "abab1e9db12692e5207d9f3ff3a360c63026a5643e727dd42fc039ff35ce3db4",
+    "s01/manifest.json": "024711fb1b0061137093627c2ad77879fb43802717fdc7101bff28b5977b4e63",
+    "s01/provenance.json": "fcd8bc47393cd942b0f5c4289b04ac6d289ead9dbcdb619306d543134791af46",
+    "s01/ledger.json": "92960fce6c40388f3b3813ceb2c6517e484ecf1c95d04d2ec0e77678e86a5699",
+    "s01/memory_snapshot.json": "30afedaaa82a1516f7491a983d00b48588194b2dc76289aa619c3e0b036005c9",
+    "index.json": "ec97eaca0e08ba21110c6300501c848021a52f4bc23fcdb6dc989e388d3ab673",
 }
 
 
@@ -154,11 +155,13 @@ def test_the_export_writes_the_events_the_manifest_the_provenance_the_ledger_and
     assert (out / "s01" / "manifest.json").is_file()
     assert (out / "s01" / "provenance.json").is_file()
     assert (out / "s01" / "ledger.json").is_file()
+    assert (out / "s01" / "memory_snapshot.json").is_file()
     assert {artifact.path.relative_to(out).as_posix() for artifact in written} == {
         "index.json",
         "s01/events.jsonl",
         "s01/ledger.json",
         "s01/manifest.json",
+        "s01/memory_snapshot.json",
         "s01/provenance.json",
     }
     assert all(len(artifact.sha256) == 64 for artifact in written)

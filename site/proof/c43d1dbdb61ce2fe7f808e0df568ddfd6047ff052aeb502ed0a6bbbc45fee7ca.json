@@ -1,15 +1,15 @@
 {
-  "artifact_id": "9c83bcaa96b30fc31d2cba837a3554c3e5056b7c551167b80f64cfd71acafd6f",
+  "artifact_id": "c43d1dbdb61ce2fe7f808e0df568ddfd6047ff052aeb502ed0a6bbbc45fee7ca",
   "claim_evidence_refs": [
     "sql:1",
     "policy:chargeback-handling#response-deadline",
+    "policy:escalation-and-review#deadline-within-2-days",
+    "policy:chargeback-handling#response-deadline-2",
     "policy:chargeback-handling#escalation",
     "policy:escalation-and-review#when-to-escalate",
-    "policy:escalation-and-review#deadline-within-2-days",
     "policy:duplicate-charges#customer-communication",
     "policy:escalation-and-review#response-times",
-    "policy:chargeback-handling#stages",
-    "policy:refund-policy#refunds-and-chargebacks"
+    "policy:chargeback-handling#stages"
   ],
   "cost_provenance": "replayed",
   "cost_usd": null,
@@ -21,10 +21,11 @@
   "privacy_reviewed": true,
   "scenario_id": "S03",
   "schema_version": "3",
-  "snapshot_hash": "764dce7fcf03127337d05bd169da2fb8dc5685e9c115cb4e19d2eda9cdb48259",
-  "source_commit": "69080118ccbb4eb97e97d68bf22f13206d85d38710e2423f481546e3aad084e7",
+  "snapshot_hash": "291c5b8440156c415043b7550de4f3bedd9cc9163c0167c03a3419be74adf77a",
+  "source_commit": "86ab658d259847c7272e655115f1d8cf73ce63b51dbb5eb958b5b6abef37933d",
   "trace_refs": [
-    "data/eval/replay/s03/events.jsonl"
+    "data/eval/replay/s03/events.jsonl",
+    "data/eval/replay/s03/memory_snapshot.json"
   ],
   "verdict_summary": "CL1 not_enough_evidence; CL2 supported; CL3 not_enough_evidence"
 }

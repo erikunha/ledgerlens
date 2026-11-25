@@ -37,143 +37,163 @@ folder `tests/policies/` is created by T151, and the tests of the code that the 
 
 **Purpose**: the cheapest of the corrections, and the one that does not move the data.
 
-- [ ] T151 [P] Rewrite the paragraph of the response deadline of `data/policies/chargeback-handling.md:25` so that the
+- [x] T151 [P] Rewrite the paragraph of the response deadline of `data/policies/chargeback-handling.md:25` so that the
   window of ten to fourteen days is the deadline of Acme and not the deadline of the card network, put the window of
   the network, thirty calendar days for the categories of Visa and the frames of Mastercard, in
   `docs/policies-of-acme.md` with the source and the date it was read, and write the test in
   `tests/policies/test_gap_01_deadline.py`, which creates the folder `tests/policies/`, that fails while a window of
   ten to fourteen days is named the deadline of the card network
-- [ ] T152 [P] Rewrite the paragraph of the reason codes of `data/policies/chargeback-handling.md:21` so that FRD, NRC,
+  - **DELIVERED**: `tests/policies/test_gap_01_deadline.py` and `tests/policies/test_corpus_sources.py`: the paragraph names the deadline of Acme, and the window of the network lives in `docs/policies-of-acme.md` with the source and the date of the reading.
+- [x] T152 [P] Rewrite the paragraph of the reason codes of `data/policies/chargeback-handling.md:21` so that FRD, NRC,
   NAD, DUP and OTH are internal codes of Acme, put the mapping to the codes of Visa and of Mastercard in
   `docs/policies-of-acme.md` with the source and the date it was read, and write the test in
   `tests/policies/test_gap_02_reason_codes.py` that fails while a paragraph presents those five codes as the codes of
   a network
-- [ ] T156 [P] Correct the direction word of `data/policies/cross-currency-refunds.md:29`, so that the merchant
+  - **DELIVERED**: `tests/policies/test_gap_02_reason_codes.py`: FRD, NRC, NAD, DUP and OTH are named internal codes of Acme, and the mapping to the codes of the networks is in `docs/policies-of-acme.md` with the source and the date.
+- [x] T156 [P] Correct the direction word of `data/policies/cross-currency-refunds.md:29`, so that the merchant
   applies the markup below the reference rate, keep the arithmetic and the worked example of `:41`, and write the test
   in `tests/policies/test_gap_06_markup_wording.py` that reads the paragraph, expects one direction word and
   recomputes the worked example through the calculator of the repository
-- [ ] T157 [P] Say in `data/policies/fees-and-pricing.md:29` and in `data/policies/cross-currency-refunds.md:45` that
+  - **DELIVERED**: `tests/policies/test_gap_06_markup_wording.py`: the merchant applies the markup below the reference rate, with one direction word.
+- [x] T157 [P] Say in `data/policies/fees-and-pricing.md:29` and in `data/policies/cross-currency-refunds.md:45` that
   the mode of the rounding is the choice of the platform and what the common commercial practice does with a tie, add
   one settlement with an exact half cent tie to the simulator under `ledgerlens/sim/`, and write the test in
   `tests/policies/test_gap_07_rounding_mode.py` that finds the tie in the settlements of the shipped ledger and
   expects the corpus to name the mode as a choice of the platform
+  - **DELIVERED**: `tests/policies/test_gap_07_rounding_mode.py` and `tests/agents/test_scenarios_e2e.py::test_s14_the_fee_of_an_exact_half_cent_tie_rounds_the_way_the_platform_chose`: the mode of the rounding is the choice of the platform, and the scenario S14 plants the tie of 72.5 that becomes 72.
 
 ## Milestone 28, the rules where the data and the text disagree, decided rule by rule
 
 **Purpose**: four rules where the corpus and the data of the repository say opposite things, decided one by one.
 
-- [ ] T153 Decide the rule of the negative net and make the corpus and the simulator agree: either the paragraph of
+- [x] T153 Decide the rule of the negative net and make the corpus and the simulator agree: either the paragraph of
   `data/policies/settlement-schedule.md:49` states that a negative net is paid and the balance is carried into the
   next settlement and `ledgerlens/sim/pipeline.py:707` carries the balance, or the paragraph states that there is no
   payout and the simulator withholds the payout, and write the test in `tests/policies/test_gap_03_negative_net.py`
   that reads the settlements of the shipped ledger and expects a negative net either to have no payout or to be
   carried, and that the corpus states the same rule
-- [ ] T154 Accept an applied rate above the reference rate in `ledgerlens/tools/calculator.py:210` when the
+  - **DELIVERED**: `tests/policies/test_gap_03_negative_net.py`: the settlement whose net is negative pays nothing and stays scheduled, and the balance is carried into the next settlement (`carried_minor`); ST-0104 and ST-0159 pay no payout, ST-0128 and ST-0183 carry the balance.
+- [x] T154 Accept an applied rate above the reference rate in `ledgerlens/tools/calculator.py:210` when the
   difference is inside the rounding band of four decimals, report it as a rounding effect instead of raising
   `SWAPPED_RATES`, keep the refusal for a pair outside the band, and write the test in
   `tests/tools/test_calculator.py` that expects no refusal over every conversion of the shipped ledger
-- [ ] T155 Read the ceiling of the implied markup with the band that the same policy defines in
+  - **DELIVERED**: `tests/policies/test_corpus_rate_band.py` and `tests/tools/test_calculator.py`: `guard_inputs` accepts an applied rate above the reference inside the rounding band of 0.00005 and keeps `SWAPPED_RATES` outside it.
+- [x] T155 Read the ceiling of the implied markup with the band that the same policy defines in
   `data/policies/fx-reference-rates.md:53`, so that the paragraph of `:49` does not escalate a merchant whose
   contractual markup is exactly three percent, and write the test in `tests/policies/test_gap_05_markup_ceiling.py`
   that compares the implied markup of every refund of a merchant of the markup plan with the ceiling read with the
   band
-- [ ] T159 Make the policy and the code name the same calendar of the internal cutoff: either
+  - **DELIVERED**: `tests/policies/test_corpus_markup_band.py`: the ceiling of 3.0% is read with the band of 0.05 points, and no refund of a merchant at exactly three percent is flagged.
+- [x] T159 Make the policy and the code name the same calendar of the internal cutoff: either
   `data/policies/chargeback-handling.md:29` names the calendar of the dispute record, or
   `ledgerlens/verify/escalation.py:30` reads the settlement currency of the merchant and the docstring stops
   carrying the divergence from the policy, and write the test in `tests/verify/test_escalation.py` that counts the
   cutoff of a dispute whose currency is not the settlement currency of the merchant and expects the code and the
   policy to agree
+  - **DELIVERED**: `tests/verify/test_escalation.py`: the cutoff reads the settlement currency of the merchant from the ledger, and the policy and the code name the same calendar.
 
 ## Milestone 29, the floors that a house rule may not cross
 
 **Purpose**: the corpus states the floor of the law, so that an analyst can tell a statutory floor from a commercial
 term.
 
-- [ ] T158 State the floor of fourteen days with the source of the law in the paragraph of the time to pay of
+- [x] T158 State the floor of fourteen days with the source of the law in the paragraph of the time to pay of
   `data/policies/refund-policy.md:37`, say in the paragraph of the window at `:17` that the window is a house rule
   that cannot be narrower than the right of withdrawal, and write the test in
   `tests/policies/test_gap_08_refund_floor.py` that reads the paragraph and expects the floor and the source in it.
   The set of the held out cases keeps the excerpt of its generation, so the correction of the paragraph does not
   change the cases
+  - **DELIVERED**: `tests/policies/test_gap_08_refund_floor.py`: the refund policy states the floor of fourteen days with the source of the law (Directive 2011/83/EU, Article 9(1)).
 
 ## Milestone 30, the marker of the fiction in every chunk served
 
 **Purpose**: an excerpt that is read out of its file still says that the company is fictional.
 
-- [ ] T160 [P] Carry the marker that Acme Payments is a fictional company in the metadata of every chunk of the index
+- [x] T160 [P] Carry the marker that Acme Payments is a fictional company in the metadata of every chunk of the index
   in `ledgerlens/retrieval.py:96` and in the note of every result of the tool in `ledgerlens/tools/policies.py:70`,
   rebuild the committed index under `data/index/policies_fastembed/`, and write the test in
   `tests/policies/test_gap_10_fiction_marker.py` that reads the metadata of every chunk and the test in
   `tests/tools/test_policies.py` that reads every result of the tool
+  - **DELIVERED**: `tests/policies/test_gap_10_fiction_marker.py`: every chunk of the index and every result of the tool carries the marker that Acme Payments is a fictional company, and the index was rebuilt over the corrected corpus.
 
 ## Milestone 31, the way to cite a rule of the world next to a policy
 
 **Purpose**: an answer that is right about the real world can be cited, and the conflict is named.
 
-- [ ] T161 Add a kind of evidence for a rule of the world, with the URL of the source and the date it was read, to
+- [x] T161 Add a kind of evidence for a rule of the world, with the URL of the source and the date it was read, to
   `ledgerlens/verify/claims.py:54` and to the envelope of `ledgerlens/tools/envelope.py`, make
   `ledgerlens/verify/checks.py` name the conflict between a cited rule of the world and a cited policy instead of
   scoring a plain contradiction, keep the discipline that the numbers come from the tool and the label comes from the
   evidence, and write the tests in `tests/verify/test_claims.py` and in `tests/verify/test_checks.py` that expect the
   new kind of evidence and a named conflict
+  - **DELIVERED**: `tests/verify/test_checks.py` and `tests/verify/test_claims.py`: a claim may cite a rule of the world with the URL and the date, and the verifier names the conflict between a cited rule of the world and a cited policy.
 
 ## Milestone 32, the notice of the sources and the lock
 
 **Purpose**: the conditions of the central bank are quoted and the derived recordings say so.
 
-- [ ] T162 [P] Quote the three conditions of the European Central Bank in `NOTICE` and state there that the cross
+- [x] T162 [P] Quote the three conditions of the European Central Bank in `NOTICE` and state there that the cross
   rates of the committed recordings are computed through the euro by this project, replace the string of the lock in
   `data/sources.lock.json` with the notice of the ECB, and write the test in `tests/test_notice_sources.py` that reads
   the notice and the lock and refuses a licence string that the ECB does not publish
+  - **DELIVERED**: `tests/test_notice_sources.py`: the NOTICE quotes the three conditions of the ECB, says the cross rates are computed through the euro by this project, and the lock of the sources says the same.
 
 ## Milestone 33, the document of the truth of the policies
 
 **Purpose**: one document that says what is real and what is a house rule of a fictional company.
 
-- [ ] T163 [P] Write `docs/policies-of-acme.md` with one section for each one of the eight policies of
+- [x] T163 [P] Write `docs/policies-of-acme.md` with one section for each one of the eight policies of
   `data/policies/`, saying for every rule whether it is a rule of the world, a house rule of Acme or an invention of
   this project, with the URL of the source and the date it was read, and with the caveats of the audit next to the
   rules it marked as unverified
-- [ ] T164 [P] Write `tests/docs/test_policies_of_acme.py` that reads `docs/policies-of-acme.md`, expects every one of
+  - **DELIVERED**: `docs/policies-of-acme.md`: one section for each of the eight policies, with the class of every rule (house rule of Acme, rule of the world with the source and the date, or invention of this project).
+- [x] T164 [P] Write `tests/docs/test_policies_of_acme.py` that reads `docs/policies-of-acme.md`, expects every one of
   the eight policies to be named, expects a source and a date for every rule of the world, and expects the caveats of
   the audit next to the rules that it marked as unverified
+  - **DELIVERED**: `tests/docs/test_policies_of_acme.py`: the document names every rule of the corpus and every rule of the world with its source.
 
 ## Milestone 34, the four tests of the audit
 
 **Purpose**: four tests that hold the four findings of the audit that are a matter of the data and not of a wording.
 
-- [ ] T165 [P] Write `tests/policies/test_corpus_sources.py` that reads the eight policies of `data/policies/` and
+- [x] T165 [P] Write `tests/policies/test_corpus_sources.py` that reads the eight policies of `data/policies/` and
   fails while a paragraph names an external body, the card network, the central bank or the law, without the source
   and the date in the same paragraph. The test is written to FAIL before the corrections of the corpus, because a
   test that passes before the correction would prove nothing
-- [ ] T166 [P] Write `tests/policies/test_corpus_against_simulator.py` that reads the manifest of the scenarios and
+  - **DELIVERED**: `tests/policies/test_corpus_sources.py`: written to fail first, and it passes over the corrected corpus.
+- [x] T166 [P] Write `tests/policies/test_corpus_against_simulator.py` that reads the manifest of the scenarios and
   the policies and fails while a policy states a rule of the world that the simulator contradicts, with the rule of
   the negative net as the first case. The test is written to FAIL before the correction of that rule, because a test
   that passes before the correction would prove nothing
-- [ ] T167 [P] Write `tests/policies/test_corpus_markup_band.py` that reads the shipped ledger and fails while the
+  - **DELIVERED**: `tests/policies/test_corpus_against_simulator.py`: written to fail first, and the corpus and the simulator state the same rule of the negative net.
+- [x] T167 [P] Write `tests/policies/test_corpus_markup_band.py` that reads the shipped ledger and fails while the
   implied markup of a refund of a merchant of the markup plan is outside the band that
   `data/policies/fx-reference-rates.md` defines, which today happens on sixteen of the two hundred and thirty refunds.
   The test is written to FAIL before the correction of the ceiling, because a test that passes before the correction
   would prove nothing
-- [ ] T168 [P] Write `tests/policies/test_corpus_rate_band.py` that reads the shipped ledger and the table of the
+  - **DELIVERED**: `tests/policies/test_corpus_markup_band.py`: written to fail first, and the ceiling read with the band flags nothing the policy allows.
+- [x] T168 [P] Write `tests/policies/test_corpus_rate_band.py` that reads the shipped ledger and the table of the
   rates and fails while an applied rate is outside the rounding band of the reference of the same day, which today
   happens on nine of the two hundred and thirty refunds, and that expects the calculator of the repository to accept
   every pair that the ledger contains. The test is written to FAIL before the correction of the guard, because a test
   that passes before the correction would prove nothing
+  - **DELIVERED**: `tests/policies/test_corpus_rate_band.py`: written to fail first, and the nine conversions inside the band are accepted.
 
 ## Milestone 35, the sentence about a policy that is wrong and the set that is frozen
 
 **Purpose**: the analyst is told that a contradiction may mean that the policy is wrong, and the held out set keeps
 the corpus of its generation.
 
-- [ ] T169 [P] Write the sentence in `data/policies/escalation-and-review.md` that says that a contradiction with a
+- [x] T169 [P] Write the sentence in `data/policies/escalation-and-review.md` that says that a contradiction with a
   policy may mean that the policy is wrong, next to the paragraph of the contradicted claims of `:21`, and keep the
   sentence that the system does not resolve contradictions by picking a side, with the test in
   `tests/policies/test_escalation_wording.py` that expects the sentence in the corpus
-- [ ] T170 Keep the held out set as the corpus of its generation: do not write into `data/eval/heldout/`, and write the
+  - **DELIVERED**: `tests/policies/test_escalation_wording.py`: the paragraph says that a contradiction with a rule of the world may mean that the policy is wrong.
+- [x] T170 Keep the held out set as the corpus of its generation: do not write into `data/eval/heldout/`, and write the
   test in `tests/eval/test_heldout_frozen_excerpts.py` that reads `data/eval/heldout/cases.jsonl` and expects the
   excerpt of every policy citation to be the text of the corpus of the generation and not the text of the corrected
   corpus
+  - **DELIVERED**: `tests/eval/test_heldout_frozen_excerpts.py`: the held out set keeps the corpus of its generation, and the tests of the generator read the frozen file.
   - **DELIVERED**: the cases of the set exist in `data/eval/heldout/cases.jsonl` with 48 cases, each one carrying the
     text of its excerpt inside it, and the first reading of ADR-059 is in `data/eval/heldout/labels_reader_a.jsonl`
     with 48 labels. The excerpts inside the cases are the ones of the corpus of the generation, and a correction of
@@ -184,11 +204,13 @@ the corpus of its generation.
 **Purpose**: everything that is pinned to the corpus is pinned to the corrected corpus, and the decisions of the
 milestone are written down.
 
-- [ ] T171 Rebuild the committed index of the policies over the corrected corpus with `scripts/build_index.py`,
+- [x] T171 Rebuild the committed index of the policies over the corrected corpus with `scripts/build_index.py`,
   refresh the pin of the calibration with `scripts/pin_calibration.py`, update the sha256 of the datasets that the
   corpus touched in `data/eval/datasets.json`, and expect the digests of the disk in the check of the index of
   `scripts/gate.sh` and in `tests/verify/test_calibration_pin.py`
-- [ ] T172 Write the record of the milestone in `docs/decisions/`, with the next number after ADR-061, which writes
+  - **DELIVERED**: the index of the policies was rebuilt (`scripts/build_index.py`), the calibration was pinned (`scripts/pin_calibration.py`), the report of the calibration names the manifest of the disk, and the datasets that moved were re-registered (`scripts/check_eval_datasets.py --write`).
+- [x] T172 Write the record of the milestone in `docs/decisions/`, with the next number after ADR-061, which writes
   down the rule by rule decisions of the twelve gaps, the class of every rule of the corpus, the debts that the
   milestone does not pay and the fact that the held out set is never regenerated, and link it from
   `docs/decisions/README.md`
+  - **DELIVERED**: `docs/decisions/ADR-099-the-truth-of-the-policies-and-the-money-is-the-contract-of-acme-and-the-rules-of-the-world-carry-their-source.md`: the rule by rule decisions, the class of every rule, the debts and the frozen held out set.
