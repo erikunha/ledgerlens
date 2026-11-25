@@ -243,7 +243,7 @@ test("the controls of the guided path are reached with the keyboard and the regi
   await page.goto("/replay/scenario/S01");
   await expect(page.getByRole("heading", { name: "The guided path" })).toBeVisible();
 
-  const controls = page.getByRole("button", { name: /^Show: / });
+  const controls = page.getByRole("button", { name: "Show me" });
   const count = await controls.count();
   expect(count, "the guide drew no step").toBeGreaterThan(0);
 

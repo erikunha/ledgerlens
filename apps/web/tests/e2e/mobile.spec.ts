@@ -1,4 +1,16 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { expect, test, type Page } from "@playwright/test";
+
+/**
+ * The number of the events of the published recording of the scenario S01, read from the bundle the site
+ * serves. The recording is re-captured when the corpus moves, so the count is read and never written.
+ */
+const EVENTS = readFileSync(join(process.cwd(), "public", "replay", "s01", "events.jsonl"), "utf8")
+  .split("\n")
+  .filter((line) => line.trim().length > 0).length;
+
 
 /**
  * The end to end test of the narrow screen of the public site.
@@ -250,7 +262,7 @@ test.describe("the narrow screen of 390 pixels", () => {
     await expect(position).toHaveValue("0");
     await position.press("ArrowRight");
     await expect(position).toHaveValue("1");
-    await expect(page.getByText("Event 2 of 57.")).toBeVisible();
+    await expect(page.getByText(`Event 2 of ${EVENTS}.`)).toBeVisible();
   });
 });
 
@@ -285,7 +297,7 @@ test("the controls of the guided path are at least 44 pixels and the path never 
   await page.goto("/replay/scenario/S01");
   await expect(page.getByRole("heading", { name: "The guided path" })).toBeVisible();
 
-  const controls = page.getByRole("button", { name: /^Show: / });
+  const controls = page.getByRole("button", { name: "Show me" });
   const count = await controls.count();
   expect(count, "the guide drew no step").toBeGreaterThan(0);
   for (let index = 0; index < count; index += 1) {

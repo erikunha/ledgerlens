@@ -1,8 +1,20 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
 // The origin of the site comes from the module of the suite, so the origin this file asserts is the
 // origin the configuration really serves, and the checks of the network cannot become vacuous.
 import { SITE_ORIGIN } from "./site-origin";
+
+/**
+ * The number of the events of the published recording of the scenario S01, read from the bundle the site
+ * serves. The recording is re-captured when the corpus moves, so the count is read and never written.
+ */
+const EVENTS = readFileSync(join(process.cwd(), "public", "replay", "s01", "events.jsonl"), "utf8")
+  .split("\n")
+  .filter((line) => line.trim().length > 0).length;
+
 
 /**
  * The end to end test of the recorded demo.
@@ -118,7 +130,7 @@ test("the recorded demo plays the published recording on the exported site", asy
   const position = page.getByLabel("Position of the recording");
   await seekToTheEnd(position);
 
-  await expect(recordedRun.getByText("Event 57 of 57.")).toBeVisible();
+  await expect(recordedRun.getByText(`Event ${EVENTS} of ${EVENTS}.`)).toBeVisible();
   await expect(recordedRun.getByText("The status of the run is:")).toBeVisible();
 
   // The calls that the capture recorded are on the screen, with the names the capture gave.

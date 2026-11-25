@@ -208,7 +208,7 @@ test("the visitor opens a row and the detail shows the reads that name it", asyn
   // that closed it, the tool it called and the statement it ran.
   await expect(section.getByText("The read sql:1, the event 19, the tool query_ledger.")).toBeVisible();
   await expect(
-    section.getByText("FROM fx_applied WHERE transaction_id = 'TX-2048'"),
+    section.getByText("FROM fx_applied AS f JOIN transactions AS t"),
   ).toBeVisible();
 
   // The rows the run read are the two rates of the transaction, and the rate is not money: it

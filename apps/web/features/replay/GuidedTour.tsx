@@ -83,15 +83,20 @@ export function GuidedTour({ guide, onShowRegion }: GuidedTourProps): ReactEleme
       <ol className="flex flex-col gap-3">
         {guide.steps.map((step, index) => (
           <li key={step.id} className="flex flex-col gap-1">
-            <p className="text-sm text-foreground">
+            <p className="text-sm text-foreground" id={`ledgerlens-guide-step-${step.id}`}>
               <span className="font-medium">{index + 1}.</span> {step.sentence}
             </p>
             <div>
+              {/*
+                The name of the control is short, and the sentence of the step is the description of the
+                control: an accessible name that carried the whole sentence would collide with the names of
+                the page, and a name that is a sentence is a name that is hard to hear.
+              */}
               <Button
                 variant="ghost"
                 size="sm"
                 className="min-h-12"
-                aria-label={`Show: ${step.sentence}`}
+                aria-describedby={`ledgerlens-guide-step-${step.id}`}
                 onClick={() => onShowRegion(step.region)}
               >
                 Show me

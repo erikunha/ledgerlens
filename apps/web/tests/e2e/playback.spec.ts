@@ -1,4 +1,16 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { expect, test, type Locator, type Page } from "@playwright/test";
+
+/**
+ * The number of the events of the published recording of the scenario S01, read from the bundle the site
+ * serves. The recording is re-captured when the corpus moves, so the count is read and never written.
+ */
+const EVENTS = readFileSync(join(process.cwd(), "public", "replay", "s01", "events.jsonl"), "utf8")
+  .split("\n")
+  .filter((line) => line.trim().length > 0).length;
+
 
 /**
  * The end to end test of the playback of the recorded run.
@@ -153,7 +165,7 @@ test.describe("the playback with the device that asks for less motion", () => {
     const atTheBeginning = await recordedRun.innerText();
 
     await seekToTheEnd(position);
-    await expect(recordedRun.getByText("Event 57 of 57.")).toBeVisible();
+    await expect(recordedRun.getByText(`Event ${EVENTS} of ${EVENTS}.`)).toBeVisible();
 
     await page.getByRole("button", { name: "Restart the recording" }).click();
 
@@ -182,7 +194,7 @@ test.describe("the playback with the device that asks for less motion", () => {
     // event of the bundle, so no event disappears silently when the speed changes.
     const orderAfter = await timeline.getByRole("rowheader").allInnerTexts();
     expect(orderAfter).toEqual(orderBefore);
-    expect(orderAfter).toHaveLength(57);
+    expect(orderAfter).toHaveLength(EVENTS);
   });
 });
 
@@ -230,8 +242,8 @@ test.describe("the playback with the device that lets the recording move", () =>
     await expect(
       page.getByText("The recording has finished. Restart the recording to play it again."),
     ).toBeAttached({ timeout: 40_000 });
-    await expect(position).toHaveValue("56");
-    await expect(page.getByText("Event 57 of 57.")).toBeVisible();
+    await expect(position).toHaveValue(String(EVENTS - 1));
+    await expect(page.getByText(`Event ${EVENTS} of ${EVENTS}.`)).toBeVisible();
   });
 
   test("the speed changes how long the browser waits between two events", async ({ page }) => {

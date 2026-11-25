@@ -54,7 +54,7 @@ async function openTheGuidedPath(page: Page): Promise<void> {
  * screen of it, so the check happens after every step was asked for.
  */
 async function walkEveryStep(page: Page): Promise<void> {
-  const controls = page.getByRole("button", { name: /^Show: / });
+  const controls = page.getByRole("button", { name: "Show me" });
   const count = await controls.count();
   expect(count, "the guide drew no step").toBeGreaterThan(0);
   for (let index = 0; index < count; index += 1) {

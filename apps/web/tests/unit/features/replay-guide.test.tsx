@@ -172,9 +172,12 @@ describe("the component of the guide over the reader", () => {
     await screen.findByRole("slider", { name: "Position of the recording" });
 
     const user = userEvent.setup();
-    for (const step of GUIDE.steps) {
-      const control = screen.getByRole("button", { name: `Show: ${step.sentence}` });
-      await user.click(control);
+    const controls = screen.getAllByRole("button", { name: "Show me" });
+    expect(controls.length).toBe(GUIDE.steps.length);
+    for (const [index, step] of GUIDE.steps.entries()) {
+      const control = controls[index];
+      expect(control, `the guide drew no control for the step ${step.id}`).toBeDefined();
+      await user.click(control as HTMLElement);
       const anchor = document.getElementById(regionAnchorId(step.region));
       expect(
         anchor,

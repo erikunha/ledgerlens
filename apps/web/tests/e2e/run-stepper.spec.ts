@@ -1,8 +1,23 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { expect, test, type Page } from "@playwright/test";
 
 // The origin of the site comes from the module of the suite, so the origin this file asserts is the
 // origin the configuration really serves, and the checks of the network cannot become vacuous.
 import { SITE_ORIGIN } from "./site-origin";
+
+/**
+ * The number of the events of the published recording of the scenario S01, read from the bundle the site
+ * serves.
+ *
+ * Why the count is read and not written: the recording is re-captured when the corpus moves, and a count
+ * written in the test would break on the next capture without the page being wrong. The count is a fact of
+ * the bundle, so the test reads it from the bundle.
+ */
+const EVENTS = readFileSync(join(process.cwd(), "public", "replay", "s01", "events.jsonl"), "utf8")
+  .split("\n")
+  .filter((line) => line.trim().length > 0).length;
 
 /**
  * The end to end test of the stepper of the run and of the live region of the reader.
@@ -50,7 +65,7 @@ async function openScenario(page: Page): Promise<void> {
 async function moveToTheEvent(page: Page, seq: number): Promise<void> {
   const timeline = page.getByRole("region", { name: "The timeline of the recording" });
   await timeline.getByRole("button", { name: String(seq), exact: true }).click();
-  await expect(page.getByText(`Event ${seq} of 57.`)).toBeVisible();
+  await expect(page.getByText(`Event ${seq} of ${EVENTS}.`)).toBeVisible();
 }
 
 test.describe("the stepper of the run", () => {
@@ -114,7 +129,7 @@ test.describe("the stepper of the run", () => {
         await position.press("ArrowRight");
       }
     }
-    await expect(page.getByText("Event 57 of 57.")).toBeVisible();
+    await expect(page.getByText(`Event ${EVENTS} of ${EVENTS}.`)).toBeVisible();
 
     // The tree is still walked with the arrow keys and with Home and End.
     const tree = page.getByRole("tree");
@@ -134,7 +149,7 @@ test.describe("the stepper of the run", () => {
     const timeline = page.getByRole("region", { name: "The timeline of the recording" });
     await timeline.locator('[data-cell="15:0"]').focus();
     await page.keyboard.press("Enter");
-    await expect(page.getByText("Event 16 of 57.")).toBeVisible();
+    await expect(page.getByText(`Event 16 of ${EVENTS}.`)).toBeVisible();
   });
 });
 
@@ -189,14 +204,14 @@ test.describe("the live region of the reader", () => {
     await openScenario(page);
 
     // The counter of the events stays visible in the page as ordinary text.
-    await expect(page.getByText("Event 1 of 57.")).toBeVisible();
+    await expect(page.getByText(`Event 1 of ${EVENTS}.`)).toBeVisible();
 
     // The region is moved to a step of the run, and it still carries no counter of the events.
     await moveToTheEvent(page, 16);
 
     const region = page.getByRole("status");
     await expect(region).toHaveText("Step 1 of 4: query_ledger.");
-    await expect(page.getByText("Event 16 of 57.")).toBeVisible();
+    await expect(page.getByText(`Event 16 of ${EVENTS}.`)).toBeVisible();
     expect(await region.evaluate((node) => node.textContent ?? "")).not.toMatch(/Event/);
   });
 });
