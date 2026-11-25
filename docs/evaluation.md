@@ -155,22 +155,47 @@ It does not measure the blind spot of the reader either: the labels came from tw
 evidence, so the number over the set says what the verifier does with the labels of two careful machine readers, and
 not what it would do with the labels of a person.
 
-## The debt: the held out set of the retrieval does not exist
+## Retrieval evaluation
 
-The retrieval of this repository is measured with a recall at 3 over the twelve questions of
-`data/eval/policy_questions.jsonl`, and those twelve questions are a tuning set: ADR-006 chose the embedding and
-the query transform with the recall over them. So the retrieval number of this repository is a fit and not a
-generalization, in the same words that ADR-052 used for the verifier. When the roadmap asks for a dense against a
-hybrid comparison over the same relevance labels, the labels have to come from a set that no decision of the
-retrieval was taken against, and such a set does not exist yet.
+The twelve policy questions used to choose the embedding and query transform are a tuning set.
+The independent retrieval set has sixteen questions with an adjudicated target passage. Two machine
+readers initially disagreed on four. This set measures retrieval on answerable questions. Measuring
+abstention requires questions for which the corpus has no supporting passage.
+[Dataset roles and adjudication](../data/eval/datasets.json)
 
-The three properties of the held out set of the verification are the three the retrieval set needs as well: the
-cases written by a generator, the labels read blind to the recipe, and the guard that refuses a tuning script that
-reads them. The instrument of the blind reading serves both, because the evidence of a retrieval question is a
-passage and the evidence of a verification case is an envelope, and the reader judges the same three labels in both.
-The reading is a machine reading with two readings and an adjudication, as ADR-059 decided, and the cost of that
-decision is paid here too: the labels of the retrieval set will carry the same blind spot that the labels of the
-verification set carry.
+## Reading paired and repeated experiments
+
+A paired comparison requires one observation per case and variant. Each stratum counts all observed
+cases for coverage. Its mean difference requires the declared minimum number of cases with scores for
+both variants.
+
+For error analysis on the public orchestration cohort, use 0.80 as a per-case diagnostic cutoff.
+The experiment's registered goal applies to the variant mean. In six of 31 pairs, both scores fell
+below the diagnostic cutoff. Four had equal scores and consequently do not appear in the disagreement
+gallery. Inspect those alongside the two disagreements before selecting a tool or retrieval change.
+[Recorded paired differences](../data/eval/experiments/cf6ab097fe4ac420946391c66c2bb3b3b91b105d9cfe67edab29da36564ddb3f/result.json)
+
+| Both variants below 0.80 | Studio | Single agent |
+|---|---:|---:|
+| EC-01 | 0.250 | 0.250 |
+| EC-04 | 0.000 | 0.500 |
+| EC-10 | 0.000 | 0.500 |
+| EC-11 | 0.000 | 0.000 |
+| EC-28 | 0.000 | 0.000 |
+| EC-31 | 0.143 | 0.143 |
+
+The archived online evaluation measures consistency across trials. Recompute the counts offline:
+
+    uv run python scripts/report_repeatability.py --report data/eval/report_online.json
+
+Variant C earned full correctness credit at least once on 24 of 30 cases and on every trial on 20.
+For groundedness the corresponding counts were 20 and 16. Each case had three trials. These are
+descriptive frequencies on the historical tuning cohort. Each metric has its own denominator of
+cases with a numeric score on every trial. The archive producer records zero for missing metric scores,
+including failed trials. Those recorded zeros count as misses. [Online measurements](../data/eval/report_online.json)
+
+The distinction between occasional and consistent success follows the repeated-trial evaluation in
+[τ-bench](https://arxiv.org/abs/2406.12045). Here, full credit is counted separately for each recorded metric.
 
 ## Where the truth lives
 
