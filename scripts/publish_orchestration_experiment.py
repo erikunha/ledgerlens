@@ -54,16 +54,15 @@ def _citations_of(answer: str) -> tuple[str, ...]:
     return tuple(citations)
 
 
-def main() -> int:
-    """Runs the command and returns the exit code of the answer."""
-    result = json.loads(RESULT.read_text(encoding="utf-8"))
-    cases = {
-        json.loads(line)["id"]: json.loads(line)
-        for line in CASES.read_text(encoding="utf-8").splitlines()
-        if line.strip()
-    }
-    cohort = result["cohort"]["digest"]
+def runs_of(result: dict, cases: dict) -> list[dict[str, object]]:
+    """The runs of the experiment, built from the published result of the measurement and the cohort of the
+    cases.
 
+    Why the function is apart from the command line: the runs of the experiment are the input of the
+    comparison, and a test reads them to check that the experiment says what the measurement said. The
+    function reads the results of the runs that already happened and never calls a model (ADR-037).
+    """
+    cohort = result["cohort"]["digest"]
     runs: list[dict[str, object]] = []
     for arm in ("single_agent", "orchestration_studio"):
         for case in result["arms"][arm]["cases"]:
@@ -84,6 +83,19 @@ def main() -> int:
                     "complexity": "",
                 }
             )
+    return runs
+
+
+def main() -> int:
+    """Runs the command and returns the exit code of the answer."""
+    result = json.loads(RESULT.read_text(encoding="utf-8"))
+    cases = {
+        json.loads(line)["id"]: json.loads(line)
+        for line in CASES.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    }
+    cohort = result["cohort"]["digest"]
+    runs = runs_of(result, cases)
 
     manifest = ExperimentManifest(
         cohort_path="data/eval/eval_cases.jsonl",

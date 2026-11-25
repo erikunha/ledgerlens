@@ -149,7 +149,14 @@ export default async function ProofPage({ params }: ProofPageProps) {
         <h2 className="text-xl font-semibold" id="proof-recipe">
           The recipe that reproduces the run
         </h2>
-        <pre className="overflow-x-auto rounded-lg border border-border p-4 text-sm">
+        <pre
+          className="overflow-x-auto rounded-lg border border-border p-4 text-sm"
+          // the recipe scrolls sideways on a narrow screen, so it is a stop of the keyboard: a region
+          // that scrolls and that cannot be reached is a region a keyboard visitor cannot read
+          tabIndex={0}
+          role="region"
+          aria-label="The recipe that reproduces the run"
+        >
           <code>{artifact.recipe}</code>
         </pre>
       </section>
