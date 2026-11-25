@@ -29,7 +29,7 @@ from typing import Any
 
 from ledgerlens.agents.integrator import _SOURCE_BY_PREFIX, _content, _ref
 from ledgerlens.replay.bundle import EVENTS_FILE
-from ledgerlens.schemas import Coherence, Evidence, InvestigationResult
+from ledgerlens.schemas import Claim, Coherence, Evidence, InvestigationResult, Verdict
 from ledgerlens.verify.checks import verify_result
 
 __all__ = [
@@ -37,6 +37,7 @@ __all__ = [
     "memory_snapshot_differences",
     "published_labels",
     "published_result",
+    "published_result_with_claims",
     "reverified_labels",
 ]
 
@@ -232,6 +233,36 @@ def published_labels(bundle_dir: Path) -> dict[str, str]:
         if isinstance(outputs, dict) and outputs.get("label"):
             labels[name] = str(outputs["label"])
     return labels
+
+
+def published_result_with_claims(bundle_dir: Path) -> InvestigationResult:
+    """The result of the run of the bundle, with the claims and the verdicts of the spans of the verifier.
+
+    Why the claims come from the spans: the bundle does not publish the text of a claim, and it publishes the
+    identifier, the evidence and the verdict of each claim in the span of the verifier of the claim. The graph
+    of the evidence reads the claims from there, so the graph of a published bundle is the graph of the run and
+    not the graph of a reconstruction.
+    """
+    result = published_result(bundle_dir)
+    for event in _recorded_events(bundle_dir):
+        payload = _payload_of(event)
+        name = str(payload.get("name") or "")
+        if not _CLAIM_NAME.match(name) or event.get("event_type") != "span.ended":
+            continue
+        outputs = payload.get("outputs")
+        outputs = outputs if isinstance(outputs, dict) else {}
+        claim_id = str(outputs.get("claim_id") or name)
+        evidence_ids = [str(item) for item in outputs.get("evidence_ids") or []]
+        result.claims.append(Claim(id=claim_id, text=claim_id, kind="fact", evidence_ids=evidence_ids))
+        result.verdicts.append(
+            Verdict(
+                claim_id=claim_id,
+                label=str(outputs.get("label") or ""),
+                method=str(outputs.get("method") or "nli"),
+                evidence_ids=evidence_ids,
+            )
+        )
+    return result
 
 
 def reverified_labels(bundle_dir: Path) -> dict[str, str]:

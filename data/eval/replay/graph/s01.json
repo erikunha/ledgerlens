@@ -1,0 +1,268 @@
+{
+  "artifact": "evidence_graph",
+  "bundle_digest": "024711fb1b0061137093627c2ad77879fb43802717fdc7101bff28b5977b4e63",
+  "corpus_digest": "329227315a80545047898029b610c0bd4d17df9d1b88983777f757a1e8305aa8",
+  "graph": {
+    "conflicts": [],
+    "coverage": {
+      "claims": 6,
+      "reached": 6,
+      "share": "1"
+    },
+    "edges": [
+      {
+        "kind": "retrieved_from",
+        "source": "sql:1",
+        "target": "ledger"
+      },
+      {
+        "kind": "retrieved_from",
+        "source": "fx:2026-10-20:EUR-BRL",
+        "target": "fx:2026-10-20:EUR-BRL"
+      },
+      {
+        "kind": "retrieved_from",
+        "source": "calc:1",
+        "target": "calculation"
+      },
+      {
+        "kind": "supports",
+        "source": "calc:1",
+        "target": "CL1"
+      },
+      {
+        "kind": "supports",
+        "source": "sql:1",
+        "target": "CL1"
+      },
+      {
+        "kind": "supports",
+        "source": "calc:1",
+        "target": "CL2"
+      },
+      {
+        "kind": "supports",
+        "source": "fx:2026-10-20:EUR-BRL",
+        "target": "CL3"
+      },
+      {
+        "kind": "supports",
+        "source": "calc:1",
+        "target": "CL4"
+      },
+      {
+        "kind": "supports",
+        "source": "sql:1",
+        "target": "CL5"
+      },
+      {
+        "kind": "supports",
+        "source": "calc:1",
+        "target": "CL6"
+      },
+      {
+        "kind": "in_scope_of",
+        "source": "sql:1",
+        "target": "snapshot:31c8f7fab2f48e1649dbb8480587eb3f511084ed56876df2bec7647a6156945a"
+      },
+      {
+        "kind": "in_scope_of",
+        "source": "ledger",
+        "target": "snapshot:31c8f7fab2f48e1649dbb8480587eb3f511084ed56876df2bec7647a6156945a"
+      },
+      {
+        "kind": "in_scope_of",
+        "source": "policy:cross-currency-refunds#overview",
+        "target": "snapshot:31c8f7fab2f48e1649dbb8480587eb3f511084ed56876df2bec7647a6156945a"
+      },
+      {
+        "kind": "in_scope_of",
+        "source": "policy:cross-currency-refunds#what-is-cross-currency",
+        "target": "snapshot:31c8f7fab2f48e1649dbb8480587eb3f511084ed56876df2bec7647a6156945a"
+      },
+      {
+        "kind": "in_scope_of",
+        "source": "policy:duplicate-charges#duplicates-with-fx",
+        "target": "snapshot:31c8f7fab2f48e1649dbb8480587eb3f511084ed56876df2bec7647a6156945a"
+      },
+      {
+        "kind": "in_scope_of",
+        "source": "policy:cross-currency-refunds#payout-currency",
+        "target": "snapshot:31c8f7fab2f48e1649dbb8480587eb3f511084ed56876df2bec7647a6156945a"
+      },
+      {
+        "kind": "in_scope_of",
+        "source": "fx:2026-10-20:EUR-BRL",
+        "target": "snapshot:31c8f7fab2f48e1649dbb8480587eb3f511084ed56876df2bec7647a6156945a"
+      },
+      {
+        "kind": "in_scope_of",
+        "source": "calc:1",
+        "target": "snapshot:31c8f7fab2f48e1649dbb8480587eb3f511084ed56876df2bec7647a6156945a"
+      },
+      {
+        "kind": "in_scope_of",
+        "source": "calculation",
+        "target": "snapshot:31c8f7fab2f48e1649dbb8480587eb3f511084ed56876df2bec7647a6156945a"
+      },
+      {
+        "kind": "in_scope_of",
+        "source": "CL1",
+        "target": "snapshot:31c8f7fab2f48e1649dbb8480587eb3f511084ed56876df2bec7647a6156945a"
+      },
+      {
+        "kind": "in_scope_of",
+        "source": "CL2",
+        "target": "snapshot:31c8f7fab2f48e1649dbb8480587eb3f511084ed56876df2bec7647a6156945a"
+      },
+      {
+        "kind": "in_scope_of",
+        "source": "CL3",
+        "target": "snapshot:31c8f7fab2f48e1649dbb8480587eb3f511084ed56876df2bec7647a6156945a"
+      },
+      {
+        "kind": "in_scope_of",
+        "source": "CL4",
+        "target": "snapshot:31c8f7fab2f48e1649dbb8480587eb3f511084ed56876df2bec7647a6156945a"
+      },
+      {
+        "kind": "in_scope_of",
+        "source": "CL5",
+        "target": "snapshot:31c8f7fab2f48e1649dbb8480587eb3f511084ed56876df2bec7647a6156945a"
+      },
+      {
+        "kind": "in_scope_of",
+        "source": "CL6",
+        "target": "snapshot:31c8f7fab2f48e1649dbb8480587eb3f511084ed56876df2bec7647a6156945a"
+      }
+    ],
+    "nodes": [
+      {
+        "digest": null,
+        "hypothesis": false,
+        "id": "snapshot:31c8f7fab2f48e1649dbb8480587eb3f511084ed56876df2bec7647a6156945a",
+        "kind": "source",
+        "label": "the snapshot 31c8f7fab2f4"
+      },
+      {
+        "digest": null,
+        "hypothesis": false,
+        "id": "sql:1",
+        "kind": "evidence",
+        "label": "sql:1"
+      },
+      {
+        "digest": null,
+        "hypothesis": false,
+        "id": "ledger",
+        "kind": "source",
+        "label": "ledger"
+      },
+      {
+        "digest": "329227315a80545047898029b610c0bd4d17df9d1b88983777f757a1e8305aa8",
+        "hypothesis": false,
+        "id": "policy:cross-currency-refunds#overview",
+        "kind": "policy",
+        "label": "cross-currency-refunds#overview"
+      },
+      {
+        "digest": "329227315a80545047898029b610c0bd4d17df9d1b88983777f757a1e8305aa8",
+        "hypothesis": false,
+        "id": "policy:cross-currency-refunds#what-is-cross-currency",
+        "kind": "policy",
+        "label": "cross-currency-refunds#what-is-cross-currency"
+      },
+      {
+        "digest": "329227315a80545047898029b610c0bd4d17df9d1b88983777f757a1e8305aa8",
+        "hypothesis": false,
+        "id": "policy:duplicate-charges#duplicates-with-fx",
+        "kind": "policy",
+        "label": "duplicate-charges#duplicates-with-fx"
+      },
+      {
+        "digest": "329227315a80545047898029b610c0bd4d17df9d1b88983777f757a1e8305aa8",
+        "hypothesis": false,
+        "id": "policy:cross-currency-refunds#payout-currency",
+        "kind": "policy",
+        "label": "cross-currency-refunds#payout-currency"
+      },
+      {
+        "digest": null,
+        "hypothesis": false,
+        "id": "fx:2026-10-20:EUR-BRL",
+        "kind": "evidence",
+        "label": "fx:2026-10-20:EUR-BRL"
+      },
+      {
+        "digest": null,
+        "hypothesis": false,
+        "id": "calc:1",
+        "kind": "evidence",
+        "label": "calc:1"
+      },
+      {
+        "digest": null,
+        "hypothesis": false,
+        "id": "calculation",
+        "kind": "source",
+        "label": "calculation"
+      },
+      {
+        "digest": null,
+        "hypothesis": false,
+        "id": "CL1",
+        "kind": "claim",
+        "label": "CL1"
+      },
+      {
+        "digest": null,
+        "hypothesis": false,
+        "id": "CL2",
+        "kind": "claim",
+        "label": "CL2"
+      },
+      {
+        "digest": null,
+        "hypothesis": false,
+        "id": "CL3",
+        "kind": "claim",
+        "label": "CL3"
+      },
+      {
+        "digest": null,
+        "hypothesis": false,
+        "id": "CL4",
+        "kind": "claim",
+        "label": "CL4"
+      },
+      {
+        "digest": null,
+        "hypothesis": false,
+        "id": "CL5",
+        "kind": "claim",
+        "label": "CL5"
+      },
+      {
+        "digest": null,
+        "hypothesis": false,
+        "id": "CL6",
+        "kind": "claim",
+        "label": "CL6"
+      }
+    ],
+    "orphans": [],
+    "snapshot_hash": "31c8f7fab2f48e1649dbb8480587eb3f511084ed56876df2bec7647a6156945a",
+    "verdicts": {
+      "CL1": "supported",
+      "CL2": "supported",
+      "CL3": "supported",
+      "CL4": "supported",
+      "CL5": "supported",
+      "CL6": "supported"
+    }
+  },
+  "run_id": "replay-s01",
+  "scenario": "S01",
+  "schema_version": "1",
+  "snapshot_hash": "31c8f7fab2f48e1649dbb8480587eb3f511084ed56876df2bec7647a6156945a"
+}
