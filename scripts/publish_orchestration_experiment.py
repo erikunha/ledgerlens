@@ -26,6 +26,7 @@ import json
 import re
 import sys
 import tempfile
+from dataclasses import asdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -108,8 +109,6 @@ def main() -> int:
     with tempfile.TemporaryDirectory() as work:
         manifest_path = Path(work) / "manifest.json"
         runs_path = Path(work) / "runs.json"
-        from dataclasses import asdict
-
         manifest_path.write_text(json.dumps(asdict(manifest), ensure_ascii=False) + "\n", encoding="utf-8")
         runs_path.write_text(
             json.dumps({"cohort_sha256": cohort, "runs": runs}, ensure_ascii=False) + "\n", encoding="utf-8"

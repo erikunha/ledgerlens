@@ -58,7 +58,12 @@ def _account_of(bundle_dir: Path) -> str | None:
 
 
 def _records_of_the_account(bundle_dir: Path, account: str) -> set[str]:
-    """The records of the account, as the artifact of the ledger names them."""
+    """The records of the account, as the rows of the artifact of the ledger name them.
+
+    Why the rows and not the reads: the rows of the account are the records the account holds, and the reads
+    are what the run read. A read that names a record the account does not hold is a read out of the scope of
+    the account, and the scope is judged against the rows.
+    """
     ledger_path = bundle_dir.parent / "ledger" / f"{bundle_dir.name}.json"
     ledger = json.loads(ledger_path.read_text(encoding="utf-8"))
     records: set[str] = set()
@@ -67,9 +72,18 @@ def _records_of_the_account(bundle_dir: Path, account: str) -> set[str]:
             continue
         for row in entry.get("rows", []):
             records.add(str(row.get("id")))
-        for read in entry.get("reads", []):
-            records.update(str(record) for record in read.get("records", []))
     return records
+
+
+def _records_of_each_read(bundle_dir: Path) -> dict[str, set[str]]:
+    """The records each read of the ledger named, by the citation of the read, as the artifact names them."""
+    ledger_path = bundle_dir.parent / "ledger" / f"{bundle_dir.name}.json"
+    ledger = json.loads(ledger_path.read_text(encoding="utf-8"))
+    reads: dict[str, set[str]] = {}
+    for entry in ledger.get("accounts", []):
+        for read in entry.get("reads", []):
+            reads[str(read.get("evidence_id"))] = {str(record) for record in read.get("records", [])}
+    return reads
 
 
 def _graph_dict(graph: EvidenceGraph) -> dict[str, Any]:
@@ -114,15 +128,17 @@ def create_app(bundle_root: Path) -> FastAPI:
             raise HTTPException(status_code=404, detail="the run was not found")
 
         result = _result_of(bundle_dir)
-        # The scope of the account: the evidence of the ledger that names a record of another account is out of
-        # the graph, and the count of the nodes it filtered is published.
+        # The scope of the account: an evidence of the ledger is in the graph when every record it names
+        # belongs to the account, and an evidence that names a record of another account is out of the graph.
+        # The count of the nodes it filtered is published.
         records = _records_of_the_account(bundle_dir, account)
+        reads = _records_of_each_read(bundle_dir)
         in_scope = []
         filtered = 0
         for evidence in result.evidence:
-            if evidence.source_type in ("sql", "ledger_api") and records:
-                named = {record for record in records if record in evidence.content or record in evidence.ref}
-                if not named and not any(record in evidence.content for record in records):
+            if evidence.source_type in ("sql", "ledger_api"):
+                named = reads.get(evidence.id, set())
+                if named and not named <= records:
                     filtered += 1
                     continue
             in_scope.append(evidence)

@@ -70,3 +70,28 @@ def test_two_reads_of_the_same_run_return_the_same_bytes(client: TestClient) -> 
 
     assert first.status_code == 200
     assert first.content == second.content
+
+
+def test_an_evidence_that_names_a_record_of_another_account_is_filtered(tmp_path) -> None:
+    """An evidence of the ledger that names a record of another account is out of the graph, and the count
+    of the filtered nodes says so."""
+    import json
+    import shutil
+
+    from ledgerlens.api.evidence import create_app as create
+
+    moved = tmp_path / "replay"
+    shutil.copytree(BUNDLES, moved)
+    ledger_path = moved / "ledger" / "s01.json"
+    ledger = json.loads(ledger_path.read_text(encoding="utf-8"))
+    # The read of the account names a record of another account: the evidence of that read is out of scope.
+    ledger["accounts"][0]["reads"][0]["records"] = ["TX-2048", "TX-9999"]
+    ledger_path.write_text(json.dumps(ledger), encoding="utf-8")
+
+    client = TestClient(create(moved))
+    response = client.get("/evidence/replay-s01", params={"account": ACCOUNT})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["filtered"] == 1
+    assert all(node["id"] != "sql:1" for node in body["nodes"])

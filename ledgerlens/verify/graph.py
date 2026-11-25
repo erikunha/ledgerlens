@@ -211,18 +211,18 @@ def build_graph(
 
     _refuse_a_cycle(edges)
 
-    # The coverage: the claims that reach a source, over the claims the run verified.
+    # The coverage: the claims that reach a source, over the claims the run verified. A claim reaches a
+    # source when a piece of evidence that supports it is a source or a policy, or when that evidence was
+    # retrieved from a source.
     reached = 0
     for claim_id in verdicts:
         supported = [edge.source for edge in edges if edge.target == claim_id and edge.kind == EDGE_SUPPORTS]
-        if any(nodes[source].kind in (NODE_SOURCE, NODE_POLICY) for source in supported) or any(
-            any(
-                edge2.target == source or edge2.source == source
-                for edge2 in edges
-                if edge2.kind == EDGE_RETRIEVED_FROM and edge2.source == source
-            )
+        reaches = any(
+            nodes[source].kind in (NODE_SOURCE, NODE_POLICY)
+            or any(edge.kind == EDGE_RETRIEVED_FROM and edge.source == source for edge in edges)
             for source in supported
-        ):
+        )
+        if reaches:
             reached += 1
     coverage = Coverage(claims=len(verdicts), reached=reached)
 
