@@ -43,7 +43,9 @@ def test_thirty_one_cases_thirteen_from_the_scenarios(cases: list[EvalCase]) -> 
     assert len(cases) == 31
     assert len({c.id for c in cases}) == 31
     assert Counter(c.kind for c in cases) == {"scenario": 13, "natural": 18}
-    assert [c.scenario for c in cases if c.kind == "scenario"] == sorted(SCENARIOS)
+    # The scenario cases are the thirteen scenarios of the evaluation: S14 is a data plant of the
+    # simulator (the rounding tie) and not a case of the evaluation.
+    assert [c.scenario for c in cases if c.kind == "scenario"] == sorted(s for s in SCENARIOS if s != "S14")
 
 
 def test_scenario_trajectories_are_the_manifest_ones(cases: list[EvalCase]) -> None:

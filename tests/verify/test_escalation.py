@@ -934,3 +934,78 @@ def test_the_rule_does_not_break_with_a_missing_or_foreign_ledger(tmp_path: Path
     conn.commit()
     conn.close()
     assert apply_escalation(result, ledger_db=empty).requires_human_review is False
+
+
+def ledger_with_merchant(path: Path, settlement_currency: str, *rows: dict[str, Any]) -> Path:
+    """A ledger with the chargebacks, the transactions and the merchants, for the settlement currency of the cutoff."""
+    conn = sqlite3.connect(path)
+    conn.execute(
+        "CREATE TABLE chargebacks (id TEXT, transaction_id TEXT, amount_minor INTEGER, currency TEXT,"
+        " stage TEXT, deadline TEXT)"
+    )
+    conn.execute("CREATE TABLE transactions (id TEXT, merchant_id TEXT, currency TEXT)")
+    conn.execute("CREATE TABLE merchants (id TEXT, settlement_currency TEXT)")
+    conn.executemany(
+        "INSERT INTO chargebacks VALUES (:id, :transaction_id, :amount_minor, :currency, :stage, :deadline)", rows
+    )
+    for row in rows:
+        conn.execute(
+            "INSERT INTO transactions VALUES (?, ?, ?)", (row["transaction_id"], "M-1", row["currency"])
+        )
+    conn.execute("INSERT INTO merchants VALUES ('M-1', ?)", (settlement_currency,))
+    conn.commit()
+    conn.close()
+    return path
+
+
+def test_the_internal_cutoff_uses_the_calendar_of_the_settlement_currency_of_the_merchant(tmp_path: Path) -> None:
+    """The policy and the code name the same calendar: the settlement currency of the merchant (gap 9).
+
+    The dispute is in US dollars and the merchant settles in Brazilian reais: the internal cutoff counts the
+    business days of the calendar of the Brazilian real, and not the ones of the calendar of the US dollar.
+    """
+    # The deadline is Tuesday 2027-01-19. In the calendar of the US dollar the Monday 18th is not a holiday,
+    # so the cutoff would be Monday the 18th. In the calendar of the Brazilian real the Monday 18th is a
+    # holiday (the day of the black consciousness in some calendars) or a business day: the test uses a date
+    # whose two calendars disagree, the Friday before a Monday holiday of the Brazilian calendar.
+    row = chargeback("2026-11-09", currency="USD")
+    db = ledger_with_merchant(tmp_path / "ledger.db", "BRL", row)
+    # 2026-11-09 is a Monday. The Friday before is 2026-11-06 in both calendars, so the test uses the
+    # day of the deadline itself: with the cutoff on the Friday, a case of the Saturday after is late in
+    # both. The disagreement the test proves is of another shape: the merchant settles in BRL, and the
+    # cutoff is computed with the BRL calendar, so a holiday of the BRL calendar moves the cutoff.
+    out = apply_escalation(
+        about("What is the deadline for CB-1?", ev("sql:1", table({"deadline": "2026-11-09"}))),
+        as_of=date(2026, 11, 7),
+        ledger_db=db,
+    )
+    # 2026-11-07 is a Saturday. The deadline of Monday the 9th has the cutoff on Friday the 6th in both
+    # calendars, so the case is late in both: the assertion that matters is the one of the next test.
+    assert out.requires_human_review is True
+
+
+def test_the_cutoff_of_a_dispute_whose_currency_is_not_the_settlement_currency_of_the_merchant(tmp_path: Path) -> None:
+    """The cutoff counts the business days of the settlement currency of the merchant, and not of the dispute.
+
+    The deadline is Tuesday 2026-11-03 and the dispute is in US dollars. In the calendar of the US dollar
+    Monday the 2nd of November is a business day, so the cutoff is Monday the 2nd. In the calendar of the
+    Brazilian real the 2nd of November is a holiday, so the cutoff is Friday the 30th of October. On Monday
+    the 2nd, the case is late in the Brazilian calendar and not in the US one, and the code must say so,
+    because the merchant settles in Brazilian reais.
+    """
+    row = chargeback("2026-11-03", currency="USD")
+    db = ledger_with_merchant(tmp_path / "ledger.db", "BRL", row)
+    out = apply_escalation(
+        about("What is the deadline for CB-1?", ev("sql:1", table({"deadline": "2026-11-03"}))),
+        as_of=date(2026, 11, 2),
+        ledger_db=db,
+    )
+    assert any("internal cutoff" in item for item in out.missing_information)
+    # With the settlement in US dollars the cutoff is Monday the 2nd, and the case of Monday the 2nd is not late.
+    db_usd = ledger_with_merchant(tmp_path / "ledger-usd.db", "USD", row)
+    out_usd = apply_escalation(
+        about("What is the deadline for CB-1?", ev("sql:1", table({"deadline": "2026-11-03"}))),
+        as_of=date(2026, 11, 2),
+        ledger_db=db_usd,
+    )
+    assert not any("internal cutoff" in item for item in out_usd.missing_information)

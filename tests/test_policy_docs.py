@@ -134,7 +134,12 @@ FACTS = {
     "fx-reference-rates#source": [r"European Central Bank", r"previous business day", r"reference", r"not the rate"],
     "duplicate-charges#detection-rule": [r"same merchant", r"same card", r"same amount", r"5 minutes"],
     "duplicate-charges#remedy": [r"in full", r"5 business days", r"later"],
-    "chargeback-handling#response-deadline": [r"one business day before", r"card network deadline", r"loses"],
+    "chargeback-handling#response-deadline": [
+        r"one business day before",
+        r"ten to fourteen days",
+        r"deadline of Acme",
+        r"loses",
+    ],
     "chargeback-handling#evidence-checklist": [r"FRD", r"NRC", r"NAD", r"DUP", r"reason code"],
     "settlement-schedule#payout-timing": [
         r"Monday to Sunday",

@@ -36,22 +36,22 @@
   "latency": {
     "denominator": 31,
     "end_to_end": {
-      "p50": 9.0,
-      "p95": 19.0
+      "p50": 16.0,
+      "p95": 36.0
     },
     "method": "nearest_rank",
     "per_stage": {
       "agent": {
-        "p50": 7.0,
-        "p95": 17.0
+        "p50": 14.0,
+        "p95": 33.0
       },
       "triage": {
         "p50": 1.0,
-        "p95": 1.0
+        "p95": 2.0
       },
       "verify": {
         "p50": 1.0,
-        "p95": 1.0
+        "p95": 3.0
       }
     },
     "set": "eval_cases"
@@ -977,7 +977,7 @@
       "variant": "B"
     },
     {
-      "answer": "CB-0310 deadline 2026-11-09 [sql:1]. CB-0310 stage evidence_requested [sql:1]. CB-0310 reason_code NRC [sql:1]. Evidence must be sent at least one business day before the card network deadline [policy:chargeback-handling#response-deadline].",
+      "answer": "CB-0310 deadline 2026-11-09 [sql:1]. CB-0310 stage evidence_requested [sql:1]. CB-0310 reason_code NRC [sql:1]. Evidence must be sent at least one business day before the response deadline of the dispute [policy:chargeback-handling#response-deadline].",
       "case": "EC-03",
       "expected_tools": [
         "query_ledger",
@@ -1673,7 +1673,7 @@
       "variant": "B"
     },
     {
-      "answer": "The reference rate is the European Central Bank's daily rate, obtained through the Frankfurter service in the version that uses only that source [policy:fx-reference-rates#source].",
+      "answer": "The reference rate is the European Central Bank's daily rate, obtained through the Frankfurter service in the version that uses only that source (source: the European Central Bank and the Frankfurter service, read on 2026-11-25) [policy:fx-reference-rates#source].",
       "case": "EC-27",
       "expected_tools": [
         "search_policies"
@@ -1731,7 +1731,7 @@
       "variant": "B"
     },
     {
-      "answer": "Merchants on the `markup` plan can apply up to 3.0% over the reference rate when converting a refund [policy:cross-currency-refunds#merchant-fx-markup].",
+      "answer": "Merchants on the `markup` plan can apply up to 3.0% below the reference rate when converting a refund [policy:cross-currency-refunds#merchant-fx-markup].",
       "case": "EC-29",
       "expected_tools": [
         "search_policies"
@@ -1834,10 +1834,10 @@
       ],
       "kind": "scenario",
       "latency": {
-        "end_to_end_ms": 17.0,
+        "end_to_end_ms": 20.0,
         "per_stage_ms": {
-          "agent": 15.0,
-          "triage": 1.0,
+          "agent": 17.0,
+          "triage": 2.0,
           "verify": 1.0
         }
       },
@@ -1864,7 +1864,7 @@
       ],
       "usage": {
         "cut_by": null,
-        "elapsed_seconds": 0.018,
+        "elapsed_seconds": 0.021,
         "estimated_cost_usd": null,
         "input_tokens": 0,
         "model_calls": 6,
@@ -1884,11 +1884,11 @@
       ],
       "kind": "scenario",
       "latency": {
-        "end_to_end_ms": 11.0,
+        "end_to_end_ms": 16.0,
         "per_stage_ms": {
-          "agent": 9.0,
+          "agent": 13.0,
           "triage": 1.0,
-          "verify": 1.0
+          "verify": 2.0
         }
       },
       "missing_facts": null,
@@ -1912,7 +1912,7 @@
       ],
       "usage": {
         "cut_by": null,
-        "elapsed_seconds": 0.012,
+        "elapsed_seconds": 0.016,
         "estimated_cost_usd": null,
         "input_tokens": 0,
         "model_calls": 4,
@@ -1924,7 +1924,7 @@
       "variant": "C"
     },
     {
-      "answer": "CB-0310 deadline 2026-11-09 [sql:1]. CB-0310 stage evidence_requested [sql:1]. CB-0310 reason_code NRC [sql:1]. Evidence must be sent at least one business day before the card network deadline [policy:chargeback-handling#response-deadline].",
+      "answer": "CB-0310 deadline 2026-11-09 [sql:1]. CB-0310 stage evidence_requested [sql:1]. CB-0310 reason_code NRC [sql:1]. Evidence must be sent at least one business day before the response deadline of the dispute [policy:chargeback-handling#response-deadline].",
       "case": "EC-03",
       "expected_tools": [
         "query_ledger",
@@ -1932,11 +1932,11 @@
       ],
       "kind": "scenario",
       "latency": {
-        "end_to_end_ms": 12.0,
+        "end_to_end_ms": 19.0,
         "per_stage_ms": {
-          "agent": 10.0,
+          "agent": 16.0,
           "triage": 1.0,
-          "verify": 1.0
+          "verify": 2.0
         }
       },
       "missing_facts": null,
@@ -1960,7 +1960,7 @@
       ],
       "usage": {
         "cut_by": null,
-        "elapsed_seconds": 0.013,
+        "elapsed_seconds": 0.021,
         "estimated_cost_usd": null,
         "input_tokens": 0,
         "model_calls": 4,
@@ -1979,9 +1979,9 @@
       ],
       "kind": "scenario",
       "latency": {
-        "end_to_end_ms": 8.0,
+        "end_to_end_ms": 9.0,
         "per_stage_ms": {
-          "agent": 6.0,
+          "agent": 7.0,
           "triage": 1.0,
           "verify": 1.0
         }
@@ -2006,7 +2006,7 @@
       ],
       "usage": {
         "cut_by": null,
-        "elapsed_seconds": 0.008,
+        "elapsed_seconds": 0.01,
         "estimated_cost_usd": null,
         "input_tokens": 0,
         "model_calls": 3,
@@ -2025,9 +2025,9 @@
       ],
       "kind": "scenario",
       "latency": {
-        "end_to_end_ms": 7.0,
+        "end_to_end_ms": 10.0,
         "per_stage_ms": {
-          "agent": 5.0,
+          "agent": 8.0,
           "triage": 1.0,
           "verify": 1.0
         }
@@ -2052,7 +2052,7 @@
       ],
       "usage": {
         "cut_by": null,
-        "elapsed_seconds": 0.008,
+        "elapsed_seconds": 0.011,
         "estimated_cost_usd": null,
         "input_tokens": 0,
         "model_calls": 3,
@@ -2072,11 +2072,11 @@
       ],
       "kind": "scenario",
       "latency": {
-        "end_to_end_ms": 12.0,
+        "end_to_end_ms": 18.0,
         "per_stage_ms": {
-          "agent": 10.0,
+          "agent": 15.0,
           "triage": 1.0,
-          "verify": 1.0
+          "verify": 2.0
         }
       },
       "missing_facts": null,
@@ -2100,7 +2100,7 @@
       ],
       "usage": {
         "cut_by": null,
-        "elapsed_seconds": 0.013,
+        "elapsed_seconds": 0.019,
         "estimated_cost_usd": null,
         "input_tokens": 0,
         "model_calls": 4,
@@ -2120,11 +2120,11 @@
       ],
       "kind": "scenario",
       "latency": {
-        "end_to_end_ms": 11.0,
+        "end_to_end_ms": 35.0,
         "per_stage_ms": {
-          "agent": 9.0,
-          "triage": 1.0,
-          "verify": 1.0
+          "agent": 31.0,
+          "triage": 2.0,
+          "verify": 2.0
         }
       },
       "missing_facts": null,
@@ -2148,7 +2148,7 @@
       ],
       "usage": {
         "cut_by": null,
-        "elapsed_seconds": 0.011,
+        "elapsed_seconds": 0.036,
         "estimated_cost_usd": null,
         "input_tokens": 0,
         "model_calls": 4,
@@ -2169,11 +2169,11 @@
       ],
       "kind": "scenario",
       "latency": {
-        "end_to_end_ms": 13.0,
+        "end_to_end_ms": 23.0,
         "per_stage_ms": {
-          "agent": 11.0,
+          "agent": 20.0,
           "triage": 1.0,
-          "verify": 1.0
+          "verify": 2.0
         }
       },
       "missing_facts": null,
@@ -2198,7 +2198,7 @@
       ],
       "usage": {
         "cut_by": null,
-        "elapsed_seconds": 0.014,
+        "elapsed_seconds": 0.024,
         "estimated_cost_usd": null,
         "input_tokens": 0,
         "model_calls": 5,
@@ -2217,11 +2217,11 @@
       ],
       "kind": "scenario",
       "latency": {
-        "end_to_end_ms": 7.0,
+        "end_to_end_ms": 11.0,
         "per_stage_ms": {
-          "agent": 5.0,
+          "agent": 8.0,
           "triage": 1.0,
-          "verify": 1.0
+          "verify": 2.0
         }
       },
       "missing_facts": null,
@@ -2244,7 +2244,7 @@
       ],
       "usage": {
         "cut_by": null,
-        "elapsed_seconds": 0.007,
+        "elapsed_seconds": 0.012,
         "estimated_cost_usd": null,
         "input_tokens": 0,
         "model_calls": 3,
@@ -2264,9 +2264,9 @@
       ],
       "kind": "scenario",
       "latency": {
-        "end_to_end_ms": 13.0,
+        "end_to_end_ms": 19.0,
         "per_stage_ms": {
-          "agent": 11.0,
+          "agent": 17.0,
           "triage": 1.0,
           "verify": 1.0
         }
@@ -2294,7 +2294,7 @@
       ],
       "usage": {
         "cut_by": null,
-        "elapsed_seconds": 0.014,
+        "elapsed_seconds": 0.02,
         "estimated_cost_usd": null,
         "input_tokens": 0,
         "model_calls": 5,
@@ -2314,9 +2314,9 @@
       ],
       "kind": "scenario",
       "latency": {
-        "end_to_end_ms": 9.0,
+        "end_to_end_ms": 11.0,
         "per_stage_ms": {
-          "agent": 7.0,
+          "agent": 9.0,
           "triage": 1.0,
           "verify": 1.0
         }
@@ -2342,7 +2342,7 @@
       ],
       "usage": {
         "cut_by": null,
-        "elapsed_seconds": 0.009,
+        "elapsed_seconds": 0.011,
         "estimated_cost_usd": null,
         "input_tokens": 0,
         "model_calls": 4,
@@ -2407,9 +2407,9 @@
       ],
       "kind": "natural",
       "latency": {
-        "end_to_end_ms": 94.0,
+        "end_to_end_ms": 123.0,
         "per_stage_ms": {
-          "agent": 92.0,
+          "agent": 121.0,
           "triage": 1.0,
           "verify": 1.0
         }
@@ -2434,7 +2434,7 @@
       ],
       "usage": {
         "cut_by": null,
-        "elapsed_seconds": 0.095,
+        "elapsed_seconds": 0.123,
         "estimated_cost_usd": null,
         "input_tokens": 0,
         "model_calls": 3,
@@ -2453,9 +2453,9 @@
       ],
       "kind": "natural",
       "latency": {
-        "end_to_end_ms": 12.0,
+        "end_to_end_ms": 15.0,
         "per_stage_ms": {
-          "agent": 10.0,
+          "agent": 13.0,
           "triage": 1.0,
           "verify": 1.0
         }
@@ -2480,7 +2480,7 @@
       ],
       "usage": {
         "cut_by": null,
-        "elapsed_seconds": 0.012,
+        "elapsed_seconds": 0.015,
         "estimated_cost_usd": null,
         "input_tokens": 0,
         "model_calls": 3,
@@ -2499,11 +2499,11 @@
       ],
       "kind": "natural",
       "latency": {
-        "end_to_end_ms": 11.0,
+        "end_to_end_ms": 29.0,
         "per_stage_ms": {
-          "agent": 9.0,
+          "agent": 22.0,
           "triage": 1.0,
-          "verify": 1.0
+          "verify": 6.0
         }
       },
       "missing_facts": null,
@@ -2526,7 +2526,7 @@
       ],
       "usage": {
         "cut_by": null,
-        "elapsed_seconds": 0.012,
+        "elapsed_seconds": 0.032,
         "estimated_cost_usd": null,
         "input_tokens": 0,
         "model_calls": 3,
@@ -2545,11 +2545,11 @@
       ],
       "kind": "natural",
       "latency": {
-        "end_to_end_ms": 13.0,
+        "end_to_end_ms": 36.0,
         "per_stage_ms": {
-          "agent": 11.0,
+          "agent": 33.0,
           "triage": 1.0,
-          "verify": 1.0
+          "verify": 2.0
         }
       },
       "missing_facts": null,
@@ -2572,7 +2572,7 @@
       ],
       "usage": {
         "cut_by": null,
-        "elapsed_seconds": 0.014,
+        "elapsed_seconds": 0.038,
         "estimated_cost_usd": null,
         "input_tokens": 0,
         "model_calls": 3,
@@ -2591,11 +2591,11 @@
       ],
       "kind": "natural",
       "latency": {
-        "end_to_end_ms": 12.0,
+        "end_to_end_ms": 17.0,
         "per_stage_ms": {
-          "agent": 10.0,
+          "agent": 14.0,
           "triage": 1.0,
-          "verify": 1.0
+          "verify": 2.0
         }
       },
       "missing_facts": null,
@@ -2618,7 +2618,7 @@
       ],
       "usage": {
         "cut_by": null,
-        "elapsed_seconds": 0.013,
+        "elapsed_seconds": 0.018,
         "estimated_cost_usd": null,
         "input_tokens": 0,
         "model_calls": 3,
@@ -2637,11 +2637,11 @@
       ],
       "kind": "natural",
       "latency": {
-        "end_to_end_ms": 13.0,
+        "end_to_end_ms": 15.0,
         "per_stage_ms": {
-          "agent": 11.0,
+          "agent": 12.0,
           "triage": 1.0,
-          "verify": 1.0
+          "verify": 2.0
         }
       },
       "missing_facts": null,
@@ -2664,7 +2664,7 @@
       ],
       "usage": {
         "cut_by": null,
-        "elapsed_seconds": 0.014,
+        "elapsed_seconds": 0.015,
         "estimated_cost_usd": null,
         "input_tokens": 0,
         "model_calls": 3,
@@ -2683,11 +2683,11 @@
       ],
       "kind": "natural",
       "latency": {
-        "end_to_end_ms": 8.0,
+        "end_to_end_ms": 14.0,
         "per_stage_ms": {
-          "agent": 6.0,
-          "triage": 1.0,
-          "verify": 1.0
+          "agent": 9.0,
+          "triage": 3.0,
+          "verify": 2.0
         }
       },
       "missing_facts": null,
@@ -2710,7 +2710,7 @@
       ],
       "usage": {
         "cut_by": null,
-        "elapsed_seconds": 0.009,
+        "elapsed_seconds": 0.016,
         "estimated_cost_usd": null,
         "input_tokens": 0,
         "model_calls": 3,
@@ -2729,10 +2729,10 @@
       ],
       "kind": "natural",
       "latency": {
-        "end_to_end_ms": 9.0,
+        "end_to_end_ms": 14.0,
         "per_stage_ms": {
-          "agent": 7.0,
-          "triage": 1.0,
+          "agent": 11.0,
+          "triage": 2.0,
           "verify": 1.0
         }
       },
@@ -2756,7 +2756,7 @@
       ],
       "usage": {
         "cut_by": null,
-        "elapsed_seconds": 0.01,
+        "elapsed_seconds": 0.016,
         "estimated_cost_usd": null,
         "input_tokens": 0,
         "model_calls": 3,
@@ -2775,11 +2775,11 @@
       ],
       "kind": "natural",
       "latency": {
-        "end_to_end_ms": 8.0,
+        "end_to_end_ms": 15.0,
         "per_stage_ms": {
-          "agent": 6.0,
+          "agent": 11.0,
           "triage": 1.0,
-          "verify": 1.0
+          "verify": 3.0
         }
       },
       "missing_facts": null,
@@ -2802,7 +2802,7 @@
       ],
       "usage": {
         "cut_by": null,
-        "elapsed_seconds": 0.009,
+        "elapsed_seconds": 0.02,
         "estimated_cost_usd": null,
         "input_tokens": 0,
         "model_calls": 3,
@@ -2821,9 +2821,9 @@
       ],
       "kind": "natural",
       "latency": {
-        "end_to_end_ms": 8.0,
+        "end_to_end_ms": 20.0,
         "per_stage_ms": {
-          "agent": 6.0,
+          "agent": 18.0,
           "triage": 1.0,
           "verify": 1.0
         }
@@ -2848,7 +2848,7 @@
       ],
       "usage": {
         "cut_by": null,
-        "elapsed_seconds": 0.009,
+        "elapsed_seconds": 0.021,
         "estimated_cost_usd": null,
         "input_tokens": 0,
         "model_calls": 3,
@@ -2867,11 +2867,11 @@
       ],
       "kind": "natural",
       "latency": {
-        "end_to_end_ms": 8.0,
+        "end_to_end_ms": 18.0,
         "per_stage_ms": {
-          "agent": 6.0,
+          "agent": 15.0,
           "triage": 1.0,
-          "verify": 1.0
+          "verify": 2.0
         }
       },
       "missing_facts": null,
@@ -2894,7 +2894,7 @@
       ],
       "usage": {
         "cut_by": null,
-        "elapsed_seconds": 0.009,
+        "elapsed_seconds": 0.019,
         "estimated_cost_usd": null,
         "input_tokens": 0,
         "model_calls": 3,
@@ -2913,9 +2913,9 @@
       ],
       "kind": "natural",
       "latency": {
-        "end_to_end_ms": 8.0,
+        "end_to_end_ms": 13.0,
         "per_stage_ms": {
-          "agent": 6.0,
+          "agent": 11.0,
           "triage": 1.0,
           "verify": 1.0
         }
@@ -2940,7 +2940,7 @@
       ],
       "usage": {
         "cut_by": null,
-        "elapsed_seconds": 0.008,
+        "elapsed_seconds": 0.014,
         "estimated_cost_usd": null,
         "input_tokens": 0,
         "model_calls": 3,
@@ -2959,11 +2959,11 @@
       ],
       "kind": "natural",
       "latency": {
-        "end_to_end_ms": 6.0,
+        "end_to_end_ms": 18.0,
         "per_stage_ms": {
-          "agent": 5.0,
+          "agent": 16.0,
           "triage": 1.0,
-          "verify": 0.0
+          "verify": 1.0
         }
       },
       "missing_facts": null,
@@ -2986,7 +2986,7 @@
       ],
       "usage": {
         "cut_by": null,
-        "elapsed_seconds": 0.007,
+        "elapsed_seconds": 0.019,
         "estimated_cost_usd": null,
         "input_tokens": 0,
         "model_calls": 3,
@@ -3005,9 +3005,9 @@
       ],
       "kind": "natural",
       "latency": {
-        "end_to_end_ms": 7.0,
+        "end_to_end_ms": 10.0,
         "per_stage_ms": {
-          "agent": 6.0,
+          "agent": 9.0,
           "triage": 1.0,
           "verify": 0.0
         }
@@ -3032,7 +3032,7 @@
       ],
       "usage": {
         "cut_by": null,
-        "elapsed_seconds": 0.007,
+        "elapsed_seconds": 0.011,
         "estimated_cost_usd": null,
         "input_tokens": 0,
         "model_calls": 3,
@@ -3044,18 +3044,18 @@
       "variant": "C"
     },
     {
-      "answer": "The reference rate is the European Central Bank's daily rate, obtained through the Frankfurter service in the version that uses only that source [policy:fx-reference-rates#source].",
+      "answer": "The reference rate is the European Central Bank's daily rate, obtained through the Frankfurter service in the version that uses only that source (source: the European Central Bank and the Frankfurter service, read on 2026-11-25) [policy:fx-reference-rates#source].",
       "case": "EC-27",
       "expected_tools": [
         "search_policies"
       ],
       "kind": "natural",
       "latency": {
-        "end_to_end_ms": 7.0,
+        "end_to_end_ms": 12.0,
         "per_stage_ms": {
-          "agent": 6.0,
+          "agent": 10.0,
           "triage": 1.0,
-          "verify": 0.0
+          "verify": 1.0
         }
       },
       "missing_facts": null,
@@ -3078,7 +3078,7 @@
       ],
       "usage": {
         "cut_by": null,
-        "elapsed_seconds": 0.008,
+        "elapsed_seconds": 0.015,
         "estimated_cost_usd": null,
         "input_tokens": 0,
         "model_calls": 3,
@@ -3097,11 +3097,11 @@
       ],
       "kind": "natural",
       "latency": {
-        "end_to_end_ms": 6.0,
+        "end_to_end_ms": 16.0,
         "per_stage_ms": {
-          "agent": 5.0,
+          "agent": 14.0,
           "triage": 1.0,
-          "verify": 0.0
+          "verify": 1.0
         }
       },
       "missing_facts": null,
@@ -3124,7 +3124,7 @@
       ],
       "usage": {
         "cut_by": null,
-        "elapsed_seconds": 0.007,
+        "elapsed_seconds": 0.017,
         "estimated_cost_usd": null,
         "input_tokens": 0,
         "model_calls": 3,
@@ -3136,18 +3136,18 @@
       "variant": "C"
     },
     {
-      "answer": "Merchants on the `markup` plan can apply up to 3.0% over the reference rate when converting a refund [policy:cross-currency-refunds#merchant-fx-markup].",
+      "answer": "Merchants on the `markup` plan can apply up to 3.0% below the reference rate when converting a refund [policy:cross-currency-refunds#merchant-fx-markup].",
       "case": "EC-29",
       "expected_tools": [
         "search_policies"
       ],
       "kind": "natural",
       "latency": {
-        "end_to_end_ms": 7.0,
+        "end_to_end_ms": 20.0,
         "per_stage_ms": {
-          "agent": 6.0,
+          "agent": 18.0,
           "triage": 1.0,
-          "verify": 0.0
+          "verify": 1.0
         }
       },
       "missing_facts": null,
@@ -3170,7 +3170,7 @@
       ],
       "usage": {
         "cut_by": null,
-        "elapsed_seconds": 0.008,
+        "elapsed_seconds": 0.022,
         "estimated_cost_usd": null,
         "input_tokens": 0,
         "model_calls": 3,
@@ -3189,9 +3189,9 @@
       ],
       "kind": "natural",
       "latency": {
-        "end_to_end_ms": 8.0,
+        "end_to_end_ms": 13.0,
         "per_stage_ms": {
-          "agent": 7.0,
+          "agent": 12.0,
           "triage": 1.0,
           "verify": 0.0
         }
@@ -3216,7 +3216,7 @@
       ],
       "usage": {
         "cut_by": null,
-        "elapsed_seconds": 0.008,
+        "elapsed_seconds": 0.015,
         "estimated_cost_usd": null,
         "input_tokens": 0,
         "model_calls": 3,
@@ -3238,11 +3238,11 @@
       ],
       "kind": "scenario",
       "latency": {
-        "end_to_end_ms": 19.0,
+        "end_to_end_ms": 35.0,
         "per_stage_ms": {
-          "agent": 17.0,
+          "agent": 32.0,
           "triage": 1.0,
-          "verify": 1.0
+          "verify": 2.0
         }
       },
       "missing_facts": null,
@@ -3268,7 +3268,7 @@
       ],
       "usage": {
         "cut_by": null,
-        "elapsed_seconds": 0.02,
+        "elapsed_seconds": 0.036,
         "estimated_cost_usd": null,
         "input_tokens": 0,
         "model_calls": 6,

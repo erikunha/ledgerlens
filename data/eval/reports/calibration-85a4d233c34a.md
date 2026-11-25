@@ -1,6 +1,6 @@
 # The recomputation of the calibration over the sets of the role tuning
 
-The manifest of the datasets: `data/eval/datasets.json`, digest `a0cffc84f243a82ea54a5c227b12b2083331e29e11ecd52f6179d38ec2473d8c`.
+The manifest of the datasets: `data/eval/datasets.json`, digest `85a4d233c34a372367a1b1e02a102b1480c0644ce1c15d667affcfde3f4d4996`.
 The model: MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli.
 The cases of the sweep: 70 over the datasets of the role tuning.
 

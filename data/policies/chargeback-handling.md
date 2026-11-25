@@ -10,23 +10,23 @@ language: en
 
 ## Overview {#overview}
 
-A chargeback is a dispute the cardholder opens with the issuing bank to ask for a payment back. Acme Payments gets the notice from the card network, informs the merchant and prepares the defense. This policy defines the stages, the deadlines and the evidence required.
+A chargeback is a dispute the cardholder opens with the issuing bank to ask for a payment back. Acme Payments gets the notice of the dispute, informs the merchant and prepares the defense. This policy defines the stages, the deadlines and the evidence required.
 
 ## Dispute stages {#stages}
 
-A dispute goes through stages in order. In `opened`, the card network announced it was opened. In `evidence_requested`, Acme asked the merchant for evidence. In `evidence_submitted`, the evidence was sent to the card network. In `won` or `lost`, the card network decided for or against the merchant. A resolved dispute never goes back to an earlier stage.
+A dispute goes through stages in order. In `opened`, the dispute was announced to Acme. In `evidence_requested`, Acme asked the merchant for evidence. In `evidence_submitted`, the evidence was sent. In `won` or `lost`, the dispute was decided for or against the merchant. A resolved dispute never goes back to an earlier stage.
 
 ## Reason codes {#reason-codes}
 
-Each dispute has a reason code. `FRD` means fraud, when the cardholder says they did not make the purchase. `NRC` means product or service not received. `NAD` means a product different from the description or defective. `DUP` means a duplicate charge. `OTH` covers the other cases. The code decides which evidence is asked of the merchant.
+Each dispute has a reason code. `FRD` means fraud, when the cardholder says they did not make the purchase. `NRC` means product or service not received. `NAD` means a product different from the description or defective. `DUP` means a duplicate charge. `OTH` covers the other cases. These five codes are internal codes of Acme, and no card network uses them: the mapping to the codes of the networks is a fact of the world, written down in `docs/policies-of-acme.md` with its source (the Visa Core Rules and the Mastercard Chargeback Guide, read on 2026-11-25). The code decides which evidence is asked of the merchant.
 
 ## Response deadline {#response-deadline}
 
-Evidence must be sent at least one business day before the card network deadline. The card network deadline shows up in the dispute's deadline field, and the Acme Payments internal cutoff is one business day before it. A response sent after the card network deadline loses the dispute automatically, with no review of the merits. When the deadline falls on a Monday, the internal cutoff is the Friday before.
+Evidence must be sent at least one business day before the response deadline of the dispute. The response deadline is the deadline of Acme for the response of the merchant: it shows up in the dispute's deadline field, ten to fourteen days after the dispute is opened, and it is a house rule of Acme and not the deadline of the card network. The window of the card network itself is longer, thirty calendar days for the categories of Visa and the frames of Mastercard (source: the Visa Core Rules and the Mastercard Chargeback Guide, read on 2026-11-25), and it is written down in `docs/policies-of-acme.md`. The Acme Payments internal cutoff is one business day before the response deadline. A response sent after the response deadline loses the dispute automatically, with no review of the merits. When the deadline falls on a Monday, the internal cutoff is the Friday before.
 
 ## How to count business days {#business-days}
 
-Business days exclude Saturdays, Sundays and the bank holidays of the calendar of the merchant's settlement currency. To count the internal cutoff, go back one business day from the card network deadline. If today's date is already past the internal cutoff, the dispute is late for the normal submission and must be escalated.
+Business days exclude Saturdays, Sundays and the bank holidays of the calendar of the merchant's settlement currency. To count the internal cutoff, go back one business day from the response deadline. If today's date is already past the internal cutoff, the dispute is late for the normal submission and must be escalated.
 
 ## Evidence checklist {#evidence-checklist}
 
@@ -50,11 +50,11 @@ In a dispute for a duplicate charge, the defense shows that the two charges come
 
 ## Who submits the evidence {#who-submits}
 
-The merchant gathers the evidence and the Acme Payments disputes team checks it and sends it to the card network. The analyst handling the case does not send evidence on their own. They confirm that the dispute is at the right stage, that the internal cutoff has not passed and that the evidence list for the reason code is complete.
+The merchant gathers the evidence and the Acme Payments disputes team checks it and forwards it. The analyst handling the case does not send evidence on their own. They confirm that the dispute is at the right stage, that the internal cutoff has not passed and that the evidence list for the reason code is complete.
 
 ## Outcome {#outcomes}
 
-When the card network decides for the merchant, the dispute moves to `won` and the payment goes back to the captured status. When it decides against, the dispute moves to `lost`, the payment moves to `charged_back` and the amount is debited from the merchant. Acme Payments cannot change the outcome.
+When the dispute is decided for the merchant, the dispute moves to `won` and the payment goes back to the captured status. When it is decided against, the dispute moves to `lost`, the payment moves to `charged_back` and the amount is debited from the merchant. Acme Payments cannot change the outcome.
 
 ## Chargeback fee {#fee-reference}
 
@@ -66,4 +66,4 @@ A payment with an open dispute is not refunded, because the customer could get p
 
 ## When to escalate {#escalation}
 
-A dispute must be escalated to a human analyst when the card network deadline is 2 days away or less, when the internal cutoff has already passed, when the amount exceeds 5,000 or when required evidence is missing. The full criteria are in the escalation and review policy.
+A dispute must be escalated to a human analyst when the response deadline is 2 days away or less, when the internal cutoff has already passed, when the amount exceeds 5,000 or when required evidence is missing. The full criteria are in the escalation and review policy.

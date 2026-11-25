@@ -418,3 +418,39 @@ def test_property_the_gap_breakdown_adds_up(seed: int) -> None:
 
 def test_the_rounding_mode_is_half_even_in_the_decimal_context() -> None:
     assert Decimal("0.125").quantize(Decimal("0.01"), rounding=ROUND_HALF_EVEN) == Decimal("0.12")
+
+
+def test_an_applied_rate_a_hair_above_the_reference_is_a_rounding_effect_and_not_a_swapped_pair() -> None:
+    """The guard accepts an applied rate above the reference inside the rounding band of four decimals.
+
+    The applied rate is rounded to four decimals, so the rounding can put it half a place above the
+    reference, and that is a rounding effect and not a swapped pair (gap 4 of the audit).
+    """
+    from ledgerlens.tools.calculator import guard_inputs
+
+    guard_inputs(
+        "fx_markup_check",
+        {
+            "units": "100.00",
+            "charge_rate": "0.85898",
+            "refund_reference_rate": "0.85898",
+            "refund_applied_rate": "0.8590",
+        },
+    )
+
+
+def test_an_applied_rate_outside_the_rounding_band_is_still_a_swapped_pair() -> None:
+    """The refusal stays for a pair outside the band: the band is the rounding, and nothing more."""
+    from ledgerlens.tools.calculator import CalcError, guard_inputs
+
+    with pytest.raises(CalcError) as refusal:
+        guard_inputs(
+            "fx_markup_check",
+            {
+                "units": "100.00",
+                "charge_rate": "0.85898",
+                "refund_reference_rate": "0.85898",
+                "refund_applied_rate": "0.8591",
+            },
+        )
+    assert refusal.value.code == "SWAPPED_RATES"

@@ -405,11 +405,13 @@ def test_one_scenario_adds_only_its_rows():
 
 def test_every_settlement_obeys_the_arithmetic_and_the_fee_rule(db):
     rows = db.execute(
-        "SELECT id, merchant_id, period_start, period_end, currency, gross_minor, refunds_minor, fees_minor, net_minor FROM settlements"  # noqa: E501
+        "SELECT id, merchant_id, period_start, period_end, currency, gross_minor, refunds_minor, fees_minor, net_minor, carried_minor FROM settlements"  # noqa: E501
     ).fetchall()
     assert len(rows) > 20
-    for sid, merchant, start, end, currency, gross, refunds, fees, net in rows:
-        assert net == gross - refunds - fees, sid
+    for sid, merchant, start, end, currency, gross, refunds, fees, net, carried in rows:
+        # The net of a settlement is the gross minus the refunds minus the fees plus the balance carried
+        # from the previous negative settlement of the merchant (the rule of the negative net, gap 3).
+        assert net == gross - refunds - fees + carried, sid
         window = f"BETWEEN '{start}T00:00:00Z' AND '{end}T23:59:59Z'"
         captured = db.execute(
             f"SELECT coalesce(sum(amount_minor), 0) FROM transactions WHERE merchant_id = ? AND currency = ? AND captured_at {window}",  # noqa: E501

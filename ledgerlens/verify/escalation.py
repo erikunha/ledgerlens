@@ -44,8 +44,9 @@ Free text follows the same idea: the model's SQL may leave `reason` out, and an 
 would pass unseen. The records the conversation cites, and the ones the query returned, are read again in full from
 the ledger (read-only) and the suspicious text rule scans their fields too. A missing ledger adds nothing.
 
-Limits: the thresholds live in `thresholds.json`. The internal cutoff uses the calendar of the dispute record's
-currency (the policy speaks of the merchant's settlement currency, which the rows do not carry). A refund action
+Limits: the thresholds live in `thresholds.json`. The internal cutoff uses the calendar of the settlement
+currency of the merchant, which is the calendar the policy of the business days names, and it is read from
+the ledger, because the rows of the query do not carry it. A refund action
 decided here comes from rows and not from a claim, so the `action_support` coherence rule is not evaluated again
 after it.
 """
@@ -177,6 +178,22 @@ def _select(table: str, columns: str, ids: list[str], ledger_db: Path | str | No
 def _ledger_chargebacks(ids: list[str], ledger_db: Path | str | None) -> list[dict[str, Any]]:
     """The disputes `ids` read straight from the ledger. Missing or unreadable ledger: none."""
     return _select("chargebacks", ", ".join(_CHARGEBACK_COLUMNS), ids, ledger_db)
+
+
+def _settlement_currency(ledger_db: Path | str | None, transaction_id: str | None) -> str | None:
+    """The settlement currency of the merchant of the transaction, read from the ledger. Missing: None.
+
+    The internal cutoff counts the business days of the calendar of the settlement currency of the merchant,
+    because the merchant is the one who answers the dispute, and the policy of the business days names that
+    calendar. The rows of the query do not carry it, so it is read from the ledger, read-only.
+    """
+    if not transaction_id:
+        return None
+    transactions = _select("transactions", "merchant_id", [transaction_id], ledger_db)
+    if not transactions:
+        return None
+    merchants = _select("merchants", "settlement_currency", [str(transactions[0]["merchant_id"])], ledger_db)
+    return str(merchants[0]["settlement_currency"]) if merchants else None
 
 
 def _ledger_records(
@@ -450,7 +467,11 @@ def escalation_reasons(
             reasons.append(
                 f"{row['id']}: card network deadline in {days} day(s), limit {rule['value']} [{_policy_id(rule)}]"
             )
-        currency = row.get("currency") or currency_of_tx.get(row.get("transaction_id"), "")
+        currency = (
+            _settlement_currency(ledger_db, row.get("transaction_id"))
+            or row.get("currency")
+            or currency_of_tx.get(row.get("transaction_id"), "")
+        )
         cutoff = _previous_business_day(deadline, currency)
         if as_of > cutoff:
             reasons.append(

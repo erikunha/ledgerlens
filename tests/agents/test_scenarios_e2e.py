@@ -568,6 +568,58 @@ def test_s13_the_markup_above_the_limit_of_the_plan_goes_to_a_person(ctx: dict[s
     assert any(t["merchant"] in item and t["refund_date"] not in item for item in result.missing_information)
 
 
+# ---- S14: the fee of an exact half cent tie rounds the way the platform chose ------------------------
+
+
+S14_SQL = (
+    "SELECT id, merchant_id, period_start, gross_minor, refunds_minor, fees_minor, net_minor "
+    "FROM settlements WHERE merchant_id = 'M-25' AND period_start = '2026-09-28'"
+)
+
+
+def s14_script() -> list[Any]:
+    """The script of the scenario S14: the settlement of the week and the fee of the tie, computed."""
+    return [
+        tool_call_message("query_ledger", {"question": "settlement of M-25 of the week of 2026-09-28"}),
+        tool_call_message(
+            "calculate",
+            {"operation": "fee", "values": {"gross": "25.00", "percent": "2.9", "fixed_per_item": "0", "items": "0"}},
+        ),
+        text_message(
+            "The processing fee of the settlement of M-25 of the week of 2026-09-28 was 0.72 USD [calc:1]."
+        ),
+    ]
+
+
+def test_s14_the_fee_of_an_exact_half_cent_tie_rounds_the_way_the_platform_chose(ctx: dict[str, Any]) -> None:
+    """The scenario S14: the fee of the week is an exact half cent, and the platform rounds it half to even.
+
+    Why it matters: the policy says the mode of the rounding is the choice of the platform, and this case is the
+    one that proves the choice is exercised: 72.5 minor units become 72, and the net of the settlement adds up.
+    """
+    s = SCENARIOS["S14"]
+    t = s["truth"]
+    result = run("S14", s14_script(), [S14_SQL], **ctx)
+
+    assert tools_of(result) == s["expected_tools"]
+    (row,) = rows_of(result, "sql:1")
+    assert (row["gross_minor"], row["fees_minor"], row["net_minor"]) == (
+        t["gross_minor"],
+        t["fees_minor"],
+        t["net_minor"],
+    )
+    assert row["period_start"] == t["period_start"]
+    assert row["net_minor"] == row["gross_minor"] - row["refunds_minor"] - row["fees_minor"]
+    # The fee before the rounding is the exact half cent of the truth, and the calculator rounds it the way the
+    # platform chose: half to even, so 0.725 becomes 0.72 and the row of the ledger says the same.
+    fee = json.loads(next(e for e in result.evidence if e.id == "calc:1").content)
+    assert fee["result"] == "0.72"
+    assert t["fee_before_rounding"] == "72.5" and t["rounding_mode"] == "half_to_even"
+    all_supported(result)
+    assert result.requires_human_review is s["requires_human_review"]
+    assert result.recommended_action == s["expected_action"]
+
+
 # ---- turns with no tool and answers with no citation ----------------------------------------------
 
 
@@ -599,5 +651,5 @@ def test_the_integrator_prompt_tells_the_model_to_cite_evidence_ids_in_brackets(
 
 
 def test_every_scenario_of_the_file_is_covered_by_a_test_here() -> None:
-    covered = {f"S{n:02d}" for n in range(1, 14)}
+    covered = {f"S{n:02d}" for n in range(1, 15)}
     assert set(SCENARIOS) == covered

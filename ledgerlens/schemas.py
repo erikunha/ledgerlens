@@ -28,7 +28,7 @@ ToolName = Literal[
     "recall_cases",
     "extract_document",
 ]
-EvidenceSource = Literal["sql", "ledger_api", "policy", "fx", "calc", "case", "doc"]
+EvidenceSource = Literal["sql", "ledger_api", "policy", "fx", "calc", "case", "doc", "world"]
 ClaimKind = Literal["fact", "numeric", "policy", "inference"]
 VerdictLabel = Literal["supported", "contradicted", "not_enough_evidence"]
 VerdictMethod = Literal["nli", "numeric", "rule", "none"]
@@ -81,7 +81,7 @@ class Triage(Strict):
 
 
 class Evidence(Strict):
-    id: str = Field(pattern=r"^(sql|api|policy|fx|calc|case|doc):.+$")
+    id: str = Field(pattern=r"^(sql|api|policy|fx|calc|case|doc|world):.+$")
     source_type: EvidenceSource
     tool: ToolName
     content: str

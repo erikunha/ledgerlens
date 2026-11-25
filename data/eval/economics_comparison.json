@@ -24,7 +24,7 @@
       "stated_on": null
     }
   },
-  "cohort_digest": "5909f0fc62f8ef89d09b7a2da69b26d1c427182fb0c424a5ba934b72e855caaa",
+  "cohort_digest": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
   "cohorts": {
     "cascade": {
       "assumptions": {
@@ -438,11 +438,11 @@
               "known": true,
               "name": "model",
               "reason": "",
-              "usd": "0.0006756"
+              "usd": "0.0006788"
             }
           ],
           "resolved": false,
-          "total_usd": "0.0006756",
+          "total_usd": "0.0006788",
           "went_to_person": false
         },
         {
@@ -489,7 +489,7 @@
         }
       ],
       "cases_to_person": [],
-      "cohort_digest": "5909f0fc62f8ef89d09b7a2da69b26d1c427182fb0c424a5ba934b72e855caaa",
+      "cohort_digest": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
       "cohort_id": "cascade",
       "cost_per_resolved_reason": "the money of the cohort is unknown: EC-01: model: the price of openai:gpt-4.1 was never verified; EC-02: model: the price of openai:gpt-4.1 was never verified; EC-03: model: the price of openai:gpt-4.1 was never verified; EC-04: model: the price of openai:gpt-4.1 was never verified; EC-05: model: the price of openai:gpt-4.1 was never verified; EC-06: model: the price of openai:gpt-4.1 was never verified; EC-07: model: the price of openai:gpt-4.1 was never verified; EC-08: model: the price of openai:gpt-4.1 was never verified; EC-09: model: the price of openai:gpt-4.1 was never verified; EC-10: model: the price of openai:gpt-4.1 was never verified; EC-11: model: the price of openai:gpt-4.1 was never verified; EC-12: model: the price of openai:gpt-4.1 was never verified; EC-13: model: the price of openai:gpt-4.1 was never verified; EC-14: model: the price of openai:gpt-4.1 was never verified; EC-15: model: the price of openai:gpt-4.1 was never verified; EC-16: model: the price of openai:gpt-4.1 was never verified; EC-17: model: the price of openai:gpt-4.1 was never verified; EC-18: model: the price of openai:gpt-4.1 was never verified; EC-19: model: the price of openai:gpt-4.1 was never verified; EC-20: model: the price of openai:gpt-4.1 was never verified; EC-21: model: the price of openai:gpt-4.1 was never verified; EC-22: model: the price of openai:gpt-4.1 was never verified; EC-23: model: the price of openai:gpt-4.1 was never verified; EC-24: model: the price of openai:gpt-4.1 was never verified; EC-25: model: the price of openai:gpt-4.1 was never verified; EC-26: model: the price of openai:gpt-4.1 was never verified; EC-27: model: the price of openai:gpt-4.1 was never verified; EC-29: model: the price of openai:gpt-4.1 was never verified; EC-30: model: the price of openai:gpt-4.1 was never verified; EC-31: model: the price of openai:gpt-4.1 was never verified",
       "cost_per_resolved_usd": null,
@@ -562,11 +562,11 @@
               "known": true,
               "name": "model",
               "reason": "",
-              "usd": "0.0085796"
+              "usd": "0.0135716"
             }
           ],
-          "resolved": true,
-          "total_usd": "0.0085796",
+          "resolved": false,
+          "total_usd": "0.0135716",
           "went_to_person": false
         },
         {
@@ -576,11 +576,11 @@
               "known": true,
               "name": "model",
               "reason": "",
-              "usd": "0.0037468"
+              "usd": "0.0035180"
             }
           ],
           "resolved": true,
-          "total_usd": "0.0037468",
+          "total_usd": "0.0035180",
           "went_to_person": false
         },
         {
@@ -590,11 +590,11 @@
               "known": true,
               "name": "model",
               "reason": "",
-              "usd": "0.0042892"
+              "usd": "0.0044860"
             }
           ],
           "resolved": true,
-          "total_usd": "0.0042892",
+          "total_usd": "0.0044860",
           "went_to_person": false
         },
         {
@@ -604,11 +604,11 @@
               "known": true,
               "name": "model",
               "reason": "",
-              "usd": "0.0026052"
+              "usd": "0.0026084"
             }
           ],
           "resolved": false,
-          "total_usd": "0.0026052",
+          "total_usd": "0.0026084",
           "went_to_person": false
         },
         {
@@ -618,11 +618,11 @@
               "known": true,
               "name": "model",
               "reason": "",
-              "usd": "0.0029216"
+              "usd": "0.0029744"
             }
           ],
           "resolved": false,
-          "total_usd": "0.0029216",
+          "total_usd": "0.0029744",
           "went_to_person": false
         },
         {
@@ -632,11 +632,11 @@
               "known": true,
               "name": "model",
               "reason": "",
-              "usd": "0.0058200"
+              "usd": "0.0062836"
             }
           ],
-          "resolved": false,
-          "total_usd": "0.0058200",
+          "resolved": true,
+          "total_usd": "0.0062836",
           "went_to_person": false
         },
         {
@@ -646,11 +646,11 @@
               "known": true,
               "name": "model",
               "reason": "",
-              "usd": "0.0051416"
+              "usd": "0.0041668"
             }
           ],
           "resolved": false,
-          "total_usd": "0.0051416",
+          "total_usd": "0.0041668",
           "went_to_person": false
         },
         {
@@ -660,11 +660,11 @@
               "known": true,
               "name": "model",
               "reason": "",
-              "usd": "0.0030752"
+              "usd": "0.0031404"
             }
           ],
           "resolved": true,
-          "total_usd": "0.0030752",
+          "total_usd": "0.0031404",
           "went_to_person": false
         },
         {
@@ -674,11 +674,11 @@
               "known": true,
               "name": "model",
               "reason": "",
-              "usd": "0.0028188"
+              "usd": "0.0028220"
             }
           ],
           "resolved": true,
-          "total_usd": "0.0028188",
+          "total_usd": "0.0028220",
           "went_to_person": false
         },
         {
@@ -688,11 +688,11 @@
               "known": true,
               "name": "model",
               "reason": "",
-              "usd": "0.0041236"
+              "usd": "0.0034992"
             }
           ],
           "resolved": false,
-          "total_usd": "0.0041236",
+          "total_usd": "0.0034992",
           "went_to_person": false
         },
         {
@@ -702,11 +702,11 @@
               "known": true,
               "name": "model",
               "reason": "",
-              "usd": "0.0072164"
+              "usd": "0.0077852"
             }
           ],
           "resolved": true,
-          "total_usd": "0.0072164",
+          "total_usd": "0.0077852",
           "went_to_person": false
         },
         {
@@ -716,11 +716,11 @@
               "known": true,
               "name": "model",
               "reason": "",
-              "usd": "0.0024128"
+              "usd": "0.0024192"
             }
           ],
           "resolved": false,
-          "total_usd": "0.0024128",
+          "total_usd": "0.0024192",
           "went_to_person": false
         },
         {
@@ -730,11 +730,11 @@
               "known": true,
               "name": "model",
               "reason": "",
-              "usd": "0.0032232"
+              "usd": "0.002598"
             }
           ],
           "resolved": true,
-          "total_usd": "0.0032232",
+          "total_usd": "0.002598",
           "went_to_person": false
         },
         {
@@ -744,11 +744,11 @@
               "known": true,
               "name": "model",
               "reason": "",
-              "usd": "0.0032212"
+              "usd": "0.0025960"
             }
           ],
           "resolved": true,
-          "total_usd": "0.0032212",
+          "total_usd": "0.0025960",
           "went_to_person": false
         },
         {
@@ -758,11 +758,11 @@
               "known": true,
               "name": "model",
               "reason": "",
-              "usd": "0.0025940"
+              "usd": "0.0026020"
             }
           ],
           "resolved": true,
-          "total_usd": "0.0025940",
+          "total_usd": "0.0026020",
           "went_to_person": false
         },
         {
@@ -772,11 +772,11 @@
               "known": true,
               "name": "model",
               "reason": "",
-              "usd": "0.0025972"
+              "usd": "0.002598"
             }
           ],
           "resolved": true,
-          "total_usd": "0.0025972",
+          "total_usd": "0.002598",
           "went_to_person": false
         },
         {
@@ -786,11 +786,11 @@
               "known": true,
               "name": "model",
               "reason": "",
-              "usd": "0.0025900"
+              "usd": "0.0025932"
             }
           ],
           "resolved": true,
-          "total_usd": "0.0025900",
+          "total_usd": "0.0025932",
           "went_to_person": false
         },
         {
@@ -800,11 +800,11 @@
               "known": true,
               "name": "model",
               "reason": "",
-              "usd": "0.0025972"
+              "usd": "0.002598"
             }
           ],
           "resolved": true,
-          "total_usd": "0.0025972",
+          "total_usd": "0.002598",
           "went_to_person": false
         },
         {
@@ -814,11 +814,11 @@
               "known": true,
               "name": "model",
               "reason": "",
-              "usd": "0.0026972"
+              "usd": "0.0026944"
             }
           ],
           "resolved": true,
-          "total_usd": "0.0026972",
+          "total_usd": "0.0026944",
           "went_to_person": false
         },
         {
@@ -828,11 +828,11 @@
               "known": true,
               "name": "model",
               "reason": "",
-              "usd": "0.0027032"
+              "usd": "0.0027004"
             }
           ],
           "resolved": true,
-          "total_usd": "0.0027032",
+          "total_usd": "0.0027004",
           "went_to_person": false
         },
         {
@@ -842,11 +842,11 @@
               "known": true,
               "name": "model",
               "reason": "",
-              "usd": "0.0027020"
+              "usd": "0.0027068"
             }
           ],
           "resolved": true,
-          "total_usd": "0.0027020",
+          "total_usd": "0.0027068",
           "went_to_person": false
         },
         {
@@ -856,11 +856,11 @@
               "known": true,
               "name": "model",
               "reason": "",
-              "usd": "0.0026992"
+              "usd": "0.0027024"
             }
           ],
           "resolved": true,
-          "total_usd": "0.0026992",
+          "total_usd": "0.0027024",
           "went_to_person": false
         },
         {
@@ -870,11 +870,11 @@
               "known": true,
               "name": "model",
               "reason": "",
-              "usd": "0.0033668"
+              "usd": "0.0027004"
             }
           ],
           "resolved": true,
-          "total_usd": "0.0033668",
+          "total_usd": "0.0027004",
           "went_to_person": false
         },
         {
@@ -884,11 +884,11 @@
               "known": true,
               "name": "model",
               "reason": "",
-              "usd": "0.0026992"
+              "usd": "0.0027052"
             }
           ],
           "resolved": true,
-          "total_usd": "0.0026992",
+          "total_usd": "0.0027052",
           "went_to_person": false
         },
         {
@@ -898,11 +898,11 @@
               "known": true,
               "name": "model",
               "reason": "",
-              "usd": "0.0047960"
+              "usd": "0.0028140"
             }
           ],
           "resolved": true,
-          "total_usd": "0.0047960",
+          "total_usd": "0.0028140",
           "went_to_person": false
         },
         {
@@ -912,11 +912,11 @@
               "known": true,
               "name": "model",
               "reason": "",
-              "usd": "0.0027500"
+              "usd": "0.0029844"
             }
           ],
-          "resolved": true,
-          "total_usd": "0.0027500",
+          "resolved": false,
+          "total_usd": "0.0029844",
           "went_to_person": false
         },
         {
@@ -926,11 +926,11 @@
               "known": true,
               "name": "model",
               "reason": "",
-              "usd": "0.0027920"
+              "usd": "0.0028240"
             }
           ],
           "resolved": true,
-          "total_usd": "0.0027920",
+          "total_usd": "0.0028240",
           "went_to_person": false
         },
         {
@@ -940,11 +940,11 @@
               "known": true,
               "name": "model",
               "reason": "",
-              "usd": "0.0006772"
+              "usd": "0.0006788"
             }
           ],
           "resolved": false,
-          "total_usd": "0.0006772",
+          "total_usd": "0.0006788",
           "went_to_person": false
         },
         {
@@ -954,11 +954,11 @@
               "known": true,
               "name": "model",
               "reason": "",
-              "usd": "0.0029164"
+              "usd": "0.0029460"
             }
           ],
           "resolved": true,
-          "total_usd": "0.0029164",
+          "total_usd": "0.0029460",
           "went_to_person": false
         },
         {
@@ -968,11 +968,11 @@
               "known": true,
               "name": "model",
               "reason": "",
-              "usd": "0.0028616"
+              "usd": "0.0029788"
             }
           ],
           "resolved": false,
-          "total_usd": "0.0028616",
+          "total_usd": "0.0029788",
           "went_to_person": false
         },
         {
@@ -982,32 +982,32 @@
               "known": true,
               "name": "model",
               "reason": "",
-              "usd": "0.0084360"
+              "usd": "0.0084440"
             }
           ],
           "resolved": false,
-          "total_usd": "0.0084360",
+          "total_usd": "0.0084440",
           "went_to_person": false
         }
       ],
       "cases_to_person": [],
-      "cohort_digest": "5909f0fc62f8ef89d09b7a2da69b26d1c427182fb0c424a5ba934b72e855caaa",
+      "cohort_digest": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
       "cohort_id": "one_model",
       "cost_per_resolved_reason": null,
-      "cost_per_resolved_usd": "0.005075927272727272727272727273",
-      "resolved_cases": 22,
-      "total_usd": "0.1116704",
+      "cost_per_resolved_usd": "0.005368552380952380952380952381",
+      "resolved_cases": 21,
+      "total_usd": "0.1127396",
       "unknown_reasons": []
     }
   },
   "cost_per_resolved_usd": {
     "cascade": null,
-    "one_model": "0.005075927272727272727272727273"
+    "one_model": "0.005368552380952380952380952381"
   },
   "denominators": {
     "cascade": 21,
-    "one_model": 22
+    "one_model": 21
   },
   "difference_usd": null,
-  "sha256": "9dd860b2a0c4a659dba4cff17febf73926f5f1bb11b464eb853989309578c617"
+  "sha256": "1e7cd2b3b21fdcfffc548674deff4c6f80997f18f545294d10aaf2eee05aa670"
 }

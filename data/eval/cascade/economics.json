@@ -411,11 +411,11 @@
             "known": true,
             "name": "model",
             "reason": "",
-            "usd": "0.0006756"
+            "usd": "0.0006788"
           }
         ],
         "resolved": false,
-        "total_usd": "0.0006756",
+        "total_usd": "0.0006788",
         "went_to_person": false
       },
       {
@@ -462,7 +462,7 @@
       }
     ],
     "cases_to_person": [],
-    "cohort_digest": "5909f0fc62f8ef89d09b7a2da69b26d1c427182fb0c424a5ba934b72e855caaa",
+    "cohort_digest": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
     "cohort_id": "cascade",
     "cost_per_resolved_reason": "the money of the cohort is unknown: EC-01: model: the price of openai:gpt-4.1 was never verified; EC-02: model: the price of openai:gpt-4.1 was never verified; EC-03: model: the price of openai:gpt-4.1 was never verified; EC-04: model: the price of openai:gpt-4.1 was never verified; EC-05: model: the price of openai:gpt-4.1 was never verified; EC-06: model: the price of openai:gpt-4.1 was never verified; EC-07: model: the price of openai:gpt-4.1 was never verified; EC-08: model: the price of openai:gpt-4.1 was never verified; EC-09: model: the price of openai:gpt-4.1 was never verified; EC-10: model: the price of openai:gpt-4.1 was never verified; EC-11: model: the price of openai:gpt-4.1 was never verified; EC-12: model: the price of openai:gpt-4.1 was never verified; EC-13: model: the price of openai:gpt-4.1 was never verified; EC-14: model: the price of openai:gpt-4.1 was never verified; EC-15: model: the price of openai:gpt-4.1 was never verified; EC-16: model: the price of openai:gpt-4.1 was never verified; EC-17: model: the price of openai:gpt-4.1 was never verified; EC-18: model: the price of openai:gpt-4.1 was never verified; EC-19: model: the price of openai:gpt-4.1 was never verified; EC-20: model: the price of openai:gpt-4.1 was never verified; EC-21: model: the price of openai:gpt-4.1 was never verified; EC-22: model: the price of openai:gpt-4.1 was never verified; EC-23: model: the price of openai:gpt-4.1 was never verified; EC-24: model: the price of openai:gpt-4.1 was never verified; EC-25: model: the price of openai:gpt-4.1 was never verified; EC-26: model: the price of openai:gpt-4.1 was never verified; EC-27: model: the price of openai:gpt-4.1 was never verified; EC-29: model: the price of openai:gpt-4.1 was never verified; EC-30: model: the price of openai:gpt-4.1 was never verified; EC-31: model: the price of openai:gpt-4.1 was never verified",
     "cost_per_resolved_usd": null,
@@ -501,6 +501,6 @@
       "EC-31: model: the price of openai:gpt-4.1 was never verified"
     ]
   },
-  "cohort_digest": "5909f0fc62f8ef89d09b7a2da69b26d1c427182fb0c424a5ba934b72e855caaa",
-  "sha256": "f63bbd45a6c15eb7cce0aa35ca58a5056116c269d50e11458af55423f896573f"
+  "cohort_digest": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+  "sha256": "cacc215a50c9a96a0167c0e8bf43df38fa3e63e905fceae3ed4fd711baed1c55"
 }

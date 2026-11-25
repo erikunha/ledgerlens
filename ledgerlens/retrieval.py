@@ -55,6 +55,10 @@ POLICIES_DIR = PROJECT_ROOT / "data" / "policies"
 CHUNK_SIZE = 800
 CHUNK_OVERLAP = 100
 META_FILE = "index_meta.json"
+
+# The marker of the fiction: every chunk of the index and every result of the tool carries it, so an
+# excerpt says that the company is fictional even when it is read out of its file (gap 10 of the audit).
+FICTION_MARKER = "Acme Payments is a fictional company, created only for this project"
 INDEX_FILES = ("index.faiss", "index.pkl", META_FILE)
 METRIC = "l2 on unit vectors"
 BUILD_HINT = "run `uv run python scripts/build_index.py` to build it"
@@ -142,6 +146,7 @@ def load_policy_documents(policies_dir: Path | str = POLICIES_DIR) -> list[Docum
                         "version": meta["version"],
                         "language": meta["language"],
                         "order": order,
+                        "fiction": FICTION_MARKER,
                     },
                 )
             )
@@ -286,6 +291,7 @@ def search_policy_index(store: VectorStore, query: str, k: int = 4) -> list[dict
                 "language": meta["language"],
                 "text": hit.document.page_content,
                 "score": hit.distance,
+                "fiction": meta.get("fiction", FICTION_MARKER),
             }
         )
     return results

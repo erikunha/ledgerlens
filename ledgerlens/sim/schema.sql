@@ -103,9 +103,10 @@ CREATE TABLE settlements (
   refunds_minor INTEGER NOT NULL,
   fees_minor INTEGER NOT NULL,
   net_minor INTEGER NOT NULL,
+  carried_minor INTEGER NOT NULL DEFAULT 0,
   status TEXT NOT NULL CHECK (status IN ('scheduled','paid')),
   expected_payout_date TEXT NOT NULL,
   paid_at TEXT,
-  CHECK (net_minor = gross_minor - refunds_minor - fees_minor),
+  CHECK (net_minor = gross_minor - refunds_minor - fees_minor + carried_minor),
   UNIQUE (merchant_id, period_start)
 );

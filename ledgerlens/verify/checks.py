@@ -314,12 +314,24 @@ def _text_verdict(claim: Claim, by_id: Mapping[str, Evidence], nli: Nli, thresho
             note="No cited evidence is in the result.",
         )
     scores = nli.predict(premise, claim.text)
+    label = label_from_scores(scores, thresholds)
+    note = None
+    cited = [by_id[i] for i in claim.evidence_ids if i in by_id]
+    kinds = {e.source_type for e in cited}
+    if label == "contradicted" and "world" in kinds and "policy" in kinds:
+        # A claim that cites a rule of the world and a policy that disagree is a named conflict, and not a
+        # plain contradiction: the policy may be wrong, and the analyst is told so (gap 11 of the audit).
+        note = (
+            "the cited rule of the world and the cited policy disagree: the policy may be wrong, "
+            "and the conflict is named instead of resolved by picking a side"
+        )
     return Verdict(
         claim_id=claim.id,
-        label=label_from_scores(scores, thresholds),
+        label=label,
         method="nli",
         scores=NliScores(**scores),
         evidence_ids=[i for i in claim.evidence_ids if i in by_id],
+        note=note,
     )
 
 

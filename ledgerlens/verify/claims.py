@@ -51,7 +51,7 @@ from typing import Any, NamedTuple
 
 from ledgerlens.schemas import Claim, Evidence, InvestigationResult, NumericClaim
 
-EVIDENCE_ID = re.compile(r"^(?:sql|api|policy|fx|calc|case):\S+$")
+EVIDENCE_ID = re.compile(r"^(?:sql|api|policy|fx|calc|case|world):\S+$")
 _BRACKET = re.compile(r"\[([^\[\]]*)\]")
 # Entity ids (TX-2048, CB-0310) and dates (ISO, "11/08/2026", "October 14, 2026") are never money values.
 _MONTH = (

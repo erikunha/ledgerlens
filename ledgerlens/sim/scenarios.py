@@ -729,6 +729,73 @@ class ScenarioDef:
     requires_human_review: bool = False
 
 
+# The facts of the scenario S14: the settlement whose processing fee is an exact half cent tie. The payment
+# of 25.00 in the week of 2026-09-28 of the merchant M-25 gives a gross volume of 2500 minor units, and the
+# fee of 2.9 percent of it is 72.5 cents, a tie that the even digit settles to 72. The merchant of the
+# scenario is M-25, a merchant the scenario plants and the natural stream of no source trades, so the tie
+# holds in every source and the exclusion of the tuning material of the held out set does not move.
+S14_UNITS_MINOR = 2500
+S14_CAPTURE_DATE = date(2026, 9, 30)
+S14_PERIOD_START = "2026-09-28"
+
+
+def build_s14(ctx: ScenarioContext) -> list[Event]:
+    """The settlement whose processing fee is an exact half cent tie.
+
+    Why the scenario exists: the rounding policy of the platform says the fee is rounded half to even, and a
+    rule that is never exercised is a rule nobody checked. The week of 2026-08-24 of the merchant M-04 is
+    quiet, so the payment of 25.00 is the whole gross volume of the settlement, and the fee of 2.9 percent
+    of 2500 minor units is 72.5 cents, an exact tie.
+    """
+    o = "scenario:S14"
+    return [
+        Event(
+            "merchant.onboarded",
+            "merchant",
+            "M-25",
+            ts("2026-09-25 09:00:00"),
+            {
+                "name": "Tie Breaker Ltd",
+                "country": "US",
+                "category": "saas",
+                "settlement_currency": "USD",
+                "fx_plan": "standard",
+                "refund_window_days": 30,
+            },
+            o,
+        ),
+        _customer(o, "C-1500", "Renata Braga Tielemans", "US", "USD", "2026-09-25 10:00:00"),
+        *_payment(
+            o,
+            "TX-9001",
+            "M-25",
+            "C-1500",
+            S14_UNITS_MINOR,
+            "USD",
+            "2026-09-30 11:00:00",
+            "2026-09-30 11:00:04",
+        ),
+    ]
+
+
+def describe_s14(conn: sqlite3.Connection, ctx: ScenarioContext) -> dict[str, Any]:
+    """The truth of the scenario S14, read from the database the scenario built."""
+    gross, fees, net = _one(
+        conn,
+        "SELECT gross_minor, fees_minor, net_minor FROM settlements "
+        f"WHERE merchant_id = 'M-25' AND period_start = '{S14_PERIOD_START}'",
+    )
+    return {
+        "merchant": "M-25",
+        "period_start": S14_PERIOD_START,
+        "gross_minor": gross,
+        "fees_minor": fees,
+        "net_minor": net,
+        "fee_before_rounding": "72.5",
+        "rounding_mode": "half_to_even",
+    }
+
+
 SCENARIOS: dict[str, ScenarioDef] = {
     d.id: d
     for d in (
@@ -924,6 +991,21 @@ SCENARIOS: dict[str, ScenarioDef] = {
             ("query_ledger", "search_policies", "get_reference_fx", "calculate"),
             "escalate_to_human",
             True,
+        ),
+        ScenarioDef(
+            "S14",
+            "rounding_tie",
+            build_s14,
+            describe_s14,
+            {
+                "transaction_ids": ["TX-9001"],
+                "merchant_ids": ["M-25"],
+                "customer_ids": ["C-1500"],
+            },
+            ("What was the processing fee of the settlement of M-25 of the week of 2026-09-28?",),
+            "fee_question",
+            ("query_ledger", "calculate"),
+            "explain_to_customer",
         ),
     )
 }

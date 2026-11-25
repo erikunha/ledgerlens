@@ -18,7 +18,7 @@ Escalate the case to a human analyst when there are claims contradicted by the e
 
 ## Contradicted claims {#contradicted-claims}
 
-A claim is contradicted when the evidence says the opposite of what the answer claims, for example a status different from the record. Any contradicted claim sends the case to human review, and the answer must be corrected or withdrawn before it reaches the customer. The system does not resolve contradictions by picking a side.
+A claim is contradicted when the evidence says the opposite of what the answer claims, for example a status different from the record. Any contradicted claim sends the case to human review, and the answer must be corrected or withdrawn before it reaches the customer. The system does not resolve contradictions by picking a side. A contradiction with a policy may mean that the policy is wrong: the analyst is told so, and the case carries the conflict, instead of the system repeating the policy as a fact.
 
 ## Missing data {#missing-data}
 
@@ -26,7 +26,7 @@ Data is missing when a required record, rate or policy was not found. The system
 
 ## Deadline close {#deadline-within-2-days}
 
-A dispute with the card network deadline 2 days away or less has critical urgency. If the internal cutoff, which is one business day before the card network deadline, has already passed, the case needs a human decision on the same day. The system reports the days left, the internal cutoff and the evidence still missing.
+A dispute with the response deadline 2 days away or less has critical urgency. If the internal cutoff, which is one business day before the response deadline, has already passed, the case needs a human decision on the same day. The system reports the days left, the internal cutoff and the evidence still missing.
 
 ## High amounts {#high-amount}
 

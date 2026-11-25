@@ -106,3 +106,4 @@ by hand: run `uv run python scripts/build_docs_index.py` and commit the result.
 | 096 | [ADR-096: The deterministic verdict is the gate of the training data](ADR-096-the-deterministic-verdict-is-the-gate-of-the-training-data.md) | accepted | 2026-11-24 |
 | 097 | [ADR-097: The proof of work carries the provenance and the digest discipline of the catalogs](ADR-097-the-proof-of-work-carries-the-provenance-and-the-digest-discipline-of-the-catalogs.md) | accepted | 2026-11-24 |
 | 098 | [ADR-098: The latency and the cost of a turn](ADR-098-the-latency-and-the-cost-of-a-turn.md) | accepted | 2026-11-24 |
+| 099 | [ADR-099: The truth of the policies and the money is the contract of Acme, and the rules of the world carry their source](ADR-099-the-truth-of-the-policies-and-the-money-is-the-contract-of-acme-and-the-rules-of-the-world-carry-their-source.md) | accepted | 2026-11-25 |

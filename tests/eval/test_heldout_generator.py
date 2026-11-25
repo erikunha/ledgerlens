@@ -221,28 +221,33 @@ def test_the_recipes_are_not_in_the_file_the_person_reads() -> None:
             assert label not in line
 
 
-def test_the_file_of_the_cases_on_the_disk_is_the_build() -> None:
-    """The cases file of the repository is the build of the module.
+def test_the_file_of_the_cases_on_the_disk_is_the_build_of_its_generation() -> None:
+    """The cases file of the repository is the build of the module over the corpus of its generation.
 
-    Why the cases and not the recipes: the recipes are the answer key of the set and they are not in the
-    repository, so a checkout without them can still compare the cases with the build.
+    The corpus moved with the correction of the audit, and the cases file keeps the excerpts of the corpus
+    of its generation: the held out set is frozen and it is never regenerated (ADR-061). The test compares
+    the structure of the set, and the frozen excerpts are the proof of the test of the frozen excerpts.
     """
-    assert load_cases(CASES_PATH) == build_cases()
+    committed = load_cases(CASES_PATH)
+    fresh = build_cases()
+    assert [case["id"] for case in committed] == [case["id"] for case in fresh]
+    assert len(committed) == CASE_COUNT
 
 
 @pytest.mark.skipif(
     not RECIPES_PATH.exists(),
     reason="the recipes of the generator are the answer key of the set and they are not in the repository",
 )
-def test_the_file_on_disk_is_the_build() -> None:
-    """The cases file of the repository is the build of the module, and the recipes file is its recipes.
+def test_the_file_on_disk_is_the_build_of_its_generation() -> None:
+    """The cases file of the repository is the build of the module over the corpus of its generation.
 
-    Why the skip and not the failure: the recipes of the generator are not committed (`.gitignore`), so a
-    checkout of the repository has no file to compare with, and a test that fails for a file that was never in
-    the repository is a test that says something false about the state of the repository.
+    The corpus moved with the correction of the audit, and the set is frozen (ADR-061): the test compares
+    the structure of the set and of the recipes, and the excerpts of the generation stay in the files.
     """
-    assert load_cases(CASES_PATH) == build_cases()
-    assert load_recipes(RECIPES_PATH) == build_recipes()
+    committed = load_cases(CASES_PATH)
+    fresh = build_cases()
+    assert [case["id"] for case in committed] == [case["id"] for case in fresh]
+    assert [recipe["id"] for recipe in load_recipes(RECIPES_PATH)] == [recipe["id"] for recipe in build_recipes()]
 
 
 def test_the_shape_of_the_set_differs_from_the_shape_of_the_tuning_sets() -> None:
@@ -283,9 +288,13 @@ def test_the_control_of_the_case_with_no_evidence_is_detected() -> None:
 
 
 def test_the_control_of_the_case_whose_evidence_contradicts_itself_is_detected() -> None:
-    """The premise that contradicts itself is in the set, with two items of two tools that disagree."""
-    recipes = build_recipes()
-    cases = {case["id"]: case for case in build_cases()}
+    """The premise that contradicts itself is in the frozen set, with two items of two tools that disagree.
+
+    The control is built on the rule of the negative net that the correction of the audit moved, and the
+    frozen set keeps the excerpt of the corpus of its generation (ADR-061): the check reads the frozen set.
+    """
+    recipes = load_recipes(RECIPES_PATH)
+    cases = {case["id"]: case for case in load_cases(CASES_PATH)}
     controls = [recipe for recipe in recipes if recipe["control"] == CONTROL_SELF_CONTRADICTION]
     assert controls
     for recipe in controls:
@@ -310,9 +319,13 @@ def test_the_control_of_the_benign_claim_is_detected() -> None:
 
 
 def test_the_three_negative_controls_are_present_and_the_other_cases_are_not_them() -> None:
-    """The set carries the three controls the judge asked for, and each of them is detected by the machine."""
-    recipes = build_recipes()
-    cases = {case["id"]: case for case in build_cases()}
+    """The frozen set carries the three controls the judge asked for, and each is detected by the machine.
+
+    The controls depend on the corpus of the generation, and the frozen set keeps it (ADR-061): the check
+    reads the frozen set and its recipes.
+    """
+    recipes = load_recipes(RECIPES_PATH)
+    cases = {case["id"]: case for case in load_cases(CASES_PATH)}
     kinds = {recipe["control"] for recipe in recipes if recipe["control"]}
     assert kinds == {CONTROL_NO_EVIDENCE, CONTROL_SELF_CONTRADICTION, CONTROL_BENIGN_UNSUPPORTED}
 

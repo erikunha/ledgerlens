@@ -30,7 +30,7 @@ Settlements cover periods from Monday to Sunday, and the payout is paid 2 busine
 
 ## Calendars per currency {#payout-calendars}
 
-The holiday calendar depends on the settlement currency. For the euro, the European Central Bank's TARGET calendar applies. For the Brazilian real, the calendar of the Brazilian exchange B3 applies. For the US dollar, the calendar of United States federal holidays applies. For the other currencies only weekends are skipped. The calendar used is recorded together with the expected date.
+The holiday calendar depends on the settlement currency. For the euro, the European Central Bank's TARGET calendar applies. For the Brazilian real, the calendar of the Brazilian exchange B3 applies. For the US dollar, the calendar of United States federal holidays applies (source: the European Central Bank, B3 and the United States federal holidays, read on 2026-11-25). For the other currencies only weekends are skipped. The calendar used is recorded together with the expected date.
 
 ## Holiday example {#holiday-example}
 
@@ -46,7 +46,7 @@ A settlement is `scheduled` when it has been computed and the expected date has 
 
 ## Negative balance {#negative-net}
 
-When a period's net amount is negative, no payout is made and the negative balance is deducted from the merchant's next settlement. The analyst must explain to the merchant that the balance comes from refunds or chargeback fees above the period's volume, showing the values of each component.
+When a period's net amount is negative, no payout is made and the negative balance is carried into the next settlement of the merchant: the net of the next settlement is the gross minus the refunds minus the fees minus the balance that was carried. The analyst must explain to the merchant that the balance comes from refunds or chargeback fees above the period's volume, showing the values of each component.
 
 ## Late payout {#late-payout}
 

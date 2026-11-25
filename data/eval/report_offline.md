@@ -18,10 +18,10 @@ The latency of the cases of eval_cases over the full agent, by the nearest_rank 
 
 | stage | p50 (ms) | p95 (ms) |
 |---|---|---|
-| end to end | 9.0 | 19.0 |
-| triage | 1.0 | 1.0 |
-| agent | 7.0 | 17.0 |
-| verify | 1.0 | 1.0 |
+| end to end | 16.0 | 36.0 |
+| triage | 1.0 | 2.0 |
+| agent | 14.0 | 33.0 |
+| verify | 1.0 | 3.0 |
 
 ## Cost of a turn
 

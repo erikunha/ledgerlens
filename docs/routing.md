@@ -170,9 +170,9 @@ The economics of the cohort of the comparison above are published in `data/eval/
 
 | The measure | The arm `one_model` | The arm `cascade` |
 | --- | --- | --- |
-| the total of the cohort | 0.1116704 dollars | unknown |
-| the cases the code resolved | 22 of 31 | 21 of 31 |
-| the cost of a resolved case | 0.005076 dollars | unknown |
+| the total of the cohort | 0.1127396 dollars | unknown |
+| the cases the code resolved | 21 of 31 | 21 of 31 |
+| the cost of a resolved case | 0.005369 dollars | unknown |
 | the cases that went to a person | 0 | 0 |
 
 The money of the arm of the cascade is unknown because the price of `gpt-4.1` was never verified in this repository,
@@ -198,21 +198,21 @@ which is the behaviour the product had before the router, and once with the casc
 the set they were measured over.
 
 The cohort is 31 cases, the file is `data/eval/eval_cases.jsonl`, its digest is
-`5909f0fc62f8ef89d09b7a2da69b26d1c427182fb0c424a5ba934b72e855caaa` and the ledger of the two arms is the versioned
-sample of the repository, `b1f1e6aedcd72fc20cabc1be83bbf4c00c3d0ef5b7fca1690dafc04d4552f678`. The measurement ran on
-2026-11-24 with a real model, and the full report is `data/eval/routing_comparison.json` with the same numbers as
+`28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351` and the ledger of the two arms is the versioned
+sample of the repository, `994667ee48fb14a1f59858b2861716e291e9bd235c0817bf9c34904a9e10e91a`. The measurement ran on
+2026-11-25 with a real model, and the full report is `data/eval/routing_comparison.json` with the same numbers as
 prose in `data/eval/routing_comparison.md`.
 
 One run per case and one arm per model: the numbers are a trend and not a statistical significance.
 
 | The measure | The arm `one_model` | The arm `cascade` |
 | --- | --- | --- |
-| the accuracy over 31 cases | 0.8134 | 0.7331 |
-| the cases that carried every expected fact | 22 of 31 | 21 of 31 |
-| the tokens per correct case | 11528 | 10461 |
-| the money per correct case | 0.005076 dollars | unknown |
-| the p95 of the latency | 10612 ms | 6412 ms |
-| the calls | 145 | 131 |
+| the accuracy over 31 cases | 0.7638 | 0.76 |
+| the cases that carried every expected fact | 21 of 31 | 21 of 31 |
+| the tokens per correct case | 12243 | 10161 |
+| the money per correct case | 0.005369 dollars | unknown |
+| the p95 of the latency | 10520 ms | 7168 ms |
+| the calls | 143 | 128 |
 | the fallbacks | 0 | 0 |
 | the models | `gpt-4.1-mini` in the four slots | `gpt-4.1` in `agent` and `sql`, `gpt-4.1-mini` in `triage` and `policy` |
 
@@ -220,35 +220,37 @@ The accuracy by intent, with the number of cases behind every share:
 
 | Intent | The cases | `one_model` | `cascade` |
 | --- | --- | --- | --- |
-| `chargeback_status` | 1 | 1.0 | 0.3333 |
+| `chargeback_status` | 1 | 1.0 | 0.6667 |
 | `duplicate_charge` | 1 | 1.0 | 1.0 |
 | `fx_question` | 2 | 0.75 | 0.75 |
 | `other` | 2 | 0.0 | 0.5 |
-| `policy_question` | 4 | 0.75 | 0.5 |
-| `refund_discrepancy` | 5 | 0.7429 | 0.4786 |
+| `policy_question` | 4 | 0.5 | 0.5 |
+| `refund_discrepancy` | 5 | 0.6357 | 0.5786 |
 | `settlement_question` | 1 | 1.0 | 1.0 |
 | `status_lookup` | 15 | 0.9333 | 0.9 |
 
 What the numbers say and what they do not say:
 
-1. **Over this run the arm of one model was the more accurate one**, 22 of the 31 cases against 21, and the page says
-   it because the page publishes the measurement and not the hope of it. The routing does not win here.
-2. **The comparison ran twice and the two runs disagreed.** The first run of the same comparison, over the same
-   cohort and the same ledger, gave the cascade the higher accuracy: 21 of the 31 cases against 18 of the one
-   model. The second run gave the one model 22 and the cascade 21. Two runs of the same comparison that disagree
-   about which arm is more accurate are the proof that one run per case is a trend and not a significance, and
-   the difference of the accuracy of the two arms is not established by this comparison.
-3. **The tokens and the latency are on the side of the cascade, in both runs.** The cascade used 10461 tokens per
-   correct case against 11528, and its p95 of the latency was 6412 ms against 10612 ms, and it made 14 calls less
-   over the same cohort. The tokens were counted, so they can be put side by side.
+1. **Over this run neither arm was the more accurate one.** Both arms carried every expected fact in 21 of the 31
+   cases, and the page says it because the page publishes the measurement and not the hope of it. The routing does
+   not win here.
+2. **The comparison ran three times and the runs disagreed.** The first run of the same comparison, over the cohort
+   and the ledger of that time, gave the cascade the higher accuracy: 21 of the 31 cases against 18 of the one
+   model. The second run gave the one model 22 and the cascade 21. This run, over the corrected cohort, gave both
+   arms 21. Runs of the same comparison that disagree about which arm is more accurate are the proof that one run
+   per case is a trend and not a significance, and the difference of the accuracy of the two arms is not
+   established by this comparison.
+3. **The tokens and the latency are on the side of the cascade, in this run and in the one before.** The cascade
+   used 10161 tokens per correct case against 12243, and its p95 of the latency was 7168 ms against 10520 ms, and
+   it made 15 calls less over the same cohort. The tokens were counted, so they can be put side by side.
 4. **The cascade cannot be called cheaper, because its money is unknown.** The price of `gpt-4.1` was never verified
-   in this repository, so the money of the 91 calls of that model is unknown, and unknown is never zero. The
-   `one_model` arm paid a price that is known, 0.005076 dollars per correct case, and the comparison cannot put the
+   in this repository, so the money of the 90 calls of that model is unknown, and unknown is never zero. The
+   `one_model` arm paid a price that is known, 0.005369 dollars per correct case, and the comparison cannot put the
    two arms side by side in dollars.
 5. **The intents with one or two cases do not decide anything.** `chargeback_status` is a single case that the two
    arms answered differently, and the one case says that the answer was not the same, and not which arm is better.
-   The `refund_discrepancy`, with five cases, is the intent with the largest difference, and five cases over one
-   run is not a measure.
+   The `refund_discrepancy`, with five cases, is the intent with the largest difference among the intents with four
+   or five cases, and five cases over one run is not a measure.
 6. **The rate of fallback is zero in both arms, and the number was not measured.** The repository does not have a
    fallback with a budget in this path, so the zero says that the question was not asked, and not that the routes
    never need one.

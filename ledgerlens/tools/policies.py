@@ -87,7 +87,7 @@ QUERY_DESCRIPTION = (
 )
 
 # Result fields, as the contract lists them (the index also keeps `language`, which does not come out here).
-_RESULT_FIELDS = ("chunk_id", "document", "section", "topic", "version", "text", "score")
+_RESULT_FIELDS = ("chunk_id", "document", "section", "topic", "version", "text", "score", "fiction")
 
 
 class SearchPoliciesInput(BaseModel):

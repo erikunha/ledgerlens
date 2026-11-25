@@ -464,6 +464,10 @@ def _scenario_cases(scenarios: dict[str, Any], sentences: dict[str, str]) -> lis
     }
     cases = []
     for scenario in scenarios["scenarios"]:
+        if scenario["id"] not in plans:
+            # A scenario without a plan is a data plant of the simulator (the rounding tie of S14), and not
+            # a case of the evaluation: the evaluation set is the fixed set of the thirteen scenarios.
+            continue
         plan = plans[scenario["id"]]
         expected = scenario["expected_tools"]
         if [s.tool for s in plan["steps"]] != expected:

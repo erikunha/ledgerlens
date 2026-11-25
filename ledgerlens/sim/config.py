@@ -20,7 +20,7 @@ BR_REASSIGN_SHARE = 0.12
 FAILED_PAYMENT_SHARE = 0.03
 LATE_REFUND_REQUEST_SHARE = 0.03
 SOURCES = ("auto", "public", "sample", "synthetic")
-SCENARIO_IDS = tuple(f"S{n:02d}" for n in range(1, 14))
+SCENARIO_IDS = tuple(f"S{n:02d}" for n in range(1, 15))
 
 
 def substream(seed: int, component: str) -> random.Random:
@@ -84,6 +84,7 @@ RESERVED_IDS: dict[str, tuple[str, ...]] = {
         "C-0888",
         "C-0900",
         "C-0951",
+        "C-1500",
     ),
     "transactions": (
         "TX-2030",
@@ -101,6 +102,7 @@ RESERVED_IDS: dict[str, tuple[str, ...]] = {
         "TX-2095",
         "TX-2096",
         "TX-2099",
+        "TX-9001",
     ),
     "refunds": ("R-0720", "R-0731", "R-0740", "R-0750", "R-0751"),
     "chargebacks": ("CB-0310", "CB-0311", "CB-0312"),

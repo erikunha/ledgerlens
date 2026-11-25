@@ -12,8 +12,8 @@ beat.
 
 | What | Value |
 | --- | --- |
-| The commit the baseline was frozen at | `77a9a2c9ba9665619290dc3875e81169f3256cac` |
-| The message of that commit | `feat(economics): the queue of the review is simulated and never guessed` |
+| The commit the baseline was frozen at | `b407c10e83db65a551b4beeb104493d8e948a8d5` |
+| The message of that commit | `feat(runtime): the turn ceiling, the vector protocol and the numbers` |
 | The branch | `feature/v3` |
 
 The commit is the one that the code of the shipped path had when this page was written. The test
@@ -76,10 +76,10 @@ Both arms of the comparison read the same snapshot, and the snapshot is named he
 | What | Value |
 | --- | --- |
 | The set of the comparison | the 31 cases of `data/eval/eval_cases.jsonl` |
-| The digest of the set | `5909f0fc62f8ef89d09b7a2da69b26d1c427182fb0c424a5ba934b72e855caaa` |
+| The digest of the set | `28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351` |
 | The ledger of the set | the canonical sample ledger, `data/ledger.db` |
-| The digest of the ledger | `a1a8c35f8564d516429deea2117eadae6fe3e731ad6e524b2f8d8b61b90fe7f4` |
-| The scenarios of the ledger | `S01` to `S13` |
+| The digest of the ledger | `aa342e39735acc7a0deb9e7795f41200566e776d3029edb13188a7fe6d1b9b92` |
+| The scenarios of the ledger | `S01` to `S14` |
 | The snapshot of a branch | the published snapshot of the scenario, named by `base_snapshot_id` |
 
 The name of the snapshot of the comparison is the digest of the set and the digest of the ledger, and the test checks

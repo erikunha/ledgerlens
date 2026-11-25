@@ -254,6 +254,12 @@ MONEY_FIELDS: dict[str, tuple[str, ...]] = {
 # A money value with no decimal point and this many digits or more looks like `amount_minor` (10000 = 100.00).
 MINOR_UNITS_DIGITS = 4
 
+# The rounding band of the applied rate: the applied rate is rounded to four decimals, so the rounding can
+# put it half a place above the reference, and that is a rounding effect and not a swapped pair. The band is
+# one whole place of the fourth decimal, and a pair outside it is still refused as swapped (gap 4 of the
+# audit of the truth of the policies and the money).
+RATE_ROUNDING_BAND = Decimal("0.00005")
+
 
 def guard_inputs(operation: str, values: dict[str, str]) -> None:
     """Refuses the incoherent input a real model sent. Raises `CalcError`; does no math.
@@ -280,7 +286,7 @@ def guard_inputs(operation: str, values: dict[str, str]) -> None:
         reference, applied = values["refund_reference_rate"], values["refund_applied_rate"]
         numbers = [value for value in (reference, applied) if len(value) <= MAX_NUMBER_CHARS and _NUMBER.match(value)]
         # a zero reference is division by zero, a compute error; here the comparison runs only with a real reference
-        if len(numbers) == 2 and Decimal(reference) > 0 and Decimal(applied) > Decimal(reference):
+        if len(numbers) == 2 and Decimal(reference) > 0 and Decimal(applied) > Decimal(reference) + RATE_ROUNDING_BAND:
             message = (
                 f"refund_applied_rate ({applied}) is above refund_reference_rate ({reference}), so the two look "
                 "swapped. refund_reference_rate is the market reference rate on the refund date (get_reference_fx); "
