@@ -173,6 +173,7 @@ const scenarioIndexEntrySchema = z.object({
     .optional(),
   capture_kind: z.enum(CAPTURE_KINDS).optional(),
   bundle_path: z.string().optional(),
+  bundle_digest: z.string().optional(),
   ledger_sha256: z.string().optional(),
   model_profiles: z.record(z.string(), z.string()).optional(),
 });

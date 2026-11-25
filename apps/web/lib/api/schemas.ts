@@ -307,6 +307,13 @@ export interface ScenarioIndexEntry {
   /** The path of the bundle of the scenario, relative to the artifact root. */
   bundle_path?: string;
   /**
+   * The digest of the bundle of the scenario, when the export declares it.
+   *
+   * Why the field is optional: the digest is the name of the capture, and a card of a scenario
+   * whose bundle was never sealed carries none.
+   */
+  bundle_digest?: string;
+  /**
    * The digest of the file of the ledger of the scenario, when the export published one.
    *
    * Why the field is optional: a scenario whose recording read no ledger publishes no file of the

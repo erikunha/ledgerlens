@@ -75,6 +75,13 @@ function ReplayCatalog() {
           provider, it needs no key and no network, and it runs the same way for every visitor.
         </p>
         <p className="text-sm text-text-subtle">
+          New here?{" "}
+          <Link className={buttonClasses("ghost", "sm")} href="/replay/scenario/S01">
+            Start the guided path
+          </Link>{" "}
+          and walk one case from the first event to the decision.
+        </p>
+        <p className="text-sm text-text-subtle">
           The live mode runs on the backend of the demo, with a key of your own:{" "}
           <Link className={buttonClasses("ghost", "sm")} href="/live">
             Open the live mode

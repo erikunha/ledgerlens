@@ -227,3 +227,37 @@ test("the section of the execution of S01 carries the stepper of the run", async
   await expect(stepper).toBeVisible();
   await expect(stepper.getByRole("listitem")).toHaveCount(4);
 });
+
+/**
+ * The guided path of the cold start, walked with the keyboard.
+ *
+ * Why the case exists: the guided path is the entrance of a visitor who knows nothing about the
+ * repository, and an entrance that only a pointer reaches is an entrance that is closed to part of
+ * the visitors. The case walks every control of the tour with the keyboard alone, and it checks
+ * that the region the step announced is in the page and carries content, because a region that
+ * carries nothing is a region that does not carry the step.
+ */
+test("the controls of the guided path are reached with the keyboard and the region of the step carries the step", async ({
+  page,
+}) => {
+  await page.goto("/replay/scenario/S01");
+  await expect(page.getByRole("heading", { name: "The guided path" })).toBeVisible();
+
+  const controls = page.getByRole("button", { name: /^Show: / });
+  const count = await controls.count();
+  expect(count, "the guide drew no step").toBeGreaterThan(0);
+
+  for (let index = 0; index < count; index += 1) {
+    const control = controls.nth(index);
+    await control.focus();
+    await expect(control).toBeFocused();
+    await page.keyboard.press("Enter");
+
+    // The region the step announced is in the page and carries content: the anchor of a region of
+    // the page received the focus, or the panel of the section of the step is the one that is open.
+    const announced = page
+      .locator("[id^='ledgerlens-region-']:focus, [id^='ledgerlens-section-']:visible")
+      .last();
+    await expect(announced).not.toBeEmpty();
+  }
+});

@@ -120,6 +120,29 @@ const MANIFEST_FILE = "manifest.json";
  */
 const LEDGER_FILE = "ledger.json";
 
+/**
+ * The command that rebuilds the published artifacts of the site.
+ *
+ * Why the refusal names the command: a missing artifact is a file the export did not write or did
+ * not publish, and the reader who meets the refusal is the one who can rebuild it. A refusal that
+ * named no command would leave the reader with an empty trace and no way out.
+ */
+const REBUILD_COMMAND = "scripts/export_replay_site.py";
+
+/**
+ * The reason of an artifact that could not be read.
+ *
+ * Why the reason names the file and the command: the file is what the reader looked for, and the
+ * command is what rebuilds it. The two together are the difference between a refusal a reader can
+ * act on and an empty trace without a reason.
+ */
+function unreadableArtifact(what: string, scenarioId: string, file: string, cause: string): string {
+  return (
+    `the ${what} of the scenario ${scenarioId} could not be read: ${cause}. ` +
+    `The file it looked for is ${file}, and the command that rebuilds it is ${REBUILD_COMMAND}.`
+  );
+}
+
 /** Takes the fetch of the caller, or the fetch of the runtime. */
 function resolveFetch(fetchImpl?: typeof fetch): typeof fetch {
   return fetchImpl ?? ((input: RequestInfo | URL, init?: RequestInit) => globalThis.fetch(input, init));
@@ -310,12 +333,19 @@ export async function loadReplay(
     const response = await doFetch(manifestUrl);
     if (!response.ok) {
       return {
-        error: `the manifest of the scenario ${index.id} could not be read: the site answered ${response.status}`,
+        error: unreadableArtifact(
+          "manifest",
+          index.id,
+          manifestUrl,
+          `the site answered ${response.status}`,
+        ),
       };
     }
     manifestText = await response.text();
   } catch {
-    return { error: `the manifest of the scenario ${index.id} could not be read: the site did not answer` };
+    return {
+      error: unreadableArtifact("manifest", index.id, manifestUrl, "the site did not answer"),
+    };
   }
 
   let rawManifest: unknown;
@@ -348,12 +378,19 @@ export async function loadReplay(
     const response = await doFetch(eventsUrl);
     if (!response.ok) {
       return {
-        error: `the events of the scenario ${index.id} could not be read: the site answered ${response.status}`,
+        error: unreadableArtifact(
+          "events",
+          index.id,
+          eventsUrl,
+          `the site answered ${response.status}`,
+        ),
       };
     }
     eventsText = await response.text();
   } catch {
-    return { error: `the events of the scenario ${index.id} could not be read: the site did not answer` };
+    return {
+      error: unreadableArtifact("events", index.id, eventsUrl, "the site did not answer"),
+    };
   }
 
   const events: TraceEvent[] = [];

@@ -30,6 +30,7 @@ import aiDisclosure from "../../../../../../../ledgerlens/prompts/ai_disclosure.
 import { buttonClasses } from "@/components/ui/Button";
 import { ReplayProvider } from "@/features/replay/ReplayProvider";
 import { ReplayViewer } from "@/features/replay/ReplayViewer";
+import { guideFor } from "@/lib/replay/guide";
 import { readRepositoryMeta } from "@/lib/repository";
 import { readPublishedCatalog } from "@/lib/replay/catalog";
 
@@ -135,7 +136,7 @@ export default async function ReplayScenarioPage({ params }: ReplayScenarioPageP
           {card.id} - {card.question}
         </h2>
         <ReplayProvider scenario={card}>
-          <ReplayViewer scenario={card} commit={meta.commit} />
+          <ReplayViewer scenario={card} commit={meta.commit} guide={guideFor(card.id)} />
         </ReplayProvider>
       </section>
     </div>

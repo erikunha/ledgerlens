@@ -270,3 +270,37 @@ test.describe("the wide screen of 1440 pixels", () => {
     }
   });
 });
+
+/**
+ * The guided path of the cold start on the narrow screen.
+ *
+ * Why the case exists: the guided path is the entrance of the site, and the entrance has to work
+ * on a phone. The controls of the path are never smaller than 44 pixels, so a finger reaches them,
+ * and the path never overflows the viewport, so the visitor never drags the page sideways to read
+ * a step.
+ */
+test("the controls of the guided path are at least 44 pixels and the path never overflows the phone", async ({
+  page,
+}) => {
+  await page.goto("/replay/scenario/S01");
+  await expect(page.getByRole("heading", { name: "The guided path" })).toBeVisible();
+
+  const controls = page.getByRole("button", { name: /^Show: / });
+  const count = await controls.count();
+  expect(count, "the guide drew no step").toBeGreaterThan(0);
+  for (let index = 0; index < count; index += 1) {
+    const box = await controls.nth(index).boundingBox();
+    expect(box?.height ?? 0, `the control of the step ${index + 1} is smaller than 44 pixels`).toBeGreaterThanOrEqual(
+      44,
+    );
+  }
+
+  const fork = page.getByRole("link", { name: /mutate this case/i });
+  const forkBox = await fork.boundingBox();
+  expect(forkBox?.height ?? 0, "the fork of the guided path is smaller than 44 pixels").toBeGreaterThanOrEqual(44);
+
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow, "the guided path overflows the viewport of the phone").toBeLessThanOrEqual(0);
+});

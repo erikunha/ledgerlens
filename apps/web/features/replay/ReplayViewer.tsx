@@ -51,6 +51,7 @@ import { ClaimList } from "@/features/evidence/ClaimList";
 import { EngineeringDrawer } from "@/features/architecture/EngineeringDrawer";
 import { LedgerPanel } from "@/features/ledger/LedgerPanel";
 import { useReplay, type ReplayPhase, type ReplayState } from "@/features/replay/ReplayProvider";
+import { GuidedTour, regionAnchorId } from "@/features/replay/GuidedTour";
 import { ReplayControls } from "@/features/replay/ReplayControls";
 import { ReplayEmptyState } from "@/features/replay/ReplayEmptyState";
 import { ReplayErrorState } from "@/features/replay/ReplayErrorState";
@@ -62,6 +63,7 @@ import type { BundleIntegrity } from "@/lib/api/replay";
 import { formatOriginalDuration } from "@/lib/format/duration";
 import { formatMoney, formatPercentage } from "@/lib/format/money";
 import { formatRunStatus, formatToolStatus } from "@/lib/format/status";
+import type { GuideRegion, ReplayGuide } from "@/lib/replay/guide";
 import { summarizeProvenance } from "@/lib/replay/provenance";
 import { reduceEvents, reduceToIndex, type ToolCallState } from "@/lib/replay/reducer";
 import {
@@ -104,6 +106,15 @@ export interface ReplayViewerProps {
   readonly scenario: ScenarioIndexEntry;
   /** The commit of the checkout that the links of the engineering drawer open. */
   readonly commit: string;
+  /**
+   * The guide of the cold start of the scenario, when the scenario has one.
+   *
+   * Why the guide comes from the route: the route knows the scenario and reads the guide of the
+   * data of the cold start, and the reader draws the tour over the regions it owns. A reader that
+   * looked for the guide by itself would be a reader that knows the catalog, and the reader only
+   * knows the recording it was given.
+   */
+  readonly guide?: ReplayGuide | null;
 }
 
 /**
@@ -217,7 +228,7 @@ function buildAnnouncement(
  * investigation, the timeline, the evidence of the answer, the claims of the answer and the
  * provenance of the recording.
  */
-export function ReplayViewer({ scenario, commit }: ReplayViewerProps): ReactElement {
+export function ReplayViewer({ scenario, commit, guide = null }: ReplayViewerProps): ReactElement {
   const { state, dispatch } = useReplay();
 
   // The ledger of the recording, and the reason of its absence when the site published no ledger.
@@ -319,6 +330,32 @@ export function ReplayViewer({ scenario, commit }: ReplayViewerProps): ReactElem
       applyPreferences(tab, next);
     },
     [applyPreferences, tab],
+  );
+
+  /**
+   * Shows a region of the reader, when the guided tour asks for it.
+   *
+   * Why the reader answers and the tour never touches the layout: the regions of the tabs are the
+   * tabs of the reader, and the reader is the one that opens them; the other regions are places of
+   * the page of the reader, and the reader is the one that moves the focus to them. The tour names
+   * the region, and the reader decides how the region is shown.
+   */
+  const showRegion = useCallback(
+    (region: GuideRegion) => {
+      if (isReplayTab(region)) {
+        selectSection(region);
+        return;
+      }
+      const anchor = document.getElementById(regionAnchorId(region));
+      if (anchor === null) {
+        return;
+      }
+      if (typeof anchor.scrollIntoView === "function") {
+        anchor.scrollIntoView({ block: "nearest" });
+      }
+      anchor.focus();
+    },
+    [selectSection],
   );
 
   const total = state.events.length;
@@ -679,35 +716,41 @@ export function ReplayViewer({ scenario, commit }: ReplayViewerProps): ReactElem
 
   return (
     <section aria-label="The recorded run" className="flex flex-col gap-4">
-      <RunOverview scenario={scenario} manifest={state.manifest} />
+      <div id="ledgerlens-region-overview" tabIndex={-1}>
+        <RunOverview scenario={scenario} manifest={state.manifest} />
+      </div>
 
-      <ReplayControls
-        phase={state.phase}
-        position={state.position}
-        total={total}
-        speed={speed}
-        onPlay={() => dispatch({ type: "play" })}
-        onPause={() => dispatch({ type: "pause" })}
-        onStep={(delta) => dispatch({ type: "step", delta })}
-        onSeek={onSeek}
-        onReset={() => dispatch({ type: "reset" })}
-        onSpeedChange={onSpeedChange}
-      />
+      <div id="ledgerlens-region-controls" tabIndex={-1}>
+        <ReplayControls
+          phase={state.phase}
+          position={state.position}
+          total={total}
+          speed={speed}
+          onPlay={() => dispatch({ type: "play" })}
+          onPause={() => dispatch({ type: "pause" })}
+          onStep={(delta) => dispatch({ type: "step", delta })}
+          onSeek={onSeek}
+          onReset={() => dispatch({ type: "reset" })}
+          onSpeedChange={onSpeedChange}
+        />
+      </div>
 
       <div className="flex flex-col gap-2">
-        <label className="text-sm font-medium" htmlFor="ledgerlens-replay-position">
-          Position of the recording
-        </label>
-        <input
-          id="ledgerlens-replay-position"
-          className="w-full max-w-md"
-          type="range"
-          min={0}
-          max={lastPosition}
-          step={1}
-          value={state.position}
-          onChange={(event) => onSeek(Number(event.target.value))}
-        />
+        <div id="ledgerlens-region-position" tabIndex={-1} className="flex flex-col gap-2">
+          <label className="text-sm font-medium" htmlFor="ledgerlens-replay-position">
+            Position of the recording
+          </label>
+          <input
+            id="ledgerlens-replay-position"
+            className="w-full max-w-md"
+            type="range"
+            min={0}
+            max={lastPosition}
+            step={1}
+            value={state.position}
+            onChange={(event) => onSeek(Number(event.target.value))}
+          />
+        </div>
 
         {/*
           The counter of the events stays visible text, OUTSIDE the region: a region that carried
@@ -721,7 +764,9 @@ export function ReplayViewer({ scenario, commit }: ReplayViewerProps): ReactElem
           carries the step alone, so the announcement of the recording is a short summary and
           never the whole state of the run (FR-032, FR-033).
         */}
-        <LiveRegion ref={statusRegionRef}>{announcement}</LiveRegion>
+        <div id="ledgerlens-region-announcement" tabIndex={-1}>
+          <LiveRegion ref={statusRegionRef}>{announcement}</LiveRegion>
+        </div>
 
         {/*
           The status of the run stays out of the live region: it changes with the run, and it is
@@ -729,6 +774,8 @@ export function ReplayViewer({ scenario, commit }: ReplayViewerProps): ReactElem
         */}
         <p className="text-sm text-text-muted">The status of the run is: {status.label}.</p>
       </div>
+
+      {guide !== null ? <GuidedTour guide={guide} onShowRegion={showRegion} /> : null}
 
       <Tabs label="The sections of the replay" items={items} value={tab} onValueChange={onTabChange} />
 
