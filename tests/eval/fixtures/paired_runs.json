@@ -1,0 +1,13 @@
+{
+  "cohort_sha256": "c0ffee00000000000000000000000000000000000000000000000000000000000000",
+  "runs": [
+    {"case_id": "EC-01", "variant": "single_agent", "cohort_sha256": "c0ffee00000000000000000000000000000000000000000000000000000000000000", "ran": true, "score": 1.0, "failure": null, "expected_facts": ["14.08"], "evidence_cited": ["sql:1", "calc:1"], "intent": "refund_discrepancy", "complexity": "high"},
+    {"case_id": "EC-01", "variant": "studio", "cohort_sha256": "c0ffee00000000000000000000000000000000000000000000000000000000000000", "ran": true, "score": 0.5, "failure": null, "expected_facts": ["14.08"], "evidence_cited": ["sql:1"], "intent": "refund_discrepancy", "complexity": "high"},
+    {"case_id": "EC-02", "variant": "single_agent", "cohort_sha256": "c0ffee00000000000000000000000000000000000000000000000000000000000000", "ran": true, "score": 1.0, "failure": null, "expected_facts": ["TX-2051"], "evidence_cited": ["sql:1"], "intent": "duplicate_charge", "complexity": "low"},
+    {"case_id": "EC-02", "variant": "studio", "cohort_sha256": "c0ffee00000000000000000000000000000000000000000000000000000000000000", "ran": false, "score": null, "failure": "the run of the case did not answer", "expected_facts": ["TX-2051"], "evidence_cited": [], "intent": "duplicate_charge", "complexity": "low"},
+    {"case_id": "EC-03", "variant": "single_agent", "cohort_sha256": "c0ffee00000000000000000000000000000000000000000000000000000000000000", "ran": true, "score": 0.0, "failure": null, "expected_facts": ["CB-0310"], "evidence_cited": ["sql:1"], "intent": "chargeback_status", "complexity": "low"},
+    {"case_id": "EC-03", "variant": "studio", "cohort_sha256": "c0ffee00000000000000000000000000000000000000000000000000000000000000", "ran": true, "score": 1.0, "failure": null, "expected_facts": ["CB-0310"], "evidence_cited": ["sql:1"], "intent": "chargeback_status", "complexity": "low"},
+    {"case_id": "EC-04", "variant": "single_agent", "cohort_sha256": "c0ffee00000000000000000000000000000000000000000000000000000000000000", "ran": true, "score": null, "failure": "the model of the run stopped with an error", "expected_facts": ["M-03"], "evidence_cited": [], "intent": "status_lookup", "complexity": "low"},
+    {"case_id": "EC-04", "variant": "studio", "cohort_sha256": "c0ffee00000000000000000000000000000000000000000000000000000000000000", "ran": true, "score": 1.0, "failure": null, "expected_facts": ["M-03"], "evidence_cited": ["sql:1"], "intent": "status_lookup", "complexity": "low"}
+  ]
+}

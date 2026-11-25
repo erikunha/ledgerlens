@@ -1,0 +1,229 @@
+{
+  "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+  "differences": [
+    {
+      "case_id": "EC-01",
+      "difference": 0.0,
+      "first": 0.25,
+      "second": 0.25
+    },
+    {
+      "case_id": "EC-02",
+      "difference": 0.0,
+      "first": 1.0,
+      "second": 1.0
+    },
+    {
+      "case_id": "EC-03",
+      "difference": -0.33333333333333337,
+      "first": 0.6666666666666666,
+      "second": 1.0
+    },
+    {
+      "case_id": "EC-04",
+      "difference": -0.5,
+      "first": 0.0,
+      "second": 0.5
+    },
+    {
+      "case_id": "EC-05",
+      "difference": 0.5,
+      "first": 1.0,
+      "second": 0.5
+    },
+    {
+      "case_id": "EC-06",
+      "difference": -0.5,
+      "first": 0.5,
+      "second": 1.0
+    },
+    {
+      "case_id": "EC-07",
+      "difference": 0.5,
+      "first": 1.0,
+      "second": 0.5
+    },
+    {
+      "case_id": "EC-08",
+      "difference": 0.0,
+      "first": 1.0,
+      "second": 1.0
+    },
+    {
+      "case_id": "EC-09",
+      "difference": -0.5,
+      "first": 0.5,
+      "second": 1.0
+    },
+    {
+      "case_id": "EC-10",
+      "difference": -0.5,
+      "first": 0.0,
+      "second": 0.5
+    },
+    {
+      "case_id": "EC-11",
+      "difference": 0.0,
+      "first": 0.0,
+      "second": 0.0
+    },
+    {
+      "case_id": "EC-12",
+      "difference": 0.0,
+      "first": 1.0,
+      "second": 1.0
+    },
+    {
+      "case_id": "EC-13",
+      "difference": 0.0,
+      "first": 1.0,
+      "second": 1.0
+    },
+    {
+      "case_id": "EC-14",
+      "difference": 0.0,
+      "first": 1.0,
+      "second": 1.0
+    },
+    {
+      "case_id": "EC-15",
+      "difference": 0.0,
+      "first": 1.0,
+      "second": 1.0
+    },
+    {
+      "case_id": "EC-16",
+      "difference": 0.0,
+      "first": 1.0,
+      "second": 1.0
+    },
+    {
+      "case_id": "EC-17",
+      "difference": 0.0,
+      "first": 1.0,
+      "second": 1.0
+    },
+    {
+      "case_id": "EC-18",
+      "difference": 0.0,
+      "first": 1.0,
+      "second": 1.0
+    },
+    {
+      "case_id": "EC-19",
+      "difference": 0.0,
+      "first": 1.0,
+      "second": 1.0
+    },
+    {
+      "case_id": "EC-20",
+      "difference": 0.0,
+      "first": 1.0,
+      "second": 1.0
+    },
+    {
+      "case_id": "EC-21",
+      "difference": 0.0,
+      "first": 1.0,
+      "second": 1.0
+    },
+    {
+      "case_id": "EC-22",
+      "difference": 0.0,
+      "first": 1.0,
+      "second": 1.0
+    },
+    {
+      "case_id": "EC-23",
+      "difference": 0.0,
+      "first": 1.0,
+      "second": 1.0
+    },
+    {
+      "case_id": "EC-24",
+      "difference": 0.0,
+      "first": 1.0,
+      "second": 1.0
+    },
+    {
+      "case_id": "EC-25",
+      "difference": 0.0,
+      "first": 1.0,
+      "second": 1.0
+    },
+    {
+      "case_id": "EC-26",
+      "difference": 0.0,
+      "first": 1.0,
+      "second": 1.0
+    },
+    {
+      "case_id": "EC-27",
+      "difference": 0.0,
+      "first": 1.0,
+      "second": 1.0
+    },
+    {
+      "case_id": "EC-28",
+      "difference": 0.0,
+      "first": 0.0,
+      "second": 0.0
+    },
+    {
+      "case_id": "EC-29",
+      "difference": 0.0,
+      "first": 1.0,
+      "second": 1.0
+    },
+    {
+      "case_id": "EC-30",
+      "difference": 1.0,
+      "first": 1.0,
+      "second": 0.0
+    },
+    {
+      "case_id": "EC-31",
+      "difference": 0.0,
+      "first": 0.14285714285714285,
+      "second": 0.14285714285714285
+    }
+  ],
+  "excluded": [],
+  "experiment_id": "cf6ab097fe4ac420946391c66c2bb3b3b91b105d9cfe67edab29da36564ddb3f",
+  "goal": 0.8,
+  "goal_met": false,
+  "interval": {
+    "high": 0.09303097468559336,
+    "low": -0.11453635102967939,
+    "method": "the paired difference, with the standard error of the differences and the normal approximation of 95 percent"
+  },
+  "mean_difference": -0.010752688172043012,
+  "means": {
+    "orchestration_studio": 0.7761136712749617,
+    "single_agent": 0.7868663594470046
+  },
+  "minimum_stratum": 5,
+  "paired_cases": 31,
+  "reproduce": "uv run python scripts/run_paired_experiment.py --manifest <manifest> --runs <runs>",
+  "sha256": "6043aa3f321be7056f3592298307b26d6e137d4949541a261da8293beaa03646",
+  "strata": [
+    {
+      "count": 31,
+      "dimension": "intent",
+      "marked": null,
+      "mean": -0.010752688172043012,
+      "name": "unknown"
+    },
+    {
+      "count": 31,
+      "dimension": "complexity",
+      "marked": null,
+      "mean": -0.010752688172043012,
+      "name": "unknown"
+    }
+  ],
+  "variants": [
+    "orchestration_studio",
+    "single_agent"
+  ]
+}
