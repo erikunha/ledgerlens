@@ -126,7 +126,7 @@ def main() -> int:
             json.dumps({"cohort_sha256": cohort, "runs": runs}, ensure_ascii=False) + "\n", encoding="utf-8"
         )
         try:
-            out_dir = publish(manifest_path, runs_path, "tuning")
+            out_dir = publish(manifest_path, runs_path, "tuning", goal_variant="orchestration_studio")
         except Exception as exc:  # noqa: BLE001 - the refusal of the publication is the answer of the command
             print(f"publish_orchestration_experiment: {exc}", file=sys.stderr)
             return 1

@@ -103,3 +103,21 @@ def test_the_fixture_holds_the_three_shapes_of_run() -> None:
     assert any(all(run.ran and run.score is not None for run in case_runs) for case_runs in by_case.values())
     assert any(sum(1 for run in case_runs if run.ran) == 1 for case_runs in by_case.values())
     assert any(run.ran and run.score is None and run.failure for run in runs)
+
+
+def test_the_check_of_the_goal_names_the_variant_it_checked() -> None:
+    """A check of the goal that does not say which variant it checked is a check a reader cannot read."""
+    comparison = compare(_runs(), goal=0.80, method=METHOD)
+
+    assert comparison.goal_variant in comparison.variants
+    assert comparison.goal_met == (comparison.means[comparison.goal_variant] >= comparison.goal)
+
+    named = compare(_runs(), goal=0.80, method=METHOD, goal_variant="studio")
+    assert named.goal_variant == "studio"
+    assert named.goal_met == (named.means["studio"] >= 0.80)
+
+
+def test_the_goal_checked_against_a_variant_that_is_not_there_is_refused() -> None:
+    """A goal checked against a variant the runs do not name is a goal that checks nothing."""
+    with pytest.raises(ComparisonError):
+        compare(_runs(), goal=0.80, method=METHOD, goal_variant="no_such_variant")

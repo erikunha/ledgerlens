@@ -106,6 +106,7 @@ class PairedComparison:
     mean_difference: float
     interval: Interval
     goal: float
+    goal_variant: str
     goal_met: bool
     strata: tuple[Stratum, ...]
     minimum_stratum: int
@@ -148,6 +149,7 @@ def compare(
     *,
     goal: float,
     method: str,
+    goal_variant: str | None = None,
     minimum_stratum: int = 5,
 ) -> PairedComparison:
     """Compares two variants over a cohort, case by case.
@@ -155,6 +157,10 @@ def compare(
     The runs of the two variants must name the same cohort, or the comparison is refused. A case is paired when
     both variants ran it and both runs carry a score; every other case is excluded with the reason. The mean of a
     variant is over the paired cases only, so a missing run never lowers it.
+
+    The goal is checked against the mean of the `goal_variant`, and the result names that variant, because a
+    check of the goal that does not say which variant it checked is a check a reader cannot read. The
+    `goal_variant` is the first variant when the caller names none.
     """
     cohorts = {run.cohort_sha256 for run in runs}
     if len(cohorts) != 1:
@@ -225,6 +231,10 @@ def compare(
 
     strata = _stratify(grouped, differences, case_strata, minimum_stratum)
 
+    checked = goal_variant if goal_variant is not None else first_name
+    if checked not in means:
+        raise ComparisonError(f"the goal is checked against the variant {checked}, and the runs name no such variant")
+
     return PairedComparison(
         cohort_sha256=cohort,
         variants=(first_name, second_name),
@@ -235,7 +245,8 @@ def compare(
         mean_difference=mean_difference,
         interval=interval,
         goal=goal,
-        goal_met=means[first_name] >= goal,
+        goal_variant=checked,
+        goal_met=means[checked] >= goal,
         strata=strata,
         minimum_stratum=minimum_stratum,
     )

@@ -61,6 +61,7 @@ def build_result(manifest, comparison) -> dict:
         "mean_difference": comparison.mean_difference,
         "interval": comparison.interval.__dict__,
         "goal": comparison.goal,
+        "goal_variant": comparison.goal_variant,
         "goal_met": comparison.goal_met,
         "minimum_stratum": comparison.minimum_stratum,
         "strata": [stratum.__dict__ for stratum in comparison.strata],
@@ -74,7 +75,7 @@ def build_result(manifest, comparison) -> dict:
     return result
 
 
-def publish(manifest_path: Path, runs_path: Path, role: str) -> Path:
+def publish(manifest_path: Path, runs_path: Path, role: str, *, goal_variant: str | None = None) -> Path:
     """Publishes the experiment of a manifest and of the runs of the measurement, and returns the folder.
 
     Why the function is apart from the command line: the publisher of an experiment that was measured by
@@ -83,7 +84,7 @@ def publish(manifest_path: Path, runs_path: Path, role: str) -> Path:
     """
     manifest = read_manifest(manifest_path)
     runs = read_runs(runs_path)
-    comparison = compare(runs, goal=manifest.goal, method=manifest.method)
+    comparison = compare(runs, goal=manifest.goal, method=manifest.method, goal_variant=goal_variant)
     gallery = build_gallery(comparison, runs, cohort_role=role)
 
     experiment_id = manifest_identifier(manifest)
