@@ -15,7 +15,6 @@ from pathlib import Path
 import pytest
 
 from ledgerlens import embeddings as emb
-from ledgerlens.api.live_run import LiveRunCoordinator  # noqa: F401  (the coordinator of the case)
 from ledgerlens.byok.vault import CredentialVault
 from ledgerlens.embeddings import FastEmbedEmbeddings
 from ledgerlens.retrieval import build_policy_index, index_dir_for, load_policy_documents
