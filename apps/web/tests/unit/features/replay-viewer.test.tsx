@@ -25,6 +25,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ReplayProvider } from "@/features/replay/ReplayProvider";
 import { ReplayViewer } from "@/features/replay/ReplayViewer";
 import { loadReplay, type LoadedReplay } from "@/lib/api/replay";
+import { citedRows, citationsOf, resolveCitation } from "@/lib/replay/citations";
+import { guideFor } from "@/lib/replay/guide";
+import { reduceEvents } from "@/lib/replay/reducer";
+import { collectEvidence, findFinalAnswer } from "@/lib/replay/selectors";
 import type { LedgerArtifact, ReplayBundleManifest, ScenarioIndexEntry, TraceEvent } from "@/lib/api/schemas";
 
 /**
@@ -351,7 +355,7 @@ describe("the reader of the recorded run", () => {
 
     const recordedRun = await findLoadedRun();
     expect(within(recordedRun).getByText("The recording has no call of a tool yet.")).toBeInTheDocument();
-    expect(within(recordedRun).getByText(/Event \d+ of 57\./)).toBeInTheDocument();
+    expect(within(recordedRun).getByText(new RegExp(`Event \\d+ of ${EVENTS.length}\\.`))).toBeInTheDocument();
     expect(within(recordedRun).getByText(/The status of the run is:/)).toBeInTheDocument();
   });
 
@@ -365,7 +369,7 @@ describe("the reader of the recorded run", () => {
     fireEvent.change(slider, { target: { value: last ?? String(EVENTS.length - 1) } });
 
     await waitFor(() => {
-      expect(screen.getByText(/Event 57 of 57\./)).toBeInTheDocument();
+      expect(screen.getByText(new RegExp(`Event ${EVENTS.length} of ${EVENTS.length}\\.`))).toBeInTheDocument();
     });
     expect(screen.getByText(/The status of the run is:/)).toBeInTheDocument();
   });
@@ -620,7 +624,7 @@ describe("the reader of the recorded run", () => {
       return { ok: true, status: 200, text: async () => body } as unknown as Response;
     }) as unknown as typeof fetch;
 
-    const loaded = await loadReplay(SCENARIO, impl);
+    const loaded = await loadReplay(SCENARIO, { fetch: impl });
 
     expect("error" in loaded).toBe(true);
     if ("error" in loaded) {
@@ -743,5 +747,123 @@ describe("the reader of the recorded run", () => {
 
     const drawer = await screen.findByRole("dialog");
     expect(drawer).toHaveTextContent("This drawer is not tied to one call of the recording.");
+  });
+});
+
+describe("the citations of the answer", () => {
+  it("resolves a citation to the record it names, and never to a nearest match", () => {
+    const reduced = reduceEvents(EVENTS);
+    const evidence = collectEvidence(reduced.state.toolCalls);
+
+    // The citation of the recording resolves to the piece of evidence it names.
+    const resolution = resolveCitation("sql:1", evidence);
+    expect(resolution.refusal).toBeNull();
+    expect(resolution.evidence?.evidenceId).toBe("sql:1");
+    expect(resolution.evidence?.tool).toBe("query_ledger");
+
+    // A citation whose source is absent is a stated refusal, and it never resolves to the piece
+    // that happens to be near.
+    const absent = resolveCitation("sql:99", evidence);
+    expect(absent.evidence).toBeNull();
+    expect(absent.refusal).toContain("sql:99");
+  });
+
+  it("reads the money of a cited row as the exact decimal text of the row", () => {
+    const rows = citedRows("sql:1", LEDGER);
+    expect(rows.length).toBeGreaterThan(0);
+    const rate = rows[0]?.applied_rate;
+    // The money of the row is the decimal text of the ledger, and never a float: a float is a
+    // rounded number, and the rounded number of a row is not the number the run read.
+    expect(typeof rate).toBe("string");
+    expect(rate).toBe("5.6679");
+  });
+
+  it("reads the citations of the answer in the order the answer wrote them", () => {
+    const answer = findFinalAnswer(reduceEvents(EVENTS).state.spans);
+    expect(answer).not.toBeNull();
+    const citations = citationsOf(answer?.answer ?? "");
+    expect(citations).toContain("sql:1");
+    expect(citations).toContain("calc:1");
+    expect(citations).toContain("fx:2026-10-20:EUR-BRL");
+    expect(citations.indexOf("sql:1")).toBeLessThan(citations.indexOf("fx:2026-10-20:EUR-BRL"));
+  });
+});
+
+describe("the refusal of a missing artifact", () => {
+  it("names the file it looked for and the command that rebuilds it", async () => {
+    // The site answers 404 for every artifact: the refusal names the file it looked for and the
+    // command that rebuilds the published artifacts, so the visitor is never left with an empty
+    // trace and no reason.
+    const notFound = vi.fn(async () => ({ ok: false, status: 404, text: async () => "" }) as unknown as Response);
+    const answer = await loadReplay(SCENARIO, { fetch: notFound });
+
+    expect("error" in answer).toBe(true);
+    if ("error" in answer) {
+      expect(answer.error).toContain("manifest.json");
+      expect(answer.error).toContain("scripts/export_replay_site.py");
+    }
+  });
+
+  it("names the file of the events when the events are the artifact that is missing", async () => {
+    // The manifest is served and the events are missing: the refusal names the file of the events.
+    const onlyManifest = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("manifest.json")) {
+        return { ok: true, status: 200, text: async () => PUBLISHED.manifest } as unknown as Response;
+      }
+      return { ok: false, status: 404, text: async () => "" } as unknown as Response;
+    });
+    const answer = await loadReplay(SCENARIO, { fetch: onlyManifest });
+
+    expect("error" in answer).toBe(true);
+    if ("error" in answer) {
+      expect(answer.error).toContain("events.jsonl");
+      expect(answer.error).toContain("scripts/export_replay_site.py");
+    }
+  });
+});
+
+describe("the guide and the honesty of the recording", () => {
+  it("never presents the recorded run as a live one", async () => {
+    const loaded = LOADED;
+    const loader = vi.fn(async () => loaded);
+    const guide = guideFor("S01");
+    render(
+      <ReplayProvider scenario={SCENARIO} loader={loader}>
+        <ReplayViewer commit={COMMIT} scenario={SCENARIO} guide={guide} />
+      </ReplayProvider>,
+    );
+    await findLoadedRun();
+
+    // The mode of the run is the mode of the manifest, and the guide says out loud that the run is
+    // not live: a recorded run is never presented as a live one (ADR-040).
+    const run = screen.getByRole("region", { name: "The recorded run" });
+    expect(within(run).getByText(/deterministic_sandbox/)).toBeInTheDocument();
+    expect(within(run).getByText(/Nothing here is live/)).toBeInTheDocument();
+    expect(within(run).queryByText(/live run/i)).toBeNull();
+  });
+
+  it("refuses a bundle whose manifest was tampered with, with its reason", async () => {
+    // The events of the recording are served with one byte changed: the digest of the file is not
+    // the digest the manifest declares, and the bundle is refused with the reason instead of being
+    // drawn (FR-038).
+    const tampered = PUBLISHED.events.replace("TX-2048", "TX-9999");
+    const tamperingFetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      const body = url.endsWith("manifest.json")
+        ? PUBLISHED.manifest
+        : url.endsWith("events.jsonl")
+          ? tampered
+          : url.endsWith("provenance.json")
+            ? PUBLISHED.provenance
+            : "";
+      return { ok: true, status: 200, text: async () => body } as unknown as Response;
+    });
+
+    const answer = await loadReplay(SCENARIO, { fetch: tamperingFetch });
+    expect("error" in answer).toBe(true);
+    if ("error" in answer) {
+      expect(answer.error).toContain("integrity");
+    }
   });
 });

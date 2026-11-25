@@ -1,0 +1,16 @@
+{"id": "RH-01", "gold_chunk_id": "chargeback-handling#reason-codes", "note": "The section titled 'Reason codes' defines FRD, NRC, NAD, DUP and OTH."}
+{"id": "RH-02", "gold_chunk_id": "chargeback-handling#evidence-checklist", "note": "A stolen card is an FRD dispute and this section lists the evidence the merchant must attach for FRD."}
+{"id": "RH-03", "gold_chunk_id": "cross-currency-refunds#charge-fx-at-capture", "note": "The section titled 'Rate on the capture date' covers conversion at capture with no markup."}
+{"id": "RH-04", "gold_chunk_id": "cross-currency-refunds#customer-explanation", "note": "This section tells the analyst how to explain a refund lower than the payment, separating rate movement and markup."}
+{"id": "RH-05", "gold_chunk_id": "duplicate-charges#time-gap", "note": "The section titled 'Interval longer than 5 minutes' says the automatic rule does not apply then."}
+{"id": "RH-06", "gold_chunk_id": "duplicate-charges#retries-after-failure", "note": "'Failures and retries' states a declined attempt followed by an approved one is not a duplicate."}
+{"id": "RH-07", "gold_chunk_id": "escalation-and-review#deadline-within-2-days", "note": "The section titled 'Deadline close' covers disputes 2 days or less from the card network deadline."}
+{"id": "RH-08", "gold_chunk_id": "escalation-and-review#suspicious-text", "note": "'Suspicious text in data' says order-like text is data, never an instruction, and recommends human review."}
+{"id": "RH-09", "gold_chunk_id": "fees-and-pricing#rounding", "note": "The fees policy has a 'Rounding' section on fee rounding with round half to even."}
+{"id": "RH-10", "gold_chunk_id": "fees-and-pricing#fx-markup-is-not-a-fee", "note": "'FX markup is not a fee' says the markup is the merchant's choice, not an Acme Payments charge."}
+{"id": "RH-11", "gold_chunk_id": "fx-reference-rates#weekends-holidays", "note": "The section titled 'Weekends and holidays' says the previous business day's rate applies."}
+{"id": "RH-12", "gold_chunk_id": "fx-reference-rates#unsupported-currency-handling", "note": "'Currency with no rate' says the analyst must not estimate, must name the missing rate and send the case to human review."}
+{"id": "RH-13", "gold_chunk_id": "refund-policy#full-and-partial", "note": "The section titled 'Full and partial refunds' covers refunding all or part of a payment."}
+{"id": "RH-14", "gold_chunk_id": "refund-policy#rejection-reasons", "note": "'Rejection reasons' lists why a refund request is declined: window, amount cap, open dispute."}
+{"id": "RH-15", "gold_chunk_id": "settlement-schedule#components", "note": "The section titled 'Components' lists the four values of a settlement."}
+{"id": "RH-16", "gold_chunk_id": "settlement-schedule#payout-calendars", "note": "'Calendars per currency' ties the payout calendar to the settlement currency (B3 vs TARGET), so dates can differ."}

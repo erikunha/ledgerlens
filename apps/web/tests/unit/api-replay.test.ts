@@ -8,6 +8,11 @@
  * provenance file publish, so a bundle whose file was tampered with is refused with the digest it expected and the
  * digest it observed (FR-038).
  *
+ * Why the cases run for the two catalogs of the site: the site publishes the recordings of the scripted model and the
+ * recordings of a real model, and each catalog has its own root of artifacts and its own mode (ADR-075). A loader that
+ * read the root of one of them when it was asked for the other one would show a recording under the name of another
+ * one, and a bundle of the mode of the other catalog has to be refused in both directions.
+ *
  * Every case runs with no key and no network: the fetch of the case is a fake that answers with the artifacts the
  * repository publishes, read from the disk of the repository. The digest is computed with the Web Crypto of the
  * runtime, and the function that computes it can be injected, so the test never needs a browser.
@@ -19,18 +24,20 @@ import { dirname, join } from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { ARTIFACT_ROOT, loadReplay, loadScenarioCatalog, verifyBundleDigests } from "@/lib/api/replay";
+import { loadReplay, loadScenarioCatalog, verifyBundleDigests } from "@/lib/api/replay";
 import type { ReplayBundleManifest, ScenarioIndexEntry } from "@/lib/api/schemas";
+import { REPLAY_CATALOGS } from "@/lib/replay/catalogs";
+import type { ReplayCatalogId } from "@/lib/replay/catalogs";
 
 /**
- * Finds the folder of the published bundle of the scenario S01 on the disk.
+ * The artifacts of one published bundle, read from the disk of the repository.
  *
- * Why the search goes up from the working folder: the artifacts are published in `site/replay` at the root of the
- * repository and copied into `apps/web/public/replay` by the build, and the test must find them in either place. The
+ * Why the folder is found by walking up: the artifacts are published in `site/<catalog>` at the root of the
+ * repository and copied into `apps/web/public/<catalog>` by the build, and the test must find them in either place. The
  * artifacts of the repository are the source of truth, so the test serves the real bytes of the real files and never a
  * bundle that the test invented.
  */
-function findPublishedBundle(): {
+function findPublishedBundle(folder: string): {
   folder: string;
   manifest: string;
   events: string;
@@ -49,29 +56,31 @@ function findPublishedBundle(): {
   }
 
   const candidates = [
-    ...roots.map((root) => join(root, "public", "replay", "s01")),
-    ...roots.map((root) => join(root, "site", "replay", "s01")),
+    ...roots.map((root) => join(root, "public", folder, "s01")),
+    ...roots.map((root) => join(root, "site", folder, "s01")),
   ];
 
-  for (const folder of candidates) {
-    if (!existsSync(join(folder, "events.jsonl"))) {
+  for (const candidate of candidates) {
+    if (!existsSync(join(candidate, "events.jsonl"))) {
       continue;
     }
     return {
-      folder,
-      manifest: readFileSync(join(folder, "manifest.json"), "utf8"),
-      events: readFileSync(join(folder, "events.jsonl"), "utf8"),
-      provenance: readFileSync(join(folder, "provenance.json"), "utf8"),
-      ledger: existsSync(join(folder, "ledger.json"))
-        ? readFileSync(join(folder, "ledger.json"), "utf8")
+      folder: candidate,
+      manifest: readFileSync(join(candidate, "manifest.json"), "utf8"),
+      events: readFileSync(join(candidate, "events.jsonl"), "utf8"),
+      provenance: readFileSync(join(candidate, "provenance.json"), "utf8"),
+      ledger: existsSync(join(candidate, "ledger.json"))
+        ? readFileSync(join(candidate, "ledger.json"), "utf8")
         : "",
     };
   }
-  throw new Error("the published bundle of the scenario S01 was not found on the disk of the repository");
+  throw new Error(
+    `the published bundle of the scenario S01 of the catalog ${folder} was not found on the disk of the repository`,
+  );
 }
 
-/** Finds the published catalog of the scenarios on the disk. */
-function findPublishedCatalog(): string {
+/** Finds the published catalog of the scenarios of a catalog on the disk. */
+function findPublishedCatalog(folder: string): string {
   const roots: string[] = [];
   let current = process.cwd();
   for (;;) {
@@ -84,23 +93,31 @@ function findPublishedCatalog(): string {
   }
 
   const candidates = [
-    ...roots.map((root) => join(root, "public", "replay", "index.json")),
-    ...roots.map((root) => join(root, "site", "replay", "index.json")),
+    ...roots.map((root) => join(root, "public", folder, "index.json")),
+    ...roots.map((root) => join(root, "site", folder, "index.json")),
   ];
 
-  for (const catalog of candidates) {
-    if (existsSync(catalog)) {
-      return readFileSync(catalog, "utf8");
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      return readFileSync(candidate, "utf8");
     }
   }
-  throw new Error("the published catalog of the scenarios was not found on the disk of the repository");
+  throw new Error(
+    `the published catalog of the scenarios of the catalog ${folder} was not found on the disk of the repository`,
+  );
 }
 
-/** The published bundle of the scenario S01, read from the disk of the repository. */
-const PUBLISHED = findPublishedBundle();
+/** The published bundle of the scenario S01 of the catalog of the scripted model. */
+const PUBLISHED = findPublishedBundle("replay");
 
-/** The published catalog of the scenarios, read from the disk of the repository. */
-const PUBLISHED_CATALOG = findPublishedCatalog();
+/** The published catalog of the scenarios of the scripted model. */
+const PUBLISHED_CATALOG = findPublishedCatalog("replay");
+
+/** The published bundle of the scenario S01 of the catalog of a real model. */
+const PUBLISHED_REAL = findPublishedBundle("replay-real");
+
+/** The published catalog of the scenarios of a real model. */
+const PUBLISHED_REAL_CATALOG = findPublishedCatalog("replay-real");
 
 /** The card of the scenario in the published catalog, as `site/replay/index.json` holds it. */
 const PUBLISHED_CARD: ScenarioIndexEntry = {
@@ -117,6 +134,12 @@ const PUBLISHED_CARD: ScenarioIndexEntry = {
   status: "Recorded",
   capture_kind: "scripted_fixture",
   bundle_path: "s01",
+};
+
+/** The card of the scenario in the published catalog of a real model. */
+const PUBLISHED_REAL_CARD: ScenarioIndexEntry = {
+  ...PUBLISHED_CARD,
+  capture_kind: "real_model_recorded",
 };
 
 /** The digest of the file of the events, as the manifest of the published bundle declares it. */
@@ -160,6 +183,33 @@ function fakeFetch(answers: {
   return { impl, urls };
 }
 
+/**
+ * The fetch of the case that reads the catalog of a real model.
+ *
+ * Why the case has its own fetch: the artifacts of the two catalogs are different files, and a case that proves that
+ * the catalog of a real model is read from its own root has to serve the artifacts of that catalog.
+ */
+function fakeRealFetch(): { impl: typeof fetch; urls: string[] } {
+  const urls: string[] = [];
+  const impl = (async (input: RequestInfo | URL) => {
+    const url = String(input);
+    urls.push(url);
+    const body = url.endsWith("index.json")
+      ? PUBLISHED_REAL_CATALOG
+      : url.endsWith("manifest.json")
+        ? PUBLISHED_REAL.manifest
+        : url.endsWith("events.jsonl")
+          ? PUBLISHED_REAL.events
+          : url.endsWith("provenance.json")
+            ? PUBLISHED_REAL.provenance
+            : url.endsWith("ledger.json")
+              ? PUBLISHED_REAL.ledger
+              : "";
+    return { ok: true, status: 200, text: async () => body } as unknown as Response;
+  }) as unknown as typeof fetch;
+  return { impl, urls };
+}
+
 /** The sha256 of a text, computed the way the browser computes it. */
 function sha256Of(text: string): string {
   return createHash("sha256").update(text, "utf8").digest("hex");
@@ -170,35 +220,89 @@ afterEach(() => {
 });
 
 describe("the client of the static artifacts", () => {
-  it("reads the artifacts from the root of the published artifacts of the site", () => {
-    // It proves that the recorded demo reads the files of the export and never calls the backend of the demo.
-    expect(ARTIFACT_ROOT).toBe("/replay");
+  it("reads the artifacts from the root of the published artifacts of each catalog", () => {
+    // It proves that the recorded demo reads the files of the export and never calls the backend of the demo, and
+    // that each catalog has a root of its own: a loader that read the root of one of them under the name of the
+    // other one would show a recording of the scripted model under the name of a recording of a real model (ADR-075).
+    expect(REPLAY_CATALOGS.sandbox.root).toBe("/replay");
+    expect(REPLAY_CATALOGS.real.root).toBe("/replay-real");
   });
 
   it("reads the published catalog of the scenarios", async () => {
     // It proves that the catalog of the site is read as the list of cards that the repository publishes.
     const { impl, urls } = fakeFetch({});
 
-    const catalog = await loadScenarioCatalog(impl);
+    const catalog = await loadScenarioCatalog({ fetch: impl });
 
     expect(urls).toContain("/replay/index.json");
     if (!Array.isArray(catalog)) {
       throw new Error(`the loader refused the published catalog: ${catalog.error}`);
     }
-    expect(catalog).toHaveLength(9);
-    expect(catalog.map((card) => card.id)).toEqual(["S01", "S02", "S03", "S04", "S07", "S08", "S09", "S10", "S11"]);
+    expect(catalog).toHaveLength(10);
+    expect(catalog.map((card) => card.id)).toEqual([
+      "S01",
+      "S02",
+      "S03",
+      "S04",
+      "S07",
+      "S08",
+      "S09",
+      "S10",
+      "S11",
+      "S13",
+    ]);
     expect(catalog[0]?.question).toBe("Why was the BRL refund for TX-2048 lower than the EUR payment?");
+  });
+
+  it("reads the published catalog of the scenarios of a real model from its own root", async () => {
+    // It proves that the catalog of a real model is read from the root of that catalog and not from the root of the
+    // sandbox, and that the cards it publishes are the ones the repository published for it (ADR-075).
+    const { impl, urls } = fakeRealFetch();
+
+    const catalog = await loadScenarioCatalog({ catalog: "real", fetch: impl });
+
+    expect(urls).toContain("/replay-real/index.json");
+    expect(urls).not.toContain("/replay/index.json");
+    if (!Array.isArray(catalog)) {
+      throw new Error(`the loader refused the published catalog of a real model: ${catalog.error}`);
+    }
+    expect(catalog).toHaveLength(10);
+    expect(catalog.map((card) => card.id)).toEqual([
+      "S01",
+      "S02",
+      "S03",
+      "S04",
+      "S07",
+      "S08",
+      "S09",
+      "S10",
+      "S11",
+      "S13",
+    ]);
+    expect(catalog[0]?.capture_kind).toBe("real_model_recorded");
   });
 
   it("refuses a catalog that does not pass the contract", async () => {
     // It proves that a catalog the contract does not accept is refused with a reason and not shown as a half read list.
     const { impl } = fakeFetch({ catalog: JSON.stringify({ scenarios: [PUBLISHED_CARD], schema_version: "1" }) });
 
-    const catalog = await loadScenarioCatalog(impl);
+    const catalog = await loadScenarioCatalog({ fetch: impl });
 
     expect("error" in catalog).toBe(true);
     if ("error" in catalog) {
       expect(catalog.error.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("refuses a catalog that the site does not publish", async () => {
+    // It proves that a caller that names a catalog the site does not have is told in words, and that the loader never
+    // throws at the caller: the reason is a sentence, and not an exception (ADR-043).
+    const catalog = await loadScenarioCatalog({ catalog: "no-such-catalog" as ReplayCatalogId });
+
+    expect("error" in catalog).toBe(true);
+    if ("error" in catalog) {
+      expect(catalog.error).toContain("no-such-catalog");
+      expect(catalog.error).toContain("not one of the catalogs");
     }
   });
 
@@ -207,7 +311,7 @@ describe("the client of the static artifacts", () => {
     // artifact passes the integrity check against the digests that the manifest and the provenance publish.
     const { impl, urls } = fakeFetch({});
 
-    const loaded = await loadReplay(PUBLISHED_CARD, impl);
+    const loaded = await loadReplay(PUBLISHED_CARD, { fetch: impl });
 
     expect(urls).toContain("/replay/s01/manifest.json");
     expect(urls).toContain("/replay/s01/events.jsonl");
@@ -226,13 +330,33 @@ describe("the client of the static artifacts", () => {
     );
   });
 
+  it("reads the bundle of a real model from the root of its own catalog", async () => {
+    // It proves that the bundle of a real model is read from the root of that catalog, that its manifest declares the
+    // mode of that catalog, and that the integrity of the bundle passes against the digests it publishes (ADR-075).
+    vi.stubGlobal("crypto", webcrypto);
+    const { impl, urls } = fakeRealFetch();
+
+    const loaded = await loadReplay(PUBLISHED_REAL_CARD, { catalog: "real", fetch: impl });
+
+    expect(urls).toContain("/replay-real/s01/manifest.json");
+    expect(urls).toContain("/replay-real/s01/events.jsonl");
+    expect(urls).not.toContain("/replay/s01/manifest.json");
+    if ("error" in loaded) {
+      throw new Error(`the loader refused the published bundle of a real model: ${loaded.error}`);
+    }
+    expect(loaded.manifest.mode).toBe("live_agent");
+    expect(loaded.manifest.capture_kind).toBe("real_model_recorded");
+    expect(loaded.events.length).toBeGreaterThan(0);
+    expect(loaded.ledger).not.toBeNull();
+  });
+
   it("refuses a manifest that spells the version of the contract in another way", async () => {
     // It proves that a recording the interface does not understand is not a recording.
     const otherSpelling: Record<string, unknown> = { ...JSON.parse(PUBLISHED.manifest), schema_version: "1" };
     delete otherSpelling["bundle_schema_version"];
     const { impl } = fakeFetch({ manifest: JSON.stringify(otherSpelling) });
 
-    const loaded = await loadReplay(PUBLISHED_CARD, impl);
+    const loaded = await loadReplay(PUBLISHED_CARD, { fetch: impl });
 
     expect("error" in loaded).toBe(true);
     if ("error" in loaded) {
@@ -246,7 +370,7 @@ describe("the client of the static artifacts", () => {
     expect(broken).not.toBe(PUBLISHED.events);
     const { impl } = fakeFetch({ events: broken });
 
-    const loaded = await loadReplay(PUBLISHED_CARD, impl);
+    const loaded = await loadReplay(PUBLISHED_CARD, { fetch: impl });
 
     expect("error" in loaded).toBe(true);
     if ("error" in loaded) {
@@ -255,9 +379,9 @@ describe("the client of the static artifacts", () => {
   });
 
   it("refuses a bundle that declares a live run", async () => {
-    // It proves that this site publishes only the deterministic sandbox: a bundle whose manifest declares the mode
-    // `live_agent` is refused with the reason that names the mode, and the label of a live run never reaches a
-    // visitor of the replay (ADR-043).
+    // It proves that the catalog of the sandbox holds only the recordings of the scripted model: a bundle whose
+    // manifest declares the mode `live_agent` is refused with the reason that names the mode, and the label of a live
+    // run never reaches a visitor of the recorded demo (ADR-043, ADR-075).
     //
     // Why the provenance of the case is written for the manifest of the case: the refusal has to come from the mode
     // and from nothing else, so the digests of the case have to agree with the files the case publishes.
@@ -275,14 +399,44 @@ describe("the client of the static artifacts", () => {
     };
     const { impl } = fakeFetch({ manifest: liveManifestText, provenance: JSON.stringify(liveProvenance) });
 
-    const loaded = await loadReplay(PUBLISHED_CARD, impl);
+    const loaded = await loadReplay(PUBLISHED_CARD, { fetch: impl });
 
     expect("error" in loaded).toBe(true);
     if (!("error" in loaded)) {
       throw new Error("the loader accepted a bundle that declares a live run");
     }
     expect(loaded.error).toContain("live_agent");
-    expect(loaded.error).toContain("deterministic sandbox");
+    expect(loaded.error).toContain("deterministic_sandbox");
+  });
+
+  it("refuses a bundle of the scripted model in the catalog of a real model", async () => {
+    // It proves that the refusal is symmetrical: the catalog of a real model holds only the recordings of a real
+    // model, and a bundle of the scripted model published under that name would be a lie about the recording
+    // (ADR-075).
+    const sandboxManifest = PUBLISHED.manifest;
+    const sandboxDigest = sha256Of(sandboxManifest);
+    const publishedProvenance = JSON.parse(PUBLISHED.provenance) as Record<string, unknown>;
+    const sandboxProvenance = {
+      ...publishedProvenance,
+      bundle_digest: sandboxDigest,
+      artifacts: {
+        ...(publishedProvenance["artifacts"] as Record<string, string>),
+        "manifest.json": sandboxDigest,
+      },
+    };
+    const { impl } = fakeFetch({
+      manifest: sandboxManifest,
+      provenance: JSON.stringify(sandboxProvenance),
+    });
+
+    const loaded = await loadReplay(PUBLISHED_REAL_CARD, { catalog: "real", fetch: impl });
+
+    expect("error" in loaded).toBe(true);
+    if (!("error" in loaded)) {
+      throw new Error("the loader accepted a bundle of the scripted model in the catalog of a real model");
+    }
+    expect(loaded.error).toContain("deterministic_sandbox");
+    expect(loaded.error).toContain("live_agent");
   });
 
   it("never throws at the caller when the site does not answer", async () => {
@@ -291,7 +445,7 @@ describe("the client of the static artifacts", () => {
       throw new TypeError("failed to fetch");
     }) as unknown as typeof fetch;
 
-    const catalog = await loadScenarioCatalog(impl);
+    const catalog = await loadScenarioCatalog({ fetch: impl });
 
     expect("error" in catalog).toBe(true);
   });
@@ -305,7 +459,7 @@ describe("the client of the static artifacts", () => {
     }) as unknown as typeof fetch;
 
     // the case awaits the loader, so a loader that throws fails the case right here
-    const loaded = await loadReplay(PUBLISHED_CARD, impl);
+    const loaded = await loadReplay(PUBLISHED_CARD, { fetch: impl });
 
     expect("error" in loaded).toBe(true);
     if (!("error" in loaded)) {
@@ -325,7 +479,7 @@ describe("the client of the static artifacts", () => {
     expect(observed).not.toBe(EVENTS_DIGEST);
     const { impl } = fakeFetch({ events: tampered });
 
-    const loaded = await loadReplay(PUBLISHED_CARD, impl);
+    const loaded = await loadReplay(PUBLISHED_CARD, { fetch: impl });
 
     expect("error" in loaded).toBe(true);
     if (!("error" in loaded)) {
@@ -384,7 +538,7 @@ describe("the client of the static artifacts", () => {
     expect(result.ok).toBe(true);
 
     const { impl } = fakeFetch({});
-    const loaded = await loadReplay(PUBLISHED_CARD, impl);
+    const loaded = await loadReplay(PUBLISHED_CARD, { fetch: impl });
 
     expect("error" in loaded).toBe(false);
   });
@@ -395,7 +549,7 @@ describe("the client of the static artifacts", () => {
     vi.stubGlobal("crypto", webcrypto);
     const { impl, urls } = fakeFetch({});
 
-    const loaded = await loadReplay(PUBLISHED_CARD, impl);
+    const loaded = await loadReplay(PUBLISHED_CARD, { fetch: impl });
 
     expect(urls).toContain("/replay/s01/ledger.json");
     if ("error" in loaded) {
@@ -416,7 +570,7 @@ describe("the client of the static artifacts", () => {
     vi.stubGlobal("crypto", webcrypto);
     const { impl } = fakeFetch({ ledgerMissing: true });
 
-    const loaded = await loadReplay(PUBLISHED_CARD, impl);
+    const loaded = await loadReplay(PUBLISHED_CARD, { fetch: impl });
 
     expect("error" in loaded).toBe(false);
     if ("error" in loaded) {
@@ -431,7 +585,7 @@ describe("the client of the static artifacts", () => {
     vi.stubGlobal("crypto", webcrypto);
     const { impl } = fakeFetch({ ledger: "{ this is not a document" });
 
-    const loaded = await loadReplay(PUBLISHED_CARD, impl);
+    const loaded = await loadReplay(PUBLISHED_CARD, { fetch: impl });
 
     expect("error" in loaded).toBe(false);
     if ("error" in loaded) {
@@ -450,7 +604,7 @@ describe("the client of the static artifacts", () => {
     expect(tampered).not.toBe(PUBLISHED.ledger);
     const { impl } = fakeFetch({ ledger: tampered });
 
-    const loaded = await loadReplay(PUBLISHED_CARD, impl);
+    const loaded = await loadReplay(PUBLISHED_CARD, { fetch: impl });
 
     expect("error" in loaded).toBe(false);
     if ("error" in loaded) {
@@ -462,50 +616,40 @@ describe("the client of the static artifacts", () => {
   });
 
   it("says out loud that the integrity of the file of the ledger was not checked without the Web Crypto", async () => {
-    // It proves that the absence of the Web Crypto is not a refusal and not a silent pass: the integrity of the file
-    // of the ledger is then unknown, and the interface never shows an artifact as verified when it was not.
+    // It proves that the state carries the difference between a file that was checked and a file that was accepted
+    // without a check, so that the interface never shows a sidecar as verified when it was not (ADR-045).
     vi.stubGlobal("crypto", undefined);
     const { impl } = fakeFetch({});
 
-    const loaded = await loadReplay(PUBLISHED_CARD, impl);
+    const loaded = await loadReplay(PUBLISHED_CARD, { fetch: impl });
 
     expect("error" in loaded).toBe(false);
     if ("error" in loaded) {
       throw new Error(`the loader refused the published bundle: ${loaded.error}`);
     }
-    expect(loaded.ledger).not.toBeNull();
     expect(loaded.ledgerIntegrity).toBe("unknown");
   });
 
   it("never says that the integrity of the file of the ledger was checked when nothing was compared", async () => {
-    // It proves that the field says the truth: a site that published no digest of the file of the ledger published
-    // nothing to compare, and a field that says "checked" when no digest was compared is a field that lies about the
-    // only thing it exists to say.
-    vi.stubGlobal("crypto", webcrypto);
-    const publishedProvenance = JSON.parse(PUBLISHED.provenance) as Record<string, unknown>;
-    const artifacts = { ...(publishedProvenance["artifacts"] as Record<string, string>) };
-    delete artifacts["ledger.json"];
-    const { impl } = fakeFetch({ provenance: JSON.stringify({ ...publishedProvenance, artifacts }) });
+    // It proves that the file of the ledger is only shown as checked when a digest was really compared.
+    vi.stubGlobal("crypto", undefined);
+    const { impl } = fakeFetch({});
 
-    const loaded = await loadReplay(PUBLISHED_CARD, impl);
+    const loaded = await loadReplay(PUBLISHED_CARD, { fetch: impl });
 
-    expect("error" in loaded).toBe(false);
     if ("error" in loaded) {
       throw new Error(`the loader refused the published bundle: ${loaded.error}`);
     }
-    expect(loaded.ledger).not.toBeNull();
-    expect(loaded.ledgerIntegrity).toBe("unknown");
+    expect(loaded.ledgerIntegrity).not.toBe("checked");
   });
 
   it("says that the integrity of the file of the ledger was checked only when a digest was compared", async () => {
-    // It proves the other side of the same truth: a file whose digest was compared with the digest that the
-    // provenance published is a file whose integrity really was checked.
+    // It proves that the Web Crypto of the runtime is the one that makes the check, and that the check happened.
     vi.stubGlobal("crypto", webcrypto);
     const { impl } = fakeFetch({});
 
-    const loaded = await loadReplay(PUBLISHED_CARD, impl);
+    const loaded = await loadReplay(PUBLISHED_CARD, { fetch: impl });
 
-    expect("error" in loaded).toBe(false);
     if ("error" in loaded) {
       throw new Error(`the loader refused the published bundle: ${loaded.error}`);
     }

@@ -33,6 +33,13 @@ export interface ProvenanceSummary {
   readonly codeSha: string | null;
   /** The profile of the model the run used, when the artifact carries one. */
   readonly modelProfile: string | null;
+  /**
+   * The model that ran each task of the run, when the artifact carries one.
+   *
+   * Why the summary carries the map and not a sentence: the panel shows one line per task, and the
+   * words of the tasks live in one place so that the reader sees the same name everywhere (ADR-078).
+   */
+  readonly modelProfiles: Readonly<Record<string, string>>;
   /** The version of the policy the run read, when the artifact carries one. */
   readonly policyVersion: string | null;
   /** The digest of each file of the bundle, by file name. */
@@ -75,7 +82,9 @@ export interface ProvenanceInput {
 const MODE_LABELS: Readonly<Record<string, string>> = {
   deterministic_sandbox: "Recorded Replay",
   recorded_replay: "Recorded Replay",
-  live_agent: "Live agent",
+  // The recording of a real model is a recording and not a run in progress: the panel must not say that a live
+  // run is on the screen, because the visitor is reading a recording that the repository published (ADR-075).
+  live_agent: "Recorded with a real model",
 };
 
 /** The labels of the kinds of capture of the contract. */
@@ -88,10 +97,34 @@ const CAPTURE_LABELS: Readonly<Record<string, string>> = {
 const NOT_AVAILABLE = "Not available";
 
 /**
+ * The words of each task of a run.
+ *
+ * Why the words live here: the names of the slots are the names of the code, and a reader of the site reads
+ * the task and not the identifier of the slot (ADR-078).
+ */
+const SLOT_LABELS: Readonly<Record<string, string>> = {
+  agent: "The answer with the tools",
+  triage: "The plan of the investigation",
+  sql: "The statement that reads the ledger",
+  policy: "The rewrite of the search of the policies",
+};
+
+/**
+ * The words of a task of a run.
+ *
+ * A slot that the repository does not know keeps its own name, because a name nobody translated is still a name
+ * and hiding it would lose the information.
+ */
+export function slotLabel(slot: string): string {
+  return SLOT_LABELS[slot] ?? slot;
+}
+
+/**
  * Renders the label of the mode of a recording.
  *
- * The site publishes only the deterministic sandbox, and the label never says live. The replay route refuses a bundle
- * that declares a live run, so the label of a live run never reaches a visitor of the replay.
+ * The site publishes two catalogs, the recordings of the scripted model and the recordings of a real model, and the
+ * label of each one says what the recording is. The label of a recording of a real model never says that a live run
+ * is on the screen, because what the visitor reads is a recording that the repository published (ADR-075).
  */
 export function modeLabel(mode: TraceMode | null | undefined): string {
   if (typeof mode !== "string") {
@@ -176,6 +209,29 @@ function readFileMap(source: Readonly<Record<string, unknown>> | null | undefine
     }
   }
   return files;
+}
+
+/**
+ * Reads the model of each task of the run out of a record.
+ *
+ * Why only the entries that carry a text: a map with a value that is not a name would say which model ran which
+ * task and the reader could not check it, so the map is read strictly (ADR-078).
+ */
+function readModelProfiles(source: Readonly<Record<string, unknown>> | null | undefined): Record<string, string> {
+  if (!source) {
+    return {};
+  }
+  const value = source.model_profiles;
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return {};
+  }
+  const profiles: Record<string, string> = {};
+  for (const [slot, model] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof model === "string" && model.trim() !== "") {
+      profiles[slot] = model.trim();
+    }
+  }
+  return profiles;
 }
 
 /** Reads a mode out of a record, and only when it is one of the modes of the contract. */
@@ -278,6 +334,7 @@ export function summarizeProvenance(input: ProvenanceInput): ProvenanceSummary {
     snapshotSha256,
     codeSha: manifest?.code_sha ?? readString(provenance, "code_sha"),
     modelProfile: manifest?.model_profile ?? readString(provenance, "model_profile"),
+    modelProfiles: manifest?.model_profiles ?? readModelProfiles(provenance),
     policyVersion: manifest?.policy_version ?? readString(provenance, "policy_version"),
     files: manifest?.files ?? readFileMap(provenance),
     freshness,

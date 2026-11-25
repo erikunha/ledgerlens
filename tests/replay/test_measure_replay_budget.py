@@ -80,6 +80,7 @@ def test_the_published_set_is_inside_the_budget_the_specification_declares(
         "s09",
         "s10",
         "s11",
+        "s13",
     ]
     for scenario in scenarios:
         assert 0 < scenario.compressed < measure_replay_budget.BUDGET_BYTES
@@ -91,13 +92,13 @@ def test_the_published_set_is_inside_the_budget_the_specification_declares(
 def test_the_number_of_events_of_the_recording_is_the_number_the_manifest_declares():
     """Each recording holds the number of events its manifest declares, and the measurement counts them.
 
-    Why every scenario and not only the first: the site publishes nine, and a check that only counted the events of
-    the first one would let a recording of the other eight carry a number nobody verified.
+    Why every scenario and not only the first: the site publishes ten, and a check that only counted the events of
+    the first one would let a recording of the other nine carry a number nobody verified.
     """
     _files, scenarios, problems = measure_replay_budget.measure(PUBLISHED)
 
     assert problems == []
-    assert len(scenarios) == 9
+    assert len(scenarios) == 10
     for scenario in scenarios:
         assert scenario.events > 0
         assert scenario.events == scenario.declared_events

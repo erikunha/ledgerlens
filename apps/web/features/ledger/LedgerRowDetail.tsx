@@ -111,9 +111,11 @@ function ReadDetail({ read }: { readonly read: LedgerRead }): ReactElement {
       <p className="ll-ledger-note">
         The read {read.evidence_id}, the event {read.seq}, the tool {read.tool}.
       </p>
-      <pre className="ll-ledger-statement">
-        <code>{read.sql}</code>
-      </pre>
+      {read.sql.trim() === "" ? null : (
+        <pre className="ll-ledger-statement">
+          <code>{read.sql}</code>
+        </pre>
+      )}
       <Table
         caption={`The rows the read ${read.evidence_id} returned`}
         columns={columns}

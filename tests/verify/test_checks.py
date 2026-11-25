@@ -829,3 +829,43 @@ def test_the_requested_day_is_what_counts_when_the_rate_comes_from_the_previous_
     ledger = sql_evidence(["id", "created_at"], ["R-1", "2026-10-18T10:00:00Z"])
     result = make_result([claim("CL1", text, [sunday.id])], [ledger, sunday])
     assert check_coherence(result).passed is True
+
+
+def test_a_conflict_between_a_cited_rule_of_the_world_and_a_cited_policy_is_named() -> None:
+    """A claim that cites a rule of the world and a policy that disagree is a named conflict, not a plain
+    contradiction: the policy may be wrong (gap 11 of the audit)."""
+    from ledgerlens.tools.envelope import world_evidence
+
+    world = world_evidence(
+        "visa-response-window",
+        url="https://example.test/visa-core-rules",
+        read_on="2026-11-25",
+        content="the dispute response of the acquirer is due within the window of the network rules",
+    )
+    policy = evidence("policy:chargeback-handling#response-deadline", "the response deadline of Acme is 10 to 14 days")
+    claim = Claim(
+        id="CL1",
+        kind="policy",
+        text="the dispute response is due within 30 calendar days",
+        evidence_ids=["world:visa-response-window", "policy:chargeback-handling#response-deadline"],
+    )
+    result = make_result([claim], [world_as_evidence(world), policy])
+    from ledgerlens.verify.nli import StubNli
+
+    out = verify_result(result, nli=StubNli())
+    verdict = out.verdicts[0]
+    assert verdict.label == "contradicted"
+    assert "the cited rule of the world and the cited policy disagree" in (verdict.note or "")
+    assert "the policy may be wrong" in (verdict.note or "")
+
+
+def world_as_evidence(entry: dict) -> Evidence:
+    # The rule of the world enters the evidence through the extraction of the document that states it.
+    return Evidence(
+        id=entry["id"],
+        source_type="world",
+        tool="extract_document",
+        content=entry["content"],
+        ref=entry["url"],
+        retrieved_at=NOW,
+    )

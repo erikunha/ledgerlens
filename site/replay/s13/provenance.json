@@ -1,0 +1,23 @@
+{
+  "artifacts": {
+    "events.jsonl": "b407e272afce8964948904463a3b4619c000ac115f8cf5fb8f32ffdfe3ebedbf",
+    "ledger.json": "2d08205a3ed0013ba6b56e7ed93db43a8a08a463e353d7960de6e4aaf7b11ac2",
+    "manifest.json": "488841ab56c5015ee5330ec3f72cf05a167adf4f7b6e56434e07fcdf6054c453",
+    "memory_snapshot.json": "2f448310d77574dabe77b894a87a19d299cbeed8792a800bf24ee4e554995a01"
+  },
+  "bundle_digest": "488841ab56c5015ee5330ec3f72cf05a167adf4f7b6e56434e07fcdf6054c453",
+  "capture_kind": "scripted_fixture",
+  "code_sha": "28147706d95bbce6c407434826332989384d84d5",
+  "created_at": "2026-11-25T11:53:14+00:00",
+  "dataset_sha256": "809f2c34cc47adde75fc5894c4d36dfb7e8fec2d7a38f48339c3af5f41118e78",
+  "files": {
+    "events.jsonl": "b407e272afce8964948904463a3b4619c000ac115f8cf5fb8f32ffdfe3ebedbf",
+    "memory_snapshot.json": "2f448310d77574dabe77b894a87a19d299cbeed8792a800bf24ee4e554995a01"
+  },
+  "mode": "deterministic_sandbox",
+  "model_profile": "scripted-fixture",
+  "note": "Deterministic execution of the scenario S13, account C-0951, with the scripted model and the recorded exchange rate. This is not a live execution and it calls no model.",
+  "policy_version": "policies-v1",
+  "recorded_at": "2026-11-25T11:53:14+00:00",
+  "snapshot_sha256": "d273956e89f65302bb250c04b6dcd15e306bd74b81eab376b0bd95b91f8264a9"
+}

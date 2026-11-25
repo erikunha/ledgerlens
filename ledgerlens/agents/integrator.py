@@ -89,20 +89,32 @@ from langgraph.errors import GraphRecursionError
 
 from ledgerlens.agents.budget import (
     GRAPH_STEPS,
+    NO_FALLBACK,
+    PLANNED_OUTPUT_TOKENS,
     BudgetReservationMiddleware,
     TurnBudget,
     cap_sentence,
     caps_of,
     derived_recursion_limit,
+    model_id_of,
     recursion_limit_for,
     shipped_turn_budget,
     usage_of,
 )
+from ledgerlens.agents.fallback import (
+    ACTION_STOP,
+    FallbackMiddleware,
+    FallbackRunner,
+    FallbackStopped,
+    planned_input_of,
+    strategy_of,
+)
 from ledgerlens.agents.modern import DEFAULT_SYSTEM_PROMPT, build_investigation_tools
+from ledgerlens.agents.routing import SLOT_TRIAGE
 from ledgerlens.byok.budget import BudgetExceededError
 from ledgerlens.chains.parsers import TriageError
-from ledgerlens.chains.triage import build_triage_declarative
-from ledgerlens.config import get_chat_model, get_settings
+from ledgerlens.chains.triage import build_triage_declarative, triage_input_of
+from ledgerlens.config import get_chat_model, get_settings, model_cascade
 from ledgerlens.memory.long_term import CaseMemory
 from ledgerlens.observability.trace import OnEvent, Tracer, langsmith_url, review_reasons, summary_line
 from ledgerlens.run_context import SHIPPED_RUN_BUDGET, RunBudget, RunContext
@@ -144,6 +156,7 @@ _SOURCE_BY_PREFIX = {
     "fx": "fx",
     "calc": "calc",
     "case": "case",
+    "doc": "doc",
 }
 # Field that identifies an item inside `data["results"]`, per tool (policy search and case search).
 _ITEM_KEY = {"search_policies": "chunk_id", "recall_cases": "case_id"}
@@ -227,6 +240,13 @@ class Integrator:
     system_prompt: str = INTEGRATOR_SYSTEM_PROMPT
     run_context: RunContext | None = None
     counts_calls: bool = False
+    # The retry of a failed model, when the deployment consented to it (ADR-084). The runner of the graph and the
+    # runner of the triage are two, because the model of a retry is built differently in each of them.
+    fallback: FallbackRunner | None = None
+    triage_fallback: FallbackRunner | None = None
+    # The name of the model of the triage, as the deployment named it. The name is what the cascade of the
+    # deployment holds, and it is the name that says which model of the cascade a failed triage may retry with.
+    triage_model: str | None = None
     _metadata: dict[str, Any] = field(default_factory=dict, repr=False)
 
     def invoke(self, payload: Any, config: Any = None, **kwargs: Any) -> Any:
@@ -266,6 +286,8 @@ def build_integrator(
     case_memory: CaseMemory | None = None,
     policy_model: BaseChatModel | None = None,
     triage_model: BaseChatModel | None = None,
+    model_names: Mapping[str, str] | None = None,
+    fallback_factory: Callable[[str], Any] | None = None,
     system_prompt: str = INTEGRATOR_SYSTEM_PROMPT,
     run_context: RunContext | None = None,
 ) -> Integrator:
@@ -278,6 +300,11 @@ def build_integrator(
     `triage_model` reads the question and writes the plan that goes to the agent (without it, the configured model).
     `run_context` is the identity and the scope of the execution; with it, the case memory lives in the session
     folder instead of the global folder of the configuration.
+    `model_names` names the model of each slot the way the deployment named it, and it is what the retry of a
+    failed model reads to find the neighbour of the retry in the cascade of the deployment (ADR-084).
+    `fallback_factory` builds the model of a retry, and the caller that holds the provider is the one that
+    passes it: a deployment that consented to no retry, or a caller that does not pass it, has no runner and no
+    middleware, and the behaviour of the run does not move (ADR-084).
     """
     # Without a context the memory stays in the global folder of the configuration, as it always was. With a context it
     # lives in the session folder: one visitor does not see the memory of another.
@@ -296,13 +323,39 @@ def build_integrator(
     if policy_model is not None:
         policies = build_search_policies_tool(index_root=index_root, embeddings=embeddings, llm=policy_model)
         tools = [policies if tool.name == "search_policies" else tool for tool in tools]
+    # The retry of a failed model, when the deployment consented to it and the caller holds the provider
+    # (ADR-084). Without a consent, or without a factory, there is no runner and no middleware at all.
+    strategy = strategy_of()
+    graph_fallback: FallbackRunner | None = None
+    triage_fallback: FallbackRunner | None = None
+    if strategy is not None and fallback_factory is not None:
+        cascade = model_cascade()
+        graph_fallback = FallbackRunner(cascade=cascade, strategy=strategy, factory=fallback_factory)
+        triage_fallback = FallbackRunner(
+            cascade=cascade,
+            strategy=strategy,
+            factory=lambda name: build_triage_declarative(fallback_factory(name)),
+        )
+
+    middleware: list[Any] = []
+    if graph_fallback is not None:
+        # The retry of the fallback is outside the reservation: the reservation books the usage of a call under
+        # the model of that call, and a retry that ran inside it would book the tokens of the model of the retry
+        # under the model that failed (ADR-084).
+        middleware.append(FallbackMiddleware(graph_fallback))
+    # The reservation comes before the wall behind the tools: a cap that is reached stops the turn instead of
+    # becoming the error of a tool that the model would read and work around (ADR-054).
+    middleware.append(BudgetReservationMiddleware())
+    middleware.append(ToolErrorMiddleware(_tool_failure_content))
+
+    # The model of the triage, resolved once: the retry of the triage reads its name, and a caller that named no
+    # triage model still runs one (ADR-085).
+    triage = triage_model or get_chat_model()
     graph = create_agent(
         model or get_chat_model(),
         tools=tools,
         system_prompt=system_prompt,
-        # The reservation comes first: it is the outermost layer, so a cap that is reached stops the turn
-        # instead of becoming the error of a tool that the model would read and work around (ADR-054).
-        middleware=[BudgetReservationMiddleware(), ToolErrorMiddleware(_tool_failure_content)],
+        middleware=middleware,
         checkpointer=checkpointer if checkpointer is not None else InMemorySaver(),
     )
     return Integrator(
@@ -310,11 +363,28 @@ def build_integrator(
         tools=tools,
         verifier=verifier or default_verifier_for(db_path),
         case_memory=memory,
-        triage=build_triage_declarative(triage_model or get_chat_model()),
+        triage=build_triage_declarative(triage),
         system_prompt=system_prompt,
         run_context=run_context,
         counts_calls=True,
+        fallback=graph_fallback,
+        triage_fallback=triage_fallback,
+        triage_model=_triage_model_name(triage, model_names),
     )
+
+
+def _triage_model_name(triage_model: BaseChatModel | None, model_names: Mapping[str, str] | None) -> str | None:
+    """The name of the model of the triage, as the deployment named it.
+
+    Why the name of the deployment first: the cascade holds the names with the provider on top of them, and a
+    name without it could be the name of another provider's model. Why the name of the model object is the
+    fallback: a caller that routed nothing still names a model, and the retry of the triage has to know which
+    model of the cascade it may retry with (ADR-084).
+    """
+    named = (model_names or {}).get(SLOT_TRIAGE)
+    if named:
+        return named
+    return model_id_of(triage_model) if triage_model is not None else None
 
 
 def investigate(
@@ -350,6 +420,8 @@ def investigate(
         trace.finish(root, error=f"{type(exc).__name__}: {exc}")
         raise
     usage = _usage_of_turn(turn)
+    if usage:
+        result.usage = usage
     close_trace(trace, root, result, usage=usage, caps=caps_of(turn.caps))
     return result
 
@@ -367,8 +439,16 @@ def _usage_of_turn(turn: TurnBudget) -> dict[str, Any]:
     """What the turn spent against what it was allowed, in the shape the trace carries.
 
     Nothing is recorded when nobody counted: the numbers of a turn that no coordinator saw would be a lie.
+
+    Why the decisions of the fallback come with the usage: a reader of the trace of a run that retried has to see
+    the model of the retry and the reason of it, and the decision is the only thing that carries both (ADR-084).
     """
-    return {} if turn.owner == "none" else usage_of(turn.coordinator)
+    if turn.owner == "none":
+        return {}
+    usage = usage_of(turn.coordinator)
+    if turn.state.fallbacks:
+        usage["fallbacks"] = list(turn.state.fallbacks)
+    return usage
 
 
 def _investigate(
@@ -381,8 +461,22 @@ def _investigate(
         "configurable": {"thread_id": thread_id},
         "recursion_limit": recursion_limit_for(turn.caps),
     }
+    # The retries of a call are counted by the call: the consent of the deployment says how many retries a task
+    # may get, and a task is a call of a model, so the triage is a task and each call of the graph is a task of
+    # its own (ADR-084).
     first_turn = not agent.graph.get_state(config).values.get("messages")
-    triage = run_triage(agent.triage, question, config=traced("triage", trace), turn=turn)
+    before_triage = len(turn.state.fallbacks)
+    triage = run_triage(
+        agent.triage,
+        question,
+        config=traced("triage", trace),
+        turn=turn,
+        runner=agent.triage_fallback,
+        model=agent.triage_model,
+    )
+    # The reason of a triage whose retry did not happen: the run answers without a plan and the reader of the
+    # result has to know why the plan is missing (ADR-085).
+    triage_stop = _stop_reason_of(turn.state.fallbacks[before_triage:])
     if (asked := clarification_to_ask(triage, first_turn)) is not None:
         agent.graph.update_state(config, {"messages": [HumanMessage(question), AIMessage(asked)]})
         return clarification_result(question, thread_id, triage, asked)
@@ -401,12 +495,30 @@ def _investigate(
             # with the cap named (ADR-054, section 7).
             raise
         return _cut_turn(agent, question, thread_id, config, turn, exc.cap, timer, plan, trace)
+    except FallbackStopped as stopped:
+        # A model failed and the retry did not happen: the run stops with the reason of the decision (ADR-084).
+        # The cap that the coordinator recorded is the cap the result names, and the reason of the decision says
+        # why the retry did not happen.
+        if turn.owner != "integrator":
+            raise
+        return _cut_turn(
+            agent,
+            question,
+            thread_id,
+            config,
+            turn,
+            turn.cut_by() or NO_FALLBACK,
+            timer,
+            plan,
+            trace,
+            reason=stopped.decision.reason,
+        )
     except GraphRecursionError:
         # The graph ran out of steps: the cut is the cap of the calls of the models when the caller gave
         # one, and the ceiling of the graph when it gave none (ADR-054).
         return _cut_turn(agent, question, thread_id, config, turn, _graph_cut(turn.caps), timer, plan, trace)
     turn_messages = _this_turn(state["messages"])
-    result = _assemble(question, thread_id, turn_messages, timer.durations_ms, triage=plan)
+    result = _assemble(question, thread_id, turn_messages, timer.durations_ms, triage=plan, reason=triage_stop)
 
     asked = uncalled_steps(plan, result.tool_trace)
     days = fx_days_to_redo(question, result.evidence, result.tool_trace)
@@ -414,6 +526,7 @@ def _investigate(
         text = followup_message(asked, days=days)
         span = trace.begin("plan_followup", "chain", {"asked": asked, "fx_days": days, "message": text})
         cut_by = turn.cut_by()
+        reason: str | None = None
         extra: list[BaseMessage] | None = None
         if cut_by is not None:
             # The ceiling of the turn is spent: the follow-up does not run, and the answer that already exists
@@ -426,6 +539,11 @@ def _investigate(
                 # The follow-up spends what the turn has left; a turn whose ceiling is gone does not get a
                 # fresh allowance (ADR-054).
                 cut_by = exc.cap
+            except FallbackStopped as stopped:
+                # A model of the follow-up failed and the retry did not happen: the answer that already exists
+                # stands and the reason of the stop goes into the result (ADR-084).
+                cut_by = turn.cut_by() or NO_FALLBACK
+                reason = stopped.decision.reason
         result = _assemble(
             question,
             thread_id,
@@ -437,6 +555,7 @@ def _investigate(
             ask_failed=extra is None,
             cut_by=cut_by,
             caps=turn.caps,
+            reason=reason or triage_stop,
         )
         trace.finish(
             span,
@@ -455,6 +574,20 @@ def _graph_cut(caps: RunBudget) -> str:
     return "max_model_calls" if derived_recursion_limit(caps) is not None else GRAPH_STEPS
 
 
+def _stop_reason_of(decisions: list[dict[str, Any]]) -> str | None:
+    """The reason of a stop of the fallback, when the decisions of the turn carry one.
+
+    Why the decisions of the turn: a decision that stopped the retry is a value, and the value carries the reason
+    that the reader of the result needs (ADR-085).
+    """
+    for decision in decisions:
+        if decision.get("action") == ACTION_STOP:
+            reason = str(decision.get("reason", "")).strip()
+            if reason:
+                return reason
+    return None
+
+
 def _cut_turn(
     agent: Integrator,
     question: str,
@@ -465,13 +598,20 @@ def _cut_turn(
     timer: _ToolTimer,
     plan: Triage | None,
     trace: Tracer,
+    reason: str | None = None,
 ) -> InvestigationResult:
     """The result of a turn that a cap cut: the answer that exists, the tools that ran and the cap that stopped it.
 
     A cap is not a crash: the turn comes back as a result that goes to a human, and the cap that stopped it is
     named in the missing information (ADR-054).
+
+    Why the reason comes with it: the cut of a fallback is not a cap, and the reader of the result has to know
+    why the retry did not happen (ADR-084).
     """
-    log.warning("the cap '%s' stopped the turn of the session %s", cap, thread_id)
+    if cap == NO_FALLBACK:
+        log.warning("the turn of the session %s stopped: %s", thread_id, reason or "the retry did not happen")
+    else:
+        log.warning("the cap '%s' stopped the turn of the session %s", cap, thread_id)
     result = _assemble(
         question,
         thread_id,
@@ -480,6 +620,7 @@ def _cut_turn(
         triage=plan,
         cut_by=cap,
         caps=turn.caps,
+        reason=reason,
     )
     return finish(agent, result, trace=trace)
 
@@ -554,6 +695,10 @@ def _ask_for_missing_tools(
             log.warning("the plan follow-up failed, the first answer stands: the budget of the run is exhausted")
             return None
         raise
+    except FallbackStopped:
+        # A model of the follow-up failed and the retry did not happen: the reason of the stop goes up, because a
+        # follow-up that swallowed it would hide the only thing that says why the turn ended (ADR-084).
+        raise
     except Exception as exc:  # the follow-up is an extra: the earlier answer still stands
         log.warning("the plan follow-up failed, the first answer stands: %s: %s", type(exc).__name__, exc)
         return None
@@ -611,11 +756,15 @@ def run_triage(
     *,
     config: dict[str, Any] | None = None,
     turn: TurnBudget | None = None,
+    runner: FallbackRunner | None = None,
+    model: str | None = None,
 ) -> Triage | None:
     """The question's `Triage`, or `None` if there is no triage or it failed. A failure does not stop the question.
 
     `config` goes to the triage call (the run name and the trace callbacks). `turn` is the ceiling of the turn:
-    the triage is a call of a model, so it is reserved like any other one (ADR-054)."""
+    the triage is a call of a model, so it is reserved like any other one (ADR-054). `runner` is the retry of a
+    failed triage, when the deployment consented to it (ADR-084), and `model` is the name the router gave to the
+    model of the triage, which is the name that says which model of the cascade the retry may use."""
     if triage is None:
         return None
     try:
@@ -625,7 +774,60 @@ def run_triage(
     except BudgetExceededError:
         raise
     except Exception as exc:  # network, quota or exhausted script: the agent answers with no plan, as before triage
+        retried = _triage_with_fallback(
+            runner, question, config=config, turn=turn, model=model, failure=exc
+        )
+        if retried is not None:
+            return retried
         log.warning("triage failed, the agent runs without a plan: %s: %s", type(exc).__name__, exc)
+        return None
+    if isinstance(out, TriageError):
+        log.warning("triage unreadable (%s), the agent runs without a plan", out.code)
+        return None
+    return out
+
+
+def _triage_with_fallback(
+    runner: FallbackRunner | None,
+    question: str,
+    *,
+    config: dict[str, Any] | None,
+    turn: TurnBudget | None,
+    model: str | None,
+    failure: Exception,
+) -> Triage | None:
+    """The triage of the model of the retry, when the deployment consented to it and the budget covers it.
+
+    Why the triage and not the agent: the triage is the lightest task of the run and the one that fails first,
+    and a run without a plan is a run that answers less than it could.
+
+    Why the model that failed is not called again: the call that failed already happened and the money of it is
+    already spent, and a retry that answers the same model would spend the budget of the run twice for the same
+    failure (ADR-084).
+
+    Why the retry carries the plan of the complaint: the reservation of the retry checks the caps before the
+    call, and a cap of the tokens and a cap of the money are caps of a planned call (FR-009).
+    """
+    if runner is None or model is None:
+        return None
+
+    def attempt(chain: Any) -> Any:
+        return chain.invoke({"complaint": question}, config)
+
+    try:
+        out, _ = runner.retry(
+            attempt,
+            failed_model=model,
+            turn=turn,
+            planned_input_tokens=planned_input_of(triage_input_of(question)),
+            planned_output_tokens=PLANNED_OUTPUT_TOKENS,
+            failure=failure,
+        )
+    except FallbackStopped as stopped:
+        log.warning(
+            "the triage failed and the retry did not happen: %s",
+            stopped.decision.reason,
+        )
         return None
     if isinstance(out, TriageError):
         log.warning("triage unreadable (%s), the agent runs without a plan", out.code)
@@ -852,6 +1054,7 @@ def _assemble(
     ask_failed: bool = False,
     cut_by: str | None = None,
     caps: RunBudget | None = None,
+    reason: str | None = None,
 ) -> InvestigationResult:
     """Builds the turn's result: trace, evidence and what was missing, without judging the answer.
 
@@ -860,7 +1063,8 @@ def _assemble(
     days with no origin in the ledger that the follow-up pointed out.
 
     `cut_by` names the cap that stopped the turn (ADR-054). The cap goes into the missing information with its
-    value and the result goes to a human, because a turn that ran out of ceiling is not an answer.
+    value and the result goes to a human, because a turn that ran out of ceiling is not an answer. `reason` is
+    the reason of a cut that is not a cap, which is the case of a fallback that did not happen (ADR-084).
     """
     results = {m.tool_call_id: m for m in turn if isinstance(m, ToolMessage)}
     calls = [call for m in turn if isinstance(m, AIMessage) for call in m.tool_calls]
@@ -914,6 +1118,8 @@ def _assemble(
     missing = list(failures.values())
     if cut_by is not None:
         missing.append(cap_sentence(cut_by, caps))
+    if reason:
+        missing.append(reason)
     return InvestigationResult(
         session_id=thread_id,
         question=question,

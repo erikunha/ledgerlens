@@ -82,11 +82,13 @@ function buildExport(options: {
   readonly page?: "good" | "not_found" | "missing";
   readonly catalogPage?: "good" | "not_found" | "missing";
   readonly engineeringPage?: "good" | "not_found" | "missing";
+  readonly catalog?: string;
 }): string {
   const root = mkdtempSync(join(tmpdir(), "ledgerlens-export-check-"));
   temporaryFolders.push(root);
 
-  const replay = join(root, "replay");
+  const catalog = options.catalog ?? "replay";
+  const replay = join(root, catalog);
   mkdirSync(join(replay, "s01"), { recursive: true });
   mkdirSync(join(replay, "scenario"), { recursive: true });
 
@@ -107,7 +109,7 @@ function buildExport(options: {
   // demo, and it is the first page a visitor lands on.
   const catalogPage = options.catalogPage ?? "good";
   if (catalogPage !== "missing") {
-    writeFileSync(join(root, "replay.html"), pageOfTheCatalog(catalogPage), "utf8");
+    writeFileSync(join(root, `${catalog}.html`), pageOfTheCatalog(catalogPage), "utf8");
   }
 
   // The page of the architecture lives at the root of the export too, beside the page of the catalog.
@@ -201,8 +203,12 @@ function pageOfTheArchitecture(page: "good" | "not_found"): string {
  * Why the code matters: the check has to fail the gate when the export is broken, and the exit code is what the gate
  * reads.
  */
-function runCheck(folder: string): { readonly status: number | null; readonly output: string } {
-  const result = spawnSync(process.execPath, [CHECK_SCRIPT, folder], { encoding: "utf8" });
+function runCheck(folder: string, catalog?: string): { readonly status: number | null; readonly output: string } {
+  const result = spawnSync(
+    process.execPath,
+    catalog === undefined ? [CHECK_SCRIPT, folder] : [CHECK_SCRIPT, folder, catalog],
+    { encoding: "utf8" },
+  );
   return {
     status: result.status,
     output: `${result.stdout ?? ""}${result.stderr ?? ""}`,
@@ -338,6 +344,29 @@ describe("the check of the export of the site", () => {
     expect(status).toBe(0);
   });
 
+  it("checks the catalog of a real model when the gate names it", () => {
+    // It proves that the check proves one catalog at a time, so that the gate can call it once for the recordings of
+    // the scripted model and once for the recordings of a real model: each catalog has its own folder and its own page
+    // of the export (ADR-075).
+    const root = buildExport({ page: "good", catalog: "replay-real" });
+
+    const { status, output } = runCheck(root, "replay-real");
+
+    expect(status).toBe(0);
+    expect(output).toContain("the build wrote the catalog of 1 scenario(s)");
+  });
+
+  it("fails when the catalog of a real model holds no page of its scenario", () => {
+    // It proves that the check of the second catalog is not a check that passes on nothing: a catalog whose page is
+    // missing is a failure of the gate, and the message names the scenario (ADR-075).
+    const root = buildExport({ page: "missing", catalog: "replay-real" });
+
+    const { status, output } = runCheck(root, "replay-real");
+
+    expect(status).toBe(1);
+    expect(output).toContain("does not hold the page of the scenario S01");
+  });
+
   it("is called by the gate of the frontend", () => {
     // It proves that the gate of the frontend really runs the check of the export. A gate that stopped calling it
     // would pass a build whose pages are the page of 404, and nothing else would say so.
@@ -345,5 +374,15 @@ describe("the check of the export of the site", () => {
 
     expect(gate).toContain("check_export_pages.mjs");
     expect(gate).not.toContain("node <<'NODE'");
+  });
+
+  it("is called by the gate of the frontend for the two catalogs of the site", () => {
+    // It proves that the gate checks the recordings of the scripted model AND the recordings of a real model: a gate
+    // that checked only the first one would let a build with no page of the second catalog pass, and the visitor of
+    // that catalog would land on nothing (ADR-075).
+    const gate = readFileSync(GATE_SCRIPT, "utf8");
+
+    expect(gate).toContain("replay-real");
+    expect(gate.match(/check_export_pages\.mjs/g)?.length).toBe(2);
   });
 });

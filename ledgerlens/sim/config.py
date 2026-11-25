@@ -20,7 +20,7 @@ BR_REASSIGN_SHARE = 0.12
 FAILED_PAYMENT_SHARE = 0.03
 LATE_REFUND_REQUEST_SHARE = 0.03
 SOURCES = ("auto", "public", "sample", "synthetic")
-SCENARIO_IDS = tuple(f"S{n:02d}" for n in range(1, 13))
+SCENARIO_IDS = tuple(f"S{n:02d}" for n in range(1, 15))
 
 
 def substream(seed: int, component: str) -> random.Random:
@@ -73,7 +73,19 @@ MERCHANTS: tuple[MerchantSpec, ...] = (
 # Ids that scenarios use. Natural rows skip them, so the scenario facts never depend on the source.
 RESERVED_IDS: dict[str, tuple[str, ...]] = {
     "merchants": ("M-03", "M-05", "M-09", "M-17", "M-22"),
-    "customers": ("C-0205", "C-0291", "C-0412", "C-0501", "C-0600", "C-0733", "C-0777", "C-0888", "C-0900"),
+    "customers": (
+        "C-0205",
+        "C-0291",
+        "C-0412",
+        "C-0501",
+        "C-0600",
+        "C-0733",
+        "C-0777",
+        "C-0888",
+        "C-0900",
+        "C-0951",
+        "C-1500",
+    ),
     "transactions": (
         "TX-2030",
         "TX-2048",
@@ -88,12 +100,14 @@ RESERVED_IDS: dict[str, tuple[str, ...]] = {
         "TX-2084",
         "TX-2090",
         "TX-2095",
+        "TX-2096",
         "TX-2099",
+        "TX-9001",
     ),
-    "refunds": ("R-0720", "R-0731", "R-0740", "R-0750"),
+    "refunds": ("R-0720", "R-0731", "R-0740", "R-0750", "R-0751"),
     "chargebacks": ("CB-0310", "CB-0311", "CB-0312"),
     "settlements": ("ST-0044",),
-    "fx": ("FX-9001", "FX-9002"),
+    "fx": ("FX-9001", "FX-9002", "FX-9003", "FX-9004"),
 }
 ABSENT_IDS = ("TX-9999",)  # scenario S04: this id must not exist
 

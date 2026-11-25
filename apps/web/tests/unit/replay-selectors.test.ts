@@ -498,6 +498,17 @@ describe("the projections of the recorded run", () => {
     }
   });
 
+  it("never dresses a word as an amount of money", () => {
+    // It proves that a value of the result that is not a number is not an amount: the check of the markup of a
+    // refund publishes its answer as a word, and the panel of the amounts shows money and percentages only.
+    const amounts = collectAmounts([
+      calculationWith({ markup_pct: "2.50", markup_limit_pct: "3.00", within_limit: "yes" }),
+    ]);
+
+    expect(amounts.map((amount) => amount.name)).toEqual(["markup_pct", "markup_limit_pct"]);
+    expect(amounts.find((amount) => amount.name === "markup_limit_pct")?.unit).toBe("percentage");
+  });
+
   it("tells a percentage apart from a money value", () => {
     // It proves that the panel of the amounts knows which values are money and which are a percentage, because a
     // percentage is never money and never carries the currency of the run.

@@ -15,7 +15,7 @@ there is no key at all.
 ### User Story 1 - The visitor runs a case with their own key (Priority: P1)
 
 A visitor reads the replay and wants to see the same case run with a real model. They pick a provider and a model from
-the catalogue, read the cost disclosure, type their key in a password field, set a budget and run one case. The run
+the catalog, read the cost disclosure, type their key in a password field, set a budget and run one case. The run
 uses their key, in their session, and the interface shows the calls and tokens as they happen.
 
 **Why this priority**: The replay proves the engineering; the live run proves the agent works with a real model. It is
@@ -86,7 +86,7 @@ visitor sees and the telemetry. The key is in none of them.
 
 ### User Story 4 - The visitor picks a model that can actually do the job (Priority: P2)
 
-A visitor picks a model. The catalogue only offers models that were tested for the capabilities the agent needs, and a
+A visitor picks a model. The catalog only offers models that were tested for the capabilities the agent needs, and a
 model that lacks native tool calling is refused with a readable reason instead of being silently replaced.
 
 **Why this priority**: Silently swapping the model would make the comparison dishonest, and a broken tool call in the
@@ -97,7 +97,7 @@ message names the missing capability.
 
 **Acceptance Scenarios**:
 
-1. **Given** the catalogue lists only tested models, **When** the visitor opens the model picker, **Then** each entry
+1. **Given** the catalog lists only tested models, **When** the visitor opens the model picker, **Then** each entry
    shows its tested status and its capabilities.
 2. **Given** a model without native tool calling, **When** the visitor tries to select it, **Then** the selection is
    refused and the interface names the missing capability.
@@ -181,7 +181,7 @@ provider call happens.
 - **FR-027**: The system MUST refuse a run when the requested model identifier is not in the allowlist.
 - **FR-028**: The system MUST NOT make any real financial operation, in any mode.
 - **FR-029**: The system MUST keep the deterministic offline path free of any provider call.
-- **FR-030**: The system MUST expose the catalogue with the tested status and the capabilities of each model.
+- **FR-030**: The system MUST expose the catalog with the tested status and the capabilities of each model.
 - **FR-031**: The system MUST show the pricing provenance and the date of the last verification when a price exists.
 - **FR-032**: The system MUST treat a provider timeout as terminal for the run, with the partial trace kept.
 
@@ -210,7 +210,7 @@ provider call happens.
 - **SC-006**: Every live run ends with a terminal trace event, in 100 percent of the runs.
 - **SC-007**: The cost panel appears within one second of the run finishing.
 - **SC-008**: The public demo, with no key, keeps every replay feature working, in 100 percent of the test runs.
-- **SC-009**: The catalogue lists only models whose tool calling was tested, in 100 percent of the entries.
+- **SC-009**: The catalog lists only models whose tool calling was tested, in 100 percent of the entries.
 - **SC-010**: A cancelled run makes no further provider call after the cancellation is acknowledged.
 - **SC-011**: The key survives in memory for no longer than the declared time to live.
 - **SC-012**: No page of the demo carries a key or a credential handle in its URL.
@@ -219,7 +219,7 @@ provider call happens.
 
 - The visitor has a provider account and a key that they are willing to spend on this run.
 - The provider supports the HTTP transport the adapter needs, and the adapter is under test for the models in the
-  catalogue.
+  catalog.
 - The demo server runs a single process with bounded memory, and the credential vault lives in that process.
 - The visitor understands that their provider may charge them, and that LedgerLens does not store the key.
 - The price of the models changes over time, so the registry carries the date of the last verification and can be

@@ -646,7 +646,7 @@ def settlement_events(conn: sqlite3.Connection, cfg: SimConfig) -> list[Event]:
     overrides = scenarios.settlement_overrides(cfg)
     ids = IdSeq("ST", RESERVED_IDS["settlements"])
     end_dt = datetime.combine(cfg.end, time(23, 59, 59))
-    rows: list[tuple[str, str, str, str, gaps.SettlementAmounts]] = []
+    rows: list[tuple[str, str, str, str, gaps.SettlementAmounts, int]] = []
     for merchant_id, currency in conn.execute("SELECT id, settlement_currency FROM merchants ORDER BY id").fetchall():
         (first,) = conn.execute(
             "SELECT min(captured_at) FROM transactions WHERE merchant_id = ?", (merchant_id,)
@@ -654,6 +654,10 @@ def settlement_events(conn: sqlite3.Connection, cfg: SimConfig) -> list[Event]:
         if first is None:
             continue
         start, _ = gaps.period_bounds(date.fromisoformat(first[:10]))
+        # The carry of the negative net: a settlement whose net is negative is paid, and the balance is
+        # deducted from the next settlement of the merchant, as the settlement policy says (gap 3 of the
+        # audit of the truth of the policies and the money).
+        carried = 0
         while start + timedelta(days=6) < cfg.end:
             end = start + timedelta(days=6)
             window = (start.isoformat(), end.isoformat())
@@ -673,12 +677,22 @@ def settlement_events(conn: sqlite3.Connection, cfg: SimConfig) -> list[Event]:
                 (merchant_id, currency, *window),
             ).fetchone()
             if gross or refunds or opened:
+                amounts = gaps.settlement_amounts(gross, refunds, opened)
+                net = amounts.net_minor + carried
                 rows.append(
-                    (window[0], merchant_id, window[1], currency, gaps.settlement_amounts(gross, refunds, opened))
+                    (
+                        window[0],
+                        merchant_id,
+                        window[1],
+                        currency,
+                        gaps.SettlementAmounts(amounts.gross_minor, amounts.refunds_minor, amounts.fees_minor, net),
+                        carried,
+                    )
                 )
+                carried = net if net < 0 else 0
             start += timedelta(days=7)
     events: list[Event] = []
-    for period_start, merchant_id, period_end, currency, amounts in sorted(rows):
+    for period_start, merchant_id, period_end, currency, amounts, carried_minor in sorted(rows):
         forced = overrides.get((merchant_id, period_start))
         settlement_id = forced or ids.next()
         origin = "scenario:S08" if forced else "synthetic"
@@ -699,13 +713,17 @@ def settlement_events(conn: sqlite3.Connection, cfg: SimConfig) -> list[Event]:
                     "refunds_minor": amounts.refunds_minor,
                     "fees_minor": amounts.fees_minor,
                     "net_minor": amounts.net_minor,
+                    "carried_minor": carried_minor,
                     "expected_payout_date": pay_day.isoformat(),
                 },
                 origin,
             )
         )
         paid_at = datetime.combine(pay_day, time(6))
-        if paid_at <= end_dt:
+        # A settlement whose net is negative gets no payout: the payout is withheld and the balance is
+        # carried into the next settlement of the merchant, whose net already carries it (the rule of the
+        # negative net of the settlement policy, gap 3 of the audit).
+        if paid_at <= end_dt and amounts.net_minor >= 0:
             events.append(
                 Event(
                     "payout.paid",

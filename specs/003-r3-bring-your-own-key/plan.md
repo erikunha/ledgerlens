@@ -66,7 +66,7 @@ specs/003-r3-bring-your-own-key/
 ├── quickstart.md        # Phase 1: how to run a live case locally and how to revoke
 ├── contracts/
 │   ├── credential-handle.schema.json   # the handle and the expiry, never the secret
-│   ├── model-profile.schema.json        # the catalogue entry
+│   ├── model-profile.schema.json        # the catalog entry
 │   └── live-run-request.schema.json     # the budget and the model choice
 └── tasks.md             # Phase 2: the task list
 ```
@@ -83,7 +83,7 @@ ledgerlens/
 │   ├── adapter.py        # the provider adapter interface and the fake one for the tests
 │   └── errors.py         # the refusals with a readable reason
 ├── api/
-│   ├── byok.py           # the facade endpoints for credentials, catalogue and live runs
+│   ├── byok.py           # the facade endpoints for credentials, catalog and live runs
 │   └── live_run.py       # the live run coordinator and its SSE stream
 ├── run_context.py        # already carries the budget; the live path fills it
 └── observability/

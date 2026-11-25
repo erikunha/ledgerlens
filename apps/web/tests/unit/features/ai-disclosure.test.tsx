@@ -31,7 +31,7 @@ const SENTENCE = "The answer is produced by an AI agent, and a person reviews th
 /**
  * Builds an answer of the fake backend, with the shape the transport of the browser expects.
  *
- * Why the fake exists: the page asks the catalogue of the models when it opens, and a case that asks nobody
+ * Why the fake exists: the page asks the catalog of the models when it opens, and a case that asks nobody
  * would prove nothing about a page that opens with a request.
  */
 function answer(status: number, body: unknown): Response {
@@ -46,7 +46,7 @@ function answer(status: number, body: unknown): Response {
 /**
  * The fake backend of the page: it answers the routes the page calls and asks nobody.
  *
- * Why the catalogue is empty: the case is about the sentence of the header, and a model in the catalogue would
+ * Why the catalog is empty: the case is about the sentence of the header, and a model in the catalog would
  * only add a second thing to the page that the case does not look at.
  */
 function fakeBackend() {

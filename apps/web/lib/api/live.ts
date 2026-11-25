@@ -65,7 +65,7 @@ export interface Pricing {
 }
 
 /**
- * One model of the catalogue of the server.
+ * One model of the catalog of the server.
  * From `specs/003-r3-bring-your-own-key/contracts/model-profile.schema.json`, title `ModelProfile`.
  */
 export interface ModelProfile {
@@ -88,10 +88,10 @@ export interface ModelProfile {
 }
 
 /**
- * The answer of the route of the catalogue of the models.
+ * The answer of the route of the catalog of the models.
  * From the route `GET /v1/models` of `ledgerlens/api/byok.py`.
  */
-export interface ModelCatalogueResponse {
+export interface ModelCatalogResponse {
   /** The models the visitor may pick. */
   models: ModelProfile[];
 }

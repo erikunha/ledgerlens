@@ -33,13 +33,32 @@ import { ModeIndicator } from "./ModeIndicator";
  * and a list written by a page is a list that a page can forget. The tour of the architecture was
  * unreachable for a long time because no header ever named it, and a header that names the rooms
  * is what keeps every room reachable from every page.
+ *
+ * Why the catalog of a real model is a room of its own: the site publishes two catalogs, the
+ * recordings of the scripted model and the recordings of a real model, and each one has its own
+ * route and its own pages (ADR-075). A visitor that is on one of them has to be able to reach the
+ * other one from any page, and the header is the place where every room is named.
  */
 const ROOMS = [
   { href: "/replay", label: "Recorded demo" },
+  { href: "/replay-real", label: "Real model" },
   { href: "/sandbox", label: "Sandbox" },
   { href: "/live", label: "Live mode" },
   { href: "/engineering", label: "Architecture" },
 ] as const;
+
+/**
+ * Says whether a path is inside a room.
+ *
+ * Why the comparison is by segment and not by prefix: the room of the scripted model is `/replay`
+ * and the room of a real model is `/replay-real`. A comparison that only looked at the beginning
+ * of the path would say that a page of the catalog of a real model is inside the room of the
+ * scripted model, and the header would announce the wrong room as the room of the visitor
+ * (ADR-075).
+ */
+function isInsideTheRoom(pathname: string, room: string): boolean {
+  return pathname === room || pathname.startsWith(`${room}/`);
+}
 
 /**
  * The props of the header.
@@ -84,8 +103,9 @@ export function Header(props: HeaderProps): ReactElement {
         <ul className="flex flex-wrap items-center gap-2">
           {ROOMS.map((room) => {
             // The room of a scenario is the room of the recorded demo, so the mark follows the path
-            // and not only the exact address of the room.
-            const isTheRoomOfTheVisitor = pathname.startsWith(room.href);
+            // and not only the exact address of the room. The comparison is by segment, so the
+            // catalog of a real model is never announced as the room of the scripted model.
+            const isTheRoomOfTheVisitor = isInsideTheRoom(pathname, room.href);
 
             return (
               <li key={room.href}>

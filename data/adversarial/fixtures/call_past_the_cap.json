@@ -1,0 +1,6 @@
+{
+  "exercise_id": "call-past-the-cap",
+  "surface": "the money of the run",
+  "payload": {"max_model_calls": 1, "calls": 2},
+  "treat_as": "a run the coordinator of the budget stops with the name of the cap"
+}

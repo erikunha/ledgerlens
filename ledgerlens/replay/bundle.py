@@ -4,11 +4,12 @@ Why it exists: the phase R2 will repeat an execution without calling any model. 
 the public contract format (`TraceEvent`), that anyone can read, play in a browser and check by hash. The bundle is that
 file: the events as JSON lines, plus a manifest that declares the mode, the origin, the count and the hash of each part.
 
-What the bundle carries is never a live execution: no key and no network, and one single mode from the first line to
-the last. The write path checks that before any file exists: a set with a `live_agent` event is refused, because a live
-execution never becomes a bundle, and a set with more than one mode is refused, because there is no honest single
-label for the manifest. The `mode` in the manifest is then the one mode every event carries, and the note says in
-words that it is not a live execution, so that nobody has to infer it from the format.
+What the bundle carries is a recording, never a live run in progress: no key and no network, and one single mode from
+the first line to the last. The write path checks that before any file exists: a set with more than one mode is
+refused, because there is no honest single label for the manifest, and a set with the mode `live_agent` is refused
+unless the capture kind says that a real model produced it, because a fixture is not a live run and a live run is
+not a fixture. The `mode` in the manifest is then the one mode every event carries, and the note says in words what
+the recording is, so that nobody has to infer it from the format (ADR-075).
 
 The redaction happens at the event boundary, in `ledgerlens.observability.trace_event`. The bundle does not trust that
 and checks again when it reads: if the text of the events file or of the manifest changes with the redaction, there is
@@ -54,6 +55,10 @@ CODE_SHA_PATTERN = re.compile(r"^[a-f0-9]{40}$")
 # The two kinds of capture the bundle contract of the design package accepts: a real model run and a fixture.
 CAPTURE_KINDS = ("real_model_recorded", "scripted_fixture")
 
+# The kind of capture that admits a recording of a real model, and therefore the only one that admits events with the
+# mode `live_agent`. Every other kind, including the absence of a kind, is refused by the write path (ADR-075).
+LIVE_CAPTURE_KIND = "real_model_recorded"
+
 # The shape of an ISO 8601 moment with a time zone, the same one the interface accepts for the moment of the
 # capture. It lives here so the bundle refuses a moment the interface would not be able to read.
 RECORDED_AT_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$")
@@ -63,6 +68,7 @@ PROVENANCE_FIELDS = (
     "capture_kind",
     "recorded_at",
     "model_profile",
+    "model_profiles",
     "code_sha",
     "prompt_hash",
     "policy_version",
@@ -90,10 +96,12 @@ class BundleManifest:
     capture_kind: str | None = None
     recorded_at: str | None = None
     model_profile: str | None = None
+    model_profiles: dict[str, str] | None = None
     code_sha: str | None = None
     prompt_hash: str | None = None
     policy_version: str | None = None
     redaction_version: str | None = None
+    memory_snapshot_sha256: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """The manifest as a dictionary, with what the reader needs to check it."""
@@ -109,6 +117,14 @@ class BundleManifest:
         }
         if self.snapshot_sha256:
             data["snapshot_sha256"] = self.snapshot_sha256
+        if self.memory_snapshot_sha256:
+            # The digest of the snapshot of the memory of the run: a replay of an old case reads the memory of
+            # its generation, and the reader of the bundle checks it against the file of the snapshot.
+            data["memory_snapshot_sha256"] = self.memory_snapshot_sha256
+        if self.model_profiles:
+            # The model of each slot of the run, when the run used more than one. The map is the division of work
+            # the recording shows, and it is what lets a reader see which model did which task (ADR-078).
+            data["model_profiles"] = dict(self.model_profiles)
         # The provenance is declared field by field: a field the bundle does not declare never reaches the file.
         for name in PROVENANCE_FIELDS:
             value = getattr(self, name)
@@ -131,10 +147,12 @@ class BundleManifest:
             capture_kind=_optional_text(data.get("capture_kind")),
             recorded_at=_optional_text(data.get("recorded_at")),
             model_profile=_optional_text(data.get("model_profile")),
+            model_profiles=_optional_map(data.get("model_profiles")),
             code_sha=_optional_text(data.get("code_sha")),
             prompt_hash=_optional_text(data.get("prompt_hash")),
             policy_version=_optional_text(data.get("policy_version")),
             redaction_version=_optional_text(data.get("redaction_version")),
+            memory_snapshot_sha256=_optional_text(data.get("memory_snapshot_sha256")),
         )
 
 
@@ -143,6 +161,19 @@ def _optional_text(value: Any) -> str | None:
     if value is None:
         return None
     return str(value) or None
+
+
+def _optional_map(value: Any) -> dict[str, str] | None:
+    """A field of the manifest that is either a map of names or nothing at all.
+
+    Why the map is read strictly: the field says which model ran which slot of the run, and a map with a value
+    that is not a name would say something the reader cannot check.
+    """
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        raise BundleError("the model_profiles of the manifest is not a map of names")
+    return {str(key): str(item) for key, item in value.items()}
 
 
 def _sha256(path: Path) -> str:
@@ -162,18 +193,20 @@ def write_bundle(
     capture_kind: str | None = None,
     recorded_at: str | None = None,
     model_profile: str | None = None,
+    model_profiles: dict[str, str] | None = None,
     code_sha: str | None = None,
     prompt_hash: str | None = None,
     policy_version: str | None = None,
     redaction_version: str | None = None,
+    memory_snapshot: Any = None,
 ) -> BundleManifest:
     """Writes the bundle and returns the manifest.
 
-    The events are validated before any file is written: a set with a `live_agent` event is refused, because a live
-    execution never becomes a bundle, and a set with more than one mode is refused, because the manifest can carry
-    only one honest label. The events go out in sequence order, one per line, and the manifest declares the single
-    mode they all share. The manifest is written afterwards, with the hash of each file, and it is what closes the
-    package.
+    The events are validated before any file is written: a set with more than one mode is refused, because the manifest
+    can carry only one honest label, and a set with the mode `live_agent` is refused unless the capture kind is
+    `real_model_recorded`, because a fixture is not a live run and a live run published as a fixture is a lie
+    (ADR-075). The events go out in sequence order, one per line, and the manifest declares the single mode they all
+    share. The manifest is written afterwards, with the hash of each file, and it is what closes the package.
 
     The provenance of the contract is optional and it is checked before anything is written: a commit hash outside
     the shape of a commit, a capture kind outside the contract and a moment outside the shape the interface accepts
@@ -187,8 +220,11 @@ def write_bundle(
     if not events:
         raise BundleError("a bundle with no event at all serves nothing")
     modes = {event.mode for event in events}
-    if "live_agent" in modes:
-        raise BundleError("a live execution never becomes a bundle: the events carry mode live_agent")
+    if "live_agent" in modes and capture_kind != LIVE_CAPTURE_KIND:
+        raise BundleError(
+            "a recording of a live run only becomes a bundle when the capture kind declares a real model: "
+            f"{LIVE_CAPTURE_KIND}"
+        )
     if len(modes) != 1:
         raise BundleError("the events do not have a single mode, so the manifest has no honest label")
     mode = modes.pop()
@@ -211,26 +247,48 @@ def write_bundle(
     # previous version, key for key, and then the moment stays only in created_at.
     if recorded_at is None and any(
         value is not None
-        for value in (capture_kind, model_profile, code_sha, prompt_hash, policy_version, redaction_version)
+        for value in (
+            capture_kind,
+            model_profile,
+            model_profiles,
+            code_sha,
+            prompt_hash,
+            policy_version,
+            redaction_version,
+        )
     ):
         recorded_at = created_at
+
+    files = {EVENTS_FILE: _sha256(events_path)}
+    memory_snapshot_sha256: str | None = None
+    if memory_snapshot is not None:
+        # The snapshot of the memory of the run travels with the bundle, so a replay of an old case reads the
+        # memory of its generation and the reader of the bundle can check it (ADR-073).
+        from ledgerlens.memory.snapshot import SNAPSHOT_FILE, write_snapshot
+
+        snapshot_path = directory / SNAPSHOT_FILE
+        write_snapshot(snapshot_path, memory_snapshot)
+        files[SNAPSHOT_FILE] = _sha256(snapshot_path)
+        memory_snapshot_sha256 = memory_snapshot.digest
 
     manifest = BundleManifest(
         run_id=ordered[0].run_id,
         mode=mode,
         scenario=scenario,
         events=len(events),
-        files={EVENTS_FILE: _sha256(events_path)},
+        files=files,
         snapshot_sha256=snapshot_sha256,
         created_at=created_at,
         note=note,
         capture_kind=capture_kind,
         recorded_at=recorded_at,
         model_profile=model_profile,
+        model_profiles=dict(model_profiles) if model_profiles else None,
         code_sha=code_sha,
         prompt_hash=prompt_hash,
         policy_version=policy_version,
         redaction_version=redaction_version,
+        memory_snapshot_sha256=memory_snapshot_sha256,
     )
     (directory / MANIFEST_FILE).write_text(
         json.dumps(manifest.to_dict(), ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8"
@@ -289,6 +347,13 @@ def load_bundle(directory: Path) -> tuple[BundleManifest, list[TraceEvent]]:
     modes = {event.mode for event in events}
     if modes != {manifest.mode}:
         raise BundleError("the events of the bundle do not have the same mode the manifest declares")
+    if manifest.mode == "live_agent" and manifest.capture_kind != LIVE_CAPTURE_KIND:
+        # The read path applies the rule of the write path: a bundle that declares a live mode with a kind that does
+        # not admit it does not open, so a bundle assembled by hand on the disk cannot lie about what it is (ADR-075).
+        raise BundleError(
+            "the bundle declares the mode live_agent and a capture kind that does not admit a recording of a real "
+            f"model: {manifest.capture_kind}"
+        )
     run_ids = {event.run_id for event in events}
     if run_ids != {manifest.run_id}:
         raise BundleError("the run id of the manifest is not the run id of the events")

@@ -25,6 +25,12 @@ come from the model, per variant. A full run writes `report_online.json` and `re
 `--variants` or `--limit` it only prints the summary, to test the plumbing and the cost first.
 
 Usage: `uv run python -m ledgerlens.eval.run [--online [--variants A,B,C] [--limit N]] [--out FOLDER]`.
+
+Why the runner builds its own vectors: the offline run measures the plumbing, and the plumbing has to be the
+same on every machine and in every run. The committed index of the policies is built with the real embedding,
+and a runner that read it would measure the model of the embedding and not the plumbing. The runner builds
+its own vectors with the stand-in of the word count, so the offline run is deterministic and needs no model
+and no network.
 """
 
 from __future__ import annotations
@@ -78,6 +84,8 @@ from ledgerlens.eval.evaluators import (
     verdict_match,
     verification_summary,
 )
+from ledgerlens.eval.latency import METHOD as LATENCY_METHOD
+from ledgerlens.eval.latency import LatencyCollector, percentile
 from ledgerlens.memory.long_term import CaseMemory
 from ledgerlens.offline import ScriptedChatModel, text_message, tool_call_message
 from ledgerlens.retrieval import build_policy_index, index_dir_for, load_policy_documents
@@ -344,9 +352,22 @@ def run_variant_c(case: EvalCase, world: World, model: BaseChatModel | None = No
         triage_model=triage_model or model or _online_model(),
         verifier=partial(verify_result, nli=world.nli, ledger_db=world.db_path),
         case_memory=world.case_memory(case, "C"),
+        # The model of a retry is built by the deployment that holds the provider, and the evaluation holds the
+        # provider of the deployment (ADR-084).
+        fallback_factory=lambda name: get_chat_model(model=name, temperature=0),
         **kwargs,
     )
-    return _outputs(investigate(agent, case.question, thread_id=f"eval-C-{case.id}"))
+    spans: list[Any] = []
+    result = investigate(agent, case.question, thread_id=f"eval-C-{case.id}", on_event=spans.append)
+    outputs = _outputs(result)
+    collector = LatencyCollector()
+    collector.add_case(spans)
+    outputs["latency"] = {
+        "end_to_end_ms": collector.end_to_end[0] if collector.end_to_end else None,
+        "per_stage_ms": {stage: values[0] for stage, values in collector.per_stage.items() if values},
+    }
+    outputs["usage"] = result.usage
+    return outputs
 
 
 RUNNERS: dict[str, Callable[..., dict[str, Any]]] = {"A": run_variant_a, "B": run_variant_b, "C": run_variant_c}
@@ -392,6 +413,8 @@ def _rows(results: Any, variant: str, by_id: dict[str, EvalCase], metrics: Seque
             "recommended_action": outputs.get("recommended_action"),
             "plan_deviations": outputs.get("plan_deviations", []),
             "answer": outputs.get("answer", ""),
+            "latency": outputs.get("latency"),
+            "usage": outputs.get("usage"),
         }
         if getattr(run, "error", None):
             entry["error"] = str(run.error).splitlines()[0][:200]  # first line only: it may cite the environment
@@ -564,8 +587,67 @@ def build_report(
         "cases": len(cases),
         "variants": variants,
         "goal": goal,
+        "latency": _latency_of(rows),
+        "cost": _cost_of(rows),
         "expectation_changes": [change.model_dump() for change in EXPECTATION_CHANGES],
         "per_case": sorted(rows, key=lambda r: (r["variant"], r["case"])),
+    }
+
+
+def _cost_of(rows: list[dict]) -> dict[str, Any]:
+    """The cost of the turn of the full agent over the cases of the report, and the cases a cap cut.
+
+    Why the total is nothing when the price is unknown: the price of the model of the offline run is unknown,
+    and an unknown price is unknown and never zero. The report says the pricing is missing instead of
+    publishing a total that means nothing.
+
+    Why a case a cap cut is named as cut: a case whose turn a cap cut did not answer wrong, it was cut, and
+    the report names it as cut instead of counting it as a wrong answer.
+    """
+    mine = [row for row in rows if row["variant"] == "C"]
+    cut = [row["case"] for row in mine if (row.get("usage") or {}).get("cut_by")]
+    priced = [row for row in mine if (row.get("usage") or {}).get("price_known")]
+    total = None
+    reason = None
+    if not priced:
+        reason = (
+            "the price of the model of the run is unknown, and an unknown price is unknown and never zero: "
+            "the total of the run is not published"
+        )
+    return {
+        "total_cost_usd": total,
+        "reason": reason,
+        "cut_by_cap": cut,
+        "priced_cases": len(priced),
+    }
+
+
+def _latency_of(rows: list[dict]) -> dict[str, Any]:
+    """The latency of the full agent over the cases of the report: the p50 and the p95, with the denominator.
+
+    The denominator is the count of the cases that produced a measurement, and the method of the percentile is
+    the nearest rank, so the numbers of the report are recomputable by a reader.
+    """
+    end_to_end = [
+        float(row["latency"]["end_to_end_ms"])
+        for row in rows
+        if row["variant"] == "C" and row.get("latency") and row["latency"].get("end_to_end_ms") is not None
+    ]
+    per_stage: dict[str, list[float]] = {}
+    for row in rows:
+        if row["variant"] != "C" or not row.get("latency"):
+            continue
+        for stage, ms in row["latency"].get("per_stage_ms", {}).items():
+            per_stage.setdefault(stage, []).append(float(ms))
+    return {
+        "method": LATENCY_METHOD,
+        "set": "eval_cases",
+        "denominator": len(end_to_end),
+        "end_to_end": {"p50": percentile(end_to_end, 50), "p95": percentile(end_to_end, 95)},
+        "per_stage": {
+            stage: {"p50": percentile(values, 50), "p95": percentile(values, 95)}
+            for stage, values in per_stage.items()
+        },
     }
 
 
@@ -749,6 +831,38 @@ def render_markdown(report: dict[str, Any]) -> str:
                 f"`{previous['verification']}`.",
             ]
     goal = report["goal"]
+    latency = report.get("latency")
+    if latency and latency["denominator"]:
+        lines += [
+            "",
+            "## Latency of the full agent",
+            "",
+            f"The latency of the cases of {latency['set']} over the full agent, by the {latency['method']} "
+            f"method, over a denominator of {latency['denominator']} cases that produced a measurement.",
+            "",
+            "| stage | p50 (ms) | p95 (ms) |",
+            "|---|---|---|",
+            f"| end to end | {latency['end_to_end']['p50']} | {latency['end_to_end']['p95']} |",
+        ]
+        for stage, values in latency["per_stage"].items():
+            lines.append(f"| {stage} | {values['p50']} | {values['p95']} |")
+    cost = report.get("cost")
+    if cost:
+        lines += [
+            "",
+            "## Cost of a turn",
+            "",
+        ]
+        if cost["total_cost_usd"] is None:
+            lines.append(f"The total of the run is not published: {cost['reason']}.")
+        else:
+            lines.append(f"The total of the run: {cost['total_cost_usd']} USD.")
+        if cost["cut_by_cap"]:
+            lines.append(
+                f"The cases a cap cut, named as cut and not as wrong answers: {', '.join(cost['cut_by_cap'])}."
+            )
+        else:
+            lines.append("No case of the run was cut by a cap.")
     lines += [
         "",
         "## Quality goal",

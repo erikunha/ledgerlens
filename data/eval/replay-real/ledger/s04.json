@@ -1,0 +1,48 @@
+{
+  "accounts": [
+    {
+      "id": "C-0001",
+      "kind": "customer",
+      "name": "Glenn Alexander-Jones",
+      "reads": [
+        {
+          "columns": [
+            "status"
+          ],
+          "evidence_id": "sql:1",
+          "records": [
+            "TX-9999"
+          ],
+          "row_count": 0,
+          "rows": [],
+          "seq": 19,
+          "sql": "SELECT * FROM (SELECT status FROM transactions WHERE id = 'TX-9999') LIMIT 50",
+          "tool": "query_ledger",
+          "truncated": false
+        }
+      ],
+      "rows": [
+        {
+          "amount": "78.10",
+          "at": "2026-08-10T10:35:00Z",
+          "currency": "GBP",
+          "id": "TX-0001",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "373.68",
+          "at": "2026-10-31T12:03:00Z",
+          "currency": "EUR",
+          "id": "TX-1905",
+          "kind": "transaction",
+          "status": "captured"
+        }
+      ]
+    }
+  ],
+  "page_size": 50,
+  "scenario": "S04",
+  "schema_version": "1",
+  "snapshot_sha256": "87da26ffd7674cdfb8c5503b124bdb64df8ed88ac06c117be3ce0cfe9cd118dc"
+}

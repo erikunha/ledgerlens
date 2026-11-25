@@ -3,7 +3,7 @@
 /**
  * The picker of the model of the live run.
  *
- * Why this file exists: the visitor chooses what the live run thinks with, and the catalogue of the
+ * Why this file exists: the visitor chooses what the live run thinks with, and the catalog of the
  * server is the only source of that choice. The picker therefore shows what the server published
  * and nothing else: a profile that is not tested, or that the public demo does not enable, is never
  * offered, because offering it would promise a run the demo does not make.
@@ -18,11 +18,11 @@ import type { ModelProfile } from "@/lib/api/live";
 /**
  * The props of the picker.
  *
- * Why the price is optional: the catalogue of the server does not carry the note of the price, and
+ * Why the price is optional: the catalog of the server does not carry the note of the price, and
  * the note only arrives when the visitor asks for the price of the profile they chose.
  */
 export interface ModelSelectorProps {
-  /** The catalogue of the server, with every profile it published. */
+  /** The catalog of the server, with every profile it published. */
   profiles: ModelProfile[];
   /** The profile the visitor chose, or `null` while the choice is not made. */
   selectedProfileId: string | null;
@@ -55,7 +55,7 @@ export function ModelSelector({
 
       {offered.length === 0 ? (
         <p className="text-sm text-text-muted">
-          The catalogue of the server offers no model for the public demo right now.
+          The catalog of the server offers no model for the public demo right now.
         </p>
       ) : (
         <ul className="flex flex-col gap-2">

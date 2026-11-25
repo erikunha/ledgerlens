@@ -29,13 +29,15 @@ from typing import Any
 
 from ledgerlens.agents.integrator import _SOURCE_BY_PREFIX, _content, _ref
 from ledgerlens.replay.bundle import EVENTS_FILE
-from ledgerlens.schemas import Coherence, Evidence, InvestigationResult
+from ledgerlens.schemas import Claim, Coherence, Evidence, InvestigationResult, Verdict
 from ledgerlens.verify.checks import verify_result
 
 __all__ = [
     "differences",
+    "memory_snapshot_differences",
     "published_labels",
     "published_result",
+    "published_result_with_claims",
     "reverified_labels",
 ]
 
@@ -44,6 +46,13 @@ _CLAIM_NAME = re.compile(r"^CL\d+$")
 
 # The span of the investigation, the one that holds the answer and the recommendation of the run.
 _INVESTIGATION = "investigate"
+
+# The span of the verifier, the one that holds the answer the run verified.
+#
+# Why the rebuild reads the answer from there and not from the span of the investigation: the escalation adds a
+# notice to the answer after the verification, and that notice was never a claim of the run. The claims were
+# extracted from the text the verifier received, so the rebuild has to read that same text (ADR-077).
+_VERIFIER = "verify"
 
 # The span of a tool of the agent, the one that holds the evidence of the run.
 _TOOL = "tool"
@@ -155,9 +164,15 @@ def published_result(bundle_dir: Path) -> InvestigationResult:
 
     The claims are left empty on purpose: the verifier extracts them from the answer and the evidence, exactly
     as the run did, so the check runs on the claims of the recording.
+
+    The answer is the one the run verified, which the bundle publishes in the span of the verifier. The final answer
+    of the investigation carries the notice of the escalation, and that notice was never a claim of the run, so a
+    rebuild that used it would find claims the run never had (ADR-077). A recording without a span of the verifier
+    falls back to the final answer, because it has no claims to rebuild and no text to rebuild them from.
     """
     events = _recorded_events(bundle_dir)
     answer = ""
+    verified_answer = ""
     question = ""
     recommended_action = "none"
     requires_human_review = False
@@ -167,9 +182,13 @@ def published_result(bundle_dir: Path) -> InvestigationResult:
     for event in events:
         payload = _payload_of(event)
         name = str(payload.get("name") or "")
-        if name == _INVESTIGATION and event.get("event_type") == "span.started":
+        if event.get("event_type") == "span.started":
             inputs = payload.get("inputs")
-            question = str((inputs or {}).get("question") or "")
+            inputs = inputs if isinstance(inputs, dict) else {}
+            if name == _INVESTIGATION:
+                question = str(inputs.get("question") or "")
+            if name == _VERIFIER:
+                verified_answer = str(inputs.get("answer") or "")
         if event.get("event_type") != "span.ended":
             continue
         outputs = payload.get("outputs")
@@ -189,7 +208,7 @@ def published_result(bundle_dir: Path) -> InvestigationResult:
     return InvestigationResult(
         session_id=str(events[0].get("run_id") or "") if events else "",
         question=question,
-        answer=answer,
+        answer=verified_answer or answer,
         claims=[],
         evidence=evidence,
         verdicts=[],
@@ -214,6 +233,36 @@ def published_labels(bundle_dir: Path) -> dict[str, str]:
         if isinstance(outputs, dict) and outputs.get("label"):
             labels[name] = str(outputs["label"])
     return labels
+
+
+def published_result_with_claims(bundle_dir: Path) -> InvestigationResult:
+    """The result of the run of the bundle, with the claims and the verdicts of the spans of the verifier.
+
+    Why the claims come from the spans: the bundle does not publish the text of a claim, and it publishes the
+    identifier, the evidence and the verdict of each claim in the span of the verifier of the claim. The graph
+    of the evidence reads the claims from there, so the graph of a published bundle is the graph of the run and
+    not the graph of a reconstruction.
+    """
+    result = published_result(bundle_dir)
+    for event in _recorded_events(bundle_dir):
+        payload = _payload_of(event)
+        name = str(payload.get("name") or "")
+        if not _CLAIM_NAME.match(name) or event.get("event_type") != "span.ended":
+            continue
+        outputs = payload.get("outputs")
+        outputs = outputs if isinstance(outputs, dict) else {}
+        claim_id = str(outputs.get("claim_id") or name)
+        evidence_ids = [str(item) for item in outputs.get("evidence_ids") or []]
+        result.claims.append(Claim(id=claim_id, text=claim_id, kind="fact", evidence_ids=evidence_ids))
+        result.verdicts.append(
+            Verdict(
+                claim_id=claim_id,
+                label=str(outputs.get("label") or ""),
+                method=str(outputs.get("method") or "nli"),
+                evidence_ids=evidence_ids,
+            )
+        )
+    return result
 
 
 def reverified_labels(bundle_dir: Path) -> dict[str, str]:
@@ -241,3 +290,32 @@ def differences(bundle_dir: Path) -> list[str]:
         if left != right:
             lines.append(f"{claim_id}: the bundle publishes {left} and the code gives {right}")
     return lines
+
+
+def memory_snapshot_differences(bundle_dir: Path) -> list[str]:
+    """The differences of the snapshot of the memory of the run, when the bundle names one.
+
+    Why the check exists: a replay of an old case reads the memory of its generation, and the digest of the
+    snapshot of the memory travels in the manifest of the bundle. A bundle whose snapshot does not match the
+    digest it names is a bundle that asks the reader to trust the name and not the bytes, and the verifier
+    refuses it. A bundle that names no snapshot of the memory is a bundle of the versions before the snapshot
+    existed, and it is checked as it always was.
+    """
+    import hashlib
+
+    manifest_path = bundle_dir / "manifest.json"
+    if not manifest_path.is_file():
+        return []
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    declared = manifest.get("memory_snapshot_sha256")
+    if not declared:
+        return []
+    snapshot_path = bundle_dir / "memory_snapshot.json"
+    if not snapshot_path.is_file():
+        return [f"the manifest names the snapshot of the memory {declared} and the file of it is not in the bundle"]
+    digest = hashlib.sha256(snapshot_path.read_bytes()).hexdigest()
+    if digest != declared:
+        return [
+            f"the snapshot of the memory of the bundle has the digest {digest} and the manifest names {declared}"
+        ]
+    return []

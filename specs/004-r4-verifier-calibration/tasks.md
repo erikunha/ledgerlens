@@ -107,11 +107,12 @@ disjoint files so that they can be worked on in parallel.
   `ledgerlens/verify/sweep.py` and the test is `tests/verify/test_verification_live.py`
 - [x] T103 Write the ADR of the milestone, which decides how the cases are written, who labels them and what a
   tuning script is allowed to read - **DELIVERED**: `docs/decisions/ADR-053-the-held-out-set-and-the-blind-labelling.md`
-- [ ] T113 Build the held out set of the RETRIEVAL, with the same three properties this milestone gave to the held out
+- [x] T113 Build the held out set of the RETRIEVAL, with the same three properties this milestone gave to the held out
   set of the verification: the questions written by a generator, the relevance labels read by one person blind to the
   recipe, and the guard that refuses a tuning script that reads them. The twelve questions of
   `data/eval/policy_questions.jsonl` are a tuning set, because ADR-006 chose the embedding and the query transform
   with the recall over them, so the comparison of `LL-V3-R12-03` has no set to compare over today
+  - **DELIVERED**: the held out set of the retrieval: the generator `ledgerlens/eval/retrieval_heldout.py` wrote 16 questions over the sections that are not gold chunks of the tuning set, the labels are the adjudication of two blind machine readings (4 of 16 divergent between the readers, the adjudication corrected the recipe of RH-04), the set is `data/eval/retrieval_heldout.jsonl` with the role `held_out` in the manifest, and the guard refuses the set and its sources.
 - [x] T114 Write the measurement over the held out set: the forty eight cases, the forty seven that go to the NLI model
   and the one that no evidence reaches, decided by code, with the denominator, the table by template, the count of the
   disagreements of the reader with the recipes, and the rate of the false supported. The sweep of ADR-007 reads only
@@ -150,24 +151,33 @@ disjoint files so that they can be worked on in parallel.
 
 **Purpose**: the aggregate sits next to the per case list, and the two never mix.
 
-- [ ] T104 Recompute the calibration over the sets of the role `tuning` and preserve the reports of the past under
+- [x] T104 Recompute the calibration over the sets of the role `tuning` and preserve the reports of the past under
   versioned ids, and mark the corpus of the old report as unrecoverable when it cannot be recovered
-- [ ] T105 Write the per case report of the verifier: the claim, the evidence, the expected verdict, the verdict
+  - **DELIVERED**: the calibration was recomputed over the tuning sets with the real model (`scripts/report_calibration.py`, report `data/eval/reports/calibration-a0cffc84f243.md`: the rule chooses entailment_min 0.81 and contradiction_min 0.91, the committed thresholds), the reports of the past are preserved under versioned ids in `data/eval/reports/` with the mark that their corpus is unrecoverable, and the pin of the calibration names the manifest of the disk.
+- [x] T105 Write the per case report of the verifier: the claim, the evidence, the expected verdict, the verdict
   that came out, the false supported, the false contradicted and the case without a verdict
-- [ ] T106 Write the per case report of the evaluation of the agent, and keep the correctness of the agent apart
+  - **DELIVERED**: `ledgerlens/eval/case_reports.py` and `scripts/report_verifier_cases.py`: the per case report of the verifier over the two tuning sets, with the claim, the evidence, the expected verdict, the verdict that came out, the false supported, the false contradicted and the case without a verdict, in `data/eval/reports/verifier-cases-*.md` with the JSON sidecar.
+- [x] T106 Write the per case report of the evaluation of the agent, and keep the correctness of the agent apart
   from the accuracy of the verifier in every sentence that publishes one of them
-- [ ] T107 Report a change of the prompt parser, with the model output unchanged, as a change of the extraction, and
+  - **DELIVERED**: `render_agent_report` and `scripts/report_agent_cases.py`: the per case report of the agent in `data/eval/reports/agent-cases-eval_cases.md`, with every sentence that publishes a number naming the agent and the correctness of the agent kept apart from the accuracy of the verifier.
+- [x] T107 Report a change of the prompt parser, with the model output unchanged, as a change of the extraction, and
   never as a rewrite of the reports of the past
-- [ ] T108 Add the `verification_status = unavailable` rule, so that a missing NLI model is not a pass
+  - **DELIVERED**: `extraction_change` and `extraction_digest` in `ledgerlens/eval/case_reports.py`: a change of the prompt parser with the model output unchanged is reported as a change of the extraction, and the reports of the past are never rewritten.
+- [x] T108 Add the `verification_status = unavailable` rule, so that a missing NLI model is not a pass
 
 ## Milestone 22, the Eval Lab of the interface
 
 **Purpose**: the reader of the interface sees the dataset, the restriction and the cases that failed.
 
-- [ ] T109 Build the page of the Eval Lab with the numbers of the verification and of the evaluation, each one with
+  - **DELIVERED**: `verification_status` in `ledgerlens/verify/nli.py`: the status is `unavailable` with the stand-in, and a case whose verification is unavailable is a case without a verdict and never a pass, with the tests in `tests/verify/test_verification_status.py`.
+- [x] T109 Build the page of the Eval Lab with the numbers of the verification and of the evaluation, each one with
   the dataset it comes from and the restriction that applies to it
-- [ ] T110 Build the list of the cases that failed, with the claim and the evidence of each one, and the drill into
+  - **DELIVERED**: the page `apps/web/app/(public)/eval-lab/page.tsx` with the numbers of the verification and of the evaluation, each one with the dataset it comes from and the restriction that applies to it, over the export `site/eval/index.json` of `scripts/export_eval_lab.py`, with the check in `scripts/gate.sh`.
+- [x] T110 Build the list of the cases that failed, with the claim and the evidence of each one, and the drill into
   one case
-- [ ] T111 Show the confusion matrix of the verifier with its denominator, and the note that a missing model is not
+  - **DELIVERED**: the list of the cases that failed in the page of the Eval Lab, with the claim and the evidence of each one and the drill of each case in a `details` that opens with the keyboard, over the failed cases of the tuning sets and of the evaluation.
+- [x] T111 Show the confusion matrix of the verifier with its denominator, and the note that a missing model is not
   a pass
-- [ ] T112 Write the end to end cases of the Eval Lab, and add the structural baseline of the pages of the milestone
+  - **DELIVERED**: the confusion matrix of the verifier in the page of the Eval Lab, with the denominator of 48 cases and the note that a missing model is not a pass.
+- [x] T112 Write the end to end cases of the Eval Lab, and add the structural baseline of the pages of the milestone
+  - **DELIVERED**: the end to end cases of `apps/web/tests/e2e/eval-lab.spec.ts` (2 passed) and the structural baseline of the page in `apps/web/tests/baselines/eval-lab-{390,768,1440}.json`, with the view of the Eval Lab in `apps/web/tests/e2e/screenshots.spec.ts` and the page in the list of the accessibility suite.

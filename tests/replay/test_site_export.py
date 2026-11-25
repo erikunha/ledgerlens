@@ -60,11 +60,12 @@ FROZEN_LEDGER = ROOT / "data" / "eval" / "replay" / "ledger" / "s01.json"
 # artifacts of `site/replay` being regenerated. The bundle, the dataset and the frozen artifact of the ledger are the
 # only inputs of these digests.
 EXPECTED_DIGESTS = {
-    "index.json": "f43241613c3aea7a392e1ae2347be5bcf7ff638ab3e9470e568babf57c67b480",
-    "s01/events.jsonl": "6a6d4ad16808de0ea6013cec2fca938e3e63bb84b4cf9ca01a76502faf6c0aef",
-    "s01/ledger.json": "049e84ca6753121918beb7daa3401b7e26d814940f103111dba834ec787e5ebf",
-    "s01/manifest.json": "cbe4aa7ace808b7f98a903dd4607d050b49129e5cd935e2efb187648640668d0",
-    "s01/provenance.json": "816e4d8f973061ccc5dd94ca550e5408a06cf76a1e564e5f9b380f26985bf242",
+    "s01/events.jsonl": "abab1e9db12692e5207d9f3ff3a360c63026a5643e727dd42fc039ff35ce3db4",
+    "s01/manifest.json": "024711fb1b0061137093627c2ad77879fb43802717fdc7101bff28b5977b4e63",
+    "s01/provenance.json": "fcd8bc47393cd942b0f5c4289b04ac6d289ead9dbcdb619306d543134791af46",
+    "s01/ledger.json": "92960fce6c40388f3b3813ceb2c6517e484ecf1c95d04d2ec0e77678e86a5699",
+    "s01/memory_snapshot.json": "30afedaaa82a1516f7491a983d00b48588194b2dc76289aa619c3e0b036005c9",
+    "index.json": "ec97eaca0e08ba21110c6300501c848021a52f4bc23fcdb6dc989e388d3ab673",
 }
 
 
@@ -154,11 +155,13 @@ def test_the_export_writes_the_events_the_manifest_the_provenance_the_ledger_and
     assert (out / "s01" / "manifest.json").is_file()
     assert (out / "s01" / "provenance.json").is_file()
     assert (out / "s01" / "ledger.json").is_file()
+    assert (out / "s01" / "memory_snapshot.json").is_file()
     assert {artifact.path.relative_to(out).as_posix() for artifact in written} == {
         "index.json",
         "s01/events.jsonl",
         "s01/ledger.json",
         "s01/manifest.json",
+        "s01/memory_snapshot.json",
         "s01/provenance.json",
     }
     assert all(len(artifact.sha256) == 64 for artifact in written)
@@ -406,7 +409,7 @@ def test_a_bundle_with_an_event_that_is_not_json_is_refused(tmp_path: Path):
 
 
 def test_a_bundle_that_declares_another_mode_is_refused_and_never_relabelled(tmp_path: Path):
-    """A bundle that is not a deterministic sandbox is refused, and the export does not call it one."""
+    """A bundle that is not a recording of a catalog of the site is refused, and the export does not call it one."""
     bundle = _copy_bundle(tmp_path)
     events = _events(bundle)
     for event in events:
@@ -420,6 +423,130 @@ def test_a_bundle_that_declares_another_mode_is_refused_and_never_relabelled(tmp
 
     with pytest.raises(ExportError):
         build_export([bundle])
+
+
+def _as_a_real_recording(bundle: Path) -> None:
+    """Turns a copy of the canonical bundle into a recording of a real model, and reseals it.
+
+    The events carry the mode `live_agent` and the manifest declares the kind `real_model_recorded`, which is the
+    combination a recording of a real model carries (ADR-075).
+    """
+    events = _events(bundle)
+    for event in events:
+        event["mode"] = "live_agent"
+    _rewrite_events(bundle, events)
+    manifest = _bundle_manifest(bundle)
+    manifest["mode"] = "live_agent"
+    manifest["capture_kind"] = "real_model_recorded"
+    (bundle / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+
+
+def test_the_export_publishes_the_catalog_of_a_recording_of_a_real_model(tmp_path: Path):
+    """The second catalog is published with the same shape, and its provenance says which mode it is.
+
+    The mode of the catalog travels in the manifest and in the provenance, so the visitor of the page reads the
+    label of the recording from the artifact and not from a name of a folder (ADR-075).
+    """
+    bundle = _copy_scenario(tmp_path)
+    _as_a_real_recording(bundle)
+    _frozen_ledger(tmp_path, json.loads(FROZEN_LEDGER.read_text(encoding="utf-8")))
+
+    artifacts = build_export([bundle])
+    provenance = json.loads(artifacts["s01/provenance.json"].decode("utf-8"))
+    manifest = json.loads(artifacts["s01/manifest.json"].decode("utf-8"))
+
+    assert manifest["mode"] == "live_agent"
+    assert provenance["mode"] == "live_agent"
+    assert provenance["capture_kind"] == "real_model_recorded"
+
+
+def test_the_export_refuses_a_bundle_whose_capture_kind_does_not_match_its_mode(tmp_path: Path):
+    """A live mode with the kind of a fixture is refused, because the two together are a contradiction."""
+    bundle = _copy_scenario(tmp_path)
+    _frozen_ledger(tmp_path, json.loads(FROZEN_LEDGER.read_text(encoding="utf-8")))
+    events = _events(bundle)
+    for event in events:
+        event["mode"] = "live_agent"
+    _rewrite_events(bundle, events)
+    manifest = _bundle_manifest(bundle)
+    manifest["mode"] = "live_agent"
+    (bundle / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+
+    with pytest.raises(ExportError):
+        build_export([bundle])
+
+
+def test_the_export_refuses_a_set_that_mixes_two_modes(tmp_path: Path):
+    """A catalog is one mode: a folder with two of them has no honest name."""
+    first = _copy_bundle(tmp_path, "first")
+    second = _copy_bundle(tmp_path, "second")
+    _frozen_ledger(tmp_path, json.loads(FROZEN_LEDGER.read_text(encoding="utf-8")))
+    _as_a_real_recording(second)
+
+    with pytest.raises(ExportError):
+        build_export([first, second])
+
+
+def test_the_export_refuses_a_bundle_of_another_mode_when_the_caller_names_the_catalog(tmp_path: Path):
+    """A recording of a real model cannot be written into the folder of the sandbox by a mistake of the command."""
+    bundle = _copy_scenario(tmp_path)
+    _frozen_ledger(tmp_path, json.loads(FROZEN_LEDGER.read_text(encoding="utf-8")))
+    _as_a_real_recording(bundle)
+
+    with pytest.raises(ExportError):
+        build_export([bundle], expected_mode="deterministic_sandbox")
+
+
+def test_the_folder_of_the_site_names_the_catalog_it_publishes(tmp_path: Path):
+    """The folder of the site says which catalog goes in it, and the two cannot be swapped (ADR-075)."""
+    bundle = _copy_scenario(tmp_path)
+    _frozen_ledger(tmp_path, json.loads(FROZEN_LEDGER.read_text(encoding="utf-8")))
+    _as_a_real_recording(bundle)
+
+    with pytest.raises(ExportError) as refusal:
+        build_export([bundle], expected_mode="live_agent", output=tmp_path / "replay")
+    assert "replay" in str(refusal.value)
+
+    with pytest.raises(ExportError):
+        build_export([bundle], expected_mode="deterministic_sandbox", output=tmp_path / "replay-real")
+
+
+def test_the_folder_of_the_site_refuses_a_bundle_of_another_mode_even_without_a_mode(tmp_path: Path):
+    """The destination is enough to know the mode, so a command that forgets `--mode` cannot mix the catalogs."""
+    bundle = _copy_scenario(tmp_path)
+    _frozen_ledger(tmp_path, json.loads(FROZEN_LEDGER.read_text(encoding="utf-8")))
+    _as_a_real_recording(bundle)
+
+    with pytest.raises(ExportError):
+        build_export([bundle], output=tmp_path / "replay")
+
+
+def test_a_folder_that_publishes_no_catalog_accepts_the_mode_the_caller_names(tmp_path: Path):
+    """A temporary folder of a test names no catalog, so the mode the caller names is the one that counts."""
+    bundle = _copy_scenario(tmp_path)
+    _frozen_ledger(tmp_path, json.loads(FROZEN_LEDGER.read_text(encoding="utf-8")))
+    _as_a_real_recording(bundle)
+
+    artifacts = build_export([bundle], expected_mode="live_agent", output=tmp_path / "somewhere")
+    assert "s01/events.jsonl" in artifacts
+
+
+def test_the_script_refuses_to_write_the_real_catalog_into_the_folder_of_the_sandbox(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+):
+    """The command line cannot do what the module refuses, and nothing is written when it refuses."""
+    bundle = _copy_scenario(tmp_path)
+    _frozen_ledger(tmp_path, json.loads(FROZEN_LEDGER.read_text(encoding="utf-8")))
+    _as_a_real_recording(bundle)
+    out = tmp_path / "replay"
+
+    assert export_replay_site.main([str(bundle), "--out", str(out), "--mode", "live_agent"]) == 1
+    capsys.readouterr()
+    assert not out.exists() or not any(out.iterdir())
 
 
 def test_a_bundle_whose_scenario_is_not_in_the_shape_of_the_contract_is_refused(
@@ -581,7 +708,7 @@ def test_the_script_exits_1_when_the_disk_differs_and_0_when_it_matches(
 def test_the_artifacts_published_in_the_repository_match_the_bundle():
     """The published artifacts are the ones the bundles say, so the gate can prove they never drifted.
 
-    Why every bundle and not only the first: the site publishes nine scenarios, and a check that only looked at
+    Why every bundle and not only the first: the site publishes ten scenarios, and a check that only looked at
     the first one would let the other eight drift without anyone noticing.
     """
     files = build_export(discover_bundles(ROOT / "data" / "eval" / "replay"))
@@ -601,6 +728,7 @@ def test_a_folder_of_bundles_gives_one_scenario_per_bundle():
         "s09",
         "s10",
         "s11",
+        "s13",
     ]
 
     assert discover_bundles(CANONICAL) == [CANONICAL]

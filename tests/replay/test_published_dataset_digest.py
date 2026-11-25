@@ -22,8 +22,8 @@ ROOT = Path(__file__).resolve().parents[2]
 DATASET = ROOT / "data" / "scenarios.json"
 PUBLISHED = ROOT / "site" / "replay"
 
-# The nine scenarios the catalog publishes, in the order of the index.
-SCENARIOS = ("s01", "s02", "s03", "s04", "s07", "s08", "s09", "s10", "s11")
+# The ten scenarios the catalog publishes, in the order of the index.
+SCENARIOS = ("s01", "s02", "s03", "s04", "s07", "s08", "s09", "s10", "s11", "s13")
 
 __all__ = ["test_every_published_bundle_declares_the_digest_of_the_dataset_of_the_repository"]
 
@@ -31,8 +31,8 @@ __all__ = ["test_every_published_bundle_declares_the_digest_of_the_dataset_of_th
 def test_every_published_bundle_declares_the_digest_of_the_dataset_of_the_repository():
     """The digest of the dataset of every published bundle is the digest of the dataset of the repository.
 
-    Why every scenario and not only the first one: the catalog publishes nine recordings, and a check that read
-    one of them would let the other eight carry the digest of a dataset that is not the one of the repository.
+    Why every scenario and not only the first one: the catalog publishes ten recordings, and a check that read
+    one of them would let the other nine carry the digest of a dataset that is not the one of the repository.
     """
     digest = hashlib.sha256(DATASET.read_bytes()).hexdigest()
 

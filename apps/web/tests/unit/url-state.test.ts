@@ -116,9 +116,18 @@ describe("the contract of the URL", () => {
     expect(scenarioPath("S01")).toBe("/replay/scenario/S01");
   });
 
+  it("puts the identifier of a scenario of a real model under the route of that catalog", () => {
+    // It proves that the two catalogs have two routes and that the path of a scenario of one of them is never the
+    // path of a scenario of the other one: the same identifier under the wrong route would open the recording of the
+    // other catalog (ADR-075).
+    expect(scenarioPath("S01", "real")).toBe("/replay-real/scenario/S01");
+    expect(scenarioPath("S01", "sandbox")).toBe("/replay/scenario/S01");
+  });
+
   it("reads the identifier of the scenario out of the path", () => {
     // It proves that the path of a scenario gives its identifier back.
     expect(parseScenarioId("/replay/scenario/S01")).toBe("S01");
+    expect(parseScenarioId("/replay-real/scenario/S01")).toBe("S01");
   });
 
   it("gives nothing back for a path that is not the path of a scenario", () => {

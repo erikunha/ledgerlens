@@ -1,0 +1,247 @@
+{
+  "cases": [
+    {
+      "case_id": "t01",
+      "claim": "Refund R-0412 was issued on 2026-10-05.",
+      "evidence": "Refund R-0412 for transaction TX-2048 was issued on 2026-10-05 with status paid, in BRL.",
+      "expected": "supported",
+      "got": "supported",
+      "outcome": "correct"
+    },
+    {
+      "case_id": "t02",
+      "claim": "Chargeback CB-0310 is in stage evidence_requested.",
+      "evidence": "Chargeback CB-0310 on transaction TX-2060 is in stage evidence_requested, reason code NRC, deadline 2026-11-12.",
+      "expected": "supported",
+      "got": "supported",
+      "outcome": "correct"
+    },
+    {
+      "case_id": "t03",
+      "claim": "Settlement ST-0044 was paid.",
+      "evidence": "Settlement ST-0044 of merchant M-03 has status paid and was paid on 2026-10-14, in BRL.",
+      "expected": "supported",
+      "got": "supported",
+      "outcome": "correct"
+    },
+    {
+      "case_id": "t04",
+      "claim": "Transactions TX-2051 and TX-2052 were charged on the same card fingerprint.",
+      "evidence": "Transactions TX-2051 and TX-2052 were charged to customer C-0733 on the same card fingerprint, same amount and same merchant, two minutes apart.",
+      "expected": "supported",
+      "got": "supported",
+      "outcome": "correct"
+    },
+    {
+      "case_id": "t05",
+      "claim": "A customer has 14 days to dispute a duplicate charge.",
+      "evidence": "Policy: a customer has 14 days to dispute a duplicate charge after the statement date.",
+      "expected": "supported",
+      "got": "supported",
+      "outcome": "correct"
+    },
+    {
+      "case_id": "t06",
+      "claim": "The refund was paid in BRL.",
+      "evidence": "Refund R-0412 for transaction TX-2048 was issued on 2026-10-05 with status paid, in BRL.",
+      "expected": "supported",
+      "got": "supported",
+      "outcome": "correct"
+    },
+    {
+      "case_id": "t07",
+      "claim": "Transaction TX-2048 was captured in EUR on 2026-10-01.",
+      "evidence": "Transaction TX-2048 of 100.00 EUR was captured on 2026-10-01 for merchant M-03.",
+      "expected": "supported",
+      "got": "supported",
+      "outcome": "correct"
+    },
+    {
+      "case_id": "t08",
+      "claim": "The deadline for chargeback CB-0310 is 2026-11-12.",
+      "evidence": "Chargeback CB-0310 on transaction TX-2060 is in stage evidence_requested, reason code NRC, deadline 2026-11-12.",
+      "expected": "supported",
+      "got": "supported",
+      "outcome": "correct"
+    },
+    {
+      "case_id": "t09",
+      "claim": "Merchant M-03 settles in BRL.",
+      "evidence": "Merchant M-03 Casa Verde Foods has settlement currency BRL and country BR.",
+      "expected": "supported",
+      "got": "supported",
+      "outcome": "correct"
+    },
+    {
+      "case_id": "t10",
+      "claim": "The payout moves to 2026-10-14 because 2026-10-12 is a bank holiday.",
+      "evidence": "The payout moves to 2026-10-14 because Monday 2026-10-12 is a bank holiday.",
+      "expected": "supported",
+      "got": "supported",
+      "outcome": "correct"
+    },
+    {
+      "case_id": "t11",
+      "claim": "The ECB reference rate for EUR to BRL on 2026-10-05 was 5.6339.",
+      "evidence": "ECB reference rate EUR to BRL on 2026-10-05 was 5.6339.",
+      "expected": "supported",
+      "got": "supported",
+      "outcome": "correct"
+    },
+    {
+      "case_id": "t12",
+      "claim": "Chargeback CB-0310 has reason code NRC.",
+      "evidence": "Chargeback CB-0310 on transaction TX-2060 is in stage evidence_requested, reason code NRC, deadline 2026-11-12.",
+      "expected": "supported",
+      "got": "supported",
+      "outcome": "correct"
+    },
+    {
+      "case_id": "c01",
+      "claim": "Refund R-0412 was issued on 2026-10-03.",
+      "evidence": "Refund R-0412 for transaction TX-2048 was issued on 2026-10-05 with status paid, in BRL.",
+      "expected": "contradicted",
+      "got": "contradicted",
+      "outcome": "correct"
+    },
+    {
+      "case_id": "c02",
+      "claim": "Settlement ST-0044 was not paid.",
+      "evidence": "Settlement ST-0044 of merchant M-03 has status paid and was paid on 2026-10-14, in BRL.",
+      "expected": "contradicted",
+      "got": "contradicted",
+      "outcome": "correct"
+    },
+    {
+      "case_id": "c03",
+      "claim": "Chargeback CB-0310 was won.",
+      "evidence": "Chargeback CB-0310 on transaction TX-2060 was lost after review.",
+      "expected": "contradicted",
+      "got": "contradicted",
+      "outcome": "correct"
+    },
+    {
+      "case_id": "c04",
+      "claim": "The deadline for chargeback CB-0310 is 2026-11-20.",
+      "evidence": "Chargeback CB-0310 on transaction TX-2060 is in stage evidence_requested, reason code NRC, deadline 2026-11-12.",
+      "expected": "contradicted",
+      "got": "contradicted",
+      "outcome": "correct"
+    },
+    {
+      "case_id": "c05",
+      "claim": "Transaction TX-2048 was captured in USD.",
+      "evidence": "Transaction TX-2048 of 100.00 EUR was captured on 2026-10-01 for merchant M-03.",
+      "expected": "contradicted",
+      "got": "contradicted",
+      "outcome": "correct"
+    },
+    {
+      "case_id": "c06",
+      "claim": "The refund request was rejected.",
+      "evidence": "The refund request R-0412 was approved and paid.",
+      "expected": "contradicted",
+      "got": "contradicted",
+      "outcome": "correct"
+    },
+    {
+      "case_id": "c07",
+      "claim": "A customer has 30 days to dispute a duplicate charge.",
+      "evidence": "Policy: a customer has 14 days to dispute a duplicate charge after the statement date.",
+      "expected": "contradicted",
+      "got": "contradicted",
+      "outcome": "correct"
+    },
+    {
+      "case_id": "c08",
+      "claim": "Merchant M-03 settles in USD.",
+      "evidence": "Merchant M-03 Casa Verde Foods has settlement currency BRL and country BR.",
+      "expected": "contradicted",
+      "got": "contradicted",
+      "outcome": "correct"
+    },
+    {
+      "case_id": "c09",
+      "claim": "The payout moves to 2026-10-15.",
+      "evidence": "The payout moves to 2026-10-14 because Monday 2026-10-12 is a bank holiday.",
+      "expected": "contradicted",
+      "got": "contradicted",
+      "outcome": "correct"
+    },
+    {
+      "case_id": "c10",
+      "claim": "Refund R-0412 was never issued.",
+      "evidence": "Refund R-0412 for transaction TX-2048 was issued on 2026-10-05 with status paid, in BRL.",
+      "expected": "contradicted",
+      "got": "contradicted",
+      "outcome": "correct"
+    },
+    {
+      "case_id": "n01",
+      "claim": "The customer contacted support twice about the refund.",
+      "evidence": "Refund R-0412 for transaction TX-2048 was issued on 2026-10-05 with status paid, in BRL.",
+      "expected": "not_enough_evidence",
+      "got": "not_enough_evidence",
+      "outcome": "correct"
+    },
+    {
+      "case_id": "n02",
+      "claim": "Transaction TX-2048 used a Visa card.",
+      "evidence": "Transaction TX-2048 of 100.00 EUR was captured on 2026-10-01 for merchant M-03.",
+      "expected": "not_enough_evidence",
+      "got": "not_enough_evidence",
+      "outcome": "correct"
+    },
+    {
+      "case_id": "n03",
+      "claim": "Merchant M-03 sells food and groceries online.",
+      "evidence": "Settlement ST-0044 of merchant M-03 has status paid and was paid on 2026-10-14, in BRL.",
+      "expected": "not_enough_evidence",
+      "got": "not_enough_evidence",
+      "outcome": "correct"
+    },
+    {
+      "case_id": "n04",
+      "claim": "The customer prefers to receive messages by email.",
+      "evidence": "Transactions TX-2051 and TX-2052 were charged to customer C-0733 on the same card fingerprint, same amount and same merchant, two minutes apart.",
+      "expected": "not_enough_evidence",
+      "got": "not_enough_evidence",
+      "outcome": "correct"
+    },
+    {
+      "case_id": "n05",
+      "claim": "The chargeback was filed by the issuing bank in Germany.",
+      "evidence": "Chargeback CB-0310 on transaction TX-2060 is in stage evidence_requested, reason code NRC, deadline 2026-11-12.",
+      "expected": "not_enough_evidence",
+      "got": "not_enough_evidence",
+      "outcome": "correct"
+    },
+    {
+      "case_id": "n06",
+      "claim": "The merchant will likely appeal the decision.",
+      "evidence": "Settlement ST-0044 of merchant M-03 has status paid and was paid on 2026-10-14, in BRL.",
+      "expected": "not_enough_evidence",
+      "got": "not_enough_evidence",
+      "outcome": "correct"
+    },
+    {
+      "case_id": "n07",
+      "claim": "The customer account was opened last year.",
+      "evidence": "Policy: a customer has 14 days to dispute a duplicate charge after the statement date.",
+      "expected": "not_enough_evidence",
+      "got": "not_enough_evidence",
+      "outcome": "correct"
+    },
+    {
+      "case_id": "n08",
+      "claim": "A reviewer from the risk team looked at the case.",
+      "evidence": "ECB reference rate EUR to BRL on 2026-10-05 was 5.6339.",
+      "expected": "not_enough_evidence",
+      "got": "not_enough_evidence",
+      "outcome": "correct"
+    }
+  ],
+  "role": "tuning",
+  "set_name": "verification_set",
+  "status": "available"
+}

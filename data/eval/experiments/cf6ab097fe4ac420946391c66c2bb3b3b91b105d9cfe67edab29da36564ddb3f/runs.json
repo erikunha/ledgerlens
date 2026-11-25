@@ -1,0 +1,1124 @@
+{
+  "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+  "runs": [
+    {
+      "case_id": "EC-01",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1",
+        "sql:2",
+        "fx:2026-10-20:EUR-BRL",
+        "api:1",
+        "calc:1"
+      ],
+      "expected_facts": [
+        "566.79",
+        "549.31",
+        "17.48",
+        "14.08"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 0.25,
+      "variant": "single_agent"
+    },
+    {
+      "case_id": "EC-02",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1",
+        "sql:2"
+      ],
+      "expected_facts": [
+        "TX-2052",
+        "TX-2051",
+        "4990"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "single_agent"
+    },
+    {
+      "case_id": "EC-03",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1",
+        "policy:chargeback-handling#stages",
+        "policy:chargeback-handling#who-submits",
+        "policy:chargeback-handling#evidence-checklist"
+      ],
+      "expected_facts": [
+        "2026-11-09",
+        "evidence_requested",
+        "NRC"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "single_agent"
+    },
+    {
+      "case_id": "EC-04",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1"
+      ],
+      "expected_facts": [
+        "TX-9999",
+        "row_count 0"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 0.5,
+      "variant": "single_agent"
+    },
+    {
+      "case_id": "EC-05",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1"
+      ],
+      "expected_facts": [
+        "TX-2060",
+        "M-03",
+        "TX-2061",
+        "M-17"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 0.5,
+      "variant": "single_agent"
+    },
+    {
+      "case_id": "EC-06",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1",
+        "policy:refund-policy#refund-window",
+        "sql:2",
+        "policy:refund-policy#refund-window",
+        "sql:2"
+      ],
+      "expected_facts": [
+        "rejected",
+        "refund-policy#refund-window"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "single_agent"
+    },
+    {
+      "case_id": "EC-07",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "api:1"
+      ],
+      "expected_facts": [
+        "0.00",
+        "8000"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 0.5,
+      "variant": "single_agent"
+    },
+    {
+      "case_id": "EC-08",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1",
+        "policy:settlement-schedule#explaining-a-settlement",
+        "sql:1",
+        "policy:settlement-schedule#payout-timing",
+        "sql:1",
+        "policy:cross-currency-refunds#standard-plan",
+        "sql:1",
+        "policy:refund-policy#processing-time"
+      ],
+      "expected_facts": [
+        "2999287",
+        "2026-10-14",
+        "29992.87"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "single_agent"
+    },
+    {
+      "case_id": "EC-09",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1"
+      ],
+      "expected_facts": [
+        "R-0750",
+        "requested"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "single_agent"
+    },
+    {
+      "case_id": "EC-10",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "api:1",
+        "fx:1"
+      ],
+      "expected_facts": [
+        "ARS",
+        "2500000"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 0.5,
+      "variant": "single_agent"
+    },
+    {
+      "case_id": "EC-11",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1",
+        "calc:1"
+      ],
+      "expected_facts": [
+        "EUR-BRL 2026-10-20",
+        "5.4931"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 0.0,
+      "variant": "single_agent"
+    },
+    {
+      "case_id": "EC-12",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "case:CASE-0001"
+      ],
+      "expected_facts": [
+        "CASE-0001"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "single_agent"
+    },
+    {
+      "case_id": "EC-13",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1"
+      ],
+      "expected_facts": [
+        "TX-0001",
+        "captured"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "single_agent"
+    },
+    {
+      "case_id": "EC-14",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1"
+      ],
+      "expected_facts": [
+        "TX-0007",
+        "failed"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "single_agent"
+    },
+    {
+      "case_id": "EC-15",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1"
+      ],
+      "expected_facts": [
+        "TX-0008",
+        "partially_refunded"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "single_agent"
+    },
+    {
+      "case_id": "EC-16",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1"
+      ],
+      "expected_facts": [
+        "TX-0138",
+        "refunded"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "single_agent"
+    },
+    {
+      "case_id": "EC-17",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1"
+      ],
+      "expected_facts": [
+        "TX-1177",
+        "disputed"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "single_agent"
+    },
+    {
+      "case_id": "EC-18",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1"
+      ],
+      "expected_facts": [
+        "TX-0265",
+        "charged_back"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "single_agent"
+    },
+    {
+      "case_id": "EC-19",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1"
+      ],
+      "expected_facts": [
+        "74107"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "single_agent"
+    },
+    {
+      "case_id": "EC-20",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1"
+      ],
+      "expected_facts": [
+        "3522994"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "single_agent"
+    },
+    {
+      "case_id": "EC-21",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1"
+      ],
+      "expected_facts": [
+        "824836"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "single_agent"
+    },
+    {
+      "case_id": "EC-22",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1"
+      ],
+      "expected_facts": [
+        "504121"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "single_agent"
+    },
+    {
+      "case_id": "EC-23",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1"
+      ],
+      "expected_facts": [
+        "4496483"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "single_agent"
+    },
+    {
+      "case_id": "EC-24",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1"
+      ],
+      "expected_facts": [
+        "492101"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "single_agent"
+    },
+    {
+      "case_id": "EC-25",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "policy:fees-and-pricing#chargeback-fee"
+      ],
+      "expected_facts": [
+        "fees-and-pricing#chargeback-fee"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "single_agent"
+    },
+    {
+      "case_id": "EC-26",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "policy:duplicate-charges#detection-rule"
+      ],
+      "expected_facts": [
+        "duplicate-charges#detection-rule"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "single_agent"
+    },
+    {
+      "case_id": "EC-27",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "policy:fx-reference-rates#source"
+      ],
+      "expected_facts": [
+        "fx-reference-rates#source"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "single_agent"
+    },
+    {
+      "case_id": "EC-28",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [],
+      "expected_facts": [
+        "escalation-and-review#when-to-escalate"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 0.0,
+      "variant": "single_agent"
+    },
+    {
+      "case_id": "EC-29",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "policy:cross-currency-refunds#merchant-fx-markup"
+      ],
+      "expected_facts": [
+        "cross-currency-refunds#merchant-fx-markup"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "single_agent"
+    },
+    {
+      "case_id": "EC-30",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "policy:chargeback-handling#evidence-nrc",
+        "policy:chargeback-handling#who-submits"
+      ],
+      "expected_facts": [
+        "chargeback-handling#evidence-checklist"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 0.0,
+      "variant": "single_agent"
+    },
+    {
+      "case_id": "EC-31",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1",
+        "api:1",
+        "fx:2026-10-23:EUR-BRL",
+        "calc:2",
+        "policy:cross-currency-refunds#customer-explanation"
+      ],
+      "expected_facts": [
+        "453.06",
+        "431.54",
+        "21.52",
+        "20.34",
+        "4.50",
+        "3.00",
+        "451.88"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 0.14285714285714285,
+      "variant": "single_agent"
+    },
+    {
+      "case_id": "EC-01",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1"
+      ],
+      "expected_facts": [
+        "566.79",
+        "549.31",
+        "17.48",
+        "14.08"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 0.25,
+      "variant": "orchestration_studio"
+    },
+    {
+      "case_id": "EC-02",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1",
+        "sql:1"
+      ],
+      "expected_facts": [
+        "TX-2052",
+        "TX-2051",
+        "4990"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "orchestration_studio"
+    },
+    {
+      "case_id": "EC-03",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1"
+      ],
+      "expected_facts": [
+        "2026-11-09",
+        "evidence_requested",
+        "NRC"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 0.6666666666666666,
+      "variant": "orchestration_studio"
+    },
+    {
+      "case_id": "EC-04",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [],
+      "expected_facts": [
+        "TX-9999",
+        "row_count 0"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 0.0,
+      "variant": "orchestration_studio"
+    },
+    {
+      "case_id": "EC-05",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1",
+        "sql:1"
+      ],
+      "expected_facts": [
+        "TX-2060",
+        "M-03",
+        "TX-2061",
+        "M-17"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "orchestration_studio"
+    },
+    {
+      "case_id": "EC-06",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1",
+        "policy:refund-policy#customer-communication",
+        "policy:refund-policy#refund-statuses",
+        "policy:refund-policy#refund-statuses",
+        "policy:refund-policy#rejection-reasons",
+        "policy:refund-policy#rejection-reasons",
+        "policy:refund-policy#who-can-request"
+      ],
+      "expected_facts": [
+        "rejected",
+        "refund-policy#refund-window"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 0.5,
+      "variant": "orchestration_studio"
+    },
+    {
+      "case_id": "EC-07",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "api:2",
+        "api:2",
+        "api:2",
+        "api:2",
+        "api:1",
+        "api:1",
+        "api:1",
+        "api:1",
+        "calc:1"
+      ],
+      "expected_facts": [
+        "0.00",
+        "8000"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "orchestration_studio"
+    },
+    {
+      "case_id": "EC-08",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1"
+      ],
+      "expected_facts": [
+        "2999287",
+        "2026-10-14",
+        "29992.87"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "orchestration_studio"
+    },
+    {
+      "case_id": "EC-09",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1"
+      ],
+      "expected_facts": [
+        "R-0750",
+        "requested"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 0.5,
+      "variant": "orchestration_studio"
+    },
+    {
+      "case_id": "EC-10",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [],
+      "expected_facts": [
+        "ARS",
+        "2500000"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 0.0,
+      "variant": "orchestration_studio"
+    },
+    {
+      "case_id": "EC-11",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1"
+      ],
+      "expected_facts": [
+        "EUR-BRL 2026-10-20",
+        "5.4931"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 0.0,
+      "variant": "orchestration_studio"
+    },
+    {
+      "case_id": "EC-12",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "case:CASE-0001"
+      ],
+      "expected_facts": [
+        "CASE-0001"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "orchestration_studio"
+    },
+    {
+      "case_id": "EC-13",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1"
+      ],
+      "expected_facts": [
+        "TX-0001",
+        "captured"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "orchestration_studio"
+    },
+    {
+      "case_id": "EC-14",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1"
+      ],
+      "expected_facts": [
+        "TX-0007",
+        "failed"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "orchestration_studio"
+    },
+    {
+      "case_id": "EC-15",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1"
+      ],
+      "expected_facts": [
+        "TX-0008",
+        "partially_refunded"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "orchestration_studio"
+    },
+    {
+      "case_id": "EC-16",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1"
+      ],
+      "expected_facts": [
+        "TX-0138",
+        "refunded"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "orchestration_studio"
+    },
+    {
+      "case_id": "EC-17",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1"
+      ],
+      "expected_facts": [
+        "TX-1177",
+        "disputed"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "orchestration_studio"
+    },
+    {
+      "case_id": "EC-18",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1"
+      ],
+      "expected_facts": [
+        "TX-0265",
+        "charged_back"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "orchestration_studio"
+    },
+    {
+      "case_id": "EC-19",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1"
+      ],
+      "expected_facts": [
+        "74107"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "orchestration_studio"
+    },
+    {
+      "case_id": "EC-20",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1"
+      ],
+      "expected_facts": [
+        "3522994"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "orchestration_studio"
+    },
+    {
+      "case_id": "EC-21",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1"
+      ],
+      "expected_facts": [
+        "824836"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "orchestration_studio"
+    },
+    {
+      "case_id": "EC-22",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1"
+      ],
+      "expected_facts": [
+        "504121"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "orchestration_studio"
+    },
+    {
+      "case_id": "EC-23",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1"
+      ],
+      "expected_facts": [
+        "4496483"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "orchestration_studio"
+    },
+    {
+      "case_id": "EC-24",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1",
+        "calc:1"
+      ],
+      "expected_facts": [
+        "492101"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "orchestration_studio"
+    },
+    {
+      "case_id": "EC-25",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "policy:fees-and-pricing#chargeback-fee",
+        "policy:chargeback-handling#fee-reference",
+        "policy:chargeback-handling#fee-reference",
+        "policy:fees-and-pricing#fee-currency",
+        "policy:fees-and-pricing#fee-currency",
+        "policy:fees-and-pricing#fee-questions",
+        "policy:fees-and-pricing#fee-questions"
+      ],
+      "expected_facts": [
+        "fees-and-pricing#chargeback-fee"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "orchestration_studio"
+    },
+    {
+      "case_id": "EC-26",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "policy:refund-policy#duplicate-exception",
+        "policy:duplicate-charges#retries-after-failure",
+        "policy:duplicate-charges#retries-after-failure",
+        "policy:duplicate-charges#overview",
+        "policy:duplicate-charges#overview",
+        "policy:duplicate-charges#detection-rule"
+      ],
+      "expected_facts": [
+        "duplicate-charges#detection-rule"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "orchestration_studio"
+    },
+    {
+      "case_id": "EC-27",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "policy:fx-reference-rates#overview",
+        "policy:fx-reference-rates#overview",
+        "policy:fx-reference-rates#source",
+        "policy:cross-currency-refunds#records",
+        "policy:cross-currency-refunds#records",
+        "policy:fx-reference-rates#unsupported-currency-handling",
+        "policy:fx-reference-rates#unsupported-currency-handling"
+      ],
+      "expected_facts": [
+        "fx-reference-rates#source"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "orchestration_studio"
+    },
+    {
+      "case_id": "EC-28",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [],
+      "expected_facts": [
+        "escalation-and-review#when-to-escalate"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 0.0,
+      "variant": "orchestration_studio"
+    },
+    {
+      "case_id": "EC-29",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "policy:cross-currency-refunds#merchant-fx-markup",
+        "policy:cross-currency-refunds#merchant-fx-markup",
+        "policy:cross-currency-refunds#standard-plan",
+        "policy:cross-currency-refunds#standard-plan",
+        "policy:fx-reference-rates#overview",
+        "policy:fx-reference-rates#overview",
+        "policy:cross-currency-refunds#worked-example",
+        "policy:cross-currency-refunds#worked-example"
+      ],
+      "expected_facts": [
+        "cross-currency-refunds#merchant-fx-markup"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "orchestration_studio"
+    },
+    {
+      "case_id": "EC-30",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "policy:chargeback-handling#evidence-nrc",
+        "policy:chargeback-handling#evidence-nrc",
+        "policy:chargeback-handling#evidence-nad",
+        "policy:chargeback-handling#evidence-nad",
+        "policy:chargeback-handling#overview",
+        "policy:chargeback-handling#overview",
+        "policy:chargeback-handling#evidence-checklist",
+        "policy:chargeback-handling#evidence-checklist"
+      ],
+      "expected_facts": [
+        "chargeback-handling#evidence-checklist"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 1.0,
+      "variant": "orchestration_studio"
+    },
+    {
+      "case_id": "EC-31",
+      "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+      "complexity": "",
+      "evidence_cited": [
+        "sql:1",
+        "calc:1"
+      ],
+      "expected_facts": [
+        "453.06",
+        "431.54",
+        "21.52",
+        "20.34",
+        "4.50",
+        "3.00",
+        "451.88"
+      ],
+      "failure": null,
+      "intent": "",
+      "ran": true,
+      "score": 0.14285714285714285,
+      "variant": "orchestration_studio"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{"id": "RH-01", "gold_chunk_id": "chargeback-handling#reason-codes", "reason": "the two readings and the recipe agree"}
+{"id": "RH-02", "gold_chunk_id": "chargeback-handling#evidence-frd", "reason": "the question is the stolen card, and the evidence for fraud is the specific list; the checklist is the generic one"}
+{"id": "RH-03", "gold_chunk_id": "cross-currency-refunds#charge-fx-at-capture", "reason": "the two readings and the recipe agree"}
+{"id": "RH-04", "gold_chunk_id": "cross-currency-refunds#customer-explanation", "reason": "the question asks how to explain the gap to the customer, and the section of the explanation is the one that answers it; the two readings corrected the recipe, and the disagreement counts"}
+{"id": "RH-05", "gold_chunk_id": "duplicate-charges#time-gap", "reason": "the two readings and the recipe agree"}
+{"id": "RH-06", "gold_chunk_id": "duplicate-charges#retries-after-failure", "reason": "the two readings and the recipe agree"}
+{"id": "RH-07", "gold_chunk_id": "escalation-and-review#deadline-within-2-days", "reason": "the two readings and the recipe agree"}
+{"id": "RH-08", "gold_chunk_id": "escalation-and-review#suspicious-text", "reason": "the question asks what should happen with the note, and the rule of the suspicious text is the one that says it"}
+{"id": "RH-09", "gold_chunk_id": "fees-and-pricing#rounding", "reason": "the question was written over the rounding of the fees; the rounding of the cross currency policy also answers it, and the ambiguity is a caveat of the set"}
+{"id": "RH-10", "gold_chunk_id": "fees-and-pricing#fx-markup-is-not-a-fee", "reason": "the two readings and the recipe agree"}
+{"id": "RH-11", "gold_chunk_id": "fx-reference-rates#weekends-holidays", "reason": "the two readings and the recipe agree"}
+{"id": "RH-12", "gold_chunk_id": "fx-reference-rates#unsupported-currency-handling", "reason": "the two readings and the recipe agree"}
+{"id": "RH-13", "gold_chunk_id": "refund-policy#full-and-partial", "reason": "the two readings and the recipe agree"}
+{"id": "RH-14", "gold_chunk_id": "refund-policy#rejection-reasons", "reason": "the two readings and the recipe agree"}
+{"id": "RH-15", "gold_chunk_id": "settlement-schedule#components", "reason": "the two readings and the recipe agree"}
+{"id": "RH-16", "gold_chunk_id": "settlement-schedule#payout-calendars", "reason": "the question asks about the days of two currencies, and the rule of the calendars per currency is the one that answers it; the holiday example is one concrete case"}

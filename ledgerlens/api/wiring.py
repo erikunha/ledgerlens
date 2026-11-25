@@ -1,11 +1,13 @@
 """The wired application of the demo: the two facades as one visitor, over one issuer, one store and one vault.
 
 Why it exists: the demo has two facades. The sandbox of the visitor serves the branch of the visitor, and the live
-mode serves the credential, the catalogue and the run. A live run reads the ledger of the branch of the visitor
+mode serves the credential, the catalog and the run. A live run reads the ledger of the branch of the visitor
 (ADR-038), so the two facades have to be the same visitor for a live case to mean anything. This module is the
 deployment that makes them one: it builds one application over one session issuer, one store of branches, one base
 resolver, one branch layer, one vault of the credentials and one runtime folder, and it serves the two facades
 through it with one command (ADR-039).
+
+The application also serves evidence graphs for the repository's published synthetic replays.
 
 What the wiring decides, and why it is written here and not left to the order of two lines of code:
 
@@ -40,7 +42,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 
-from ledgerlens.api import byok, sandbox
+from ledgerlens.api import byok, evidence, sandbox
 from ledgerlens.api.byok import CODE_INVALID_REQUEST, SessionCapabilities
 from ledgerlens.api.cors import install_cors
 from ledgerlens.api.live_case import DemoCase
@@ -49,7 +51,7 @@ from ledgerlens.api.sandbox import SCHEMA_VERSION, SCHEMA_VERSION_HEADER, Contra
 from ledgerlens.byok.adapter import ProviderAdapter
 from ledgerlens.byok.registry import ProviderRegistry
 from ledgerlens.byok.vault import CredentialVault
-from ledgerlens.config import Settings, get_settings
+from ledgerlens.config import PROJECT_ROOT, Settings, get_settings
 from ledgerlens.sandbox.branch import BranchLayer
 from ledgerlens.sandbox.factory import build_branch_store
 from ledgerlens.sandbox.session import SessionIssuer
@@ -75,6 +77,7 @@ DEFAULT_PORT = 8010
 SESSION_KEY_FILENAME = "shared-session.key"
 # The folder of the runtime that holds the base of the scenarios, the same name the sandbox facade uses.
 BASES_FOLDER_NAME = "sandbox-bases"
+PUBLISHED_REPLAY_ROOT = PROJECT_ROOT / "data" / "eval" / "replay"
 
 
 def _server_clock() -> datetime:
@@ -95,7 +98,7 @@ def build_wired_app(
     adapter_factory: Callable[[str, str], ProviderAdapter] | None = None,
     runtime_dir: Path | str | None = None,
 ) -> FastAPI:
-    """The application that serves the two facades as one visitor.
+    """Serve the sandbox and live facades as one visitor, along with public replay evidence.
 
     One issuer, one store of branches, one base resolver, one branch layer, one vault of the credentials and one
     runtime folder: that is what makes the two facades the same visitor (ADR-035, ADR-039). The issuer, the store
@@ -215,9 +218,7 @@ def build_wired_app(
         lifespan=lifespan,
     )
 
-    # The CORS of the browser of the visitor, and only when the deployment declares the origins: a deployment that
-    # declares none answers exactly as it answered before (ADR-040). The middleware adds no route, so the list of the
-    # routes of the wired application, which ADR-039 pins, does not change.
+    # Browser CORS applies only when the deployment declares the origins (ADR-040).
     install_cors(app, allowed_origins=the_settings.cors_origins)
 
     @app.exception_handler(ContractError)
@@ -250,9 +251,10 @@ def build_wired_app(
             headers={SCHEMA_VERSION_HEADER: SCHEMA_VERSION},
         )
 
-    # The order of the two mounts decides nothing: the two routes that would collide are already dropped above.
+    # The two routes that would collide are already dropped above.
     app.include_router(sandbox_router)
     app.include_router(live_router)
+    app.include_router(evidence.evidence_router(PUBLISHED_REPLAY_ROOT))
     return app
 
 

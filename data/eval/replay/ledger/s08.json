@@ -20,6 +20,8 @@
             "fees_major",
             "net_minor",
             "net_major",
+            "carried_minor",
+            "carried_major",
             "status",
             "expected_payout_date",
             "paid_at"
@@ -31,6 +33,8 @@
           "row_count": 1,
           "rows": [
             {
+              "carried_major": "0.00",
+              "carried_minor": "0",
               "currency": "BRL",
               "expected_payout_date": "2026-10-14",
               "fees_major": "926.67",
@@ -1118,5 +1122,5 @@
   "page_size": 50,
   "scenario": "S08",
   "schema_version": "1",
-  "snapshot_sha256": "930b8d73637f6410fb997ee822967a0c7c0efb7e0e21b1cb20fc44c7ea74981c"
+  "snapshot_sha256": "5d12d0a7679da27f34d61dcc2b794a0f8f8e047a96fa2cb7b8a4510095afbe08"
 }

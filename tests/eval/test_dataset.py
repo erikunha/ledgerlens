@@ -1,6 +1,6 @@
-"""Evaluation set: about 30 cases, 12 from the planted scenarios and the rest from the generated database.
+"""Evaluation set: about 31 cases, 13 from the planted scenarios and the rest from the generated database.
 
-What they guarantee, and why: (a) there are 30 cases with unique ids, 12 from the manifest and 18 natural;
+What they guarantee, and why: (a) there are 31 cases with unique ids, 13 from the manifest and 18 natural;
 (b) each scenario's expected trajectory is the manifest's; (c) every case has expected facts and a
 trajectory; (d) the committed file is exactly what the build produces today, so the answer key does not go
 stale silently; (e) the facts of the natural cases come from the tables, not from hand-written text.
@@ -39,11 +39,13 @@ def cases(ledger_db: Path) -> list[EvalCase]:
     return build_cases(ledger_db)
 
 
-def test_thirty_cases_twelve_from_the_scenarios(cases: list[EvalCase]) -> None:
-    assert len(cases) == 30
-    assert len({c.id for c in cases}) == 30
-    assert Counter(c.kind for c in cases) == {"scenario": 12, "natural": 18}
-    assert [c.scenario for c in cases if c.kind == "scenario"] == sorted(SCENARIOS)
+def test_thirty_one_cases_thirteen_from_the_scenarios(cases: list[EvalCase]) -> None:
+    assert len(cases) == 31
+    assert len({c.id for c in cases}) == 31
+    assert Counter(c.kind for c in cases) == {"scenario": 13, "natural": 18}
+    # The scenario cases are the thirteen scenarios of the evaluation: S14 is a data plant of the
+    # simulator (the rounding tie) and not a case of the evaluation.
+    assert [c.scenario for c in cases if c.kind == "scenario"] == sorted(s for s in SCENARIOS if s != "S14")
 
 
 def test_scenario_trajectories_are_the_manifest_ones(cases: list[EvalCase]) -> None:
@@ -81,9 +83,28 @@ def test_the_committed_file_is_what_the_build_produces(cases: list[EvalCase]) ->
     assert load_cases(CASES_PATH) == cases
 
 
+def test_the_number_of_a_published_case_does_not_move(cases: list[EvalCase]) -> None:
+    """The cases that were published keep their number when a scenario is added.
+
+    Why it matters: the online report of a past run names the cases by their number, and a case added later that
+    moved the numbers of the ones before it would make that report name other cases than it did. The twelve
+    scenarios of the first version keep 1 to 12, the natural cases keep 13 to 30 and the scenario published later
+    takes the next free number.
+    """
+    numbers = {case.id: case for case in cases}
+    assert numbers["EC-01"].scenario == "S01"
+    assert numbers["EC-12"].scenario == "S12"
+    assert numbers["EC-13"].kind == "natural"
+    assert numbers["EC-30"].kind == "natural"
+    assert numbers["EC-31"].scenario == "S13"
+    # The six payouts keep the numbers the answer key change of the online run names.
+    payouts = [case.id for case in cases if case.kind == "natural" and "payout" in case.question]
+    assert payouts == [f"EC-{n}" for n in range(19, 25)]
+
+
 def test_the_file_is_one_json_object_per_line() -> None:
     lines = CASES_PATH.read_text("utf-8").splitlines()
-    assert len(lines) == 30 and all(json.loads(line)["id"] for line in lines)
+    assert len(lines) == 31 and all(json.loads(line)["id"] for line in lines)
 
 
 def test_only_record_lookups_declare_an_equivalence_group(cases: list[EvalCase]) -> None:

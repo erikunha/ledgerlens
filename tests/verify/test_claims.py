@@ -421,3 +421,20 @@ def test_the_real_nli_judges_the_inherited_sentence_against_the_closing_evidence
     verdicts = verify_result(result, nli=get_nli(False, require_real=True)).verdicts
     assert (verdicts[0].method, verdicts[0].label) == ("nli", "supported")
     assert verdicts[1].label == "supported"
+
+
+def test_a_rule_of_the_world_is_a_kind_of_evidence_with_the_source_and_the_date() -> None:
+    """A claim may cite a rule of the world, with the URL of the source and the date it was read (gap 11)."""
+    from ledgerlens.tools.envelope import world_evidence
+    from ledgerlens.verify.claims import EVIDENCE_ID
+
+    entry = world_evidence(
+        "visa-response-window",
+        url="https://example.test/visa-core-rules",
+        read_on="2026-11-25",
+        content="the dispute response of the acquirer is due within thirty calendar days",
+    )
+    assert EVIDENCE_ID.match(entry["id"])
+    assert entry["id"].startswith("world:")
+    assert entry["url"] == "https://example.test/visa-core-rules"
+    assert entry["read_on"] == "2026-11-25"

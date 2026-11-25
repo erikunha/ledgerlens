@@ -1,0 +1,16 @@
+{
+  "kill_points": [
+    {
+      "id": "after-the-intent-of-commit-of-the-branch",
+      "description": "the run dies after the intent of the step of the commit and before the step runs"
+    },
+    {
+      "id": "after-the-execute-of-commit-of-the-branch",
+      "description": "the run dies after the commit of the branch and before the result of the step is written"
+    },
+    {
+      "id": "between-the-steps-of-commit-of-the-branch",
+      "description": "the run dies between the step of the commit and the step of the read"
+    }
+  ]
+}

@@ -38,10 +38,17 @@ jobs:
     env:
       LEDGERLENS_OFFLINE: "1"
       LEDGERLENS_SANDBOX_DATABASE_URL: postgresql://ledgerlens@127.0.0.1:5433/ledgerlens_sandbox
+      UV_MANAGED_PYTHON: "1"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # The frozen baseline test checks that a recorded commit is an ancestor.
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
+          # The frozen replay hashes SQLite file bytes, including the writer version.
+          # This uv release selects the 20260610 Python build with SQLite 3.53.1.
+          version: "0.11.21"
+          python-version: "3.12.13"
           enable-cache: true
       - name: Cache local models (fastembed)
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -50,10 +57,16 @@ jobs:
           key: fastembed-${{ hashFiles('ledgerlens/embeddings.py', 'ledgerlens/config.py') }}
       - name: Install locked dependencies
         run: uv sync --frozen --extra dev --extra app --extra api
+      - name: Build the sample ledger
+        run: uv run python -c 'from ledgerlens.eval.dataset import build_sample_ledger; build_sample_ledger("data/ledger.db")'
       - name: Apply the schema of the sandbox store
         run: uv run python scripts/apply_sandbox_schema.py
       - name: Gate (ruff, pytest offline)
         run: bash scripts/gate.sh
+      # The recovery of a run is exercised on every run of the continuous integration: the fault injection
+      # kills a run at every named point of the fixture and every kill recovers (T274 of the spec 017).
+      - name: Fault injection (the recovery of a run)
+        run: uv run pytest tests/durability/test_fault_injection.py -q
 
   # The gate of the frontend. It is a second job and not a step of the job above, because the two gates have two
   # toolchains and two caches, and because scripts/gate.sh must keep running where Node is absent.

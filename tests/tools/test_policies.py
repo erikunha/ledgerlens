@@ -34,7 +34,7 @@ POLICIES = REPO / "data" / "policies"
 QUESTIONS = REPO / "data" / "eval" / "policy_questions.jsonl"
 COMMITTED = REPO / "data" / "index" / "policies_fastembed"
 EVIDENCE = re.compile(r"^policy:.+$")
-METADATA_KEYS = {"chunk_id", "document", "section", "topic", "version", "language", "order"}
+METADATA_KEYS = {"chunk_id", "document", "section", "topic", "version", "language", "order", "fiction"}
 DIM = 64
 SECTION = "Refund window"
 REFUND_WINDOW_QUERY = "refund window days after the payment is captured"
@@ -222,7 +222,7 @@ def test_the_baseline_search_returns_ids_scores_and_evidence(built_index: Path) 
     assert result["evidence_ids"] == [f"policy:{r['chunk_id']}" for r in data["results"]]
     assert all(EVIDENCE.match(e) for e in result["evidence_ids"])
     first = data["results"][0]
-    assert set(first) == {"chunk_id", "document", "section", "topic", "version", "text", "score"}
+    assert set(first) == {"chunk_id", "document", "section", "topic", "version", "text", "score", "fiction"}
     assert first["chunk_id"] == "refund-policy#refund-window" and isinstance(first["score"], float)
 
 
@@ -352,7 +352,7 @@ def test_the_committed_index_matches_the_documents_and_the_default_model() -> No
     assert meta["embedding"] == f"fastembed:{DEFAULT_FASTEMBED_MODEL}"
     assert meta["chunks"] == len(load_policy_documents(POLICIES)), "rebuild with scripts/build_index.py"
     store = load_policy_index(COMMITTED, FastEmbedEmbeddings())  # does not load the model: it only reads the files
-    assert store.index.ntotal == meta["chunks"] and store.index.d == meta["dimension"]
+    assert store.count == meta["chunks"] and store.dimension == meta["dimension"]
 
 
 @needs_committed_index
@@ -383,3 +383,12 @@ def test_the_query_argument_says_policy_facts_come_only_from_this_tool() -> None
     assert "only source of policy facts" in text
     assert "before answering" in text
     assert "fee" in text and "deadline" in text and "exchange rate" in text
+
+
+def test_every_result_of_the_tool_carries_the_marker_of_the_fiction(built_index: Path) -> None:
+    """Every result of the tool says that Acme Payments is a fictional company, even out of its file."""
+    tool = make_tool(built_index)
+    result = tool.invoke({"query": "refund window", "k": 4, "transform": "none"})
+    assert result["data"]["results"]
+    for hit in result["data"]["results"]:
+        assert "fictional company" in hit["fiction"]

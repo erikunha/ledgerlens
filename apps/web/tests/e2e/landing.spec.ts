@@ -139,6 +139,22 @@ test("the link of each card of the demo goes to the room of that mode", async ({
   }
 });
 
+test("the home page offers the catalog of a real model", async ({ page }) => {
+  // It proves that the door of the site names the second catalog of the recorded scenarios: a visitor who arrives
+  // at the home page has to be able to find the recordings of a real model without knowing that they exist
+  // (ADR-075).
+  await page.goto("/");
+
+  const link = cardOf(page, "Recorded demo").getByRole("link", { name: "Open the catalog of a real model" });
+
+  await expect(link).toHaveAttribute("href", "/replay-real");
+
+  // The visitor who presses the link lands in the catalog of a real model.
+  await link.click();
+  await expect(page).toHaveURL(/replay-real$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Recorded with a real model" })).toBeVisible();
+});
+
 test("the header leads the visitor to the tour of the architecture", async ({ page }) => {
   await page.goto("/");
 

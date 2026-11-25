@@ -27,6 +27,16 @@ committed under data/ carry the attributions below.
    Used for: daily reference rates. They are reference rates, not the rate an acquirer applies.
    Committed recordings: data/fixtures/fx/frankfurter_eur.json, the single-date responses
    data/fixtures/fx/<date>_<FROM>_<TO>.json and data/fixtures/fx/ecb_reference.json.
+   The cross rates of the committed recordings (the pairs that do not involve the euro) are
+   computed through the euro by this project, rounded half to even to four decimals, and they are
+   not rates the ECB publishes.
+   The conditions of the ECB for the use of the reference rates, quoted from the ECB
+   (https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html,
+   read on 2026-11-25):
+   (1) the reference rates are published for information purposes only, and using the rates for
+       transaction purposes is strongly discouraged;
+   (2) when the rates are used, the source must be acknowledged as the European Central Bank;
+   (3) the ECB accepts no responsibility for any use of the rates.
 
 4. Banco Central do Brasil (central bank of Brazil) open data
    Source: Banco Central do Brasil open data portal (https://dadosabertos.bcb.gov.br), PTAX

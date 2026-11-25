@@ -1,5 +1,11 @@
 {
-  "cases": 30,
+  "cases": 31,
+  "cost": {
+    "cut_by_cap": [],
+    "priced_cases": 0,
+    "reason": "the price of the model of the run is unknown, and an unknown price is unknown and never zero: the total of the run is not published",
+    "total_cost_usd": null
+  },
   "expectation_changes": [
     {
       "after": [
@@ -27,6 +33,29 @@
     "c_trajectory_equivalent_unordered": 1.0,
     "c_trajectory_unordered": 1.0
   },
+  "latency": {
+    "denominator": 31,
+    "end_to_end": {
+      "p50": 16.0,
+      "p95": 36.0
+    },
+    "method": "nearest_rank",
+    "per_stage": {
+      "agent": {
+        "p50": 14.0,
+        "p95": 33.0
+      },
+      "triage": {
+        "p50": 1.0,
+        "p95": 2.0
+      },
+      "verify": {
+        "p50": 1.0,
+        "p95": 3.0
+      }
+    },
+    "set": "eval_cases"
+  },
   "mode": "offline",
   "note": "The offline numbers measure the plumbing (the trace conversion, the evaluators and the report) with scripted answers, not the quality of a model. Each variant replays each case's script: the differences between them come from the tools the variant has, not from the model reasoning better or worse. To measure quality, run with `--online` and a LangSmith key.",
   "per_case": [
@@ -40,6 +69,7 @@
         "calculate"
       ],
       "kind": "scenario",
+      "latency": null,
       "missing_facts": "missing: 566.79, 549.31, 17.48, 14.08",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -56,6 +86,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "A"
     },
     {
@@ -66,6 +97,7 @@
         "search_policies"
       ],
       "kind": "scenario",
+      "latency": null,
       "missing_facts": "missing: TX-2052, TX-2051, 4990",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -82,6 +114,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "A"
     },
     {
@@ -92,6 +125,7 @@
         "search_policies"
       ],
       "kind": "scenario",
+      "latency": null,
       "missing_facts": "missing: 2026-11-09, evidence_requested, NRC",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -108,6 +142,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "A"
     },
     {
@@ -117,6 +152,7 @@
         "query_ledger"
       ],
       "kind": "scenario",
+      "latency": null,
       "missing_facts": "missing: TX-9999, row_count 0",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -133,6 +169,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "A"
     },
     {
@@ -142,6 +179,7 @@
         "query_ledger"
       ],
       "kind": "scenario",
+      "latency": null,
       "missing_facts": "missing: TX-2060, M-03, TX-2061, M-17",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -158,6 +196,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "A"
     },
     {
@@ -168,6 +207,7 @@
         "search_policies"
       ],
       "kind": "scenario",
+      "latency": null,
       "missing_facts": "missing: rejected, refund-policy#refund-window",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -184,6 +224,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "A"
     },
     {
@@ -194,6 +235,7 @@
         "calculate"
       ],
       "kind": "scenario",
+      "latency": null,
       "missing_facts": "missing: 0.00, 8000",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -210,6 +252,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "A"
     },
     {
@@ -221,6 +264,7 @@
         "calculate"
       ],
       "kind": "scenario",
+      "latency": null,
       "missing_facts": "missing: 2999287, 2026-10-14, 29992.87",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -237,6 +281,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "A"
     },
     {
@@ -246,6 +291,7 @@
         "query_ledger"
       ],
       "kind": "scenario",
+      "latency": null,
       "missing_facts": "missing: R-0750, requested",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -262,6 +308,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "A"
     },
     {
@@ -272,6 +319,7 @@
         "get_reference_fx"
       ],
       "kind": "scenario",
+      "latency": null,
       "missing_facts": "missing: ARS, 2500000",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -288,6 +336,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "A"
     },
     {
@@ -298,6 +347,7 @@
         "get_reference_fx"
       ],
       "kind": "scenario",
+      "latency": null,
       "missing_facts": "missing: EUR-BRL 2026-10-20, 5.4931",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -314,6 +364,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "A"
     },
     {
@@ -323,6 +374,7 @@
         "recall_cases"
       ],
       "kind": "scenario",
+      "latency": null,
       "missing_facts": "missing: CASE-0001",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -339,6 +391,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "A"
     },
     {
@@ -348,6 +401,7 @@
         "get_ledger_record"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": "missing: TX-0001, captured",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -364,6 +418,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "A"
     },
     {
@@ -373,6 +428,7 @@
         "get_ledger_record"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": "missing: TX-0007, failed",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -389,6 +445,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "A"
     },
     {
@@ -398,6 +455,7 @@
         "get_ledger_record"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": "missing: TX-0008, partially_refunded",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -414,6 +472,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "A"
     },
     {
@@ -423,6 +482,7 @@
         "get_ledger_record"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": "missing: TX-0138, refunded",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -439,6 +499,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "A"
     },
     {
@@ -448,6 +509,7 @@
         "get_ledger_record"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": "missing: TX-1177, disputed",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -464,6 +526,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "A"
     },
     {
@@ -473,6 +536,7 @@
         "get_ledger_record"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": "missing: TX-0265, charged_back",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -489,6 +553,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "A"
     },
     {
@@ -498,6 +563,7 @@
         "query_ledger"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": "missing: 74107",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -514,6 +580,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "A"
     },
     {
@@ -523,6 +590,7 @@
         "query_ledger"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": "missing: 3522994",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -539,6 +607,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "A"
     },
     {
@@ -548,6 +617,7 @@
         "query_ledger"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": "missing: 824836",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -564,6 +634,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "A"
     },
     {
@@ -573,6 +644,7 @@
         "query_ledger"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": "missing: 504121",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -589,6 +661,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "A"
     },
     {
@@ -598,6 +671,7 @@
         "query_ledger"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": "missing: 4496483",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -614,6 +688,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "A"
     },
     {
@@ -623,6 +698,7 @@
         "query_ledger"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": "missing: 492101",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -639,6 +715,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "A"
     },
     {
@@ -648,6 +725,7 @@
         "search_policies"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": "missing: fees-and-pricing#chargeback-fee",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -664,6 +742,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "A"
     },
     {
@@ -673,6 +752,7 @@
         "search_policies"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": "missing: duplicate-charges#detection-rule",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -689,6 +769,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "A"
     },
     {
@@ -698,6 +779,7 @@
         "search_policies"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": "missing: fx-reference-rates#source",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -714,6 +796,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "A"
     },
     {
@@ -723,6 +806,7 @@
         "search_policies"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": "missing: escalation-and-review#when-to-escalate",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -739,6 +823,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "A"
     },
     {
@@ -748,6 +833,7 @@
         "search_policies"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": "missing: cross-currency-refunds#merchant-fx-markup",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -764,6 +850,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "A"
     },
     {
@@ -773,6 +860,7 @@
         "search_policies"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": "missing: chargeback-handling#evidence-checklist",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -789,6 +877,37 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
+      "variant": "A"
+    },
+    {
+      "answer": "I have no access to the ledger or the policies, so I cannot confirm this case. Check the payments system.",
+      "case": "EC-31",
+      "expected_tools": [
+        "query_ledger",
+        "search_policies",
+        "get_reference_fx",
+        "calculate"
+      ],
+      "kind": "scenario",
+      "latency": null,
+      "missing_facts": "missing: 453.06, 431.54, 21.52, 20.34, 4.50, 3.00, 451.88",
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": "S13",
+      "scores": {
+        "correctness": 0.0,
+        "groundedness": 0.0,
+        "trajectory_equivalent_strict_match": 0.0,
+        "trajectory_equivalent_unordered_match": 0.0,
+        "trajectory_strict_match": 0.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 0.0,
+        "trajectory_unordered_match": 0.0
+      },
+      "tools": [],
+      "usage": null,
       "variant": "A"
     },
     {
@@ -801,6 +920,7 @@
         "calculate"
       ],
       "kind": "scenario",
+      "latency": null,
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -822,6 +942,7 @@
         "get_reference_fx",
         "calculate"
       ],
+      "usage": null,
       "variant": "B"
     },
     {
@@ -832,6 +953,7 @@
         "search_policies"
       ],
       "kind": "scenario",
+      "latency": null,
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "none",
@@ -851,16 +973,18 @@
         "query_ledger",
         "search_policies"
       ],
+      "usage": null,
       "variant": "B"
     },
     {
-      "answer": "CB-0310 deadline 2026-11-09 [sql:1]. CB-0310 stage evidence_requested [sql:1]. CB-0310 reason_code NRC [sql:1]. Evidence must be sent at least one business day before the card network deadline [policy:chargeback-handling#response-deadline].",
+      "answer": "CB-0310 deadline 2026-11-09 [sql:1]. CB-0310 stage evidence_requested [sql:1]. CB-0310 reason_code NRC [sql:1]. Evidence must be sent at least one business day before the response deadline of the dispute [policy:chargeback-handling#response-deadline].",
       "case": "EC-03",
       "expected_tools": [
         "query_ledger",
         "search_policies"
       ],
       "kind": "scenario",
+      "latency": null,
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -880,6 +1004,7 @@
         "query_ledger",
         "search_policies"
       ],
+      "usage": null,
       "variant": "B"
     },
     {
@@ -889,6 +1014,7 @@
         "query_ledger"
       ],
       "kind": "scenario",
+      "latency": null,
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "ask_for_clarification",
@@ -907,6 +1033,7 @@
       "tools": [
         "query_ledger"
       ],
+      "usage": null,
       "variant": "B"
     },
     {
@@ -916,6 +1043,7 @@
         "query_ledger"
       ],
       "kind": "scenario",
+      "latency": null,
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "ask_for_clarification",
@@ -934,6 +1062,7 @@
       "tools": [
         "query_ledger"
       ],
+      "usage": null,
       "variant": "B"
     },
     {
@@ -944,6 +1073,7 @@
         "search_policies"
       ],
       "kind": "scenario",
+      "latency": null,
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -963,6 +1093,7 @@
         "query_ledger",
         "search_policies"
       ],
+      "usage": null,
       "variant": "B"
     },
     {
@@ -973,6 +1104,7 @@
         "calculate"
       ],
       "kind": "scenario",
+      "latency": null,
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "none",
@@ -992,6 +1124,7 @@
         "query_ledger",
         "calculate"
       ],
+      "usage": null,
       "variant": "B"
     },
     {
@@ -1003,6 +1136,7 @@
         "calculate"
       ],
       "kind": "scenario",
+      "latency": null,
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "explain_to_customer",
@@ -1023,6 +1157,7 @@
         "search_policies",
         "calculate"
       ],
+      "usage": null,
       "variant": "B"
     },
     {
@@ -1032,6 +1167,7 @@
         "query_ledger"
       ],
       "kind": "scenario",
+      "latency": null,
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -1050,6 +1186,7 @@
       "tools": [
         "query_ledger"
       ],
+      "usage": null,
       "variant": "B"
     },
     {
@@ -1060,6 +1197,7 @@
         "get_reference_fx"
       ],
       "kind": "scenario",
+      "latency": null,
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -1079,6 +1217,7 @@
         "query_ledger",
         "get_reference_fx"
       ],
+      "usage": null,
       "variant": "B"
     },
     {
@@ -1089,6 +1228,7 @@
         "get_reference_fx"
       ],
       "kind": "scenario",
+      "latency": null,
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -1108,6 +1248,7 @@
         "query_ledger",
         "get_reference_fx"
       ],
+      "usage": null,
       "variant": "B"
     },
     {
@@ -1117,6 +1258,7 @@
         "recall_cases"
       ],
       "kind": "scenario",
+      "latency": null,
       "missing_facts": "missing: CASE-0001",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -1133,6 +1275,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "B"
     },
     {
@@ -1142,6 +1285,7 @@
         "get_ledger_record"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": "missing: TX-0001, captured",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -1158,6 +1302,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "B"
     },
     {
@@ -1167,6 +1312,7 @@
         "get_ledger_record"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": "missing: TX-0007, failed",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -1183,6 +1329,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "B"
     },
     {
@@ -1192,6 +1339,7 @@
         "get_ledger_record"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": "missing: TX-0008, partially_refunded",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -1208,6 +1356,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "B"
     },
     {
@@ -1217,6 +1366,7 @@
         "get_ledger_record"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": "missing: TX-0138, refunded",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -1233,6 +1383,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "B"
     },
     {
@@ -1242,6 +1393,7 @@
         "get_ledger_record"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": "missing: TX-1177, disputed",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -1258,6 +1410,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "B"
     },
     {
@@ -1267,6 +1420,7 @@
         "get_ledger_record"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": "missing: TX-0265, charged_back",
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -1283,6 +1437,7 @@
         "trajectory_unordered_match": 0.0
       },
       "tools": [],
+      "usage": null,
       "variant": "B"
     },
     {
@@ -1292,6 +1447,7 @@
         "query_ledger"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "explain_to_customer",
@@ -1310,6 +1466,7 @@
       "tools": [
         "query_ledger"
       ],
+      "usage": null,
       "variant": "B"
     },
     {
@@ -1319,6 +1476,7 @@
         "query_ledger"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "explain_to_customer",
@@ -1337,6 +1495,7 @@
       "tools": [
         "query_ledger"
       ],
+      "usage": null,
       "variant": "B"
     },
     {
@@ -1346,6 +1505,7 @@
         "query_ledger"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "explain_to_customer",
@@ -1364,6 +1524,7 @@
       "tools": [
         "query_ledger"
       ],
+      "usage": null,
       "variant": "B"
     },
     {
@@ -1373,6 +1534,7 @@
         "query_ledger"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "explain_to_customer",
@@ -1391,6 +1553,7 @@
       "tools": [
         "query_ledger"
       ],
+      "usage": null,
       "variant": "B"
     },
     {
@@ -1400,6 +1563,7 @@
         "query_ledger"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "explain_to_customer",
@@ -1418,6 +1582,7 @@
       "tools": [
         "query_ledger"
       ],
+      "usage": null,
       "variant": "B"
     },
     {
@@ -1427,6 +1592,7 @@
         "query_ledger"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "explain_to_customer",
@@ -1445,6 +1611,7 @@
       "tools": [
         "query_ledger"
       ],
+      "usage": null,
       "variant": "B"
     },
     {
@@ -1454,6 +1621,7 @@
         "search_policies"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "none",
@@ -1472,6 +1640,7 @@
       "tools": [
         "search_policies"
       ],
+      "usage": null,
       "variant": "B"
     },
     {
@@ -1481,6 +1650,7 @@
         "search_policies"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -1499,15 +1669,17 @@
       "tools": [
         "search_policies"
       ],
+      "usage": null,
       "variant": "B"
     },
     {
-      "answer": "The reference rate is the European Central Bank's daily rate, obtained through the Frankfurter service in the version that uses only that source [policy:fx-reference-rates#source].",
+      "answer": "The reference rate is the European Central Bank's daily rate, obtained through the Frankfurter service in the version that uses only that source (source: the European Central Bank and the Frankfurter service, read on 2026-11-25) [policy:fx-reference-rates#source].",
       "case": "EC-27",
       "expected_tools": [
         "search_policies"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "none",
@@ -1526,6 +1698,7 @@
       "tools": [
         "search_policies"
       ],
+      "usage": null,
       "variant": "B"
     },
     {
@@ -1535,6 +1708,7 @@
         "search_policies"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "none",
@@ -1553,15 +1727,17 @@
       "tools": [
         "search_policies"
       ],
+      "usage": null,
       "variant": "B"
     },
     {
-      "answer": "Merchants on the `markup` plan can apply up to 3.0% over the reference rate when converting a refund [policy:cross-currency-refunds#merchant-fx-markup].",
+      "answer": "Merchants on the `markup` plan can apply up to 3.0% below the reference rate when converting a refund [policy:cross-currency-refunds#merchant-fx-markup].",
       "case": "EC-29",
       "expected_tools": [
         "search_policies"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "none",
@@ -1580,6 +1756,7 @@
       "tools": [
         "search_policies"
       ],
+      "usage": null,
       "variant": "B"
     },
     {
@@ -1589,6 +1766,7 @@
         "search_policies"
       ],
       "kind": "natural",
+      "latency": null,
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -1607,6 +1785,42 @@
       "tools": [
         "search_policies"
       ],
+      "usage": null,
+      "variant": "B"
+    },
+    {
+      "answer": "charge_brl 453.06 [sql:1, calc:1]. refund_brl 431.54 [sql:1, calc:1]. gap_brl 21.52 [calc:1]. rate_move_brl 1.18 [calc:1]. markup_brl 20.34 [calc:1]. markup_pct 4.50 [calc:1]. markup_limit_pct 3.00 [calc:1]. within_limit no [calc:1]. refund_at_reference 451.88 [calc:1]. refund applied_rate 5.3943 [sql:1]. The implied markup is one minus the applied rate divided by the reference rate on the refund date, expressed as a percentage [policy:fx-reference-rates#comparing-with-applied].",
+      "case": "EC-31",
+      "expected_tools": [
+        "query_ledger",
+        "search_policies",
+        "get_reference_fx",
+        "calculate"
+      ],
+      "kind": "scenario",
+      "latency": null,
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": "S13",
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 0.5,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger",
+        "search_policies",
+        "get_reference_fx",
+        "calculate"
+      ],
+      "usage": null,
       "variant": "B"
     },
     {
@@ -1619,6 +1833,14 @@
         "calculate"
       ],
       "kind": "scenario",
+      "latency": {
+        "end_to_end_ms": 20.0,
+        "per_stage_ms": {
+          "agent": 17.0,
+          "triage": 2.0,
+          "verify": 1.0
+        }
+      },
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -1640,6 +1862,17 @@
         "get_reference_fx",
         "calculate"
       ],
+      "usage": {
+        "cut_by": null,
+        "elapsed_seconds": 0.021,
+        "estimated_cost_usd": null,
+        "input_tokens": 0,
+        "model_calls": 6,
+        "observed_cost_usd": null,
+        "output_tokens": 0,
+        "price_known": false,
+        "tool_calls": 4
+      },
       "variant": "C"
     },
     {
@@ -1650,6 +1883,14 @@
         "search_policies"
       ],
       "kind": "scenario",
+      "latency": {
+        "end_to_end_ms": 16.0,
+        "per_stage_ms": {
+          "agent": 13.0,
+          "triage": 1.0,
+          "verify": 2.0
+        }
+      },
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "none",
@@ -1669,16 +1910,35 @@
         "query_ledger",
         "search_policies"
       ],
+      "usage": {
+        "cut_by": null,
+        "elapsed_seconds": 0.016,
+        "estimated_cost_usd": null,
+        "input_tokens": 0,
+        "model_calls": 4,
+        "observed_cost_usd": null,
+        "output_tokens": 0,
+        "price_known": false,
+        "tool_calls": 2
+      },
       "variant": "C"
     },
     {
-      "answer": "CB-0310 deadline 2026-11-09 [sql:1]. CB-0310 stage evidence_requested [sql:1]. CB-0310 reason_code NRC [sql:1]. Evidence must be sent at least one business day before the card network deadline [policy:chargeback-handling#response-deadline].",
+      "answer": "CB-0310 deadline 2026-11-09 [sql:1]. CB-0310 stage evidence_requested [sql:1]. CB-0310 reason_code NRC [sql:1]. Evidence must be sent at least one business day before the response deadline of the dispute [policy:chargeback-handling#response-deadline].",
       "case": "EC-03",
       "expected_tools": [
         "query_ledger",
         "search_policies"
       ],
       "kind": "scenario",
+      "latency": {
+        "end_to_end_ms": 19.0,
+        "per_stage_ms": {
+          "agent": 16.0,
+          "triage": 1.0,
+          "verify": 2.0
+        }
+      },
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -1698,6 +1958,17 @@
         "query_ledger",
         "search_policies"
       ],
+      "usage": {
+        "cut_by": null,
+        "elapsed_seconds": 0.021,
+        "estimated_cost_usd": null,
+        "input_tokens": 0,
+        "model_calls": 4,
+        "observed_cost_usd": null,
+        "output_tokens": 0,
+        "price_known": false,
+        "tool_calls": 2
+      },
       "variant": "C"
     },
     {
@@ -1707,6 +1978,14 @@
         "query_ledger"
       ],
       "kind": "scenario",
+      "latency": {
+        "end_to_end_ms": 9.0,
+        "per_stage_ms": {
+          "agent": 7.0,
+          "triage": 1.0,
+          "verify": 1.0
+        }
+      },
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "ask_for_clarification",
@@ -1725,6 +2004,17 @@
       "tools": [
         "query_ledger"
       ],
+      "usage": {
+        "cut_by": null,
+        "elapsed_seconds": 0.01,
+        "estimated_cost_usd": null,
+        "input_tokens": 0,
+        "model_calls": 3,
+        "observed_cost_usd": null,
+        "output_tokens": 0,
+        "price_known": false,
+        "tool_calls": 1
+      },
       "variant": "C"
     },
     {
@@ -1734,6 +2024,14 @@
         "query_ledger"
       ],
       "kind": "scenario",
+      "latency": {
+        "end_to_end_ms": 10.0,
+        "per_stage_ms": {
+          "agent": 8.0,
+          "triage": 1.0,
+          "verify": 1.0
+        }
+      },
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "ask_for_clarification",
@@ -1752,6 +2050,17 @@
       "tools": [
         "query_ledger"
       ],
+      "usage": {
+        "cut_by": null,
+        "elapsed_seconds": 0.011,
+        "estimated_cost_usd": null,
+        "input_tokens": 0,
+        "model_calls": 3,
+        "observed_cost_usd": null,
+        "output_tokens": 0,
+        "price_known": false,
+        "tool_calls": 1
+      },
       "variant": "C"
     },
     {
@@ -1762,6 +2071,14 @@
         "search_policies"
       ],
       "kind": "scenario",
+      "latency": {
+        "end_to_end_ms": 18.0,
+        "per_stage_ms": {
+          "agent": 15.0,
+          "triage": 1.0,
+          "verify": 2.0
+        }
+      },
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -1781,6 +2098,17 @@
         "query_ledger",
         "search_policies"
       ],
+      "usage": {
+        "cut_by": null,
+        "elapsed_seconds": 0.019,
+        "estimated_cost_usd": null,
+        "input_tokens": 0,
+        "model_calls": 4,
+        "observed_cost_usd": null,
+        "output_tokens": 0,
+        "price_known": false,
+        "tool_calls": 2
+      },
       "variant": "C"
     },
     {
@@ -1791,6 +2119,14 @@
         "calculate"
       ],
       "kind": "scenario",
+      "latency": {
+        "end_to_end_ms": 35.0,
+        "per_stage_ms": {
+          "agent": 31.0,
+          "triage": 2.0,
+          "verify": 2.0
+        }
+      },
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "none",
@@ -1810,6 +2146,17 @@
         "query_ledger",
         "calculate"
       ],
+      "usage": {
+        "cut_by": null,
+        "elapsed_seconds": 0.036,
+        "estimated_cost_usd": null,
+        "input_tokens": 0,
+        "model_calls": 4,
+        "observed_cost_usd": null,
+        "output_tokens": 0,
+        "price_known": false,
+        "tool_calls": 2
+      },
       "variant": "C"
     },
     {
@@ -1821,6 +2168,14 @@
         "calculate"
       ],
       "kind": "scenario",
+      "latency": {
+        "end_to_end_ms": 23.0,
+        "per_stage_ms": {
+          "agent": 20.0,
+          "triage": 1.0,
+          "verify": 2.0
+        }
+      },
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "explain_to_customer",
@@ -1841,6 +2196,17 @@
         "search_policies",
         "calculate"
       ],
+      "usage": {
+        "cut_by": null,
+        "elapsed_seconds": 0.024,
+        "estimated_cost_usd": null,
+        "input_tokens": 0,
+        "model_calls": 5,
+        "observed_cost_usd": null,
+        "output_tokens": 0,
+        "price_known": false,
+        "tool_calls": 3
+      },
       "variant": "C"
     },
     {
@@ -1850,6 +2216,14 @@
         "query_ledger"
       ],
       "kind": "scenario",
+      "latency": {
+        "end_to_end_ms": 11.0,
+        "per_stage_ms": {
+          "agent": 8.0,
+          "triage": 1.0,
+          "verify": 2.0
+        }
+      },
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -1868,6 +2242,17 @@
       "tools": [
         "query_ledger"
       ],
+      "usage": {
+        "cut_by": null,
+        "elapsed_seconds": 0.012,
+        "estimated_cost_usd": null,
+        "input_tokens": 0,
+        "model_calls": 3,
+        "observed_cost_usd": null,
+        "output_tokens": 0,
+        "price_known": false,
+        "tool_calls": 1
+      },
       "variant": "C"
     },
     {
@@ -1878,6 +2263,14 @@
         "get_reference_fx"
       ],
       "kind": "scenario",
+      "latency": {
+        "end_to_end_ms": 19.0,
+        "per_stage_ms": {
+          "agent": 17.0,
+          "triage": 1.0,
+          "verify": 1.0
+        }
+      },
       "missing_facts": null,
       "plan_deviations": [
         "get_reference_fx: FX for 2026-10-15 with no ledger origin: the follow-up failed, the earlier answer stands"
@@ -1899,6 +2292,17 @@
         "query_ledger",
         "get_reference_fx"
       ],
+      "usage": {
+        "cut_by": null,
+        "elapsed_seconds": 0.02,
+        "estimated_cost_usd": null,
+        "input_tokens": 0,
+        "model_calls": 5,
+        "observed_cost_usd": null,
+        "output_tokens": 0,
+        "price_known": false,
+        "tool_calls": 2
+      },
       "variant": "C"
     },
     {
@@ -1909,6 +2313,14 @@
         "get_reference_fx"
       ],
       "kind": "scenario",
+      "latency": {
+        "end_to_end_ms": 11.0,
+        "per_stage_ms": {
+          "agent": 9.0,
+          "triage": 1.0,
+          "verify": 1.0
+        }
+      },
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -1928,6 +2340,17 @@
         "query_ledger",
         "get_reference_fx"
       ],
+      "usage": {
+        "cut_by": null,
+        "elapsed_seconds": 0.011,
+        "estimated_cost_usd": null,
+        "input_tokens": 0,
+        "model_calls": 4,
+        "observed_cost_usd": null,
+        "output_tokens": 0,
+        "price_known": false,
+        "tool_calls": 2
+      },
       "variant": "C"
     },
     {
@@ -1937,6 +2360,14 @@
         "recall_cases"
       ],
       "kind": "scenario",
+      "latency": {
+        "end_to_end_ms": 7.0,
+        "per_stage_ms": {
+          "agent": 5.0,
+          "triage": 1.0,
+          "verify": 1.0
+        }
+      },
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "explain_to_customer",
@@ -1955,6 +2386,17 @@
       "tools": [
         "recall_cases"
       ],
+      "usage": {
+        "cut_by": null,
+        "elapsed_seconds": 0.008,
+        "estimated_cost_usd": null,
+        "input_tokens": 0,
+        "model_calls": 3,
+        "observed_cost_usd": null,
+        "output_tokens": 0,
+        "price_known": false,
+        "tool_calls": 1
+      },
       "variant": "C"
     },
     {
@@ -1964,6 +2406,14 @@
         "get_ledger_record"
       ],
       "kind": "natural",
+      "latency": {
+        "end_to_end_ms": 123.0,
+        "per_stage_ms": {
+          "agent": 121.0,
+          "triage": 1.0,
+          "verify": 1.0
+        }
+      },
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "none",
@@ -1982,6 +2432,17 @@
       "tools": [
         "get_ledger_record"
       ],
+      "usage": {
+        "cut_by": null,
+        "elapsed_seconds": 0.123,
+        "estimated_cost_usd": null,
+        "input_tokens": 0,
+        "model_calls": 3,
+        "observed_cost_usd": null,
+        "output_tokens": 0,
+        "price_known": false,
+        "tool_calls": 1
+      },
       "variant": "C"
     },
     {
@@ -1991,6 +2452,14 @@
         "get_ledger_record"
       ],
       "kind": "natural",
+      "latency": {
+        "end_to_end_ms": 15.0,
+        "per_stage_ms": {
+          "agent": 13.0,
+          "triage": 1.0,
+          "verify": 1.0
+        }
+      },
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "none",
@@ -2009,6 +2478,17 @@
       "tools": [
         "get_ledger_record"
       ],
+      "usage": {
+        "cut_by": null,
+        "elapsed_seconds": 0.015,
+        "estimated_cost_usd": null,
+        "input_tokens": 0,
+        "model_calls": 3,
+        "observed_cost_usd": null,
+        "output_tokens": 0,
+        "price_known": false,
+        "tool_calls": 1
+      },
       "variant": "C"
     },
     {
@@ -2018,6 +2498,14 @@
         "get_ledger_record"
       ],
       "kind": "natural",
+      "latency": {
+        "end_to_end_ms": 29.0,
+        "per_stage_ms": {
+          "agent": 22.0,
+          "triage": 1.0,
+          "verify": 6.0
+        }
+      },
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "none",
@@ -2036,6 +2524,17 @@
       "tools": [
         "get_ledger_record"
       ],
+      "usage": {
+        "cut_by": null,
+        "elapsed_seconds": 0.032,
+        "estimated_cost_usd": null,
+        "input_tokens": 0,
+        "model_calls": 3,
+        "observed_cost_usd": null,
+        "output_tokens": 0,
+        "price_known": false,
+        "tool_calls": 1
+      },
       "variant": "C"
     },
     {
@@ -2045,6 +2544,14 @@
         "get_ledger_record"
       ],
       "kind": "natural",
+      "latency": {
+        "end_to_end_ms": 36.0,
+        "per_stage_ms": {
+          "agent": 33.0,
+          "triage": 1.0,
+          "verify": 2.0
+        }
+      },
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "none",
@@ -2063,6 +2570,17 @@
       "tools": [
         "get_ledger_record"
       ],
+      "usage": {
+        "cut_by": null,
+        "elapsed_seconds": 0.038,
+        "estimated_cost_usd": null,
+        "input_tokens": 0,
+        "model_calls": 3,
+        "observed_cost_usd": null,
+        "output_tokens": 0,
+        "price_known": false,
+        "tool_calls": 1
+      },
       "variant": "C"
     },
     {
@@ -2072,6 +2590,14 @@
         "get_ledger_record"
       ],
       "kind": "natural",
+      "latency": {
+        "end_to_end_ms": 17.0,
+        "per_stage_ms": {
+          "agent": 14.0,
+          "triage": 1.0,
+          "verify": 2.0
+        }
+      },
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -2090,6 +2616,17 @@
       "tools": [
         "get_ledger_record"
       ],
+      "usage": {
+        "cut_by": null,
+        "elapsed_seconds": 0.018,
+        "estimated_cost_usd": null,
+        "input_tokens": 0,
+        "model_calls": 3,
+        "observed_cost_usd": null,
+        "output_tokens": 0,
+        "price_known": false,
+        "tool_calls": 1
+      },
       "variant": "C"
     },
     {
@@ -2099,6 +2636,14 @@
         "get_ledger_record"
       ],
       "kind": "natural",
+      "latency": {
+        "end_to_end_ms": 15.0,
+        "per_stage_ms": {
+          "agent": 12.0,
+          "triage": 1.0,
+          "verify": 2.0
+        }
+      },
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "none",
@@ -2117,6 +2662,17 @@
       "tools": [
         "get_ledger_record"
       ],
+      "usage": {
+        "cut_by": null,
+        "elapsed_seconds": 0.015,
+        "estimated_cost_usd": null,
+        "input_tokens": 0,
+        "model_calls": 3,
+        "observed_cost_usd": null,
+        "output_tokens": 0,
+        "price_known": false,
+        "tool_calls": 1
+      },
       "variant": "C"
     },
     {
@@ -2126,6 +2682,14 @@
         "query_ledger"
       ],
       "kind": "natural",
+      "latency": {
+        "end_to_end_ms": 14.0,
+        "per_stage_ms": {
+          "agent": 9.0,
+          "triage": 3.0,
+          "verify": 2.0
+        }
+      },
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "explain_to_customer",
@@ -2144,6 +2708,17 @@
       "tools": [
         "query_ledger"
       ],
+      "usage": {
+        "cut_by": null,
+        "elapsed_seconds": 0.016,
+        "estimated_cost_usd": null,
+        "input_tokens": 0,
+        "model_calls": 3,
+        "observed_cost_usd": null,
+        "output_tokens": 0,
+        "price_known": false,
+        "tool_calls": 1
+      },
       "variant": "C"
     },
     {
@@ -2153,6 +2728,14 @@
         "query_ledger"
       ],
       "kind": "natural",
+      "latency": {
+        "end_to_end_ms": 14.0,
+        "per_stage_ms": {
+          "agent": 11.0,
+          "triage": 2.0,
+          "verify": 1.0
+        }
+      },
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "explain_to_customer",
@@ -2171,6 +2754,17 @@
       "tools": [
         "query_ledger"
       ],
+      "usage": {
+        "cut_by": null,
+        "elapsed_seconds": 0.016,
+        "estimated_cost_usd": null,
+        "input_tokens": 0,
+        "model_calls": 3,
+        "observed_cost_usd": null,
+        "output_tokens": 0,
+        "price_known": false,
+        "tool_calls": 1
+      },
       "variant": "C"
     },
     {
@@ -2180,6 +2774,14 @@
         "query_ledger"
       ],
       "kind": "natural",
+      "latency": {
+        "end_to_end_ms": 15.0,
+        "per_stage_ms": {
+          "agent": 11.0,
+          "triage": 1.0,
+          "verify": 3.0
+        }
+      },
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "explain_to_customer",
@@ -2198,6 +2800,17 @@
       "tools": [
         "query_ledger"
       ],
+      "usage": {
+        "cut_by": null,
+        "elapsed_seconds": 0.02,
+        "estimated_cost_usd": null,
+        "input_tokens": 0,
+        "model_calls": 3,
+        "observed_cost_usd": null,
+        "output_tokens": 0,
+        "price_known": false,
+        "tool_calls": 1
+      },
       "variant": "C"
     },
     {
@@ -2207,6 +2820,14 @@
         "query_ledger"
       ],
       "kind": "natural",
+      "latency": {
+        "end_to_end_ms": 20.0,
+        "per_stage_ms": {
+          "agent": 18.0,
+          "triage": 1.0,
+          "verify": 1.0
+        }
+      },
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "explain_to_customer",
@@ -2225,6 +2846,17 @@
       "tools": [
         "query_ledger"
       ],
+      "usage": {
+        "cut_by": null,
+        "elapsed_seconds": 0.021,
+        "estimated_cost_usd": null,
+        "input_tokens": 0,
+        "model_calls": 3,
+        "observed_cost_usd": null,
+        "output_tokens": 0,
+        "price_known": false,
+        "tool_calls": 1
+      },
       "variant": "C"
     },
     {
@@ -2234,6 +2866,14 @@
         "query_ledger"
       ],
       "kind": "natural",
+      "latency": {
+        "end_to_end_ms": 18.0,
+        "per_stage_ms": {
+          "agent": 15.0,
+          "triage": 1.0,
+          "verify": 2.0
+        }
+      },
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "explain_to_customer",
@@ -2252,6 +2892,17 @@
       "tools": [
         "query_ledger"
       ],
+      "usage": {
+        "cut_by": null,
+        "elapsed_seconds": 0.019,
+        "estimated_cost_usd": null,
+        "input_tokens": 0,
+        "model_calls": 3,
+        "observed_cost_usd": null,
+        "output_tokens": 0,
+        "price_known": false,
+        "tool_calls": 1
+      },
       "variant": "C"
     },
     {
@@ -2261,6 +2912,14 @@
         "query_ledger"
       ],
       "kind": "natural",
+      "latency": {
+        "end_to_end_ms": 13.0,
+        "per_stage_ms": {
+          "agent": 11.0,
+          "triage": 1.0,
+          "verify": 1.0
+        }
+      },
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "explain_to_customer",
@@ -2279,6 +2938,17 @@
       "tools": [
         "query_ledger"
       ],
+      "usage": {
+        "cut_by": null,
+        "elapsed_seconds": 0.014,
+        "estimated_cost_usd": null,
+        "input_tokens": 0,
+        "model_calls": 3,
+        "observed_cost_usd": null,
+        "output_tokens": 0,
+        "price_known": false,
+        "tool_calls": 1
+      },
       "variant": "C"
     },
     {
@@ -2288,6 +2958,14 @@
         "search_policies"
       ],
       "kind": "natural",
+      "latency": {
+        "end_to_end_ms": 18.0,
+        "per_stage_ms": {
+          "agent": 16.0,
+          "triage": 1.0,
+          "verify": 1.0
+        }
+      },
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "none",
@@ -2306,6 +2984,17 @@
       "tools": [
         "search_policies"
       ],
+      "usage": {
+        "cut_by": null,
+        "elapsed_seconds": 0.019,
+        "estimated_cost_usd": null,
+        "input_tokens": 0,
+        "model_calls": 3,
+        "observed_cost_usd": null,
+        "output_tokens": 0,
+        "price_known": false,
+        "tool_calls": 1
+      },
       "variant": "C"
     },
     {
@@ -2315,6 +3004,14 @@
         "search_policies"
       ],
       "kind": "natural",
+      "latency": {
+        "end_to_end_ms": 10.0,
+        "per_stage_ms": {
+          "agent": 9.0,
+          "triage": 1.0,
+          "verify": 0.0
+        }
+      },
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -2333,15 +3030,34 @@
       "tools": [
         "search_policies"
       ],
+      "usage": {
+        "cut_by": null,
+        "elapsed_seconds": 0.011,
+        "estimated_cost_usd": null,
+        "input_tokens": 0,
+        "model_calls": 3,
+        "observed_cost_usd": null,
+        "output_tokens": 0,
+        "price_known": false,
+        "tool_calls": 1
+      },
       "variant": "C"
     },
     {
-      "answer": "The reference rate is the European Central Bank's daily rate, obtained through the Frankfurter service in the version that uses only that source [policy:fx-reference-rates#source].",
+      "answer": "The reference rate is the European Central Bank's daily rate, obtained through the Frankfurter service in the version that uses only that source (source: the European Central Bank and the Frankfurter service, read on 2026-11-25) [policy:fx-reference-rates#source].",
       "case": "EC-27",
       "expected_tools": [
         "search_policies"
       ],
       "kind": "natural",
+      "latency": {
+        "end_to_end_ms": 12.0,
+        "per_stage_ms": {
+          "agent": 10.0,
+          "triage": 1.0,
+          "verify": 1.0
+        }
+      },
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "none",
@@ -2360,6 +3076,17 @@
       "tools": [
         "search_policies"
       ],
+      "usage": {
+        "cut_by": null,
+        "elapsed_seconds": 0.015,
+        "estimated_cost_usd": null,
+        "input_tokens": 0,
+        "model_calls": 3,
+        "observed_cost_usd": null,
+        "output_tokens": 0,
+        "price_known": false,
+        "tool_calls": 1
+      },
       "variant": "C"
     },
     {
@@ -2369,6 +3096,14 @@
         "search_policies"
       ],
       "kind": "natural",
+      "latency": {
+        "end_to_end_ms": 16.0,
+        "per_stage_ms": {
+          "agent": 14.0,
+          "triage": 1.0,
+          "verify": 1.0
+        }
+      },
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "none",
@@ -2387,15 +3122,34 @@
       "tools": [
         "search_policies"
       ],
+      "usage": {
+        "cut_by": null,
+        "elapsed_seconds": 0.017,
+        "estimated_cost_usd": null,
+        "input_tokens": 0,
+        "model_calls": 3,
+        "observed_cost_usd": null,
+        "output_tokens": 0,
+        "price_known": false,
+        "tool_calls": 1
+      },
       "variant": "C"
     },
     {
-      "answer": "Merchants on the `markup` plan can apply up to 3.0% over the reference rate when converting a refund [policy:cross-currency-refunds#merchant-fx-markup].",
+      "answer": "Merchants on the `markup` plan can apply up to 3.0% below the reference rate when converting a refund [policy:cross-currency-refunds#merchant-fx-markup].",
       "case": "EC-29",
       "expected_tools": [
         "search_policies"
       ],
       "kind": "natural",
+      "latency": {
+        "end_to_end_ms": 20.0,
+        "per_stage_ms": {
+          "agent": 18.0,
+          "triage": 1.0,
+          "verify": 1.0
+        }
+      },
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "none",
@@ -2414,6 +3168,17 @@
       "tools": [
         "search_policies"
       ],
+      "usage": {
+        "cut_by": null,
+        "elapsed_seconds": 0.022,
+        "estimated_cost_usd": null,
+        "input_tokens": 0,
+        "model_calls": 3,
+        "observed_cost_usd": null,
+        "output_tokens": 0,
+        "price_known": false,
+        "tool_calls": 1
+      },
       "variant": "C"
     },
     {
@@ -2423,6 +3188,14 @@
         "search_policies"
       ],
       "kind": "natural",
+      "latency": {
+        "end_to_end_ms": 13.0,
+        "per_stage_ms": {
+          "agent": 12.0,
+          "triage": 1.0,
+          "verify": 0.0
+        }
+      },
       "missing_facts": null,
       "plan_deviations": [],
       "recommended_action": "escalate_to_human",
@@ -2441,6 +3214,69 @@
       "tools": [
         "search_policies"
       ],
+      "usage": {
+        "cut_by": null,
+        "elapsed_seconds": 0.015,
+        "estimated_cost_usd": null,
+        "input_tokens": 0,
+        "model_calls": 3,
+        "observed_cost_usd": null,
+        "output_tokens": 0,
+        "price_known": false,
+        "tool_calls": 1
+      },
+      "variant": "C"
+    },
+    {
+      "answer": "charge_brl 453.06 [sql:1, calc:1]. refund_brl 431.54 [sql:1, calc:1]. gap_brl 21.52 [calc:1]. rate_move_brl 1.18 [calc:1]. markup_brl 20.34 [calc:1]. markup_pct 4.50 [calc:1]. markup_limit_pct 3.00 [calc:1]. within_limit no [calc:1]. refund_at_reference 451.88 [calc:1]. refund applied_rate 5.3943 [sql:1]. The implied markup is one minus the applied rate divided by the reference rate on the refund date, expressed as a percentage [policy:fx-reference-rates#comparing-with-applied].",
+      "case": "EC-31",
+      "expected_tools": [
+        "query_ledger",
+        "search_policies",
+        "get_reference_fx",
+        "calculate"
+      ],
+      "kind": "scenario",
+      "latency": {
+        "end_to_end_ms": 35.0,
+        "per_stage_ms": {
+          "agent": 32.0,
+          "triage": 1.0,
+          "verify": 2.0
+        }
+      },
+      "missing_facts": null,
+      "plan_deviations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "scenario": "S13",
+      "scores": {
+        "correctness": 1.0,
+        "groundedness": 0.5,
+        "trajectory_equivalent_strict_match": 1.0,
+        "trajectory_equivalent_unordered_match": 1.0,
+        "trajectory_strict_match": 1.0,
+        "trajectory_subset_match": 1.0,
+        "trajectory_superset_match": 1.0,
+        "trajectory_unordered_match": 1.0
+      },
+      "tools": [
+        "query_ledger",
+        "search_policies",
+        "get_reference_fx",
+        "calculate"
+      ],
+      "usage": {
+        "cut_by": null,
+        "elapsed_seconds": 0.036,
+        "estimated_cost_usd": null,
+        "input_tokens": 0,
+        "model_calls": 6,
+        "observed_cost_usd": null,
+        "output_tokens": 0,
+        "price_known": false,
+        "tool_calls": 4
+      },
       "variant": "C"
     }
   ],
@@ -2477,7 +3313,8 @@
           "EC-27",
           "EC-28",
           "EC-29",
-          "EC-30"
+          "EC-30",
+          "EC-31"
         ],
         "groundedness": [
           "EC-01",
@@ -2509,7 +3346,8 @@
           "EC-27",
           "EC-28",
           "EC-29",
-          "EC-30"
+          "EC-30",
+          "EC-31"
         ],
         "trajectory_equivalent_strict_match": [
           "EC-01",
@@ -2541,7 +3379,8 @@
           "EC-27",
           "EC-28",
           "EC-29",
-          "EC-30"
+          "EC-30",
+          "EC-31"
         ],
         "trajectory_equivalent_unordered_match": [
           "EC-01",
@@ -2573,7 +3412,8 @@
           "EC-27",
           "EC-28",
           "EC-29",
-          "EC-30"
+          "EC-30",
+          "EC-31"
         ],
         "trajectory_strict_match": [
           "EC-01",
@@ -2605,7 +3445,8 @@
           "EC-27",
           "EC-28",
           "EC-29",
-          "EC-30"
+          "EC-30",
+          "EC-31"
         ],
         "trajectory_subset_match": [],
         "trajectory_superset_match": [
@@ -2638,7 +3479,8 @@
           "EC-27",
           "EC-28",
           "EC-29",
-          "EC-30"
+          "EC-30",
+          "EC-31"
         ],
         "trajectory_unordered_match": [
           "EC-01",
@@ -2670,10 +3512,11 @@
           "EC-27",
           "EC-28",
           "EC-29",
-          "EC-30"
+          "EC-30",
+          "EC-31"
         ]
       },
-      "human_review": 30,
+      "human_review": 31,
       "label": "chain with no tools",
       "metrics": {
         "correctness": 0.0,
@@ -2710,7 +3553,8 @@
           "EC-17",
           "EC-18",
           "EC-26",
-          "EC-30"
+          "EC-30",
+          "EC-31"
         ],
         "trajectory_equivalent_strict_match": [
           "EC-12",
@@ -2759,17 +3603,17 @@
           "EC-18"
         ]
       },
-      "human_review": 15,
+      "human_review": 16,
       "label": "ReAct agent (legacy_react)",
       "metrics": {
-        "correctness": 0.7667,
-        "groundedness": 0.6389,
-        "trajectory_equivalent_strict_match": 0.7667,
-        "trajectory_equivalent_unordered_match": 0.7667,
-        "trajectory_strict_match": 0.7667,
+        "correctness": 0.7742,
+        "groundedness": 0.6344,
+        "trajectory_equivalent_strict_match": 0.7742,
+        "trajectory_equivalent_unordered_match": 0.7742,
+        "trajectory_strict_match": 0.7742,
         "trajectory_subset_match": 1.0,
-        "trajectory_superset_match": 0.7667,
-        "trajectory_unordered_match": 0.7667
+        "trajectory_superset_match": 0.7742,
+        "trajectory_unordered_match": 0.7742
       }
     },
     "C": {
@@ -2781,7 +3625,8 @@
           "EC-06",
           "EC-11",
           "EC-26",
-          "EC-30"
+          "EC-30",
+          "EC-31"
         ],
         "trajectory_equivalent_strict_match": [],
         "trajectory_equivalent_unordered_match": [],
@@ -2790,11 +3635,11 @@
         "trajectory_superset_match": [],
         "trajectory_unordered_match": []
       },
-      "human_review": 9,
+      "human_review": 10,
       "label": "full agent (integrator with verifier)",
       "metrics": {
         "correctness": 1.0,
-        "groundedness": 0.8722,
+        "groundedness": 0.8602,
         "trajectory_equivalent_strict_match": 1.0,
         "trajectory_equivalent_unordered_match": 1.0,
         "trajectory_strict_match": 1.0,

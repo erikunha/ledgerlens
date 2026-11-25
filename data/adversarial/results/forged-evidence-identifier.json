@@ -1,0 +1,15 @@
+{
+  "blocked_actions": [
+    {
+      "action": "the evidence identifier 'sql:9999', which resolves to no record of the run",
+      "layer": "the verifier and the evidence of the bundle",
+      "reason": "the join of the evidence refuses it: the step step-of-the-attack cites the evidence 'sql:9999' and it resolves to no record of the run"
+    }
+  ],
+  "exercise_id": "forged-evidence-identifier",
+  "expected_boundary": "the verifier and the evidence of the bundle",
+  "open_risk": "an identifier that resolves to a record of another case is not settled by this exercise",
+  "surface": "the join of the evidence",
+  "trace_ref": "lab-forged-evidence-identifier",
+  "unauthorized_actions": 0
+}

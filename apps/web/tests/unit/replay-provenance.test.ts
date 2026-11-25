@@ -17,6 +17,7 @@ import {
   captureLabel,
   formatDigest,
   modeLabel,
+  slotLabel,
   snapshotFreshness,
   summarizeProvenance,
 } from "@/lib/replay/provenance";
@@ -66,9 +67,11 @@ describe("the helper of the provenance", () => {
     expect(modeLabel("recorded_replay")).toBe("Recorded Replay");
   });
 
-  it("names the mode of a live run as a live agent", () => {
-    // It proves that the mapping knows the three modes of the contract, so that the route can refuse a live bundle.
-    expect(modeLabel("live_agent")).toBe("Live agent");
+  it("names the mode of a recording of a real model without calling it a live run", () => {
+    // It proves that the mapping knows the three modes of the contract, and that the recording of a real model is
+    // never presented as a run in progress: what the visitor reads is a recording that the repository published
+    // (ADR-075).
+    expect(modeLabel("live_agent")).toBe("Recorded with a real model");
   });
 
   it("names the kind of the capture of the recording", () => {
@@ -166,5 +169,45 @@ describe("the helper of the provenance", () => {
     const summary = summarizeProvenance({ manifest: MANIFEST, provenance: PROVENANCE });
 
     expect(summary.modeLabel).not.toMatch(/live/i);
+  });
+
+  it("reads the model of each task of the run out of the manifest", () => {
+    // It proves that the division of work of a run that used more than one model reaches the reader, and that it
+    // comes from the artifact and not from the browser (ADR-078).
+    const summary = summarizeProvenance({
+      manifest: {
+        ...MANIFEST,
+        model_profiles: {
+          agent: "openai:gpt-4.1",
+          triage: "openai:gpt-4.1-mini",
+          sql: "openai:gpt-4.1",
+          policy: "openai:gpt-4.1-mini",
+        },
+      },
+      provenance: PROVENANCE,
+    });
+
+    expect(summary.modelProfiles.agent).toBe("openai:gpt-4.1");
+    expect(summary.modelProfiles.triage).toBe("openai:gpt-4.1-mini");
+  });
+
+  it("shows no division of work when the run used one model in every slot", () => {
+    // It proves that a recording without a map says nothing about a division of work that did not happen.
+    const summary = summarizeProvenance({ manifest: MANIFEST, provenance: PROVENANCE });
+
+    expect(summary.modelProfiles).toEqual({});
+  });
+
+  it("names the task of a slot in words and not with the name of the code", () => {
+    // It proves that a reader sees what the task was and not the identifier of the slot.
+    expect(slotLabel("agent")).toBe("The answer with the tools");
+    expect(slotLabel("triage")).toBe("The plan of the investigation");
+    expect(slotLabel("sql")).toBe("The statement that reads the ledger");
+    expect(slotLabel("policy")).toBe("The rewrite of the search of the policies");
+  });
+
+  it("keeps the name of a slot that the repository does not know", () => {
+    // It proves that a name nobody translated is still a name, and that hiding it would lose the information.
+    expect(slotLabel("judge")).toBe("judge");
   });
 });

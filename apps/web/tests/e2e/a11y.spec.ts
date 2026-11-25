@@ -161,13 +161,28 @@ test("the header carries a navigation landmark that names the rooms of the demo"
   const navigation = page.getByRole("navigation", { name: "The rooms of the demo" });
   await expect(navigation).toBeVisible();
 
-  // The four rooms of the site are the four links of the navigation.
-  await expect(navigation.getByRole("link")).toHaveCount(4);
+  // The five rooms of the site are the five links of the navigation. The site publishes two catalogs, and
+  // each one is a room of its own, so that a visitor on one of them can reach the other one from any page
+  // (ADR-075).
+  await expect(navigation.getByRole("link")).toHaveCount(5);
 
   // The room the visitor is in is the one that is marked, and the mark is an attribute and not a
   // colour, so a reader that does not see the colour still hears where the visitor is.
   await page.goto("/replay");
   await expect(navigation.getByRole("link", { name: "Recorded demo" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+
+  // The room of the catalog of a real model is marked on its own pages, and the room of the scripted
+  // model is not marked there: a header that announced the wrong room would tell the visitor that
+  // the recording of a real model is the recording of the scripted model (ADR-075).
+  await page.goto("/replay-real");
+  await expect(navigation.getByRole("link", { name: "Real model" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await expect(navigation.getByRole("link", { name: "Recorded demo" })).not.toHaveAttribute(
     "aria-current",
     "page",
   );
@@ -211,4 +226,38 @@ test("the section of the execution of S01 carries the stepper of the run", async
   const stepper = page.getByRole("region", { name: "The steps of the run" });
   await expect(stepper).toBeVisible();
   await expect(stepper.getByRole("listitem")).toHaveCount(4);
+});
+
+/**
+ * The guided path of the cold start, walked with the keyboard.
+ *
+ * Why the case exists: the guided path is the entrance of a visitor who knows nothing about the
+ * repository, and an entrance that only a pointer reaches is an entrance that is closed to part of
+ * the visitors. The case walks every control of the tour with the keyboard alone, and it checks
+ * that the region the step announced is in the page and carries content, because a region that
+ * carries nothing is a region that does not carry the step.
+ */
+test("the controls of the guided path are reached with the keyboard and the region of the step carries the step", async ({
+  page,
+}) => {
+  await page.goto("/replay/scenario/S01");
+  await expect(page.getByRole("heading", { name: "The guided path" })).toBeVisible();
+
+  const controls = page.getByRole("button", { name: "Show me" });
+  const count = await controls.count();
+  expect(count, "the guide drew no step").toBeGreaterThan(0);
+
+  for (let index = 0; index < count; index += 1) {
+    const control = controls.nth(index);
+    await control.focus();
+    await expect(control).toBeFocused();
+    await page.keyboard.press("Enter");
+
+    // The region the step announced is in the page and carries content: the anchor of a region of
+    // the page received the focus, or the panel of the section of the step is the one that is open.
+    const announced = page
+      .locator("[id^='ledgerlens-region-']:focus, [id^='ledgerlens-section-']:visible")
+      .last();
+    await expect(announced).not.toBeEmpty();
+  }
 });

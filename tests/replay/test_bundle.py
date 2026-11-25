@@ -12,7 +12,8 @@ changed does not open; (j) the manifest declares the provenance it has and stays
 not have; (k) a commit hash, a capture kind and a capture moment outside the shape of the contract are refused
 before any file is written; (l) a bundle that declares provenance survives the round trip through the write and the
 read; (m) a bundle that declares no provenance keeps the manifest of the previous version, key for key, so the files
-of the two versions are the same bytes.
+of the two versions are the same bytes; (n) a recording of a live run becomes a bundle only when the capture kind
+is `real_model_recorded`, and the read path refuses the bundle that says the opposite (ADR-075).
 
 The canonical bundle is the one of the S01 scenario, recorded by the offline path of the product, with the scripted
 model and the recorded exchange rate. It calls no model at all.
@@ -83,11 +84,11 @@ def test_the_canonical_bundle_opens_and_its_hashes_match():
         assert hashlib.sha256((CANONICAL / name).read_bytes()).hexdigest() == digest
 
 
-def test_the_canonical_bundle_opens_with_its_fifty_seven_events():
-    """The versioned S01 recording opens whole: fifty seven events, every one of them a deterministic sandbox."""
+def test_the_canonical_bundle_opens_with_its_sixty_events():
+    """The versioned S01 recording opens whole: sixty events, every one of them a deterministic sandbox."""
     manifest, events = load_bundle(CANONICAL)
-    assert len(events) == 57
-    assert manifest.events == 57
+    assert len(events) == 60
+    assert manifest.events == 60
     assert {event.mode for event in events} == {"deterministic_sandbox"}
 
 
@@ -287,17 +288,69 @@ def test_replaying_a_bundle_gives_back_the_same_events():
     assert [event.to_dict() for event in stored] == [event.to_dict() for event in replayed]
 
 
-def test_write_bundle_refuses_a_live_execution(tmp_path: Path):
-    """A live execution never becomes a bundle, and the refusal comes before any file is written.
+def test_write_bundle_refuses_a_live_execution_without_the_kind_of_a_real_model(tmp_path: Path):
+    """A recording of a live run is refused unless the capture kind says that a real model produced it.
 
-    A manifest that said `live_agent` while its note says the execution is not a live one would be a contradiction,
-    so the write path does not even start.
+    A manifest that said `live_agent` while its kind says that the capture was a fixture would be a contradiction,
+    so the write path does not even start (ADR-075).
     """
     events = [_event(1, "live_agent"), _event(2, "live_agent")]
     directory = tmp_path / "bundle"
-    with pytest.raises(BundleError, match="live_agent"):
+    with pytest.raises(BundleError, match="real model"):
         write_bundle(directory, events, scenario="S99")
     assert not directory.exists()
+
+
+def test_write_bundle_refuses_a_live_execution_with_the_kind_of_a_fixture(tmp_path: Path):
+    """The kind of a fixture never admits a recording of a live run, and the refusal comes before any file."""
+    events = [_event(1, "live_agent"), _event(2, "live_agent")]
+    directory = tmp_path / "bundle"
+    with pytest.raises(BundleError, match="real model"):
+        write_bundle(directory, events, scenario="S99", capture_kind="scripted_fixture")
+    assert not directory.exists()
+
+
+def test_write_bundle_accepts_a_recording_of_a_real_model(tmp_path: Path):
+    """The kind that admits a real model makes the recording a bundle, and the manifest declares the mode.
+
+    The bundle of a real recording is a recording like any other: the events keep their mode, the manifest declares
+    it, and the bundle opens with the loader of the core (ADR-075).
+    """
+    events = [_event(1, "live_agent"), _event(2, "live_agent")]
+    directory = tmp_path / "bundle"
+    manifest = write_bundle(directory, events, scenario="S99", capture_kind="real_model_recorded")
+    assert manifest.mode == "live_agent"
+    assert manifest.capture_kind == "real_model_recorded"
+
+    opened, read = load_bundle(directory)
+    assert opened.mode == "live_agent"
+    assert {event.mode for event in read} == {"live_agent"}
+
+
+def test_a_bundle_that_declares_a_live_mode_with_the_kind_of_a_fixture_does_not_open(tmp_path: Path):
+    """The read path applies the rule of the write path, so a bundle assembled by hand cannot lie.
+
+    The write path refuses the combination before any file exists, so the only way to meet it is to assemble the
+    bundle on the disk: the kind of the manifest is changed and the hash of the events is redone, which leaves the
+    combination as the only thing that is wrong.
+    """
+    directory = tmp_path / "bundle"
+    write_bundle(
+        directory,
+        [_event(1, "live_agent"), _event(2, "live_agent")],
+        scenario="S99",
+        capture_kind="real_model_recorded",
+    )
+
+    manifest_path = directory / MANIFEST_FILE
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["capture_kind"] = "scripted_fixture"
+    manifest_path.write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+
+    with pytest.raises(BundleError, match="real model"):
+        load_bundle(directory)
 
 
 def test_write_bundle_refuses_events_with_mixed_modes(tmp_path: Path):

@@ -1,0 +1,382 @@
+{
+  "confusion_matrix": {
+    "columns": "verifier",
+    "counts": {
+      "contradicted": {
+        "contradicted": 10,
+        "not_enough_evidence": 11,
+        "supported": 2
+      },
+      "not_enough_evidence": {
+        "contradicted": 0,
+        "not_enough_evidence": 4,
+        "supported": 2
+      },
+      "supported": {
+        "contradicted": 0,
+        "not_enough_evidence": 9,
+        "supported": 10
+      }
+    },
+    "denominator": 48,
+    "labels": [
+      "supported",
+      "contradicted",
+      "not_enough_evidence"
+    ],
+    "rows": "reader"
+  },
+  "evaluation": {
+    "correctness_mean": "0.8167",
+    "dataset_id": "eval_cases",
+    "denominator": 30,
+    "repeats": 3,
+    "restriction": "the thresholds, the prompts and the hyperparameters of the repository were tuned against this set, so no number over it is a generalization to unseen data",
+    "role": "tuning"
+  },
+  "failed_cases": [
+    {
+      "claim": "The original payment for transaction TX-2048 was 100.00 EUR.",
+      "evidence": "[{'id': 'sql:1', 'content': '{\"sql\": \"SELECT * FROM (SELECT id, merchant_id, customer_id, amount_minor, currency, method, card_brand, card_fingerprint, status, created_at, captured_at, origin, source_ref FROM transactions WHERE id = \\'TX-2048\\') LIMIT 50\", \"columns\": [\"id\", \"merchant_id\", \"customer_id\", \"amount_minor\", \"amount_major\", \"currency\", \"method\", \"card_brand\", \"card_fingerprint\", \"status\", \"created_at\", \"captured_at\", \"origin\", \"source_ref\"], \"rows\": [[\"TX-2048\", \"M-17\", \"C-0412\", 10000, \"100.00\", \"EUR\", \"card\", \"visa\", \"fp_075ebdf3c899\", \"refunded\", \"2026-10-15T09:12:00Z\", \"2026-10-15T09:12:04Z\", \"scenario:S01\", null]], \"row_count\": 1, \"truncated\": false}'}]",
+      "expected": "supported",
+      "got": "not_enough_evidence",
+      "id": "lv01",
+      "kind": "verifier",
+      "outcome": "wrong",
+      "set_name": "verification_live"
+    },
+    {
+      "claim": "The reference exchange rate on the refund day (2026-10-20) between EUR and BRL was 5.6339.",
+      "evidence": "[{'id': 'fx:2026-10-20:EUR-BRL', 'content': '{\"requested_date\": \"2026-10-20\", \"rate_date\": \"2026-10-20\", \"from_currency\": \"EUR\", \"to_currency\": \"BRL\", \"rate\": \"5.6339\", \"source\": \"frankfurter\", \"note\": \"ECB reference rate (Frankfurter v1). It is a reference, not the rate any acquirer applied.\", \"from_cache\": false}'}]",
+      "expected": "supported",
+      "got": "not_enough_evidence",
+      "id": "lv03",
+      "kind": "verifier",
+      "outcome": "wrong",
+      "set_name": "verification_live"
+    },
+    {
+      "claim": "The deadline to respond to chargeback CB-0310 is 2026-11-09.",
+      "evidence": "[{'id': 'sql:1', 'content': '{\"sql\": \"SELECT * FROM (SELECT deadline, stage AS status FROM chargebacks WHERE id = \\'CB-0310\\') LIMIT 50\", \"columns\": [\"deadline\", \"status\"], \"rows\": [[\"2026-11-09\", \"evidence_requested\"]], \"row_count\": 1, \"truncated\": false}'}]",
+      "expected": "supported",
+      "got": "not_enough_evidence",
+      "id": "lv05",
+      "kind": "verifier",
+      "outcome": "wrong",
+      "set_name": "verification_live"
+    },
+    {
+      "claim": "For payout ST-0044 specifically, the gross amount was BRL 30,919.54, there were no refunds (BRL 0.00), the fees were BRL 926.67, resulting in a net amount of BRL 29,992.87.",
+      "evidence": "[{'id': 'sql:1', 'content': '{\"sql\": \"SELECT * FROM (SELECT settlements.id, settlements.merchant_id, settlements.period_start, settlements.period_end, settlements.currency, settlements.gross_minor, settlements.refunds_minor, settlements.fees_minor, settlements.net_minor, settlements.status, settlements.expected_payout_date, settlements.paid_at, merchants.name, merchants.country, merchants.category, merchants.settlement_currency, merchants.fx_plan, merchants.refund_window_days, merchants.onboarded_at FROM settlements JOIN merchants ON settlements.merchant_id = merchants.id WHERE settlements.id = \\'ST-0044\\' AND settlements.merchant_id = \\'M-03\\') LIMIT 50\", \"columns\": [\"id\", \"merchant_id\", \"period_start\", \"period_end\", \"currency\", \"gross_minor\", \"gross_major\", \"refunds_minor\", \"refunds_major\", \"fees_minor\", \"fees_major\", \"net_minor\", \"net_major\", \"status\", \"expected_payout_date\", \"paid_at\", \"name\", \"country\", \"category\", \"settlement_currency\", \"fx_plan\", \"refund_window_days\", \"onboarded_at\"], \"rows\": [[\"ST-0044\", \"M-03\", \"2026-10-05\", \"2026-10-11\", \"BRL\", 3091954, \"30919.54\", 0, \"0.00\", 92667, \"926.67\", 2999287, \"29992.87\", \"paid\", \"2026-10-14\", \"2026-10-14T06:00:00Z\", \"Casa Verde Foods\", \"BR\", \"food\", \"BRL\", \"standard\", 30, \"2025-01-03T00:00:00Z\"]], \"row_count\": 1, \"truncated\": false}'}, {'id': 'policy:settlement-schedule#net-formula', 'content': '{\"chunk_id\": \"settlement-schedule#net-formula\", \"document\": \"settlement-schedule\", \"section\": \"Net amount\", \"topic\": \"settlement\", \"version\": \"2026-10-01\", \"text\": \"Net amount\\\\nThe net amount is the gross amount minus the refunds minus the fees. This math must add up exactly in every settlement. If the sum does not add up, there is a data error and the case must be escalated. The net amount can be negative when refunds and fees exceed the captured volume, and the merchant owes that balance to the next settlement.\", \"score\": 0.728445291519165}'}, {'id': 'policy:settlement-schedule#overview', 'content': '{\"chunk_id\": \"settlement-schedule#overview\", \"document\": \"settlement-schedule\", \"section\": \"Overview\", \"topic\": \"settlement\", \"version\": \"2026-10-01\", \"text\": \"Overview\\\\nSettlement is the payout to the merchant of the money from captured payments, after refunds and fees are deducted. This policy describes the period of each settlement, how the net amount is computed and on which day the payout is paid.\", \"score\": 0.6894305944442749}'}]",
+      "expected": "supported",
+      "got": "not_enough_evidence",
+      "id": "lv14",
+      "kind": "verifier",
+      "outcome": "wrong",
+      "set_name": "verification_live"
+    },
+    {
+      "claim": "The payout status is \"paid\" and the expected payment date was October 14, 2026, which is also the date it was actually paid.",
+      "evidence": "[{'id': 'sql:1', 'content': '{\"sql\": \"SELECT * FROM (SELECT settlements.id, settlements.merchant_id, settlements.period_start, settlements.period_end, settlements.currency, settlements.gross_minor, settlements.refunds_minor, settlements.fees_minor, settlements.net_minor, settlements.status, settlements.expected_payout_date, settlements.paid_at, merchants.name, merchants.country, merchants.category, merchants.settlement_currency, merchants.fx_plan, merchants.refund_window_days, merchants.onboarded_at FROM settlements JOIN merchants ON settlements.merchant_id = merchants.id WHERE settlements.id = \\'ST-0044\\' AND settlements.merchant_id = \\'M-03\\') LIMIT 50\", \"columns\": [\"id\", \"merchant_id\", \"period_start\", \"period_end\", \"currency\", \"gross_minor\", \"gross_major\", \"refunds_minor\", \"refunds_major\", \"fees_minor\", \"fees_major\", \"net_minor\", \"net_major\", \"status\", \"expected_payout_date\", \"paid_at\", \"name\", \"country\", \"category\", \"settlement_currency\", \"fx_plan\", \"refund_window_days\", \"onboarded_at\"], \"rows\": [[\"ST-0044\", \"M-03\", \"2026-10-05\", \"2026-10-11\", \"BRL\", 3091954, \"30919.54\", 0, \"0.00\", 92667, \"926.67\", 2999287, \"29992.87\", \"paid\", \"2026-10-14\", \"2026-10-14T06:00:00Z\", \"Casa Verde Foods\", \"BR\", \"food\", \"BRL\", \"standard\", 30, \"2025-01-03T00:00:00Z\"]], \"row_count\": 1, \"truncated\": false}'}, {'id': 'policy:settlement-schedule#net-formula', 'content': '{\"chunk_id\": \"settlement-schedule#net-formula\", \"document\": \"settlement-schedule\", \"section\": \"Net amount\", \"topic\": \"settlement\", \"version\": \"2026-10-01\", \"text\": \"Net amount\\\\nThe net amount is the gross amount minus the refunds minus the fees. This math must add up exactly in every settlement. If the sum does not add up, there is a data error and the case must be escalated. The net amount can be negative when refunds and fees exceed the captured volume, and the merchant owes that balance to the next settlement.\", \"score\": 0.728445291519165}'}, {'id': 'policy:settlement-schedule#overview', 'content': '{\"chunk_id\": \"settlement-schedule#overview\", \"document\": \"settlement-schedule\", \"section\": \"Overview\", \"topic\": \"settlement\", \"version\": \"2026-10-01\", \"text\": \"Overview\\\\nSettlement is the payout to the merchant of the money from captured payments, after refunds and fees are deducted. This policy describes the period of each settlement, how the net amount is computed and on which day the payout is paid.\", \"score\": 0.6894305944442749}'}]",
+      "expected": "supported",
+      "got": "not_enough_evidence",
+      "id": "lv15",
+      "kind": "verifier",
+      "outcome": "wrong",
+      "set_name": "verification_live"
+    },
+    {
+      "claim": "Therefore, there was no discrepancy in the BRL refund amount compared with the EUR payment, because the refund matches the original payment converted at the rate the acquirer applied.",
+      "evidence": "[{'id': 'sql:1', 'content': '{\"sql\": \"SELECT * FROM (SELECT id, merchant_id, customer_id, amount_minor, currency, method, card_brand, card_fingerprint, status, created_at, captured_at, origin, source_ref FROM transactions WHERE id = \\'TX-2048\\') LIMIT 50\", \"columns\": [\"id\", \"merchant_id\", \"customer_id\", \"amount_minor\", \"amount_major\", \"currency\", \"method\", \"card_brand\", \"card_fingerprint\", \"status\", \"created_at\", \"captured_at\", \"origin\", \"source_ref\"], \"rows\": [[\"TX-2048\", \"M-17\", \"C-0412\", 10000, \"100.00\", \"EUR\", \"card\", \"visa\", \"fp_075ebdf3c899\", \"refunded\", \"2026-10-15T09:12:00Z\", \"2026-10-15T09:12:04Z\", \"scenario:S01\", null]], \"row_count\": 1, \"truncated\": false}'}, {'id': 'sql:2', 'content': '{\"sql\": \"SELECT * FROM (SELECT refunds.id, refunds.transaction_id, refunds.requested_amount_minor, refunds.requested_currency, refunds.payout_amount_minor, refunds.payout_currency, refunds.status, refunds.created_at, refunds.resolved_at FROM refunds WHERE refunds.transaction_id = \\'TX-2048\\') LIMIT 50\", \"columns\": [\"id\", \"transaction_id\", \"requested_amount_minor\", \"requested_amount_major\", \"requested_currency\", \"payout_amount_minor\", \"payout_amount_major\", \"payout_currency\", \"status\", \"created_at\", \"resolved_at\"], \"rows\": [[\"R-0731\", \"TX-2048\", 10000, \"100.00\", \"EUR\", 54931, \"549.31\", \"BRL\", \"paid\", \"2026-10-20T14:05:00Z\", \"2026-10-20T14:30:00Z\"]], \"row_count\": 1, \"truncated\": false}'}]",
+      "expected": "not_enough_evidence",
+      "got": "contradicted",
+      "id": "lv17",
+      "kind": "verifier",
+      "outcome": "false_contradicted",
+      "set_name": "verification_live"
+    },
+    {
+      "claim": "Transactions TX-2051 and TX-2052 are for the same customer C-0733, with the same amount of 49.90 USD, and were captured a few seconds apart, both using the same card (same fingerprint).",
+      "evidence": "[{'id': 'sql:1', 'content': '{\"sql\": \"SELECT * FROM (SELECT id, merchant_id, customer_id, amount_minor, currency, method, card_brand, card_fingerprint, status, created_at, captured_at, origin, source_ref FROM transactions WHERE id IN (\\'TX-2051\\', \\'TX-2052\\')) LIMIT 50\", \"columns\": [\"id\", \"merchant_id\", \"customer_id\", \"amount_minor\", \"amount_major\", \"currency\", \"method\", \"card_brand\", \"card_fingerprint\", \"status\", \"created_at\", \"captured_at\", \"origin\", \"source_ref\"], \"rows\": [[\"TX-2051\", \"M-05\", \"C-0733\", 4990, \"49.90\", \"USD\", \"card\", \"visa\", \"fp_d7f33ce5911d\", \"captured\", \"2026-10-05T14:03:10Z\", \"2026-10-05T14:03:12Z\", \"scenario:S02\", null], [\"TX-2052\", \"M-05\", \"C-0733\", 4990, \"49.90\", \"USD\", \"card\", \"visa\", \"fp_d7f33ce5911d\", \"captured\", \"2026-10-05T14:03:48Z\", \"2026-10-05T14:03:50Z\", \"scenario:S02\", null]], \"row_count\": 2, \"truncated\": false}'}]",
+      "expected": "supported",
+      "got": "not_enough_evidence",
+      "id": "lv18",
+      "kind": "verifier",
+      "outcome": "wrong",
+      "set_name": "verification_live"
+    },
+    {
+      "claim": "The difference between the amounts of the two transactions is zero, that is, they are identical in amount.",
+      "evidence": "[{'id': 'calc:1', 'content': '{\"operation\": \"difference\", \"result\": \"0.00\", \"formula\": \"49.90 - 49.90 = 0.00\"}'}]",
+      "expected": "supported",
+      "got": "not_enough_evidence",
+      "id": "lv19",
+      "kind": "verifier",
+      "outcome": "wrong",
+      "set_name": "verification_live"
+    },
+    {
+      "claim": "Transaction TX-9999 was not found in the ledger, so its status cannot be reported.",
+      "evidence": "[{'id': 'sql:1', 'content': '{\"sql\": \"SELECT * FROM (SELECT status FROM transactions WHERE id = \\'TX-9999\\') LIMIT 50\", \"columns\": [\"status\"], \"rows\": [], \"row_count\": 0, \"truncated\": false}'}]",
+      "expected": "supported",
+      "got": "contradicted",
+      "id": "lv20",
+      "kind": "verifier",
+      "outcome": "false_contradicted",
+      "set_name": "verification_live"
+    },
+    {
+      "claim": "Customer C-0205 made two purchases of EUR 75.00, both with a Mastercard card, and the status of both purchases is \"captured\", that is, the transactions were captured successfully.",
+      "evidence": "[{'id': 'sql:1', 'content': '{\"sql\": \"SELECT * FROM (SELECT id, merchant_id, customer_id, amount_minor, currency, method, card_brand, card_fingerprint, status, created_at, captured_at, origin, source_ref FROM transactions WHERE customer_id = \\'C-0205\\' AND amount_minor = 7500 AND currency = \\'EUR\\') LIMIT 50\", \"columns\": [\"id\", \"merchant_id\", \"customer_id\", \"amount_minor\", \"amount_major\", \"currency\", \"method\", \"card_brand\", \"card_fingerprint\", \"status\", \"created_at\", \"captured_at\", \"origin\", \"source_ref\"], \"rows\": [[\"TX-2060\", \"M-03\", \"C-0205\", 7500, \"75.00\", \"EUR\", \"card\", \"mastercard\", \"fp_70fdfaa61b72\", \"captured\", \"2026-10-30T10:15:00Z\", \"2026-10-30T10:15:03Z\", \"scenario:S05\", null], [\"TX-2061\", \"M-17\", \"C-0205\", 7500, \"75.00\", \"EUR\", \"card\", \"mastercard\", \"fp_1fb9916f165e\", \"captured\", \"2026-10-30T10:40:00Z\", \"2026-10-30T10:40:02Z\", \"scenario:S05\", null]], \"row_count\": 2, \"truncated\": false}'}]",
+      "expected": "supported",
+      "got": "not_enough_evidence",
+      "id": "lv21",
+      "kind": "verifier",
+      "outcome": "wrong",
+      "set_name": "verification_live"
+    },
+    {
+      "claim": "This indicates that the refund request was made after the deadline set by the company policy for accepting refunds.",
+      "evidence": "[{'id': 'api:1', 'content': '{\"transaction\": {\"id\": \"TX-2090\", \"merchant_id\": \"M-05\", \"customer_id\": \"C-0501\", \"amount_minor\": 12000, \"amount_major\": \"120.00\", \"currency\": \"USD\", \"method\": \"card\", \"card_brand\": \"visa\", \"card_fingerprint\": \"fp_3b7ed1f43acf\", \"status\": \"captured\", \"created_at\": \"2026-08-30T11:00:00Z\", \"captured_at\": \"2026-08-30T11:00:02Z\", \"origin\": \"scenario:S06\", \"source_ref\": null}, \"refunds\": [{\"id\": \"R-0740\", \"transaction_id\": \"TX-2090\", \"requested_amount_minor\": 12000, \"requested_amount_major\": \"120.00\", \"requested_currency\": \"USD\", \"payout_amount_minor\": null, \"payout_amount_major\": null, \"payout_currency\": null, \"fx_applied_id\": null, \"status\": \"rejected\", \"reason\": \"outside_refund_window\", \"created_at\": \"2026-10-12T09:30:00Z\", \"resolved_at\": \"2026-10-12T09:45:00Z\"}], \"chargebacks\": [], \"fx_applied\": []}'}]",
+      "expected": "supported",
+      "got": "not_enough_evidence",
+      "id": "lv23",
+      "kind": "verifier",
+      "outcome": "wrong",
+      "set_name": "verification_live"
+    },
+    {
+      "claim": "Final answer: Refund R-0720 for transaction TX-2030 is correct, because the refunded amount of 80.00 USD matches the original transaction amount exactly, and the refund status is \"paid\" with no discrepancy.",
+      "evidence": "[{'id': 'sql:2', 'content': '{\"sql\": \"SELECT * FROM (SELECT t.id, t.amount_minor, t.currency, t.status, t.created_at, t.captured_at, t.method, t.card_brand, t.card_fingerprint, t.origin, t.source_ref, r.id AS refund_id, r.requested_amount_minor, r.requested_currency, r.payout_amount_minor, r.payout_currency, r.status AS refund_status, r.reason AS refund_reason, r.created_at AS refund_created_at, r.resolved_at AS refund_resolved_at, c.id AS chargeback_id, c.amount_minor AS chargeback_amount_minor, c.currency AS chargeback_currency, c.reason_code AS chargeback_reason_code, c.stage AS chargeback_stage, c.opened_at AS chargeback_opened_at, c.deadline AS chargeback_deadline, c.resolved_at AS chargeback_resolved_at, f.id AS fx_applied_id, f.kind AS fx_kind, f.from_currency AS fx_from_currency, f.to_currency AS fx_to_currency, f.applied_rate AS fx_applied_rate, f.applied_at AS fx_applied_at FROM transactions AS t LEFT JOIN refunds AS r ON r.transaction_id = t.id LEFT JOIN chargebacks AS c ON c.transaction_id = t.id LEFT JOIN fx_applied AS f ON (f.transaction_id = t.id OR f.refund_id = r.id) WHERE t.id = \\'TX-2030\\') LIMIT 50\", \"columns\": [\"id\", \"amount_minor\", \"amount_major\", \"currency\", \"status\", \"created_at\", \"captured_at\", \"method\", \"card_brand\", \"card_fingerprint\", \"origin\", \"source_ref\", \"refund_id\", \"requested_amount_minor\", \"requested_amount_major\", \"requested_currency\", \"payout_amount_minor\", \"payout_amount_major\", \"payout_currency\", \"refund_status\", \"refund_reason\", \"refund_created_at\", \"refund_resolved_at\", \"chargeback_id\", \"chargeback_amount_minor\", \"chargeback_amount_major\", \"chargeback_currency\", \"chargeback_reason_code\", \"chargeback_stage\", \"chargeback_opened_at\", \"chargeback_deadline\", \"chargeback_resolved_at\", \"fx_applied_id\", \"fx_kind\", \"fx_from_currency\", \"fx_to_currency\", \"fx_applied_rate\", \"fx_applied_at\"], \"rows\": [[\"TX-2030\", 8000, \"80.00\", \"USD\", \"refunded\", \"2026-10-08T13:00:00Z\", \"2026-10-08T13:00:02Z\", \"card\", \"visa\", \"fp_9e9fb08b91ad\", \"scenario:S07\", null, \"R-0720\", 8000, \"80.00\", \"USD\", 8000, \"80.00\", \"USD\", \"paid\", \"Cliente cancelou a assinatura\", \"2026-10-10T09:00:00Z\", \"2026-10-11T09:00:00Z\", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]], \"row_count\": 1, \"truncated\": false}'}]",
+      "expected": "supported",
+      "got": "not_enough_evidence",
+      "id": "lv25",
+      "kind": "verifier",
+      "outcome": "wrong",
+      "set_name": "verification_live"
+    },
+    {
+      "claim": "Merchant M-17 has had a recorded case of a refund with FX before, in which an FX markup of about 2.5% applied on cross-currency refunds was seen, according to case CASE-0001 related to transaction TX-2048.",
+      "evidence": "[{'id': 'case:CASE-0001', 'content': '{\"case_id\": \"CASE-0001\", \"kind\": \"semantic\", \"finding\": \"Merchant M-17 applies an FX markup of about 2.5% on cross-currency refunds (seen on TX-2048)\", \"created_at\": \"2026-11-07T09:00:00+00:00\", \"confidence\": \"high\", \"entities\": {\"merchant_ids\": [\"M-17\"], \"transaction_ids\": [\"TX-2048\"]}, \"score\": 0.5979661345481873}'}]",
+      "expected": "supported",
+      "got": "not_enough_evidence",
+      "id": "lv28",
+      "kind": "verifier",
+      "outcome": "wrong",
+      "set_name": "verification_live"
+    },
+    {
+      "claim": "The refund paid was 549.31 USD.",
+      "evidence": "[{'id': 'sql:2', 'content': '{\"sql\": \"SELECT * FROM (SELECT refunds.id, refunds.transaction_id, refunds.requested_amount_minor, refunds.requested_currency, refunds.payout_amount_minor, refunds.payout_currency, refunds.status, refunds.created_at, refunds.resolved_at FROM refunds WHERE refunds.transaction_id = \\'TX-2048\\') LIMIT 50\", \"columns\": [\"id\", \"transaction_id\", \"requested_amount_minor\", \"requested_amount_major\", \"requested_currency\", \"payout_amount_minor\", \"payout_amount_major\", \"payout_currency\", \"status\", \"created_at\", \"resolved_at\"], \"rows\": [[\"R-0731\", \"TX-2048\", 10000, \"100.00\", \"EUR\", 54931, \"549.31\", \"BRL\", \"paid\", \"2026-10-20T14:05:00Z\", \"2026-10-20T14:30:00Z\"]], \"row_count\": 1, \"truncated\": false}'}]",
+      "expected": "contradicted",
+      "got": "not_enough_evidence",
+      "id": "lv30",
+      "kind": "verifier",
+      "outcome": "wrong",
+      "set_name": "verification_live"
+    },
+    {
+      "claim": "The status of refund R-0750 for transaction TX-2095 is \"paid\" (requested).",
+      "evidence": "[{'id': 'sql:1', 'content': '{\"sql\": \"SELECT * FROM (SELECT refunds.id, refunds.transaction_id, refunds.requested_amount_minor, refunds.requested_currency, refunds.payout_amount_minor, refunds.payout_currency, refunds.status, refunds.created_at, refunds.resolved_at FROM refunds WHERE refunds.transaction_id = \\'TX-2095\\') LIMIT 50\", \"columns\": [\"id\", \"transaction_id\", \"requested_amount_minor\", \"requested_amount_major\", \"requested_currency\", \"payout_amount_minor\", \"payout_amount_major\", \"payout_currency\", \"status\", \"created_at\", \"resolved_at\"], \"rows\": [[\"R-0750\", \"TX-2095\", 6000, \"60.00\", \"USD\", null, null, null, \"requested\", \"2026-11-04T08:00:00Z\", null]], \"row_count\": 1, \"truncated\": false}'}]",
+      "expected": "contradicted",
+      "got": "not_enough_evidence",
+      "id": "lv31",
+      "kind": "verifier",
+      "outcome": "wrong",
+      "set_name": "verification_live"
+    },
+    {
+      "claim": "Transaction TX-9999 was found in the ledger and is paid.",
+      "evidence": "[{'id': 'sql:1', 'content': '{\"sql\": \"SELECT * FROM (SELECT status FROM transactions WHERE id = \\'TX-9999\\') LIMIT 50\", \"columns\": [\"status\"], \"rows\": [], \"row_count\": 0, \"truncated\": false}'}]",
+      "expected": "contradicted",
+      "got": "not_enough_evidence",
+      "id": "lv32",
+      "kind": "verifier",
+      "outcome": "wrong",
+      "set_name": "verification_live"
+    },
+    {
+      "claim": "The payout status is \"scheduled\" and the expected payment date was October 14, 2026, which is also the date it was actually paid.",
+      "evidence": "[{'id': 'sql:1', 'content': '{\"sql\": \"SELECT * FROM (SELECT settlements.id, settlements.merchant_id, settlements.period_start, settlements.period_end, settlements.currency, settlements.gross_minor, settlements.refunds_minor, settlements.fees_minor, settlements.net_minor, settlements.status, settlements.expected_payout_date, settlements.paid_at, merchants.name, merchants.country, merchants.category, merchants.settlement_currency, merchants.fx_plan, merchants.refund_window_days, merchants.onboarded_at FROM settlements JOIN merchants ON settlements.merchant_id = merchants.id WHERE settlements.id = \\'ST-0044\\' AND settlements.merchant_id = \\'M-03\\') LIMIT 50\", \"columns\": [\"id\", \"merchant_id\", \"period_start\", \"period_end\", \"currency\", \"gross_minor\", \"gross_major\", \"refunds_minor\", \"refunds_major\", \"fees_minor\", \"fees_major\", \"net_minor\", \"net_major\", \"status\", \"expected_payout_date\", \"paid_at\", \"name\", \"country\", \"category\", \"settlement_currency\", \"fx_plan\", \"refund_window_days\", \"onboarded_at\"], \"rows\": [[\"ST-0044\", \"M-03\", \"2026-10-05\", \"2026-10-11\", \"BRL\", 3091954, \"30919.54\", 0, \"0.00\", 92667, \"926.67\", 2999287, \"29992.87\", \"paid\", \"2026-10-14\", \"2026-10-14T06:00:00Z\", \"Casa Verde Foods\", \"BR\", \"food\", \"BRL\", \"standard\", 30, \"2025-01-03T00:00:00Z\"]], \"row_count\": 1, \"truncated\": false}'}, {'id': 'policy:settlement-schedule#net-formula', 'content': '{\"chunk_id\": \"settlement-schedule#net-formula\", \"document\": \"settlement-schedule\", \"section\": \"Net amount\", \"topic\": \"settlement\", \"version\": \"2026-10-01\", \"text\": \"Net amount\\\\nThe net amount is the gross amount minus the refunds minus the fees. This math must add up exactly in every settlement. If the sum does not add up, there is a data error and the case must be escalated. The net amount can be negative when refunds and fees exceed the captured volume, and the merchant owes that balance to the next settlement.\", \"score\": 0.728445291519165}'}, {'id': 'policy:settlement-schedule#overview', 'content': '{\"chunk_id\": \"settlement-schedule#overview\", \"document\": \"settlement-schedule\", \"section\": \"Overview\", \"topic\": \"settlement\", \"version\": \"2026-10-01\", \"text\": \"Overview\\\\nSettlement is the payout to the merchant of the money from captured payments, after refunds and fees are deducted. This policy describes the period of each settlement, how the net amount is computed and on which day the payout is paid.\", \"score\": 0.6894305944442749}'}]",
+      "expected": "contradicted",
+      "got": "not_enough_evidence",
+      "id": "lv33",
+      "kind": "verifier",
+      "outcome": "wrong",
+      "set_name": "verification_live"
+    },
+    {
+      "claim": "For payout ST-0044 specifically, the gross amount was BRL 30,919.54, there were no refunds (BRL 0.00), the fees were BRL 926.67, resulting in a net amount of BRL 31,992.87.",
+      "evidence": "[{'id': 'sql:1', 'content': '{\"sql\": \"SELECT * FROM (SELECT settlements.id, settlements.merchant_id, settlements.period_start, settlements.period_end, settlements.currency, settlements.gross_minor, settlements.refunds_minor, settlements.fees_minor, settlements.net_minor, settlements.status, settlements.expected_payout_date, settlements.paid_at, merchants.name, merchants.country, merchants.category, merchants.settlement_currency, merchants.fx_plan, merchants.refund_window_days, merchants.onboarded_at FROM settlements JOIN merchants ON settlements.merchant_id = merchants.id WHERE settlements.id = \\'ST-0044\\' AND settlements.merchant_id = \\'M-03\\') LIMIT 50\", \"columns\": [\"id\", \"merchant_id\", \"period_start\", \"period_end\", \"currency\", \"gross_minor\", \"gross_major\", \"refunds_minor\", \"refunds_major\", \"fees_minor\", \"fees_major\", \"net_minor\", \"net_major\", \"status\", \"expected_payout_date\", \"paid_at\", \"name\", \"country\", \"category\", \"settlement_currency\", \"fx_plan\", \"refund_window_days\", \"onboarded_at\"], \"rows\": [[\"ST-0044\", \"M-03\", \"2026-10-05\", \"2026-10-11\", \"BRL\", 3091954, \"30919.54\", 0, \"0.00\", 92667, \"926.67\", 2999287, \"29992.87\", \"paid\", \"2026-10-14\", \"2026-10-14T06:00:00Z\", \"Casa Verde Foods\", \"BR\", \"food\", \"BRL\", \"standard\", 30, \"2025-01-03T00:00:00Z\"]], \"row_count\": 1, \"truncated\": false}'}, {'id': 'policy:settlement-schedule#net-formula', 'content': '{\"chunk_id\": \"settlement-schedule#net-formula\", \"document\": \"settlement-schedule\", \"section\": \"Net amount\", \"topic\": \"settlement\", \"version\": \"2026-10-01\", \"text\": \"Net amount\\\\nThe net amount is the gross amount minus the refunds minus the fees. This math must add up exactly in every settlement. If the sum does not add up, there is a data error and the case must be escalated. The net amount can be negative when refunds and fees exceed the captured volume, and the merchant owes that balance to the next settlement.\", \"score\": 0.728445291519165}'}, {'id': 'policy:settlement-schedule#overview', 'content': '{\"chunk_id\": \"settlement-schedule#overview\", \"document\": \"settlement-schedule\", \"section\": \"Overview\", \"topic\": \"settlement\", \"version\": \"2026-10-01\", \"text\": \"Overview\\\\nSettlement is the payout to the merchant of the money from captured payments, after refunds and fees are deducted. This policy describes the period of each settlement, how the net amount is computed and on which day the payout is paid.\", \"score\": 0.6894305944442749}'}]",
+      "expected": "contradicted",
+      "got": "not_enough_evidence",
+      "id": "lv34",
+      "kind": "verifier",
+      "outcome": "wrong",
+      "set_name": "verification_live"
+    },
+    {
+      "claim": "Transactions TX-2051 and TX-2052 are for customer C-0999, with the same amount of 49.90 USD, and were captured a few seconds apart, both using the same card (same fingerprint).",
+      "evidence": "[{'id': 'sql:1', 'content': '{\"sql\": \"SELECT * FROM (SELECT id, merchant_id, customer_id, amount_minor, currency, method, card_brand, card_fingerprint, status, created_at, captured_at, origin, source_ref FROM transactions WHERE id IN (\\'TX-2051\\', \\'TX-2052\\')) LIMIT 50\", \"columns\": [\"id\", \"merchant_id\", \"customer_id\", \"amount_minor\", \"amount_major\", \"currency\", \"method\", \"card_brand\", \"card_fingerprint\", \"status\", \"created_at\", \"captured_at\", \"origin\", \"source_ref\"], \"rows\": [[\"TX-2051\", \"M-05\", \"C-0733\", 4990, \"49.90\", \"USD\", \"card\", \"visa\", \"fp_d7f33ce5911d\", \"captured\", \"2026-10-05T14:03:10Z\", \"2026-10-05T14:03:12Z\", \"scenario:S02\", null], [\"TX-2052\", \"M-05\", \"C-0733\", 4990, \"49.90\", \"USD\", \"card\", \"visa\", \"fp_d7f33ce5911d\", \"captured\", \"2026-10-05T14:03:48Z\", \"2026-10-05T14:03:50Z\", \"scenario:S02\", null]], \"row_count\": 2, \"truncated\": false}'}]",
+      "expected": "contradicted",
+      "got": "not_enough_evidence",
+      "id": "lv35",
+      "kind": "verifier",
+      "outcome": "wrong",
+      "set_name": "verification_live"
+    },
+    {
+      "claim": "Customer C-0205 made three purchases of EUR 75.00, both with a Mastercard card, and the status of both purchases is \"captured\", that is, the transactions were captured successfully.",
+      "evidence": "[{'id': 'sql:1', 'content': '{\"sql\": \"SELECT * FROM (SELECT id, merchant_id, customer_id, amount_minor, currency, method, card_brand, card_fingerprint, status, created_at, captured_at, origin, source_ref FROM transactions WHERE customer_id = \\'C-0205\\' AND amount_minor = 7500 AND currency = \\'EUR\\') LIMIT 50\", \"columns\": [\"id\", \"merchant_id\", \"customer_id\", \"amount_minor\", \"amount_major\", \"currency\", \"method\", \"card_brand\", \"card_fingerprint\", \"status\", \"created_at\", \"captured_at\", \"origin\", \"source_ref\"], \"rows\": [[\"TX-2060\", \"M-03\", \"C-0205\", 7500, \"75.00\", \"EUR\", \"card\", \"mastercard\", \"fp_70fdfaa61b72\", \"captured\", \"2026-10-30T10:15:00Z\", \"2026-10-30T10:15:03Z\", \"scenario:S05\", null], [\"TX-2061\", \"M-17\", \"C-0205\", 7500, \"75.00\", \"EUR\", \"card\", \"mastercard\", \"fp_1fb9916f165e\", \"captured\", \"2026-10-30T10:40:00Z\", \"2026-10-30T10:40:02Z\", \"scenario:S05\", null]], \"row_count\": 2, \"truncated\": false}'}]",
+      "expected": "contradicted",
+      "got": "not_enough_evidence",
+      "id": "lv36",
+      "kind": "verifier",
+      "outcome": "wrong",
+      "set_name": "verification_live"
+    },
+    {
+      "claim": "The original payment for transaction TX-2048 was 100.00 USD.",
+      "evidence": "[{'id': 'sql:1', 'content': '{\"sql\": \"SELECT * FROM (SELECT id, merchant_id, customer_id, amount_minor, currency, method, card_brand, card_fingerprint, status, created_at, captured_at, origin, source_ref FROM transactions WHERE id = \\'TX-2048\\') LIMIT 50\", \"columns\": [\"id\", \"merchant_id\", \"customer_id\", \"amount_minor\", \"amount_major\", \"currency\", \"method\", \"card_brand\", \"card_fingerprint\", \"status\", \"created_at\", \"captured_at\", \"origin\", \"source_ref\"], \"rows\": [[\"TX-2048\", \"M-17\", \"C-0412\", 10000, \"100.00\", \"EUR\", \"card\", \"visa\", \"fp_075ebdf3c899\", \"refunded\", \"2026-10-15T09:12:00Z\", \"2026-10-15T09:12:04Z\", \"scenario:S01\", null]], \"row_count\": 1, \"truncated\": false}'}]",
+      "expected": "contradicted",
+      "got": "not_enough_evidence",
+      "id": "lv39",
+      "kind": "verifier",
+      "outcome": "wrong",
+      "set_name": "verification_live"
+    },
+    {
+      "claim": "Merchant M-17 has had a recorded case of a refund with FX before, in which an FX markup of about 7% applied on cross-currency refunds was seen, according to case CASE-0001 related to transaction TX-2048.",
+      "evidence": "[{'id': 'case:CASE-0001', 'content': '{\"case_id\": \"CASE-0001\", \"kind\": \"semantic\", \"finding\": \"Merchant M-17 applies an FX markup of about 2.5% on cross-currency refunds (seen on TX-2048)\", \"created_at\": \"2026-11-07T09:00:00+00:00\", \"confidence\": \"high\", \"entities\": {\"merchant_ids\": [\"M-17\"], \"transaction_ids\": [\"TX-2048\"]}, \"score\": 0.5979661345481873}'}]",
+      "expected": "contradicted",
+      "got": "not_enough_evidence",
+      "id": "lv40",
+      "kind": "verifier",
+      "outcome": "wrong",
+      "set_name": "verification_live"
+    },
+    {
+      "claim": "The BRL refund for transaction TX-2048 was lower than the EUR payment because of the difference in exchange rates applied at the time of the charge and the refund. The original EUR payment of 100.00 was converted to BRL at an applied rate of 5.6679, resulting in 566.79 BRL charged. However, the refund was converted back at a lower applied rate of 5.4931, resulting in a refund amount of 549.31 BRL. The market reference rate on the refund date was 5.6339, which is higher than the refund applied rate but lower than the charge applied rate. This caused a gap of 17.48 BRL between the charged and refunded amounts, with a 2.50% markup on the refund rate compared to the reference rate. The difference in applied exchange rates explains why the BRL refund amount was lower than the original EUR payment amount [sql:1] [sql:2] [fx:2026-10-20:EUR-BRL] [api:1] [calc:1].",
+      "evidence": "",
+      "expected": "the answer the case expects",
+      "got": "The BRL refund for transaction TX-2048 was lower than the EUR payment because of the difference in exchange rates applied at the time of the charge and the refund. The original EUR payment of 100.00 was converted to BRL at an applied rate of 5.6679, resulting in 566.79 BRL charged. However, the refund was converted back at a lower applied rate of 5.4931, resulting in a refund amount of 549.31 BRL. The market reference rate on the refund date was 5.6339, which is higher than the refund applied rate but lower than the charge applied rate. This caused a gap of 17.48 BRL between the charged and refunded amounts, with a 2.50% markup on the refund rate compared to the reference rate. The difference in applied exchange rates explains why the BRL refund amount was lower than the original EUR payment amount [sql:1] [sql:2] [fx:2026-10-20:EUR-BRL] [api:1] [calc:1].",
+      "id": "EC-01",
+      "kind": "agent",
+      "outcome": "the agent did not resolve the case (the mean of the correctness over 3 runs is 0.6667)",
+      "scenario": "S01",
+      "set_name": "eval_cases"
+    },
+    {
+      "claim": "The transaction TX-9999 does not exist in the ledger, so its status cannot be determined [sql:1].",
+      "evidence": "",
+      "expected": "the answer the case expects",
+      "got": "The transaction TX-9999 does not exist in the ledger, so its status cannot be determined [sql:1].",
+      "id": "EC-04",
+      "kind": "agent",
+      "outcome": "the agent did not resolve the case (the mean of the correctness over 3 runs is 0.5000)",
+      "scenario": "S04",
+      "set_name": "eval_cases"
+    },
+    {
+      "claim": "Customer C-0205 made two purchases of EUR 75.00 each. Both transactions, TX-2060 and TX-2061, have the status \"captured,\" meaning the payments were successfully processed and captured by the merchant [sql:1].",
+      "evidence": "",
+      "expected": "the answer the case expects",
+      "got": "Customer C-0205 made two purchases of EUR 75.00 each. Both transactions, TX-2060 and TX-2061, have the status \"captured,\" meaning the payments were successfully processed and captured by the merchant [sql:1].",
+      "id": "EC-05",
+      "kind": "agent",
+      "outcome": "the agent did not resolve the case (the mean of the correctness over 3 runs is 0.5000)",
+      "scenario": "S05",
+      "set_name": "eval_cases"
+    },
+    {
+      "claim": "Customer C-0501 requested a refund for transaction TX-2090, but the refund was rejected with the reason \"outside_refund_window\" on 2026-10-12, about 43 days after the payment capture date of 2026-08-30 [sql:1][sql:2]. The merchant's refund window is 30 days from the capture date [policy:refund-policy#refund-window][policy:refund-policy#window-by-merchant]. Since the refund request was made after the 30-day refund window, the rejection of the refund request is correct according to the policy.",
+      "evidence": "",
+      "expected": "the answer the case expects",
+      "got": "Customer C-0501 requested a refund for transaction TX-2090, but the refund was rejected with the reason \"outside_refund_window\" on 2026-10-12, about 43 days after the payment capture date of 2026-08-30 [sql:1][sql:2]. The merchant's refund window is 30 days from the capture date [policy:refund-policy#refund-window][policy:refund-policy#window-by-merchant]. Since the refund request was made after the 30-day refund window, the rejection of the refund request is correct according to the policy.",
+      "id": "EC-06",
+      "kind": "agent",
+      "outcome": "the agent did not resolve the case (the mean of the correctness over 3 runs is 0.8333)",
+      "scenario": "S06",
+      "set_name": "eval_cases"
+    },
+    {
+      "claim": "Step S3 (calculate) is not needed because the refund and transaction are in the same currency (USD) with matching amounts (80.00 USD), so no currency conversion or arithmetic comparison is required to identify discrepancies [api:1]. \n\nFinal answer: Refund R-0720 for transaction TX-2030 is correct with no difference in amount or currency; the refund amount matches the original transaction amount exactly, and the refund status is paid while the transaction status is refunded [api:1].",
+      "evidence": "",
+      "expected": "the answer the case expects",
+      "got": "Step S3 (calculate) is not needed because the refund and transaction are in the same currency (USD) with matching amounts (80.00 USD), so no currency conversion or arithmetic comparison is required to identify discrepancies [api:1]. \n\nFinal answer: Refund R-0720 for transaction TX-2030 is correct with no difference in amount or currency; the refund amount matches the original transaction amount exactly, and the refund status is paid while the transaction status is refunded [api:1].",
+      "id": "EC-07",
+      "kind": "agent",
+      "outcome": "the agent did not resolve the case (the mean of the correctness over 3 runs is 0.5000)",
+      "scenario": "S07",
+      "set_name": "eval_cases"
+    },
+    {
+      "claim": "I attempted to retrieve the reference FX rate for transaction TX-2099 paid in ARS on 2026-10-27, but the rate source did not respond due to a timeout. Therefore, I cannot provide the reference FX rate at this moment. If you want, I can try again later or assist with other questions. The transaction details are confirmed: it was paid in ARS on 2026-10-27 [sql:1][api:1]. The reference rate ARS-USD 2026-10-27 could not be obtained: the FX source was unavailable. What depends on it was not calculated and the case was sent to human review.",
+      "evidence": "",
+      "expected": "the answer the case expects",
+      "got": "I attempted to retrieve the reference FX rate for transaction TX-2099 paid in ARS on 2026-10-27, but the rate source did not respond due to a timeout. Therefore, I cannot provide the reference FX rate at this moment. If you want, I can try again later or assist with other questions. The transaction details are confirmed: it was paid in ARS on 2026-10-27 [sql:1][api:1]. The reference rate ARS-USD 2026-10-27 could not be obtained: the FX source was unavailable. What depends on it was not calculated and the case was sent to human review.",
+      "id": "EC-10",
+      "kind": "agent",
+      "outcome": "the agent did not resolve the case (the mean of the correctness over 3 runs is 0.5000)",
+      "scenario": "S10",
+      "set_name": "eval_cases"
+    },
+    {
+      "claim": "The payment date is 2026-10-15 and the refund date is 2026-10-20 for transaction TX-2048 [sql:2]. However, attempts to retrieve the market reference exchange rates between EUR and BRL on these dates failed due to the rate source being unavailable. Without the reference exchange rates on the actual payment or refund dates, I cannot accurately analyze the currency conversion to explain why the BRL refund amount appears lower than the EUR payment amount. The reference rate EUR-BRL 2024-06-01, BRL-EUR 2024-06-01, EUR-BRL 2026-10-15, EUR-BRL 2026-10-20 could not be obtained: the FX source was unavailable. What depends on it was not calculated and the case was sent to human review.",
+      "evidence": "",
+      "expected": "the answer the case expects",
+      "got": "The payment date is 2026-10-15 and the refund date is 2026-10-20 for transaction TX-2048 [sql:2]. However, attempts to retrieve the market reference exchange rates between EUR and BRL on these dates failed due to the rate source being unavailable. Without the reference exchange rates on the actual payment or refund dates, I cannot accurately analyze the currency conversion to explain why the BRL refund amount appears lower than the EUR payment amount. The reference rate EUR-BRL 2024-06-01, BRL-EUR 2024-06-01, EUR-BRL 2026-10-15, EUR-BRL 2026-10-20 could not be obtained: the FX source was unavailable. What depends on it was not calculated and the case was sent to human review.",
+      "id": "EC-11",
+      "kind": "agent",
+      "outcome": "the agent did not resolve the case (the mean of the correctness over 3 runs is 0.6667)",
+      "scenario": "S11",
+      "set_name": "eval_cases"
+    },
+    {
+      "claim": "Merchant M-17 has no recorded similar cases of a refund involving foreign exchange (FX) in the past according to the case recall search [functions.recall_cases].",
+      "evidence": "",
+      "expected": "the answer the case expects",
+      "got": "Merchant M-17 has no recorded similar cases of a refund involving foreign exchange (FX) in the past according to the case recall search [functions.recall_cases].",
+      "id": "EC-12",
+      "kind": "agent",
+      "outcome": "the agent did not resolve the case (the mean of the correctness over 3 runs is 0.3333)",
+      "scenario": "S12",
+      "set_name": "eval_cases"
+    },
+    {
+      "claim": "Which case or issue are you referring to for escalation to a human analyst?",
+      "evidence": "",
+      "expected": "the answer the case expects",
+      "got": "Which case or issue are you referring to for escalation to a human analyst?",
+      "id": "EC-28",
+      "kind": "agent",
+      "outcome": "the agent did not resolve the case (the mean of the correctness over 3 runs is 0.0000)",
+      "scenario": null,
+      "set_name": "eval_cases"
+    },
+    {
+      "claim": "For a dispute defense regarding a product not received, the main evidence you should attach includes proof of delivery with a date and a signature, or the tracking code with the carrier's confirmation. If the product is a digital service, the record of the customer's access to the service serves as proof. Additionally, you should attach the delivery time promised to the customer [policy:chargeback-handling#evidence-nrc].",
+      "evidence": "",
+      "expected": "the answer the case expects",
+      "got": "For a dispute defense regarding a product not received, the main evidence you should attach includes proof of delivery with a date and a signature, or the tracking code with the carrier's confirmation. If the product is a digital service, the record of the customer's access to the service serves as proof. Additionally, you should attach the delivery time promised to the customer [policy:chargeback-handling#evidence-nrc].",
+      "id": "EC-30",
+      "kind": "agent",
+      "outcome": "the agent did not resolve the case (the mean of the correctness over 3 runs is 0.0000)",
+      "scenario": null,
+      "set_name": "eval_cases"
+    }
+  ],
+  "notes": [
+    "a missing model is not a pass: a case whose verification is unavailable is a case without a verdict",
+    "the correctness of the agent and the accuracy of the verifier are two different measurements over two different sets"
+  ],
+  "verification": {
+    "accuracy": "0.500",
+    "cases": 48,
+    "correct": 24,
+    "dataset_id": "verification_heldout",
+    "denominator": 48,
+    "restriction": "this set is reserved for the final scoring, and no decision of the repository was taken against it",
+    "role": "held_out"
+  }
+}

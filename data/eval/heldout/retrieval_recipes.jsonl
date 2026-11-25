@@ -1,0 +1,16 @@
+{"id": "RH-01", "gold_chunk_id": "chargeback-handling#reason-codes", "template": "easy"}
+{"id": "RH-02", "gold_chunk_id": "chargeback-handling#evidence-frd", "template": "hard"}
+{"id": "RH-03", "gold_chunk_id": "cross-currency-refunds#charge-fx-at-capture", "template": "easy"}
+{"id": "RH-04", "gold_chunk_id": "cross-currency-refunds#reading-the-difference", "template": "hard"}
+{"id": "RH-05", "gold_chunk_id": "duplicate-charges#time-gap", "template": "easy"}
+{"id": "RH-06", "gold_chunk_id": "duplicate-charges#retries-after-failure", "template": "hard"}
+{"id": "RH-07", "gold_chunk_id": "escalation-and-review#deadline-within-2-days", "template": "easy"}
+{"id": "RH-08", "gold_chunk_id": "escalation-and-review#suspicious-text", "template": "hard"}
+{"id": "RH-09", "gold_chunk_id": "fees-and-pricing#rounding", "template": "easy"}
+{"id": "RH-10", "gold_chunk_id": "fees-and-pricing#fx-markup-is-not-a-fee", "template": "hard"}
+{"id": "RH-11", "gold_chunk_id": "fx-reference-rates#weekends-holidays", "template": "easy"}
+{"id": "RH-12", "gold_chunk_id": "fx-reference-rates#unsupported-currency-handling", "template": "hard"}
+{"id": "RH-13", "gold_chunk_id": "refund-policy#full-and-partial", "template": "easy"}
+{"id": "RH-14", "gold_chunk_id": "refund-policy#rejection-reasons", "template": "hard"}
+{"id": "RH-15", "gold_chunk_id": "settlement-schedule#components", "template": "easy"}
+{"id": "RH-16", "gold_chunk_id": "settlement-schedule#payout-calendars", "template": "hard"}

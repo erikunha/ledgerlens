@@ -14,19 +14,19 @@ The reference exchange rate is the market value used to compare with the rate th
 
 ## Official source {#source}
 
-The reference rate is the European Central Bank's daily rate, obtained through the Frankfurter service in the version that uses only that source. On weekends and holidays the rate of the previous business day applies. The reference rate is a market reference and not the rate the merchant or the acquirer applied: the applied rate lives on the conversion record.
+The reference rate is the European Central Bank's daily rate, obtained through the Frankfurter service in the version that uses only that source (source: the European Central Bank and the Frankfurter service, read on 2026-11-25). On weekends and holidays the rate of the previous business day applies. The reference rate is a market reference and not the rate the merchant or the acquirer applied: the applied rate lives on the conversion record.
 
 ## Weekends and holidays {#weekends-holidays}
 
-The European Central Bank publishes rates only on business days. For a Saturday, Sunday or holiday date, the lookup returns the rate of the last business day and reports the date actually used. The answer to the analyst must cite both dates, the requested one and the one used, so no one mistakes a Friday rate for a Saturday one.
+The European Central Bank publishes rates only on business days (source: the European Central Bank, read on 2026-11-25). For a Saturday, Sunday or holiday date, the lookup returns the rate of the last business day and reports the date actually used. The answer to the analyst must cite both dates, the requested one and the one used, so no one mistakes a Friday rate for a Saturday one.
 
 ## Why sources are not blended {#no-blended-sources}
 
-Some versions of the service blend several central bank sources and can return a rate several percent above the European Central Bank's. A difference that large looks like a merchant markup and is not one. That is why the platform only accepts the single European Central Bank source and records the source name in each piece of evidence.
+Some versions of the service blend several sources and can return a rate several percent above the European Central Bank's (source: the European Central Bank, read on 2026-11-25). A difference that large looks like a merchant markup and is not one. That is why the platform only accepts the single European Central Bank source and records the source name in each piece of evidence.
 
 ## Second source for the real {#second-source}
 
-For pairs involving the Brazilian real, the Banco Central do Brasil publishes the closing PTAX rate, which serves as a cross-check. PTAX and the European Central Bank rate can differ by tenths of a percentage point, because they measure different times and markets. The default source is still the European Central Bank, and PTAX only comes in when the analysis asks for it.
+For pairs involving the Brazilian real, the Banco Central do Brasil publishes the closing PTAX rate, which serves as a cross-check (source: the Banco Central do Brasil, read on 2026-11-25). PTAX and the European Central Bank rate can differ by tenths of a percentage point, because they measure different times and markets. The default source is still the European Central Bank, and PTAX only comes in when the analysis asks for it.
 
 ## Decimal places {#decimals}
 
@@ -34,7 +34,7 @@ Rates are handled with four decimal places and compared as exact decimal numbers
 
 ## Available currencies {#supported-currencies}
 
-The European Central Bank list has about thirty currencies, among them the euro, the US dollar, the Brazilian real, the pound sterling, the Swiss franc and the Canadian dollar. Currencies outside the list, such as the Argentine peso, have no reference rate. A future date, or one before the start of the series, has no rate either.
+The European Central Bank list has about thirty currencies, among them the euro, the US dollar, the Brazilian real, the pound sterling, the Swiss franc and the Canadian dollar (source: the European Central Bank, read on 2026-11-25). Currencies outside the list, such as the Argentine peso, have no reference rate. A future date, or one before the start of the series, has no rate either.
 
 ## Currency with no rate {#unsupported-currency-handling}
 
@@ -46,7 +46,7 @@ If the rate service is down after retries, the analyst reports that the referenc
 
 ## How to compare with the applied rate {#comparing-with-applied}
 
-The implied markup is one minus the applied rate divided by the reference rate on the refund date, expressed as a percentage. A result close to zero means the merchant applied the reference rate. A positive result up to 3.0% is consistent with the markup plan. Above 3.0% the case must be escalated.
+The implied markup is one minus the applied rate divided by the reference rate on the refund date, expressed as a percentage. A result close to zero means the merchant applied the reference rate. A positive result up to 3.0% is consistent with the markup plan. The ceiling of 3.0% is read with the rounding band of the section Rounding tolerance: the applied rate is rounded to four decimals, and the rounding can lift the implied markup a few hundredths of a point above the contractual markup. A result above 3.0% plus that band must be escalated.
 
 ## Rounding tolerance {#rounding-tolerance}
 

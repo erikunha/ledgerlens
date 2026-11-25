@@ -63,7 +63,7 @@ FROZEN_LEDGER = ROOT / "data" / "eval" / "replay" / "ledger" / "s01.json"
 
 # The digest of the ledger of the account of the recording, the one the manifest of the bundle declares. It is the
 # identity of the ledger of the recording, and the artifact publishes it.
-SNAPSHOT_SHA256 = "26849ada6f60c63fa30a0b085fd1ff473508d18a5892498cade13b7dc436ee2f"
+SNAPSHOT_SHA256 = "31c8f7fab2f48e1649dbb8480587eb3f511084ed56876df2bec7647a6156945a"
 
 # The two movements of the account, in the shape of the ledger of the branch of the sandbox.
 EXPECTED_ROWS = [
@@ -91,16 +91,32 @@ EXPECTED_READ = {
     "seq": 19,
     "tool": "query_ledger",
     "sql": (
-        "SELECT * FROM (SELECT kind, applied_rate, applied_at FROM fx_applied "
-        "WHERE transaction_id = 'TX-2048' ORDER BY applied_at) LIMIT 50"
+        "SELECT * FROM (SELECT f.kind, f.applied_rate, f.applied_at, m.id AS merchant_id, "
+        "m.name AS merchant_name, m.fx_plan FROM fx_applied AS f JOIN transactions AS t "
+        "ON t.id = f.transaction_id JOIN merchants AS m ON m.id = t.merchant_id "
+        "WHERE f.transaction_id = 'TX-2048' ORDER BY f.applied_at) LIMIT 50"
     ),
-    "columns": ["kind", "applied_rate", "applied_at"],
+    "columns": ["kind", "applied_rate", "applied_at", "merchant_id", "merchant_name", "fx_plan"],
     "row_count": 2,
     "truncated": False,
     "records": ["TX-2048"],
     "rows": [
-        {"kind": "charge", "applied_rate": "5.6679", "applied_at": "2026-10-15T09:12:04Z"},
-        {"kind": "refund", "applied_rate": "5.4931", "applied_at": "2026-10-20T14:30:00Z"},
+        {
+            "kind": "charge",
+            "applied_rate": "5.6679",
+            "applied_at": "2026-10-15T09:12:04Z",
+            "merchant_id": "M-17",
+            "merchant_name": "Lumen Travel GmbH",
+            "fx_plan": "markup",
+        },
+        {
+            "kind": "refund",
+            "applied_rate": "5.4931",
+            "applied_at": "2026-10-20T14:30:00Z",
+            "merchant_id": "M-17",
+            "merchant_name": "Lumen Travel GmbH",
+            "fx_plan": "markup",
+        },
     ],
 }
 
@@ -229,7 +245,7 @@ def test_the_reads_of_the_artifact_are_the_reads_of_the_recording(artifact: dict
     assert read["seq"] == 19
     assert read["tool"] == "query_ledger"
     assert read["sql"] == EXPECTED_READ["sql"]
-    assert read["columns"] == ["kind", "applied_rate", "applied_at"]
+    assert read["columns"] == EXPECTED_READ["columns"]
     assert read["row_count"] == 2
     assert read["truncated"] is False
     assert read["records"] == ["TX-2048"]
@@ -257,6 +273,59 @@ def test_the_rows_of_the_artifact_are_the_rows_of_the_recorded_event(artifact: d
     assert [list(row.values()) for row in artifact_rows] == recorded_rows
     assert artifact_rows == EXPECTED_READ["rows"]
     assert len(artifact_rows) == len(recorded_rows)
+
+
+def test_the_read_of_a_record_publishes_the_records_the_tool_returned():
+    """A run that read the ledger with the record tool publishes those records and not an empty read.
+
+    The recording of a real model read the ledger with the tool that returns one record, and the artifact used to
+    publish no read at all for it, so the two catalogs of the site looked different for no reason.
+    """
+    event = {
+        "seq": 17,
+        "payload": {
+            "name": "get_ledger_record",
+            "outputs": {
+                "evidence_ids": ["api:1"],
+                "data": {
+                    "transaction": {"id": "TX-2048", "amount_major": "100.00", "currency": "EUR"},
+                    "refunds": [{"id": "R-0731", "payout_amount_major": "549.31", "payout_currency": "BRL"}],
+                    "fx_applied": [{"id": "FX-9001", "applied_rate": "5.6679"}],
+                    "chargebacks": [],
+                },
+            },
+        },
+    }
+
+    reads = ledger_reads_from_events([event])
+
+    assert len(reads) == 1
+    read = reads[0]
+    assert read["tool"] == "get_ledger_record"
+    assert read["evidence_id"] == "api:1"
+    assert read["seq"] == 17
+    assert read["row_count"] == 3
+    assert read["records"] == ["TX-2048", "R-0731", "FX-9001"]
+    assert [row["collection"] for row in read["rows"]] == ["transaction", "refunds", "fx_applied"]
+    # Every value of a row is a text, because the contract of the browser types every value of a row as a text.
+    assert all(isinstance(value, str) for row in read["rows"] for value in row.values())
+
+
+def test_the_read_of_a_record_carries_no_statement():
+    """The tool that reads a record never wrote one, so the read publishes no statement."""
+    event = {
+        "seq": 17,
+        "payload": {
+            "name": "get_ledger_record",
+            "outputs": {"evidence_ids": ["api:1"], "data": {"transaction": {"id": "TX-2048"}}},
+        },
+    }
+
+    read = ledger_reads_from_events([event])[0]
+
+    assert read["sql"] == ""
+    assert read["columns"][0] == "collection"
+    assert read["rows"] == [{"collection": "transaction", "id": "TX-2048"}]
 
 
 def test_the_identity_of_the_artifact_with_the_recording_holds(artifact: dict):

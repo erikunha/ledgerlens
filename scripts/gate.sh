@@ -20,6 +20,13 @@ uv run pytest -q
 echo "== eval datasets (offline)"
 uv run python scripts/check_eval_datasets.py
 
+# The registry of the feedback must match the records on the disk: a record that moves without the registry
+# moving makes the loop describe a file that is not on the disk anymore, and a record of a visitor must never
+# enter the shared set. The check reads the disk, writes nothing, and refuses with a readable reason and a
+# non zero exit code, so the gate stops on the reason and not on a traceback.
+echo "== feedback registry (offline)"
+uv run python scripts/check_feedback_registry.py
+
 # The committed policy index must describe the policies of the repository, because an index built from another
 # corpus answers with text that is not on the disk, and every other check of the gate stays green while it
 # happens. The check reads the disk, writes nothing, needs no model and no network, and refuses with a
@@ -33,6 +40,19 @@ uv run python scripts/check_policy_index.py
 # so the gate stops on the reason and not on a traceback.
 echo "== docs index (offline)"
 uv run python scripts/build_docs_index.py --check
+
+# Every link of the documentation must point to a file of the repository, because a link that points to nothing
+# is a promise the repository does not keep, and the index of the documentation is built from the names of the
+# files and not from the links inside them. The check reads the disk, writes nothing, and refuses with a readable
+# reason and a non zero exit code, so the gate stops on the reason and not on a traceback.
+echo "== doc links (offline)"
+uv run python scripts/check_doc_links.py
+
+# The twin of the operations must stay honest: a run of the seed 42 is deterministic, and the two published
+# catalogs of the recordings of the agent are untouched by a run of the twin. The check writes nothing and
+# fails the gate with a readable reason, so the gate stops on the reason and not on a traceback.
+echo "== twin (offline)"
+uv run python scripts/check_twin.py
 
 # The published artifacts must match the bundle they claim to show, or the site shows a recording that is not the
 # one that was made. The check writes nothing and fails the gate when it finds a difference.
@@ -50,10 +70,41 @@ for bundle in data/eval/replay/s*; do
   uv run python scripts/verify_replay_digests.py --bundle "$bundle" --published "site/replay/$slug"
 done
 
+# The second catalogue, the recordings of a real model, is published with the same rules and is checked with the
+# same scripts: the export must match the bundles, and every published scenario must carry the digests of the
+# canonical bundle. The mode of the catalogue is named, so that a recording of a real model cannot land in the
+# folder of the sandbox and the other way round (ADR-075).
+echo "== export check of the catalogue of a real model (offline)"
+uv run python scripts/export_replay_site.py data/eval/replay-real --out site/replay-real --mode live_agent --check
+
+echo "== replay digests of the catalogue of a real model (offline)"
+for bundle in data/eval/replay-real/s*; do
+  slug="$(basename "$bundle")"
+  uv run python scripts/verify_replay_digests.py --bundle "$bundle" --published "site/replay-real/$slug" \
+    --index site/replay-real/index.json
+done
+
 # The published payload must stay inside the budget the specification declares (SC-004), and the number of events
 # must agree with the manifest. The check reads the disk, writes nothing, and refuses with a readable reason and a
 # non zero exit code, so the gate stops on the reason and not on a traceback.
 echo "== replay budget (offline)"
 uv run python scripts/measure_replay_budget.py
+
+# The payload of the second catalogue is inside the same budget: a recording of a real model answers in more
+# characters than a scripted one, and the budget is the promise of the specification for every scenario.
+echo "== replay budget of the catalogue of a real model (offline)"
+uv run python scripts/measure_replay_budget.py --site site/replay-real
+
+# The published proofs must match the bundles they were built from: a proof that drifts from its bundle is a
+# proof that asks the reader to trust the name and not the bytes. The check rebuilds the export, writes
+# nothing, and refuses with a readable reason and a non zero exit code.
+echo "== proof check (offline)"
+uv run python scripts/export_proof_site.py --check
+
+# The published eval lab must match the reports it was built from: a number that drifts from its report is a
+# number that asks the reader to trust the page and not the measurement. The check rebuilds the export,
+# writes nothing, and refuses with a readable reason and a non zero exit code.
+echo "== eval lab check (offline)"
+uv run python scripts/export_eval_lab.py --check
 
 echo "gate: ok"

@@ -14,7 +14,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { parseScenarioId, scenarioPath } from "@/lib/state/urlState";
 
@@ -118,6 +118,33 @@ describe("the route of a scenario", () => {
       await screen.findByRole("heading", { name: (name) => name.includes(question) }),
     ).toBeInTheDocument();
     expect(screen.getAllByText(new RegExp(scenarioId)).length).toBeGreaterThan(0);
+  });
+
+  it("reads the bundle of the scenario from the root of the scripted model", async () => {
+    // It proves that the route hands the provider of the replay the catalog of the scripted model, and that the
+    // provider reads the bundle from the root of that catalog: a route that asked for the root of the other catalog
+    // would show the recording of a real model under the name of the recorded demo (ADR-075).
+    const askedFor: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        askedFor.push(String(input));
+        return { ok: false, status: 404, text: async () => "" } as unknown as Response;
+      }),
+    );
+
+    const route = await readRoute();
+    const card = CATALOG[0];
+    const scenarioId = card?.["id"] as string;
+
+    const element = await route.default({ params: paramsOf(scenarioId) });
+    render(element as React.ReactElement);
+    await screen.findByRole("heading", { name: (name) => name.includes(card?.["question"] as string) });
+
+    expect(askedFor).toContain("/replay/s01/manifest.json");
+    expect(askedFor).not.toContain("/replay-real/s01/manifest.json");
+
+    vi.unstubAllGlobals();
   });
 
   it("carries the identifier of the scenario in the path and only the preferences in the query string", async () => {

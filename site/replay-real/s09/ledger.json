@@ -1,0 +1,53 @@
+{
+  "accounts": [
+    {
+      "id": "C-0888",
+      "kind": "customer",
+      "name": "Daniel Brooks",
+      "reads": [
+        {
+          "columns": [
+            "status"
+          ],
+          "evidence_id": "sql:1",
+          "records": [
+            "R-0750",
+            "TX-2095"
+          ],
+          "row_count": 1,
+          "rows": [
+            {
+              "status": "requested"
+            }
+          ],
+          "seq": 19,
+          "sql": "SELECT * FROM (SELECT status FROM refunds WHERE id = 'R-0750' AND transaction_id = 'TX-2095') LIMIT 50",
+          "tool": "query_ledger",
+          "truncated": false
+        }
+      ],
+      "rows": [
+        {
+          "amount": "60.00",
+          "at": "2026-11-03T10:00:00Z",
+          "currency": "USD",
+          "id": "TX-2095",
+          "kind": "transaction",
+          "status": "captured"
+        },
+        {
+          "amount": "0.00",
+          "at": "2026-11-04T08:00:00Z",
+          "currency": "USD",
+          "id": "R-0750",
+          "kind": "refund",
+          "status": "requested"
+        }
+      ]
+    }
+  ],
+  "page_size": 50,
+  "scenario": "S09",
+  "schema_version": "1",
+  "snapshot_sha256": "8ee2f503b47e7e647cb449a61cb3da896c229cafa587f99e02c0c4ed325298b9"
+}

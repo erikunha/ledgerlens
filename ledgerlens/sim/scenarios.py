@@ -1,4 +1,4 @@
-"""Named anomalies S01 to S12, injected as events after the natural stream.
+"""Named anomalies S01 to S13, injected as events after the natural stream.
 
 Each scenario builds its events from fixed ids and dates, so its facts do not depend on the source.
 Rates and amounts that the scenario text quotes come from the recorded ECB series through the same
@@ -580,6 +580,141 @@ def describe_s12(conn: sqlite3.Connection, ctx: ScenarioContext) -> dict[str, An
     }
 
 
+# The facts of the scenario S13: the refund of a payment in another currency whose markup is above the limit of
+# the plan of the merchant.
+#
+# Why the dates are fixed: the facts of a scenario must not depend on the source, and the rate of a day comes from
+# the recorded series of the reference source. The charge is on a Monday and the refund on the Friday of the same
+# week, so the two rates are two days of the series and not a weekend.
+S13_UNITS_MINOR = 8000
+S13_CHARGE_DATE = date(2026, 10, 19)
+S13_REFUND_DATE = date(2026, 10, 23)
+S13_MARKUP_PCT = Decimal("4.5")
+
+
+def build_s13(ctx: ScenarioContext) -> list[Event]:
+    """The refund whose markup is above the limit of the plan of the merchant.
+
+    Why the applied rate is computed with the ceiling of the policy lifted: the gap filler refuses a markup above
+    the ceiling, because the stream the simulator invents holds no violation of the policy. This scenario plants
+    exactly the violation the policy exists for, and the case that catches it is the work of the product.
+
+    Why the merchant is not a new one: the merchants of the catalog are fixed, and a merchant that goes over the
+    limit on one refund is a fact of the ledger, not a new kind of merchant.
+    """
+    o = "scenario:S13"
+    charge = ctx.fx.rate(S13_CHARGE_DATE, "EUR", "BRL").rate
+    reference = ctx.fx.rate(S13_REFUND_DATE, "EUR", "BRL").rate
+    refund = gaps.cross_currency_refund(S13_UNITS_MINOR, "EUR", "BRL", reference, S13_MARKUP_PCT, policy_ceiling=None)
+    return [
+        _customer(o, "C-0951", "Renata Duarte Alves", "BR", "BRL", "2026-09-25 12:00:00"),
+        *_payment(
+            o,
+            "TX-2096",
+            "M-19",
+            "C-0951",
+            S13_UNITS_MINOR,
+            "EUR",
+            "2026-10-19 09:12:00",
+            "2026-10-19 09:12:04",
+        ),
+        Event(
+            "fx.applied",
+            "transaction",
+            "TX-2096",
+            ts("2026-10-19 09:12:04"),
+            {
+                "fx_id": "FX-9003",
+                "refund_id": None,
+                "kind": "charge",
+                "from_currency": "EUR",
+                "to_currency": "BRL",
+                "applied_rate": str(charge),
+            },
+            o,
+        ),
+        _refund_requested(
+            o, "R-0751", "TX-2096", S13_UNITS_MINOR, "EUR", "2026-10-23 14:05:00", "Customer asked for a full refund"
+        ),
+        Event(
+            "fx.applied",
+            "transaction",
+            "TX-2096",
+            ts("2026-10-23 14:30:00"),
+            {
+                "fx_id": "FX-9004",
+                "refund_id": "R-0751",
+                "kind": "refund",
+                "from_currency": "EUR",
+                "to_currency": "BRL",
+                "applied_rate": str(refund.applied_rate),
+            },
+            o,
+        ),
+        Event(
+            "payment.refunded",
+            "refund",
+            "R-0751",
+            ts("2026-10-23 14:30:00"),
+            {
+                "refund_id": "R-0751",
+                "transaction_id": "TX-2096",
+                "requested_amount_minor": S13_UNITS_MINOR,
+                "requested_currency": "EUR",
+                "payout_amount_minor": refund.payout_minor,
+                "payout_currency": "BRL",
+                "fx_id": "FX-9004",
+                "reason": "Customer asked for a full refund",
+            },
+            o,
+        ),
+    ]
+
+
+def describe_s13(conn: sqlite3.Connection, ctx: ScenarioContext) -> dict[str, Any]:
+    """The truth of the scenario S13, read from the database the scenario built."""
+    (amount_minor,) = _one(conn, "SELECT amount_minor FROM transactions WHERE id = 'TX-2096'")
+    (charge_rate,) = _one(conn, "SELECT applied_rate FROM fx_applied WHERE id = 'FX-9003'")
+    (applied_rate,) = _one(conn, "SELECT applied_rate FROM fx_applied WHERE id = 'FX-9004'")
+    (payout_minor,) = _one(conn, "SELECT payout_amount_minor FROM refunds WHERE id = 'R-0751'")
+    (merchant, merchant_name, plan) = _one(
+        conn,
+        "SELECT m.id, m.name, m.fx_plan FROM merchants m JOIN transactions t ON t.merchant_id = m.id "
+        "WHERE t.id = 'TX-2096'",
+    )
+    units = Decimal(amount_minor) / 100
+    charge_rate, applied_rate = Decimal(charge_rate), Decimal(applied_rate)
+    reference = ctx.fx.rate(S13_REFUND_DATE, "EUR", "BRL").rate
+
+    def q(value: Decimal) -> str:
+        return str(value.quantize(CENT, ROUND_HALF_EVEN))
+
+    charge, refund_amount = units * charge_rate, units * applied_rate
+    implied = ((1 - applied_rate / reference) * 100).quantize(Decimal("0.0001"), ROUND_HALF_EVEN)
+    return {
+        "merchant": str(merchant),
+        "merchant_name": str(merchant_name),
+        "plan": str(plan),
+        "units": q(units),
+        "charge_brl": q(charge),
+        "refund_brl": q(refund_amount),
+        "payout_brl": _money(payout_minor),
+        "gap_brl": str(Decimal(q(charge)) - Decimal(q(refund_amount))),
+        "rate_move_brl": q(units * (charge_rate - reference)),
+        "markup_brl": q(units * (reference - applied_rate)),
+        "implied_markup_pct": str(implied),
+        "markup_limit_pct": str(gaps.MAX_MARKUP_PCT),
+        "within_limit": "no",
+        "charge_rate": str(charge_rate),
+        "applied_rate": str(applied_rate),
+        "reference_rate_charge_date": str(ctx.fx.rate(S13_CHARGE_DATE, "EUR", "BRL").rate),
+        "reference_rate_refund_date": str(reference),
+        "reference_source": "ECB through Frankfurter v1",
+        "charge_date": S13_CHARGE_DATE.isoformat(),
+        "refund_date": S13_REFUND_DATE.isoformat(),
+    }
+
+
 @dataclass(frozen=True)
 class ScenarioDef:
     id: str
@@ -592,6 +727,73 @@ class ScenarioDef:
     expected_tools: tuple[str, ...]
     expected_action: str
     requires_human_review: bool = False
+
+
+# The facts of the scenario S14: the settlement whose processing fee is an exact half cent tie. The payment
+# of 25.00 in the week of 2026-09-28 of the merchant M-25 gives a gross volume of 2500 minor units, and the
+# fee of 2.9 percent of it is 72.5 cents, a tie that the even digit settles to 72. The merchant of the
+# scenario is M-25, a merchant the scenario plants and the natural stream of no source trades, so the tie
+# holds in every source and the exclusion of the tuning material of the held out set does not move.
+S14_UNITS_MINOR = 2500
+S14_CAPTURE_DATE = date(2026, 9, 30)
+S14_PERIOD_START = "2026-09-28"
+
+
+def build_s14(ctx: ScenarioContext) -> list[Event]:
+    """The settlement whose processing fee is an exact half cent tie.
+
+    Why the scenario exists: the rounding policy of the platform says the fee is rounded half to even, and a
+    rule that is never exercised is a rule nobody checked. The week of 2026-08-24 of the merchant M-04 is
+    quiet, so the payment of 25.00 is the whole gross volume of the settlement, and the fee of 2.9 percent
+    of 2500 minor units is 72.5 cents, an exact tie.
+    """
+    o = "scenario:S14"
+    return [
+        Event(
+            "merchant.onboarded",
+            "merchant",
+            "M-25",
+            ts("2026-09-25 09:00:00"),
+            {
+                "name": "Tie Breaker Ltd",
+                "country": "US",
+                "category": "saas",
+                "settlement_currency": "USD",
+                "fx_plan": "standard",
+                "refund_window_days": 30,
+            },
+            o,
+        ),
+        _customer(o, "C-1500", "Renata Braga Tielemans", "US", "USD", "2026-09-25 10:00:00"),
+        *_payment(
+            o,
+            "TX-9001",
+            "M-25",
+            "C-1500",
+            S14_UNITS_MINOR,
+            "USD",
+            "2026-09-30 11:00:00",
+            "2026-09-30 11:00:04",
+        ),
+    ]
+
+
+def describe_s14(conn: sqlite3.Connection, ctx: ScenarioContext) -> dict[str, Any]:
+    """The truth of the scenario S14, read from the database the scenario built."""
+    gross, fees, net = _one(
+        conn,
+        "SELECT gross_minor, fees_minor, net_minor FROM settlements "
+        f"WHERE merchant_id = 'M-25' AND period_start = '{S14_PERIOD_START}'",
+    )
+    return {
+        "merchant": "M-25",
+        "period_start": S14_PERIOD_START,
+        "gross_minor": gross,
+        "fees_minor": fees,
+        "net_minor": net,
+        "fee_before_rounding": "72.5",
+        "rounding_mode": "half_to_even",
+    }
 
 
 SCENARIOS: dict[str, ScenarioDef] = {
@@ -768,6 +970,41 @@ SCENARIOS: dict[str, ScenarioDef] = {
             ("Has merchant M-17 had any similar case of a refund with FX before?",),
             "refund_discrepancy",
             ("recall_cases",),
+            "explain_to_customer",
+        ),
+        ScenarioDef(
+            "S13",
+            "fx_markup_above_limit",
+            build_s13,
+            describe_s13,
+            {
+                "transaction_ids": ["TX-2096"],
+                "refund_ids": ["R-0751"],
+                "merchant_ids": ["M-19"],
+                "customer_ids": ["C-0951"],
+            },
+            (
+                "Why was the BRL refund for TX-2096 lower than the EUR payment?",
+                "The customer says the refund for TX-2096 came in lower than what they paid.",
+            ),
+            "refund_discrepancy",
+            ("query_ledger", "search_policies", "get_reference_fx", "calculate"),
+            "escalate_to_human",
+            True,
+        ),
+        ScenarioDef(
+            "S14",
+            "rounding_tie",
+            build_s14,
+            describe_s14,
+            {
+                "transaction_ids": ["TX-9001"],
+                "merchant_ids": ["M-25"],
+                "customer_ids": ["C-1500"],
+            },
+            ("What was the processing fee of the settlement of M-25 of the week of 2026-09-28?",),
+            "fee_question",
+            ("query_ledger", "calculate"),
             "explain_to_customer",
         ),
     )

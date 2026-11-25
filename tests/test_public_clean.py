@@ -98,6 +98,10 @@ SECRET_FAKES = frozenset(
         "sk-" + "visitor-key-not-real",
         "sk-" + "weighted",
         "sk-" + "weighted-decision-utility",
+        # The slug of ADR-087 holds the same shape by accident: the tail of the word "task" followed by a hyphen
+        # is the head of the shape of a key of a provider. The fake is the exact text of the slug, so a real
+        # credential written anywhere else is still refused.
+        "sk-the-identity-of-the-" + "reviewer-is-the-session-and-the-agent-never-decides",
         "Bear" + "er ...",
         "Bear" + "er abc.def-123",
     }
@@ -344,10 +348,48 @@ def test_the_fakes_that_the_guard_spares_are_in_the_repository() -> None:
 # The two characters are built from escapes, so this file does not match its own rule.
 DASHES = re.compile("[\u2013\u2014]")
 
+# The folders that hold the recordings of a real model, the canonical bundles and the published copies.
+#
+# Why these and no other: the rule of the dashes governs the writing of this repository, and a recording of a real
+# model is the writing of the model. The bundle publishes the answer the run gave (ADR-076), so a dash in that
+# answer is a fact about the run and not a style of this repository, and the repository never edits the text of a
+# run (ADR-080). The recordings of the scripted model are the writing of this repository and stay inside the rule.
+DASH_EXEMPT = ("data/eval/replay-real/", "site/replay-real/")
+
+
+def _dash_offenders() -> list[str]:
+    """The places where a dash of the rule is, outside the recordings of a real model."""
+    return [hit for hit in _offenders(DASHES) if not hit.startswith(DASH_EXEMPT)]
+
 
 def test_no_dashes_in_tracked_files():
     """No em dash and no en dash anywhere. The rule is a zero tolerance one."""
-    assert not _offenders(DASHES)
+    assert not _dash_offenders()
+
+
+def test_the_dash_rule_spares_the_recordings_of_a_real_model_and_nothing_else(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A recording of a real model may carry a dash; the rest of the repository may not.
+
+    Why the exemption and not the refusal of the recording: the answer of a model is not written to a rule, so a
+    recording refused for a dash is a recording that has to be made again, and the catalogue of a real model would
+    be published by a coin flip (ADR-080).
+
+    Why the exemption is narrow: the folders of the recordings of the real model are the only ones spared, and the
+    recordings of the scripted model and the documentation are inside the rule as they always were.
+    """
+    recording = "data/eval/replay-real/s11/events.jsonl"
+    scripted = "data/eval/replay/s11/events.jsonl"
+    documentation = "docs/frontend.md"
+    for name in (recording, scripted, documentation):
+        path = tmp_path / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(f"the answer carries a dash {chr(0x2014)} here\n", encoding="utf-8")
+    monkeypatch.setattr(sys.modules[__name__], "ROOT", tmp_path)
+    monkeypatch.setattr(sys.modules[__name__], "_files", lambda: [recording, scripted, documentation])
+
+    assert _dash_offenders() == [f"{scripted}:1", f"{documentation}:1"]
 
 
 def test_course_directories_are_absent():

@@ -1,0 +1,24 @@
+{
+  "bundle_schema_version": "1",
+  "capture_kind": "real_model_recorded",
+  "code_sha": "37aa9b66f6bb9cd120c09f00dac1f1fd95a3a5fe",
+  "created_at": "2026-11-24T03:45:14+00:00",
+  "events": 31,
+  "files": {
+    "events.jsonl": "5f86f56b7b20c94c1c40321294d9fdd99d4e7248a0fa34f743e81b80ff5cb8ca"
+  },
+  "mode": "live_agent",
+  "model_profile": "openai:gpt-4.1",
+  "model_profiles": {
+    "agent": "openai:gpt-4.1",
+    "policy": "openai:gpt-4.1-mini",
+    "sql": "openai:gpt-4.1",
+    "triage": "openai:gpt-4.1-mini"
+  },
+  "note": "Real execution of the scenario S09, account C-0888, with the model openai:gpt-4.1 and the live reference rate. The work was split by the task: the triage and the rewrite of the search of the policies ran on openai:gpt-4.1-mini, the statement that reads the ledger ran on openai:gpt-4.1 and the answer with the tools ran on openai:gpt-4.1. This is the recording of a real run and it is not reproducible byte for byte. The verdicts of the claims were computed by the deterministic verifier of the repository, the judge the sandbox catalog uses, so that anybody can re-verify this bundle offline.",
+  "policy_version": "policies-v1",
+  "recorded_at": "2026-11-24T03:45:14+00:00",
+  "run_id": "replay-real-s09",
+  "scenario": "S09",
+  "snapshot_sha256": "8ee2f503b47e7e647cb449a61cb3da896c229cafa587f99e02c0c4ed325298b9"
+}

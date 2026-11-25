@@ -26,7 +26,7 @@ On the charge, the conversion uses the reference rate on the capture date, with 
 
 ## Merchant markup {#merchant-fx-markup}
 
-Merchants on the `markup` plan can apply up to 3.0% over the reference rate when converting a refund. The markup lowers the applied rate: the applied rate is the reference rate on the refund date multiplied by one minus the markup. The markup must be in the merchant's settlement terms, and a markup above the limit must be taken to human review.
+Merchants on the `markup` plan can apply up to 3.0% below the reference rate when converting a refund. The markup lowers the applied rate: the applied rate is the reference rate on the refund date multiplied by one minus the markup. The markup must be in the merchant's settlement terms, and a markup above the limit must be taken to human review.
 
 ## Merchants on the standard plan {#standard-plan}
 
@@ -42,7 +42,7 @@ Take a payment of EUR 200.00 converted on the charge at 5.5000, which gives BRL 
 
 ## Rounding {#rounding}
 
-Applied rates are rounded to four decimal places and amounts to the currency's smallest unit, always with round half to even, which rounds ties to the even digit. It is the same method used in every calculation on the platform. One-cent differences between two calculations are usually a rounding effect.
+Applied rates are rounded to four decimal places and amounts to the currency's smallest unit, always with round half to even, which rounds ties to the even digit. It is the same method used in every calculation on the platform, and it is the choice of the platform: the common commercial practice rounds a tie away from zero, and Acme chose the even digit instead. One-cent differences between two calculations are usually a rounding effect.
 
 ## Customer payout currency {#payout-currency}
 
@@ -50,7 +50,7 @@ The refund is paid in the customer's billing currency, which is the currency of 
 
 ## Currencies with no reference rate {#unsupported-currencies}
 
-Not every currency has a published reference rate. The Argentine peso, for example, is not on the European Central Bank's list. When there is no reference rate, the analyst cannot estimate the markup: they must say the comparison is not possible, name the missing rate and take the case to human review.
+Not every currency has a published reference rate. The Argentine peso, for example, is not on the European Central Bank's list (source: the European Central Bank, read on 2026-11-25). When there is no reference rate, the analyst cannot estimate the markup: they must say the comparison is not possible, name the missing rate and take the case to human review.
 
 ## Explanation for the customer {#customer-explanation}
 

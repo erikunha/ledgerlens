@@ -19,6 +19,20 @@ backend above.
 - Mode: online (`LEDGERLENS_OFFLINE=0`). Model `gpt-4.1-mini` (`LEDGERLENS_MODEL`), live exchange rates from Frankfurter, real NLI in the verifier.
 - File: [`ledgerlens_demo.mp4`](img/ledgerlens_demo.mp4), 28 s, 3024x1890, 30 fps, H.264, no audio. sha256 `9a891e787bc7b35baf10ac33a84c654e3be47d415f04ae812a0cd7292773a574`.
 
+## Read the evidence for a recorded run
+
+With the demo API running locally, request the graph for the published synthetic run `replay-s01`:
+
+```sh
+curl 'http://localhost:8010/evidence/replay-s01?account=C-0412'
+```
+
+The response includes the graph nodes, edges and the number of evidence items filtered by account. The
+`account` parameter must match the account recorded for the run. An unknown run or a mismatched account
+returns HTTP 404. This endpoint reads the public replay fixtures in `data/eval/replay`. Live runs and
+visitor branches use separate storage. A policy node carries the corpus digest recorded in the matching
+published graph artifact. An empty digest means the recording has no verifiable digest.
+
 ## What the video shows
 
 1. LedgerLens Pay open, signed in as Mariana Albuquerque Costa (customer C-0412, simulated data), with the Help panel on the right.

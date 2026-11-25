@@ -1,4 +1,16 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { expect, test, type Page } from "@playwright/test";
+
+/**
+ * The number of the events of the published recording of the scenario S01, read from the bundle the site
+ * serves. The recording is re-captured when the corpus moves, so the count is read and never written.
+ */
+const EVENTS = readFileSync(join(process.cwd(), "public", "replay", "s01", "events.jsonl"), "utf8")
+  .split("\n")
+  .filter((line) => line.trim().length > 0).length;
+
 
 /**
  * The end to end test of the narrow screen of the public site.
@@ -147,7 +159,16 @@ test.describe("the narrow screen of 390 pixels", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test("the pages of the site do not scroll sideways", async ({ page }) => {
-    for (const route of ["/", "/replay", "/replay/scenario/S01", "/sandbox", "/live", "/engineering"]) {
+    for (const route of [
+      "/",
+      "/replay",
+      "/replay/scenario/S01",
+      "/replay-real",
+      "/replay-real/scenario/S01",
+      "/sandbox",
+      "/live",
+      "/engineering",
+    ]) {
       await page.goto(route);
       await expect(page.getByRole("main")).toBeVisible();
 
@@ -241,7 +262,7 @@ test.describe("the narrow screen of 390 pixels", () => {
     await expect(position).toHaveValue("0");
     await position.press("ArrowRight");
     await expect(position).toHaveValue("1");
-    await expect(page.getByText("Event 2 of 57.")).toBeVisible();
+    await expect(page.getByText(`Event 2 of ${EVENTS}.`)).toBeVisible();
   });
 });
 
@@ -260,4 +281,38 @@ test.describe("the wide screen of 1440 pixels", () => {
       expectNoSidewaysScroll(measurement, 1440);
     }
   });
+});
+
+/**
+ * The guided path of the cold start on the narrow screen.
+ *
+ * Why the case exists: the guided path is the entrance of the site, and the entrance has to work
+ * on a phone. The controls of the path are never smaller than 44 pixels, so a finger reaches them,
+ * and the path never overflows the viewport, so the visitor never drags the page sideways to read
+ * a step.
+ */
+test("the controls of the guided path are at least 44 pixels and the path never overflows the phone", async ({
+  page,
+}) => {
+  await page.goto("/replay/scenario/S01");
+  await expect(page.getByRole("heading", { name: "The guided path" })).toBeVisible();
+
+  const controls = page.getByRole("button", { name: "Show me" });
+  const count = await controls.count();
+  expect(count, "the guide drew no step").toBeGreaterThan(0);
+  for (let index = 0; index < count; index += 1) {
+    const box = await controls.nth(index).boundingBox();
+    expect(box?.height ?? 0, `the control of the step ${index + 1} is smaller than 44 pixels`).toBeGreaterThanOrEqual(
+      44,
+    );
+  }
+
+  const fork = page.getByRole("link", { name: /mutate this case/i });
+  const forkBox = await fork.boundingBox();
+  expect(forkBox?.height ?? 0, "the fork of the guided path is smaller than 44 pixels").toBeGreaterThanOrEqual(44);
+
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow, "the guided path overflows the viewport of the phone").toBeLessThanOrEqual(0);
 });

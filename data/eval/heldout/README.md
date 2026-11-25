@@ -131,3 +131,33 @@ them is declared anyway, in `data/eval/datasets.json`, with the role `held_out`:
 `data/eval/verification_heldout.jsonl`. The key of the generator is not declared, because it is not published: no
 entry of the manifest names it, and the guard of the tuning refuses a path that no entry declares, so a tuning script
 cannot read it.
+
+## The held out set of the retrieval
+
+The folder also holds the held out set of the retrieval: 16 questions over the sections of the eight policies
+that are not gold chunks of the tuning questions, built so that the comparison of the retrieval has a set that
+no decision was taken against. The twelve questions of `data/eval/policy_questions.jsonl` are a tuning set,
+because ADR-006 chose the embedding and the query transform with the recall over them.
+
+The files of the set follow the same split as the verification set:
+
+- `retrieval_cases.jsonl` is the file the readers read. Every line is one question with its id. It holds no
+  label, no template name and no recipe.
+- `retrieval_recipes.jsonl` is the file the readers were forbidden to open. Every line is the recipe of one
+  question: the gold chunk of the section the question was written over and the template of the question.
+- `retrieval_labels_reader_a.jsonl` and `retrieval_labels_reader_b.jsonl` hold what each reader answered, and
+  `retrieval_labels_adjudicated.jsonl` holds the label of each question of the set, with the reason of every
+  decision of the adjudication.
+
+The generator is `ledgerlens/eval/retrieval_heldout.py`, and the labeled set is
+`data/eval/retrieval_heldout.jsonl`, declared in the manifest of the datasets with the role `held_out`.
+
+The four counts of the reading, under ADR-059:
+
+- the two readings diverged in 4 of the 16 questions (RH-02, RH-08, RH-09 and RH-16);
+- the first reading diverged from the recipes in 4 of the 16, and the second in 2 of the 16;
+- the adjudication agrees with the recipes in 15 of the 16, and it corrected the recipe of RH-04, because the
+  question asks how to explain the gap to the customer and the section of the explanation is the one that
+  answers it: the two readings corrected the recipe, and the disagreement counts;
+- the question RH-09 is ambiguous, because the rounding of the fees and the rounding of the cross currency
+  policy both answer it, and the caveat is recorded in the notes of the entry of the manifest.

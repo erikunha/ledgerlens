@@ -1097,6 +1097,10 @@ def test_a_run_that_the_ceiling_of_the_turn_cuts_never_ends_with_an_empty_answer
 
     Why the agent loops: a model that asks for a tool forever is what a ceiling of the turn cuts, and the run has
     to end with a reason the visitor can read instead of with nothing at all.
+
+    Why the ceiling that cuts is the cap of the plan: the coordinator of the run is the budget of the agent
+    (ADR-054), so the ceiling of the turn is the cap of the visitor, and the run that the cap cuts ends with
+    the cap named and never with an empty answer.
     """
     adapter = FakeProviderAdapter(provider="openai", api_key=MARKER)
     adapter.script_answer(SIMPLE_TRIAGE_ANSWER)
@@ -1109,17 +1113,83 @@ def test_a_run_that_the_ceiling_of_the_turn_cuts_never_ends_with_an_empty_answer
     vault = CredentialVault()
     coordinator = _coordinator(adapter, vault, executor=case)
     handle = vault.accept(MARKER, "openai", session_id=SESSION)
-    # The caps of the visitor are wide enough: the ceiling that cuts the run is the one of the turn.
-    budget = RunBudget(max_model_calls=60, max_tool_calls=60, max_wall_seconds=30, max_output_tokens=512)
+    # The cap of the plan is the ceiling of the turn: the run stops when the cap of the models is reached.
+    budget = RunBudget(max_model_calls=4, max_tool_calls=60, max_wall_seconds=30, max_output_tokens=512)
 
     coordinator.start(_plan(handle.handle, budget=budget))
     result = coordinator.wait("run-case", timeout=30.0)
 
     assert result is not None
-    # The visitor reads what stopped the run, and not an empty answer.
-    assert result.answer != ""
-    assert "the run ended without an answer" in result.answer
-    # And the limit that stopped the turn is named in the words the visitor reads: the sentence of the result
-    # says which limit it was, and the case repeats it.
-    assert "stopped the turn" in result.answer
-    assert "the cap '" in result.answer or "the ceiling of the graph" in result.answer
+    # The visitor reads what stopped the run, and not an empty answer: the cap is named.
+    assert result.status == "failed"
+    assert result.report.cut_by == "max_model_calls"
+    assert "max_model_calls" in (result.error or "")
+    assert (result.answer or result.error or "") != ""
+    # The call that would break the cap never reached the provider.
+    assert len(adapter.calls) == 4
+
+
+def test_the_live_path_of_the_visitor_builds_no_runner_of_the_retry(
+    ledger_db: Path, index_root: Path, embeddings: FastEmbedEmbeddings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The live path holds the credential of the visitor and not the key of the server, so it has no runner.
+
+    Why it matters: a retry built with the key of the server would be a call that the visitor did not ask for,
+    that nobody counts and that the caps of the visitor do not hold (ADR-037, ADR-054).
+
+    Why the consent is on: a deployment that consented to no retry would have no runner in any path, and the
+    test would pass without proving anything about the live path.
+    """
+    monkeypatch.setenv("LEDGERLENS_FALLBACK_ATTEMPTS", "1")
+    caller = _caller(scripted_adapter())
+    demo = build_demo_agent(
+        caller,
+        db_path=ledger_db,
+        verifier=refusing_verifier(),
+        index_root=index_root,
+        embeddings=embeddings,
+    )
+
+    assert demo.agent.fallback is None
+    assert demo.agent.triage_fallback is None
+
+
+def test_the_coordinator_of_the_run_is_the_budget_of_the_agent_and_the_calls_are_counted_once(
+    case: DemoCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The coordinator of the live run is passed to the agent, without a second counter.
+
+    Why it matters: the usage of the turn of the agent is the usage of the coordinator of the run, and a
+    second counter would count every call of the provider twice (ADR-054).
+    """
+    from ledgerlens.api import live_case as live_case_module
+
+    seen: dict[str, Any] = {}
+    real_investigate = live_case_module.investigate
+
+    def spying_investigate(agent: Any, question: str, **kwargs: Any) -> Any:
+        seen["budget"] = kwargs.get("budget")
+        result = real_investigate(agent, question, **kwargs)
+        seen["usage"] = result.usage
+        return result
+
+    monkeypatch.setattr(live_case_module, "investigate", spying_investigate)
+    adapter = scripted_adapter()
+    vault = CredentialVault()
+    coordinator = _coordinator(adapter, vault, executor=case)
+    handle = vault.accept(MARKER, "openai", session_id=SESSION)
+
+    coordinator.start(_plan(handle.handle))
+    result = coordinator.wait("run-case", timeout=20.0)
+
+    assert result is not None
+    assert result.status == "completed"
+    turn = seen["budget"]
+    assert turn is not None, "the case did not pass the coordinator of the run to the agent"
+    assert turn.owner == "caller"
+    # The coordinator of the turn is the coordinator of the run: one counter, and no call counted twice.
+    assert turn.coordinator is not None
+    usage = seen["usage"]
+    assert usage, "the result of the agent carries no usage"
+    assert usage["model_calls"] == len(adapter.calls)
+    assert result.report.model_calls == len(adapter.calls)

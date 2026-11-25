@@ -1,0 +1,32 @@
+{
+  "artifact_id": "776f932784be6a8d93c0326b61f504cb160c57ec3934176d65ce6abdb9fc2c5e",
+  "claim_evidence_refs": [
+    "sql:1",
+    "policy:settlement-schedule#payout-timing",
+    "policy:settlement-schedule#late-payout",
+    "policy:settlement-schedule#explaining-a-settlement",
+    "policy:settlement-schedule#overview",
+    "policy:settlement-schedule#settlement-currency",
+    "policy:settlement-schedule#holiday-example",
+    "policy:settlement-schedule#status",
+    "policy:chargeback-handling#outcomes",
+    "calc:1"
+  ],
+  "cost_provenance": "replayed",
+  "cost_usd": null,
+  "known_limitations": [
+    "the run is the recording of the scripted model, and it reproduces the run of the capture byte for byte",
+    "the artifact attests to a claim about the code of the repository and says nothing about a person"
+  ],
+  "mode": "deterministic_sandbox",
+  "privacy_reviewed": true,
+  "scenario_id": "S08",
+  "schema_version": "3",
+  "snapshot_hash": "5d12d0a7679da27f34d61dcc2b794a0f8f8e047a96fa2cb7b8a4510095afbe08",
+  "source_commit": "86ab658d259847c7272e655115f1d8cf73ce63b51dbb5eb958b5b6abef37933d",
+  "trace_refs": [
+    "data/eval/replay/s08/events.jsonl",
+    "data/eval/replay/s08/memory_snapshot.json"
+  ],
+  "verdict_summary": "CL1 supported; CL2 supported; CL3 supported; CL4 not_enough_evidence"
+}

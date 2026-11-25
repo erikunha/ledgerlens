@@ -81,10 +81,21 @@ def test_the_tool_returns_the_case_with_its_evidence_id(tool) -> None:
     assert all(EVIDENCE.match(evidence_id) for evidence_id in result["evidence_ids"])
 
     first = result["data"]["results"][0]
-    assert set(first) == {"case_id", "kind", "finding", "created_at", "confidence", "entities", "score"}
+    assert set(first) == {
+        "case_id",
+        "kind",
+        "finding",
+        "created_at",
+        "confidence",
+        "trust_tier",
+        "entities",
+        "score",
+    }
     assert first["case_id"] == "CASE-0001"
     assert first["kind"] == "semantic"
     assert first["confidence"] == "high"
+    # A record of the case memory of today carries no tier, and the tier of it is the tier of what one case observed.
+    assert first["trust_tier"] == "observed"
     assert first["entities"]["merchant_ids"] == ["M-17"]
     assert isinstance(first["score"], float)
 
@@ -148,3 +159,27 @@ def test_the_tool_is_described_for_the_model() -> None:
     assert set(tool.args) == {"query", "merchant_id", "customer_id", "kind", "k"}
     assert tool.args["kind"]["default"] == "any"
     assert tool.args["k"]["default"] == 3
+
+
+def test_the_recall_says_whether_the_index_was_rebuilt(tmp_path: Path, fake_embeddings: FastEmbedEmbeddings) -> None:
+    """The result of the recall says whether the index of the answer was rebuilt from the saved cases.
+
+    Why it matters: a reader of the recall has to know when the index of the answer is a rebuild and not the
+    index of the disk, because a rebuild reads the saved cases and a load reads the index of the disk.
+    """
+    memory = CaseMemory(tmp_path, embeddings=fake_embeddings)
+    tool = build_recall_cases_tool(memory=memory)
+
+    first = tool.invoke({"query": "refund with a lower rate"})
+    assert first["data"]["index_rebuilt"] is True
+    assert "rebuilt" in first["data"]["note"]
+
+    # The index in use is still the rebuild, and the recall says so while it is the one in use.
+    second = tool.invoke({"query": "refund with a lower rate"})
+    assert second["data"]["index_rebuilt"] is True
+
+    # A memory over the same runtime folder loads the index of the disk, and the recall says it was not rebuilt.
+    loaded = CaseMemory(tmp_path, embeddings=fake_embeddings)
+    third = build_recall_cases_tool(memory=loaded).invoke({"query": "refund with a lower rate"})
+    assert third["data"]["index_rebuilt"] is False
+    assert "note" not in third["data"]

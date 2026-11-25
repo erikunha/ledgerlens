@@ -1,4 +1,16 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { expect, test, type Locator, type Page } from "@playwright/test";
+
+/**
+ * The number of the events of the published recording of the scenario S01, read from the bundle the site
+ * serves. The recording is re-captured when the corpus moves, so the count is read and never written.
+ */
+const EVENTS = readFileSync(join(process.cwd(), "public", "replay", "s01", "events.jsonl"), "utf8")
+  .split("\n")
+  .filter((line) => line.trim().length > 0).length;
+
 
 /**
  * The end to end test of the route of a scenario of the recorded demo.
@@ -131,7 +143,7 @@ test("the reset of the recording returns the visitor to the beginning", async ({
 
   const position = page.getByLabel("Position of the recording");
   await seekToTheEnd(position);
-  await expect(recordedRun.getByText("Event 57 of 57.")).toBeVisible();
+  await expect(recordedRun.getByText(`Event ${EVENTS} of ${EVENTS}.`)).toBeVisible();
 
   await page.getByRole("button", { name: "Restart the recording" }).click();
 

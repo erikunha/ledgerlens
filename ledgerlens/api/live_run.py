@@ -419,6 +419,15 @@ class ModelCaller:
         self.in_flight = False
 
     @property
+    def budget(self) -> BudgetCoordinator:
+        """The coordinator of the run: the one counter of the calls of the provider.
+
+        Why the coordinator is exposed: the agent of the case runs with the same coordinator, so the usage of
+        the turn of the agent is the usage of the run, and no call of the provider is counted twice (ADR-054).
+        """
+        return self._budget
+
+    @property
     def model_id(self) -> str:
         """The model of the run, the one the request may not change (FR-013)."""
         return self._model_id

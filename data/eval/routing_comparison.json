@@ -1,0 +1,1613 @@
+{
+  "arms": {
+    "cascade": {
+      "accuracy": {
+        "accuracy": 0.76,
+        "cases": 31
+      },
+      "accuracy_by_intent": {
+        "chargeback_status": {
+          "accuracy": 0.6667,
+          "cases": 1
+        },
+        "duplicate_charge": {
+          "accuracy": 1.0,
+          "cases": 1
+        },
+        "fx_question": {
+          "accuracy": 0.75,
+          "cases": 2
+        },
+        "other": {
+          "accuracy": 0.5,
+          "cases": 2
+        },
+        "policy_question": {
+          "accuracy": 0.5,
+          "cases": 4
+        },
+        "refund_discrepancy": {
+          "accuracy": 0.5786,
+          "cases": 5
+        },
+        "settlement_question": {
+          "accuracy": 1.0,
+          "cases": 1
+        },
+        "status_lookup": {
+          "accuracy": 0.9,
+          "cases": 15
+        }
+      },
+      "arm": {
+        "description": "The model of each slot, chosen by the task the slot does, read from the cascade.",
+        "models": {
+          "agent": "openai:gpt-4.1",
+          "policy": "openai:gpt-4.1-mini",
+          "sql": "openai:gpt-4.1",
+          "triage": "openai:gpt-4.1-mini"
+        },
+        "name": "cascade"
+      },
+      "cases": [
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1": 4,
+            "openai:gpt-4.1-mini": 1
+          },
+          "case": "EC-01",
+          "correctness": 0.25,
+          "cost_usd": null,
+          "input_tokens_by_model": {
+            "openai:gpt-4.1": 7767,
+            "openai:gpt-4.1-mini": 1263
+          },
+          "intent": "refund_discrepancy",
+          "latency_ms": 6167,
+          "missing_facts": [
+            "566.79",
+            "17.48",
+            "14.08"
+          ],
+          "money_reason": "the price of openai:gpt-4.1 was never verified",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1": 285,
+            "openai:gpt-4.1-mini": 133
+          },
+          "unpriced_models": [
+            "openai:gpt-4.1"
+          ]
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1": 3,
+            "openai:gpt-4.1-mini": 1
+          },
+          "case": "EC-02",
+          "correctness": 1.0,
+          "cost_usd": null,
+          "input_tokens_by_model": {
+            "openai:gpt-4.1": 5367,
+            "openai:gpt-4.1-mini": 1275
+          },
+          "intent": "duplicate_charge",
+          "latency_ms": 4769,
+          "missing_facts": [],
+          "money_reason": "the price of openai:gpt-4.1 was never verified",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1": 224,
+            "openai:gpt-4.1-mini": 106
+          },
+          "unpriced_models": [
+            "openai:gpt-4.1"
+          ]
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1": 3,
+            "openai:gpt-4.1-mini": 1
+          },
+          "case": "EC-03",
+          "correctness": 0.6666666666666666,
+          "cost_usd": null,
+          "input_tokens_by_model": {
+            "openai:gpt-4.1": 4928,
+            "openai:gpt-4.1-mini": 1264
+          },
+          "intent": "chargeback_status",
+          "latency_ms": 3664,
+          "missing_facts": [
+            "NRC"
+          ],
+          "money_reason": "the price of openai:gpt-4.1 was never verified",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1": 89,
+            "openai:gpt-4.1-mini": 103
+          },
+          "unpriced_models": [
+            "openai:gpt-4.1"
+          ]
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1": 3,
+            "openai:gpt-4.1-mini": 1
+          },
+          "case": "EC-04",
+          "correctness": 0.5,
+          "cost_usd": null,
+          "input_tokens_by_model": {
+            "openai:gpt-4.1": 4825,
+            "openai:gpt-4.1-mini": 1256
+          },
+          "intent": "status_lookup",
+          "latency_ms": 3631,
+          "missing_facts": [
+            "row_count 0"
+          ],
+          "money_reason": "the price of openai:gpt-4.1 was never verified",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1": 68,
+            "openai:gpt-4.1-mini": 53
+          },
+          "unpriced_models": [
+            "openai:gpt-4.1"
+          ]
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1": 3,
+            "openai:gpt-4.1-mini": 1
+          },
+          "case": "EC-05",
+          "correctness": 0.0,
+          "cost_usd": null,
+          "input_tokens_by_model": {
+            "openai:gpt-4.1": 4901,
+            "openai:gpt-4.1-mini": 1267
+          },
+          "intent": "status_lookup",
+          "latency_ms": 5361,
+          "missing_facts": [
+            "TX-2060",
+            "M-03",
+            "TX-2061",
+            "M-17"
+          ],
+          "money_reason": "the price of openai:gpt-4.1 was never verified",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1": 123,
+            "openai:gpt-4.1-mini": 82
+          },
+          "unpriced_models": [
+            "openai:gpt-4.1"
+          ]
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1": 4,
+            "openai:gpt-4.1-mini": 2
+          },
+          "case": "EC-06",
+          "correctness": 1.0,
+          "cost_usd": null,
+          "input_tokens_by_model": {
+            "openai:gpt-4.1": 8035,
+            "openai:gpt-4.1-mini": 1356
+          },
+          "intent": "refund_discrepancy",
+          "latency_ms": 7168,
+          "missing_facts": [],
+          "money_reason": "the price of openai:gpt-4.1 was never verified",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1": 251,
+            "openai:gpt-4.1-mini": 164
+          },
+          "unpriced_models": [
+            "openai:gpt-4.1"
+          ]
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1": 5,
+            "openai:gpt-4.1-mini": 1
+          },
+          "case": "EC-07",
+          "correctness": 1.0,
+          "cost_usd": null,
+          "input_tokens_by_model": {
+            "openai:gpt-4.1": 8668,
+            "openai:gpt-4.1-mini": 1264
+          },
+          "intent": "refund_discrepancy",
+          "latency_ms": 6281,
+          "missing_facts": [],
+          "money_reason": "the price of openai:gpt-4.1 was never verified",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1": 225,
+            "openai:gpt-4.1-mini": 152
+          },
+          "unpriced_models": [
+            "openai:gpt-4.1"
+          ]
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1": 3,
+            "openai:gpt-4.1-mini": 1
+          },
+          "case": "EC-08",
+          "correctness": 1.0,
+          "cost_usd": null,
+          "input_tokens_by_model": {
+            "openai:gpt-4.1": 5126,
+            "openai:gpt-4.1-mini": 1265
+          },
+          "intent": "settlement_question",
+          "latency_ms": 4884,
+          "missing_facts": [],
+          "money_reason": "the price of openai:gpt-4.1 was never verified",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1": 223,
+            "openai:gpt-4.1-mini": 141
+          },
+          "unpriced_models": [
+            "openai:gpt-4.1"
+          ]
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1": 3,
+            "openai:gpt-4.1-mini": 1
+          },
+          "case": "EC-09",
+          "correctness": 1.0,
+          "cost_usd": null,
+          "input_tokens_by_model": {
+            "openai:gpt-4.1": 4874,
+            "openai:gpt-4.1-mini": 1262
+          },
+          "intent": "status_lookup",
+          "latency_ms": 3549,
+          "missing_facts": [],
+          "money_reason": "the price of openai:gpt-4.1 was never verified",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1": 78,
+            "openai:gpt-4.1-mini": 68
+          },
+          "unpriced_models": [
+            "openai:gpt-4.1"
+          ]
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1": 3,
+            "openai:gpt-4.1-mini": 1
+          },
+          "case": "EC-10",
+          "correctness": 0.5,
+          "cost_usd": null,
+          "input_tokens_by_model": {
+            "openai:gpt-4.1": 6756,
+            "openai:gpt-4.1-mini": 1263
+          },
+          "intent": "fx_question",
+          "latency_ms": 4523,
+          "missing_facts": [
+            "2500000"
+          ],
+          "money_reason": "the price of openai:gpt-4.1 was never verified",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1": 121,
+            "openai:gpt-4.1-mini": 61
+          },
+          "unpriced_models": [
+            "openai:gpt-4.1"
+          ]
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1": 4,
+            "openai:gpt-4.1-mini": 1
+          },
+          "case": "EC-11",
+          "correctness": 0.5,
+          "cost_usd": null,
+          "input_tokens_by_model": {
+            "openai:gpt-4.1": 8650,
+            "openai:gpt-4.1-mini": 1263
+          },
+          "intent": "refund_discrepancy",
+          "latency_ms": 7434,
+          "missing_facts": [
+            "EUR-BRL 2026-10-20"
+          ],
+          "money_reason": "the price of openai:gpt-4.1 was never verified",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1": 349,
+            "openai:gpt-4.1-mini": 159
+          },
+          "unpriced_models": [
+            "openai:gpt-4.1"
+          ]
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1": 2,
+            "openai:gpt-4.1-mini": 1
+          },
+          "case": "EC-12",
+          "correctness": 1.0,
+          "cost_usd": null,
+          "input_tokens_by_model": {
+            "openai:gpt-4.1": 4363,
+            "openai:gpt-4.1-mini": 1262
+          },
+          "intent": "other",
+          "latency_ms": 3140,
+          "missing_facts": [],
+          "money_reason": "the price of openai:gpt-4.1 was never verified",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1": 86,
+            "openai:gpt-4.1-mini": 71
+          },
+          "unpriced_models": [
+            "openai:gpt-4.1"
+          ]
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1": 3,
+            "openai:gpt-4.1-mini": 2
+          },
+          "case": "EC-13",
+          "correctness": 1.0,
+          "cost_usd": null,
+          "input_tokens_by_model": {
+            "openai:gpt-4.1": 4829,
+            "openai:gpt-4.1-mini": 2345
+          },
+          "intent": "status_lookup",
+          "latency_ms": 4876,
+          "missing_facts": [],
+          "money_reason": "the price of openai:gpt-4.1 was never verified",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1": 57,
+            "openai:gpt-4.1-mini": 173
+          },
+          "unpriced_models": [
+            "openai:gpt-4.1"
+          ]
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1": 3,
+            "openai:gpt-4.1-mini": 1
+          },
+          "case": "EC-14",
+          "correctness": 1.0,
+          "cost_usd": null,
+          "input_tokens_by_model": {
+            "openai:gpt-4.1": 4826,
+            "openai:gpt-4.1-mini": 1256
+          },
+          "intent": "status_lookup",
+          "latency_ms": 3628,
+          "missing_facts": [],
+          "money_reason": "the price of openai:gpt-4.1 was never verified",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1": 56,
+            "openai:gpt-4.1-mini": 52
+          },
+          "unpriced_models": [
+            "openai:gpt-4.1"
+          ]
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1": 3,
+            "openai:gpt-4.1-mini": 1
+          },
+          "case": "EC-15",
+          "correctness": 1.0,
+          "cost_usd": null,
+          "input_tokens_by_model": {
+            "openai:gpt-4.1": 4829,
+            "openai:gpt-4.1-mini": 1256
+          },
+          "intent": "status_lookup",
+          "latency_ms": 4312,
+          "missing_facts": [],
+          "money_reason": "the price of openai:gpt-4.1 was never verified",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1": 59,
+            "openai:gpt-4.1-mini": 52
+          },
+          "unpriced_models": [
+            "openai:gpt-4.1"
+          ]
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1": 3,
+            "openai:gpt-4.1-mini": 1
+          },
+          "case": "EC-16",
+          "correctness": 1.0,
+          "cost_usd": null,
+          "input_tokens_by_model": {
+            "openai:gpt-4.1": 4829,
+            "openai:gpt-4.1-mini": 1256
+          },
+          "intent": "status_lookup",
+          "latency_ms": 3107,
+          "missing_facts": [],
+          "money_reason": "the price of openai:gpt-4.1 was never verified",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1": 57,
+            "openai:gpt-4.1-mini": 53
+          },
+          "unpriced_models": [
+            "openai:gpt-4.1"
+          ]
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1": 3,
+            "openai:gpt-4.1-mini": 1
+          },
+          "case": "EC-17",
+          "correctness": 1.0,
+          "cost_usd": null,
+          "input_tokens_by_model": {
+            "openai:gpt-4.1": 4829,
+            "openai:gpt-4.1-mini": 1256
+          },
+          "intent": "status_lookup",
+          "latency_ms": 3285,
+          "missing_facts": [],
+          "money_reason": "the price of openai:gpt-4.1 was never verified",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1": 57,
+            "openai:gpt-4.1-mini": 53
+          },
+          "unpriced_models": [
+            "openai:gpt-4.1"
+          ]
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1": 3,
+            "openai:gpt-4.1-mini": 1
+          },
+          "case": "EC-18",
+          "correctness": 1.0,
+          "cost_usd": null,
+          "input_tokens_by_model": {
+            "openai:gpt-4.1": 4827,
+            "openai:gpt-4.1-mini": 1256
+          },
+          "intent": "status_lookup",
+          "latency_ms": 3255,
+          "missing_facts": [],
+          "money_reason": "the price of openai:gpt-4.1 was never verified",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1": 57,
+            "openai:gpt-4.1-mini": 52
+          },
+          "unpriced_models": [
+            "openai:gpt-4.1"
+          ]
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1": 3,
+            "openai:gpt-4.1-mini": 1
+          },
+          "case": "EC-19",
+          "correctness": 1.0,
+          "cost_usd": null,
+          "input_tokens_by_model": {
+            "openai:gpt-4.1": 4893,
+            "openai:gpt-4.1-mini": 1263
+          },
+          "intent": "status_lookup",
+          "latency_ms": 3365,
+          "missing_facts": [],
+          "money_reason": "the price of openai:gpt-4.1 was never verified",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1": 82,
+            "openai:gpt-4.1-mini": 67
+          },
+          "unpriced_models": [
+            "openai:gpt-4.1"
+          ]
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1": 3,
+            "openai:gpt-4.1-mini": 1
+          },
+          "case": "EC-20",
+          "correctness": 1.0,
+          "cost_usd": null,
+          "input_tokens_by_model": {
+            "openai:gpt-4.1": 4896,
+            "openai:gpt-4.1-mini": 1263
+          },
+          "intent": "status_lookup",
+          "latency_ms": 3451,
+          "missing_facts": [],
+          "money_reason": "the price of openai:gpt-4.1 was never verified",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1": 85,
+            "openai:gpt-4.1-mini": 67
+          },
+          "unpriced_models": [
+            "openai:gpt-4.1"
+          ]
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1": 3,
+            "openai:gpt-4.1-mini": 1
+          },
+          "case": "EC-21",
+          "correctness": 1.0,
+          "cost_usd": null,
+          "input_tokens_by_model": {
+            "openai:gpt-4.1": 4894,
+            "openai:gpt-4.1-mini": 1263
+          },
+          "intent": "status_lookup",
+          "latency_ms": 3893,
+          "missing_facts": [],
+          "money_reason": "the price of openai:gpt-4.1 was never verified",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1": 84,
+            "openai:gpt-4.1-mini": 67
+          },
+          "unpriced_models": [
+            "openai:gpt-4.1"
+          ]
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1": 3,
+            "openai:gpt-4.1-mini": 1
+          },
+          "case": "EC-22",
+          "correctness": 1.0,
+          "cost_usd": null,
+          "input_tokens_by_model": {
+            "openai:gpt-4.1": 4894,
+            "openai:gpt-4.1-mini": 1263
+          },
+          "intent": "status_lookup",
+          "latency_ms": 3334,
+          "missing_facts": [],
+          "money_reason": "the price of openai:gpt-4.1 was never verified",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1": 83,
+            "openai:gpt-4.1-mini": 67
+          },
+          "unpriced_models": [
+            "openai:gpt-4.1"
+          ]
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1": 3,
+            "openai:gpt-4.1-mini": 1
+          },
+          "case": "EC-23",
+          "correctness": 1.0,
+          "cost_usd": null,
+          "input_tokens_by_model": {
+            "openai:gpt-4.1": 4896,
+            "openai:gpt-4.1-mini": 1263
+          },
+          "intent": "status_lookup",
+          "latency_ms": 3654,
+          "missing_facts": [],
+          "money_reason": "the price of openai:gpt-4.1 was never verified",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1": 85,
+            "openai:gpt-4.1-mini": 67
+          },
+          "unpriced_models": [
+            "openai:gpt-4.1"
+          ]
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1": 3,
+            "openai:gpt-4.1-mini": 1
+          },
+          "case": "EC-24",
+          "correctness": 1.0,
+          "cost_usd": null,
+          "input_tokens_by_model": {
+            "openai:gpt-4.1": 4894,
+            "openai:gpt-4.1-mini": 1263
+          },
+          "intent": "status_lookup",
+          "latency_ms": 3564,
+          "missing_facts": [],
+          "money_reason": "the price of openai:gpt-4.1 was never verified",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1": 84,
+            "openai:gpt-4.1-mini": 67
+          },
+          "unpriced_models": [
+            "openai:gpt-4.1"
+          ]
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1": 2,
+            "openai:gpt-4.1-mini": 2
+          },
+          "case": "EC-25",
+          "correctness": 1.0,
+          "cost_usd": null,
+          "input_tokens_by_model": {
+            "openai:gpt-4.1": 4896,
+            "openai:gpt-4.1-mini": 1343
+          },
+          "intent": "policy_question",
+          "latency_ms": 4568,
+          "missing_facts": [],
+          "money_reason": "the price of openai:gpt-4.1 was never verified",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1": 177,
+            "openai:gpt-4.1-mini": 113
+          },
+          "unpriced_models": [
+            "openai:gpt-4.1"
+          ]
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1": 2,
+            "openai:gpt-4.1-mini": 2
+          },
+          "case": "EC-26",
+          "correctness": 0.0,
+          "cost_usd": null,
+          "input_tokens_by_model": {
+            "openai:gpt-4.1": 4799,
+            "openai:gpt-4.1-mini": 1334
+          },
+          "intent": "policy_question",
+          "latency_ms": 6861,
+          "missing_facts": [
+            "duplicate-charges#detection-rule"
+          ],
+          "money_reason": "the price of openai:gpt-4.1 was never verified",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1": 175,
+            "openai:gpt-4.1-mini": 106
+          },
+          "unpriced_models": [
+            "openai:gpt-4.1"
+          ]
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1": 2,
+            "openai:gpt-4.1-mini": 2
+          },
+          "case": "EC-27",
+          "correctness": 1.0,
+          "cost_usd": null,
+          "input_tokens_by_model": {
+            "openai:gpt-4.1": 4883,
+            "openai:gpt-4.1-mini": 1342
+          },
+          "intent": "fx_question",
+          "latency_ms": 3890,
+          "missing_facts": [],
+          "money_reason": "the price of openai:gpt-4.1 was never verified",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1": 116,
+            "openai:gpt-4.1-mini": 109
+          },
+          "unpriced_models": [
+            "openai:gpt-4.1"
+          ]
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1-mini": 1
+          },
+          "case": "EC-28",
+          "correctness": 0.0,
+          "cost_usd": "0.0006788",
+          "input_tokens_by_model": {
+            "openai:gpt-4.1-mini": 1257
+          },
+          "intent": "other",
+          "latency_ms": 1340,
+          "missing_facts": [
+            "escalation-and-review#when-to-escalate"
+          ],
+          "money_reason": "",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1-mini": 110
+          },
+          "unpriced_models": []
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1": 2,
+            "openai:gpt-4.1-mini": 2
+          },
+          "case": "EC-29",
+          "correctness": 1.0,
+          "cost_usd": null,
+          "input_tokens_by_model": {
+            "openai:gpt-4.1": 4992,
+            "openai:gpt-4.1-mini": 1342
+          },
+          "intent": "policy_question",
+          "latency_ms": 3867,
+          "missing_facts": [],
+          "money_reason": "the price of openai:gpt-4.1 was never verified",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1": 143,
+            "openai:gpt-4.1-mini": 114
+          },
+          "unpriced_models": [
+            "openai:gpt-4.1"
+          ]
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1": 2,
+            "openai:gpt-4.1-mini": 2
+          },
+          "case": "EC-30",
+          "correctness": 0.0,
+          "cost_usd": null,
+          "input_tokens_by_model": {
+            "openai:gpt-4.1": 4911,
+            "openai:gpt-4.1-mini": 1352
+          },
+          "intent": "policy_question",
+          "latency_ms": 4066,
+          "missing_facts": [
+            "chargeback-handling#evidence-checklist"
+          ],
+          "money_reason": "the price of openai:gpt-4.1 was never verified",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1": 110,
+            "openai:gpt-4.1-mini": 124
+          },
+          "unpriced_models": [
+            "openai:gpt-4.1"
+          ]
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1": 4,
+            "openai:gpt-4.1-mini": 1
+          },
+          "case": "EC-31",
+          "correctness": 0.14285714285714285,
+          "cost_usd": null,
+          "input_tokens_by_model": {
+            "openai:gpt-4.1": 8638,
+            "openai:gpt-4.1-mini": 1263
+          },
+          "intent": "refund_discrepancy",
+          "latency_ms": 6313,
+          "missing_facts": [
+            "453.06",
+            "21.52",
+            "20.34",
+            "4.50",
+            "3.00",
+            "451.88"
+          ],
+          "money_reason": "the price of openai:gpt-4.1 was never verified",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1": 341,
+            "openai:gpt-4.1-mini": 149
+          },
+          "unpriced_models": [
+            "openai:gpt-4.1"
+          ]
+        }
+      ],
+      "correct_cases": {
+        "cases": 21,
+        "of": 31
+      },
+      "cost_per_correct_case": {
+        "correct_cases": 21,
+        "money_unknown_reason": "the price of openai:gpt-4.1 was never verified",
+        "tokens": "10161",
+        "total_tokens": 213396,
+        "unpriced_models": [
+          "openai:gpt-4.1"
+        ],
+        "usd": null,
+        "usd_known": false
+      },
+      "fallback_rate": {
+        "calls": 128,
+        "fallbacks": 0,
+        "measured": false,
+        "reason": "the repository has no fallback with a budget in this path, so the rate was not measured",
+        "value": 0.0
+      },
+      "latency_p95_ms": {
+        "cases": 31,
+        "value": 7168
+      },
+      "model_mix": {
+        "openai:gpt-4.1": {
+          "calls": 90,
+          "share": 0.7031,
+          "tokens": 169745
+        },
+        "openai:gpt-4.1-mini": {
+          "calls": 38,
+          "share": 0.2969,
+          "tokens": 43651
+        }
+      }
+    },
+    "one_model": {
+      "accuracy": {
+        "accuracy": 0.7638,
+        "cases": 31
+      },
+      "accuracy_by_intent": {
+        "chargeback_status": {
+          "accuracy": 1.0,
+          "cases": 1
+        },
+        "duplicate_charge": {
+          "accuracy": 1.0,
+          "cases": 1
+        },
+        "fx_question": {
+          "accuracy": 0.75,
+          "cases": 2
+        },
+        "other": {
+          "accuracy": 0.0,
+          "cases": 2
+        },
+        "policy_question": {
+          "accuracy": 0.5,
+          "cases": 4
+        },
+        "refund_discrepancy": {
+          "accuracy": 0.6357,
+          "cases": 5
+        },
+        "settlement_question": {
+          "accuracy": 1.0,
+          "cases": 1
+        },
+        "status_lookup": {
+          "accuracy": 0.9333,
+          "cases": 15
+        }
+      },
+      "arm": {
+        "description": "One model in the four slots of the run: openai:gpt-4.1-mini.",
+        "models": {
+          "agent": "openai:gpt-4.1-mini",
+          "policy": "openai:gpt-4.1-mini",
+          "sql": "openai:gpt-4.1-mini",
+          "triage": "openai:gpt-4.1-mini"
+        },
+        "name": "one_model"
+      },
+      "cases": [
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1-mini": 12
+          },
+          "case": "EC-01",
+          "correctness": 0.25,
+          "cost_usd": "0.0135716",
+          "input_tokens_by_model": {
+            "openai:gpt-4.1-mini": 29685
+          },
+          "intent": "refund_discrepancy",
+          "latency_ms": 16527,
+          "missing_facts": [
+            "566.79",
+            "17.48",
+            "14.08"
+          ],
+          "money_reason": "",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1-mini": 1061
+          },
+          "unpriced_models": []
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1-mini": 5
+          },
+          "case": "EC-02",
+          "correctness": 1.0,
+          "cost_usd": "0.0035180",
+          "input_tokens_by_model": {
+            "openai:gpt-4.1-mini": 7351
+          },
+          "intent": "duplicate_charge",
+          "latency_ms": 6319,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1-mini": 361
+          },
+          "unpriced_models": []
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1-mini": 6
+          },
+          "case": "EC-03",
+          "correctness": 1.0,
+          "cost_usd": "0.0044860",
+          "input_tokens_by_model": {
+            "openai:gpt-4.1-mini": 9683
+          },
+          "intent": "chargeback_status",
+          "latency_ms": 6602,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1-mini": 383
+          },
+          "unpriced_models": []
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1-mini": 4
+          },
+          "case": "EC-04",
+          "correctness": 0.5,
+          "cost_usd": "0.0026084",
+          "input_tokens_by_model": {
+            "openai:gpt-4.1-mini": 6073
+          },
+          "intent": "status_lookup",
+          "latency_ms": 3434,
+          "missing_facts": [
+            "row_count 0"
+          ],
+          "money_reason": "",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1-mini": 112
+          },
+          "unpriced_models": []
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1-mini": 4
+          },
+          "case": "EC-05",
+          "correctness": 0.5,
+          "cost_usd": "0.0029744",
+          "input_tokens_by_model": {
+            "openai:gpt-4.1-mini": 6412
+          },
+          "intent": "status_lookup",
+          "latency_ms": 4897,
+          "missing_facts": [
+            "M-03",
+            "M-17"
+          ],
+          "money_reason": "",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1-mini": 256
+          },
+          "unpriced_models": []
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1-mini": 8
+          },
+          "case": "EC-06",
+          "correctness": 1.0,
+          "cost_usd": "0.0062836",
+          "input_tokens_by_model": {
+            "openai:gpt-4.1-mini": 13689
+          },
+          "intent": "refund_discrepancy",
+          "latency_ms": 8794,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1-mini": 505
+          },
+          "unpriced_models": []
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1-mini": 4
+          },
+          "case": "EC-07",
+          "correctness": 0.5,
+          "cost_usd": "0.0041668",
+          "input_tokens_by_model": {
+            "openai:gpt-4.1-mini": 8701
+          },
+          "intent": "refund_discrepancy",
+          "latency_ms": 5721,
+          "missing_facts": [
+            "0.00"
+          ],
+          "money_reason": "",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1-mini": 429
+          },
+          "unpriced_models": []
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1-mini": 4
+          },
+          "case": "EC-08",
+          "correctness": 1.0,
+          "cost_usd": "0.0031404",
+          "input_tokens_by_model": {
+            "openai:gpt-4.1-mini": 6411
+          },
+          "intent": "settlement_question",
+          "latency_ms": 5019,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1-mini": 360
+          },
+          "unpriced_models": []
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1-mini": 4
+          },
+          "case": "EC-09",
+          "correctness": 1.0,
+          "cost_usd": "0.0028220",
+          "input_tokens_by_model": {
+            "openai:gpt-4.1-mini": 6239
+          },
+          "intent": "status_lookup",
+          "latency_ms": 4007,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1-mini": 204
+          },
+          "unpriced_models": []
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1-mini": 4
+          },
+          "case": "EC-10",
+          "correctness": 0.5,
+          "cost_usd": "0.0034992",
+          "input_tokens_by_model": {
+            "openai:gpt-4.1-mini": 8020
+          },
+          "intent": "fx_question",
+          "latency_ms": 4464,
+          "missing_facts": [
+            "2500000"
+          ],
+          "money_reason": "",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1-mini": 182
+          },
+          "unpriced_models": []
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1-mini": 8
+          },
+          "case": "EC-11",
+          "correctness": 1.0,
+          "cost_usd": "0.0077852",
+          "input_tokens_by_model": {
+            "openai:gpt-4.1-mini": 16771
+          },
+          "intent": "refund_discrepancy",
+          "latency_ms": 10520,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1-mini": 673
+          },
+          "unpriced_models": []
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1-mini": 3
+          },
+          "case": "EC-12",
+          "correctness": 0.0,
+          "cost_usd": "0.0024192",
+          "input_tokens_by_model": {
+            "openai:gpt-4.1-mini": 5504
+          },
+          "intent": "other",
+          "latency_ms": 3250,
+          "missing_facts": [
+            "CASE-0001"
+          ],
+          "money_reason": "",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1-mini": 136
+          },
+          "unpriced_models": []
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1-mini": 4
+          },
+          "case": "EC-13",
+          "correctness": 1.0,
+          "cost_usd": "0.002598",
+          "input_tokens_by_model": {
+            "openai:gpt-4.1-mini": 6075
+          },
+          "intent": "status_lookup",
+          "latency_ms": 3622,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1-mini": 105
+          },
+          "unpriced_models": []
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1-mini": 4
+          },
+          "case": "EC-14",
+          "correctness": 1.0,
+          "cost_usd": "0.0025960",
+          "input_tokens_by_model": {
+            "openai:gpt-4.1-mini": 6074
+          },
+          "intent": "status_lookup",
+          "latency_ms": 3463,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1-mini": 104
+          },
+          "unpriced_models": []
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1-mini": 4
+          },
+          "case": "EC-15",
+          "correctness": 1.0,
+          "cost_usd": "0.0026020",
+          "input_tokens_by_model": {
+            "openai:gpt-4.1-mini": 6077
+          },
+          "intent": "status_lookup",
+          "latency_ms": 3469,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1-mini": 107
+          },
+          "unpriced_models": []
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1-mini": 4
+          },
+          "case": "EC-16",
+          "correctness": 1.0,
+          "cost_usd": "0.002598",
+          "input_tokens_by_model": {
+            "openai:gpt-4.1-mini": 6075
+          },
+          "intent": "status_lookup",
+          "latency_ms": 3399,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1-mini": 105
+          },
+          "unpriced_models": []
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1-mini": 4
+          },
+          "case": "EC-17",
+          "correctness": 1.0,
+          "cost_usd": "0.0025932",
+          "input_tokens_by_model": {
+            "openai:gpt-4.1-mini": 6075
+          },
+          "intent": "status_lookup",
+          "latency_ms": 3356,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1-mini": 102
+          },
+          "unpriced_models": []
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1-mini": 4
+          },
+          "case": "EC-18",
+          "correctness": 1.0,
+          "cost_usd": "0.002598",
+          "input_tokens_by_model": {
+            "openai:gpt-4.1-mini": 6075
+          },
+          "intent": "status_lookup",
+          "latency_ms": 3405,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1-mini": 105
+          },
+          "unpriced_models": []
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1-mini": 4
+          },
+          "case": "EC-19",
+          "correctness": 1.0,
+          "cost_usd": "0.0026944",
+          "input_tokens_by_model": {
+            "openai:gpt-4.1-mini": 6148
+          },
+          "intent": "status_lookup",
+          "latency_ms": 3752,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1-mini": 147
+          },
+          "unpriced_models": []
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1-mini": 4
+          },
+          "case": "EC-20",
+          "correctness": 1.0,
+          "cost_usd": "0.0027004",
+          "input_tokens_by_model": {
+            "openai:gpt-4.1-mini": 6151
+          },
+          "intent": "status_lookup",
+          "latency_ms": 3612,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1-mini": 150
+          },
+          "unpriced_models": []
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1-mini": 4
+          },
+          "case": "EC-21",
+          "correctness": 1.0,
+          "cost_usd": "0.0027068",
+          "input_tokens_by_model": {
+            "openai:gpt-4.1-mini": 6155
+          },
+          "intent": "status_lookup",
+          "latency_ms": 4370,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1-mini": 153
+          },
+          "unpriced_models": []
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1-mini": 4
+          },
+          "case": "EC-22",
+          "correctness": 1.0,
+          "cost_usd": "0.0027024",
+          "input_tokens_by_model": {
+            "openai:gpt-4.1-mini": 6152
+          },
+          "intent": "status_lookup",
+          "latency_ms": 3539,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1-mini": 151
+          },
+          "unpriced_models": []
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1-mini": 4
+          },
+          "case": "EC-23",
+          "correctness": 1.0,
+          "cost_usd": "0.0027004",
+          "input_tokens_by_model": {
+            "openai:gpt-4.1-mini": 6151
+          },
+          "intent": "status_lookup",
+          "latency_ms": 3695,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1-mini": 150
+          },
+          "unpriced_models": []
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1-mini": 4
+          },
+          "case": "EC-24",
+          "correctness": 1.0,
+          "cost_usd": "0.0027052",
+          "input_tokens_by_model": {
+            "openai:gpt-4.1-mini": 6155
+          },
+          "intent": "status_lookup",
+          "latency_ms": 3609,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1-mini": 152
+          },
+          "unpriced_models": []
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1-mini": 4
+          },
+          "case": "EC-25",
+          "correctness": 1.0,
+          "cost_usd": "0.0028140",
+          "input_tokens_by_model": {
+            "openai:gpt-4.1-mini": 6211
+          },
+          "intent": "policy_question",
+          "latency_ms": 3908,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1-mini": 206
+          },
+          "unpriced_models": []
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1-mini": 4
+          },
+          "case": "EC-26",
+          "correctness": 0.0,
+          "cost_usd": "0.0029844",
+          "input_tokens_by_model": {
+            "openai:gpt-4.1-mini": 6133
+          },
+          "intent": "policy_question",
+          "latency_ms": 4862,
+          "missing_facts": [
+            "duplicate-charges#detection-rule"
+          ],
+          "money_reason": "",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1-mini": 332
+          },
+          "unpriced_models": []
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1-mini": 4
+          },
+          "case": "EC-27",
+          "correctness": 1.0,
+          "cost_usd": "0.0028240",
+          "input_tokens_by_model": {
+            "openai:gpt-4.1-mini": 6228
+          },
+          "intent": "fx_question",
+          "latency_ms": 3811,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1-mini": 208
+          },
+          "unpriced_models": []
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1-mini": 1
+          },
+          "case": "EC-28",
+          "correctness": 0.0,
+          "cost_usd": "0.0006788",
+          "input_tokens_by_model": {
+            "openai:gpt-4.1-mini": 1257
+          },
+          "intent": "other",
+          "latency_ms": 1212,
+          "missing_facts": [
+            "escalation-and-review#when-to-escalate"
+          ],
+          "money_reason": "",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1-mini": 110
+          },
+          "unpriced_models": []
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1-mini": 4
+          },
+          "case": "EC-29",
+          "correctness": 1.0,
+          "cost_usd": "0.0029460",
+          "input_tokens_by_model": {
+            "openai:gpt-4.1-mini": 6281
+          },
+          "intent": "policy_question",
+          "latency_ms": 4879,
+          "missing_facts": [],
+          "money_reason": "",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1-mini": 271
+          },
+          "unpriced_models": []
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1-mini": 4
+          },
+          "case": "EC-30",
+          "correctness": 0.0,
+          "cost_usd": "0.0029788",
+          "input_tokens_by_model": {
+            "openai:gpt-4.1-mini": 6331
+          },
+          "intent": "policy_question",
+          "latency_ms": 4374,
+          "missing_facts": [
+            "chargeback-handling#evidence-checklist"
+          ],
+          "money_reason": "",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1-mini": 279
+          },
+          "unpriced_models": []
+        },
+        {
+          "calls_by_model": {
+            "openai:gpt-4.1-mini": 8
+          },
+          "case": "EC-31",
+          "correctness": 0.42857142857142855,
+          "cost_usd": "0.0084440",
+          "input_tokens_by_model": {
+            "openai:gpt-4.1-mini": 18514
+          },
+          "intent": "refund_discrepancy",
+          "latency_ms": 9989,
+          "missing_facts": [
+            "20.34",
+            "4.50",
+            "3.00",
+            "451.88"
+          ],
+          "money_reason": "",
+          "output_tokens_by_model": {
+            "openai:gpt-4.1-mini": 649
+          },
+          "unpriced_models": []
+        }
+      ],
+      "correct_cases": {
+        "cases": 21,
+        "of": 31
+      },
+      "cost_per_correct_case": {
+        "correct_cases": 21,
+        "money_unknown_reason": "",
+        "tokens": "12243",
+        "total_tokens": 257105,
+        "unpriced_models": [],
+        "usd": "0.005369",
+        "usd_known": true
+      },
+      "fallback_rate": {
+        "calls": 143,
+        "fallbacks": 0,
+        "measured": false,
+        "reason": "the repository has no fallback with a budget in this path, so the rate was not measured",
+        "value": 0.0
+      },
+      "latency_p95_ms": {
+        "cases": 31,
+        "value": 10520
+      },
+      "model_mix": {
+        "openai:gpt-4.1-mini": {
+          "calls": 143,
+          "share": 1.0,
+          "tokens": 257105
+        }
+      }
+    }
+  },
+  "cohort": {
+    "cases": 31,
+    "digest": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+    "ids": [
+      "EC-01",
+      "EC-02",
+      "EC-03",
+      "EC-04",
+      "EC-05",
+      "EC-06",
+      "EC-07",
+      "EC-08",
+      "EC-09",
+      "EC-10",
+      "EC-11",
+      "EC-12",
+      "EC-13",
+      "EC-14",
+      "EC-15",
+      "EC-16",
+      "EC-17",
+      "EC-18",
+      "EC-19",
+      "EC-20",
+      "EC-21",
+      "EC-22",
+      "EC-23",
+      "EC-24",
+      "EC-25",
+      "EC-26",
+      "EC-27",
+      "EC-28",
+      "EC-29",
+      "EC-30",
+      "EC-31"
+    ],
+    "source": "data/eval/eval_cases.jsonl"
+  },
+  "judge": {
+    "comparable_with": "the other arm of this comparison and not with the published online report",
+    "correctness": "the deterministic judge of the repository",
+    "fx": "the fixtures of the exchange of the repository",
+    "nli": "the stub of the NLI of the repository, the real model of the NLI is not called",
+    "runs_per_case": 1
+  },
+  "ledger": {
+    "sha256": "994667ee48fb14a1f59858b2861716e291e9bd235c0817bf9c34904a9e10e91a",
+    "source": "the versioned sample of the repository"
+  },
+  "measured_at": "2026-11-25T11:35:03+00:00",
+  "mode": "online",
+  "note": "Real run of the two arms over the same cohort of cases, over the same ledger, with the deterministic judge of the repository. One run per case and one arm per model: the numbers are a trend and not a statistical significance. The dollars of a model whose price nobody verified are unknown, and unknown is never zero. The judge of the arms is the deterministic one with the stub of the NLI of the repository, and the client of the exchange runs on the fixtures of the repository: the absolute numbers are not the numbers of the published online report, and the two arms are the ones that are comparable with each other."
+}

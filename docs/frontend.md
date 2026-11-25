@@ -105,11 +105,57 @@ not tracked by git, so the site always serves the artifacts the repository publi
 half of the site is
 [ADR-043](decisions/ADR-043-the-public-site-of-the-design-package-is-complete.md).
 
+## The two catalogs of the replay site
+
+The site publishes TWO catalogs of recorded scenarios, and each one has its own route, its own folder of published
+artifacts and its own mode. The decision that fixed this is
+[ADR-075](decisions/ADR-075-the-site-publishes-two-catalogs-and-each-bundle-declares-the-one-it-belongs-to.md).
+
+| catalog | route of the catalog | route of a scenario | folder of the artifacts | mode |
+| --- | --- | --- | --- | --- |
+| the sandbox | `/replay` | `/replay/scenario/S01` | `site/replay/`, copied into `apps/web/public/replay/` | `deterministic_sandbox` |
+| a real model | `/replay-real` | `/replay-real/scenario/S01` | `site/replay-real/`, copied into `apps/web/public/replay-real/` | `live_agent` |
+
+The two catalogs answer two different questions. The catalog of the sandbox holds the recordings of the scripted model:
+they are a formula, and anybody can run them again and get the same bytes. The catalog of a real model holds the
+recordings of a real run: the agent read the ledger, asked the reference source and wrote its own answer, and the same
+question asked twice does not give the same answer, so those recordings are NOT reproducible byte for byte. The page of
+that catalog says so in words, and the verdicts of its claims were computed by the deterministic verifier of the
+repository, the same judge the sandbox catalog uses, so that anybody can re-verify a bundle of either catalog offline.
+
+**The table of the catalogs.** The two catalogs live in one table, `apps/web/lib/replay/catalogs.ts`, and every layer of
+the site reads that table: the client of the published artifacts, the reader of the catalog on the disk, the URL of a
+scenario and the page that shows it. The table holds the root of the artifacts, the mode that the bundles of that
+catalog declare, the route of the catalog and the name of the folder of the published artifacts. The layers cannot drift
+apart on any of those four things, because there is one place that says them.
+
+**The refusal is symmetrical.** A catalog is one mode, and the browser refuses a bundle whose manifest declares the mode
+of the other catalog. The catalog of the sandbox refuses a bundle that declares `live_agent`, and the catalog of a real
+model refuses a bundle that declares `deterministic_sandbox`. The refusal happens in the ONE place that reads the
+artifacts, so no other door can let a bundle of the wrong mode through, and the label of the other catalog never
+reaches a visitor of this one (ADR-043).
+
+**The loader never throws at the caller.** The loaders of the artifacts take named options, `catalog` and `fetch`, and
+not two positional arguments of two different kinds: a function passed where an identifier of a catalog is expected
+reads the root of nothing. A caller that names a catalog the site does not have is refused with a sentence, and not
+with an exception.
+
+**The rooms of the header.** The header of the shell (`apps/web/features/shell/Header.tsx`) names every room of the
+site, so that every room is reachable from every page. It names FIVE rooms: the catalog of the scripted model
+(`/replay`), the catalog of a real model (`/replay-real`), the sandbox of the visitor (`/sandbox`), the live mode
+(`/live`) and the tour of the architecture (`/engineering`). The room the visitor is in is marked with
+`aria-current="page"`, and the mark follows the path by SEGMENT and not by prefix: the prefix of the room of the
+scripted model is `/replay` and the prefix of the room of a real model is `/replay-real`, so a comparison that only
+looked at the beginning of the path would announce the wrong room on the pages of the catalog of a real model
+(ADR-075). The home page names the catalog of a real model in the card of the recorded demo, so a visitor who arrives
+at the door of the site finds both catalogs without having to know that the second one exists.
+
 The catalog of the scenarios is at `/replay`. The route of a scenario is at `/replay/scenario/<id>`, for example
 `/replay/scenario/S01`. It is NOT `/replay/<id>`, because the prefix `/replay` is both the page of the catalog of the
 export (`out/replay.html`) and the folder of the published artifacts (`out/replay/`), so a bundle inside that prefix
 could not be a page of the export and a folder at the same time, and a static file server would have to choose one
-of them. The extra segment removes the ambiguity.
+of them. The extra segment removes the ambiguity. The catalog of a real model follows the same rule, with its own
+prefix: `out/replay-real.html` is the page of its catalog and `out/replay-real/` is the folder of its artifacts.
 
 The route of a scenario is a server component, because a static export of a dynamic route needs the list of the
 parameters at build time. The page reads the catalog of the site from the disk while the export is built, it hands the
@@ -117,13 +163,20 @@ card of the scenario to the reader and to the provider of the replay, it publish
 and a scenario the catalog does not publish is the page of 404, never a guess at run time.
 
 **The reader of the catalog, and the order of the copy.** The reader of the catalog is
-`apps/web/lib/replay/catalog.ts`, and it is the one module of the frontend that reads the disk. It looks for the copy
-that the site serves first (`apps/web/public/replay/index.json`) and falls back to the source the repository publishes
-(`site/replay/index.json`), because the copy is not tracked by git and a checkout that has never built the frontend has
-no copy. A catalog that cannot be read, that is not a JSON document or whose card does not pass the contract of the
+`apps/web/lib/replay/catalog.ts`, and it is one of the two modules of the frontend that read the disk, the other one
+being `apps/web/lib/repository.ts`, which finds the root of the repository at build time. The reader looks for the
+copy that the site serves first (`apps/web/public/replay/index.json`) and falls back to the source the repository
+publishes (`site/replay/index.json`), because the copy is not tracked by git and a checkout that has never built the
+frontend has no copy. The reader takes the catalog as an argument, so the catalog of a real model is read from
+`public/replay-real/` and from `site/replay-real/`, and never from the folder of the sandbox. A catalog that cannot be
+read, that is not a
+JSON document or whose card does not pass the contract of the
 published artifacts stops the build with a reason: an empty catalog would build an export with no page of a scenario.
 The copy is made before the unit tests run as well as before the build, through the hook `pretest` of the manifest of
 the package, so that the suite of a checkout that has never built the frontend reads the same catalog the site serves.
+The copy takes the two catalogs, and BOTH are required: the route of a scenario of each catalog reads the catalog of
+that route from the disk while the export is built, so a checkout without one of them has no page for that catalog, and
+the copy fails with a readable reason instead of building half a site.
 
 **The URL of the replay.** The URL carries the identifier of the scenario in the path, and in the query string exactly
 two keys, `tab` and `speed`, and nothing else ever. The five tabs are `execution`, `ledger`, `evidence`, `decision` and
@@ -203,15 +256,20 @@ flowchart TD
   subgraph EXPORT["The static export of the site, the origin of the site"]
     CAT["The catalog of the scenarios<br/>/replay/index.json"]
     BND["The bundle of a scenario<br/>/replay/s01/manifest.json<br/>/replay/s01/events.jsonl<br/>/replay/s01/provenance.json"]
+    CATR["The catalog of a real model<br/>/replay-real/index.json"]
+    BNDR["The bundle of a real model<br/>/replay-real/s01/manifest.json<br/>/replay-real/s01/events.jsonl<br/>/replay-real/s01/provenance.json"]
   end
 
   subgraph PAGES["The pages of the replay"]
     CP["The catalog page<br/>/replay"]
     SP["The route of a scenario<br/>/replay/scenario/S01<br/>one page per published scenario"]
+    CPR["The catalog page of a real model<br/>/replay-real"]
+    SPR["The route of a scenario of a real model<br/>/replay-real/scenario/S01<br/>one page per published scenario"]
   end
 
   subgraph CODE["The code of the frontend"]
     L["lib/api/replay.ts<br/>the one place that reads the artifacts of a bundle"]
+    CT["lib/replay/catalogs.ts<br/>the table of the two catalogs:<br/>the root, the mode, the route and the folder"]
     VA["lib/replay/validate.ts<br/>the contract of the published artifacts"]
     ST["features/replay/ReplayProvider.tsx<br/>the state machine<br/>idle, loading, ready, playing, paused, completed"]
     PW["features/replay/ReplayViewer.tsx<br/>the reader"]
@@ -232,11 +290,19 @@ flowchart TD
   V -->|"opens"| CP
   CP -->|"reads the catalog"| CAT
   CP -->|"links to the route of the scenario"| SP
+  CP -->|"links to the catalog of a real model"| CPR
   SP -->|"reads the catalog from the disk at build time"| CAT
   SP -->|"hands the card of the scenario"| ST
   SP -->|"hands the card of the scenario"| PW
+  CPR -->|"reads the catalog"| CATR
+  CPR -->|"links to the route of the scenario"| SPR
+  SPR -->|"reads the catalog from the disk at build time"| CATR
+  SPR -->|"hands the card of the scenario"| ST
+  SPR -->|"hands the card of the scenario"| PW
+  L -->|"reads the root and the mode of the catalog"| CT
   ST -->|"reads the bundle"| L
   L -->|"reads the manifest, the events and the provenance"| BND
+  L -->|"reads the manifest, the events and the provenance"| BNDR
   L -->|"refuses what does not pass the contract"| VA
   L -->|"the bundle it read, or the reason it refused"| ST
   ST -->|"the state and the actions"| PW

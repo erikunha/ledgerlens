@@ -29,7 +29,6 @@ import { Badge } from "@/components/ui/Badge";
 import { buttonClasses } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { loadScenarioCatalog } from "@/lib/api/replay";
 import { ScenarioCatalogProvider, useScenarioCatalog } from "@/lib/api/provider";
 import { scenarioPath } from "@/lib/state/urlState";
 
@@ -44,7 +43,7 @@ import { scenarioPath } from "@/lib/state/urlState";
  */
 export default function ReplayPage() {
   return (
-    <ScenarioCatalogProvider loader={loadScenarioCatalog}>
+    <ScenarioCatalogProvider catalog="sandbox">
       <ReplayCatalog />
     </ScenarioCatalogProvider>
   );
@@ -76,9 +75,22 @@ function ReplayCatalog() {
           provider, it needs no key and no network, and it runs the same way for every visitor.
         </p>
         <p className="text-sm text-text-subtle">
+          New here?{" "}
+          <Link className={buttonClasses("ghost", "sm")} href="/replay/scenario/S01">
+            Start the guided path
+          </Link>{" "}
+          and walk one case from the first event to the decision.
+        </p>
+        <p className="text-sm text-text-subtle">
           The live mode runs on the backend of the demo, with a key of your own:{" "}
           <Link className={buttonClasses("ghost", "sm")} href="/live">
             Open the live mode
+          </Link>
+        </p>
+        <p className="text-sm text-text-subtle">
+          The catalog of the recordings made with a real model is here:{" "}
+          <Link className={buttonClasses("ghost", "sm")} href="/replay-real">
+            Open the catalog of a real model
           </Link>
         </p>
       </header>

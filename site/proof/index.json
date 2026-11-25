@@ -1,0 +1,802 @@
+{
+  "artifacts": [
+    {
+      "artifact_id": "024711fb1b0061137093627c2ad77879fb43802717fdc7101bff28b5977b4e63",
+      "capture_kind": "scripted_fixture",
+      "catalog": "replay",
+      "claim": "the run of the scenario S01 of the repository: Why was the BRL refund for TX-2048 lower than the EUR payment?",
+      "cost_provenance": "replayed",
+      "cost_usd": null,
+      "evidence_refs": [
+        "sql:1",
+        "policy:cross-currency-refunds#overview",
+        "policy:cross-currency-refunds#what-is-cross-currency",
+        "policy:duplicate-charges#duplicates-with-fx",
+        "policy:cross-currency-refunds#payout-currency",
+        "fx:2026-10-20:EUR-BRL",
+        "calc:1"
+      ],
+      "git_commit": "28147706d95bbce6c407434826332989384d84d5",
+      "known_limitations": [
+        "the run is the recording of the scripted model, and it reproduces the run of the capture byte for byte",
+        "the artifact attests to a claim about the code of the repository and says nothing about a person"
+      ],
+      "links": [
+        "data/eval/replay/s01/events.jsonl",
+        "data/eval/replay/s01/memory_snapshot.json",
+        "data/scenarios.json",
+        "data/eval/report_heldout.json"
+      ],
+      "media": "data/eval/replay/s01/events.jsonl",
+      "media_dropped": false,
+      "missing": [],
+      "numbers": [
+        {
+          "name": "heldout_accuracy",
+          "report_digest": "4aa1dd96ce6e3d0fd28bcb14279ad6cfa47475f3e53dcdeb7584eb1401f5c91a",
+          "report_path": "data/eval/report_heldout.json",
+          "value": "0.500"
+        }
+      ],
+      "recipe": "LEDGERLENS_OFFLINE=1 uv run python scripts/capture_replay.py --scenario S01",
+      "scenario_id": "S01",
+      "status": "verified",
+      "transcript": "the run of the scenario S01 of the repository, over the ledger of the dataset data/scenarios.json. The question of the run: Why was the BRL refund for TX-2048 lower than the EUR payment? The verdicts of the deterministic verifier: CL1 supported; CL2 supported; CL3 supported; CL4 supported; CL5 supported; CL6 supported.",
+      "verdict_summary": "CL1 supported; CL2 supported; CL3 supported; CL4 supported; CL5 supported; CL6 supported"
+    },
+    {
+      "artifact_id": "b8386ad5300920dce7b54916de986aa3e17df7e7d4b21c4d289353e6d52d6a1c",
+      "capture_kind": "scripted_fixture",
+      "catalog": "replay",
+      "claim": "the run of the scenario S02 of the repository: Customer C-0733 was charged twice for the same amount, TX-2051 and TX-2052. Was it a duplicate charge?",
+      "cost_provenance": "replayed",
+      "cost_usd": null,
+      "evidence_refs": [
+        "sql:1",
+        "policy:refund-policy#duplicate-exception",
+        "policy:duplicate-charges#detection-rule",
+        "policy:duplicate-charges#retries-after-failure",
+        "policy:duplicate-charges#overview",
+        "policy:chargeback-handling#evidence-dup",
+        "policy:duplicate-charges#time-gap",
+        "policy:duplicate-charges#records",
+        "policy:duplicate-charges#who-refunds"
+      ],
+      "git_commit": "28147706d95bbce6c407434826332989384d84d5",
+      "known_limitations": [
+        "the run is the recording of the scripted model, and it reproduces the run of the capture byte for byte",
+        "the artifact attests to a claim about the code of the repository and says nothing about a person"
+      ],
+      "links": [
+        "data/eval/replay/s02/events.jsonl",
+        "data/eval/replay/s02/memory_snapshot.json",
+        "data/scenarios.json",
+        "data/eval/report_heldout.json"
+      ],
+      "media": "data/eval/replay/s02/events.jsonl",
+      "media_dropped": false,
+      "missing": [],
+      "numbers": [
+        {
+          "name": "heldout_accuracy",
+          "report_digest": "4aa1dd96ce6e3d0fd28bcb14279ad6cfa47475f3e53dcdeb7584eb1401f5c91a",
+          "report_path": "data/eval/report_heldout.json",
+          "value": "0.500"
+        }
+      ],
+      "recipe": "LEDGERLENS_OFFLINE=1 uv run python scripts/capture_replay.py --scenario S02",
+      "scenario_id": "S02",
+      "status": "verified",
+      "transcript": "the run of the scenario S02 of the repository, over the ledger of the dataset data/scenarios.json. The question of the run: Customer C-0733 was charged twice for the same amount, TX-2051 and TX-2052. Was it a duplicate charge? The verdicts of the deterministic verifier: CL1 supported; CL2 supported; CL3 not_enough_evidence.",
+      "verdict_summary": "CL1 supported; CL2 supported; CL3 not_enough_evidence"
+    },
+    {
+      "artifact_id": "c43d1dbdb61ce2fe7f808e0df568ddfd6047ff052aeb502ed0a6bbbc45fee7ca",
+      "capture_kind": "scripted_fixture",
+      "catalog": "replay",
+      "claim": "the run of the scenario S03 of the repository: What is the deadline for dispute CB-0310 and what do we need to do?",
+      "cost_provenance": "replayed",
+      "cost_usd": null,
+      "evidence_refs": [
+        "sql:1",
+        "policy:chargeback-handling#response-deadline",
+        "policy:escalation-and-review#deadline-within-2-days",
+        "policy:chargeback-handling#response-deadline-2",
+        "policy:chargeback-handling#escalation",
+        "policy:escalation-and-review#when-to-escalate",
+        "policy:duplicate-charges#customer-communication",
+        "policy:escalation-and-review#response-times",
+        "policy:chargeback-handling#stages"
+      ],
+      "git_commit": "28147706d95bbce6c407434826332989384d84d5",
+      "known_limitations": [
+        "the run is the recording of the scripted model, and it reproduces the run of the capture byte for byte",
+        "the artifact attests to a claim about the code of the repository and says nothing about a person"
+      ],
+      "links": [
+        "data/eval/replay/s03/events.jsonl",
+        "data/eval/replay/s03/memory_snapshot.json",
+        "data/scenarios.json",
+        "data/eval/report_heldout.json"
+      ],
+      "media": "data/eval/replay/s03/events.jsonl",
+      "media_dropped": false,
+      "missing": [],
+      "numbers": [
+        {
+          "name": "heldout_accuracy",
+          "report_digest": "4aa1dd96ce6e3d0fd28bcb14279ad6cfa47475f3e53dcdeb7584eb1401f5c91a",
+          "report_path": "data/eval/report_heldout.json",
+          "value": "0.500"
+        }
+      ],
+      "recipe": "LEDGERLENS_OFFLINE=1 uv run python scripts/capture_replay.py --scenario S03",
+      "scenario_id": "S03",
+      "status": "verified",
+      "transcript": "the run of the scenario S03 of the repository, over the ledger of the dataset data/scenarios.json. The question of the run: What is the deadline for dispute CB-0310 and what do we need to do? The verdicts of the deterministic verifier: CL1 not_enough_evidence; CL2 supported; CL3 not_enough_evidence.",
+      "verdict_summary": "CL1 not_enough_evidence; CL2 supported; CL3 not_enough_evidence"
+    },
+    {
+      "artifact_id": "c522758efc14e0c36694a3051f97c546ebd9821ea1879fa5e7d1a9aa0418aab9",
+      "capture_kind": "scripted_fixture",
+      "catalog": "replay",
+      "claim": "the run of the scenario S04 of the repository: What is the status of TX-9999?",
+      "cost_provenance": "replayed",
+      "cost_usd": null,
+      "evidence_refs": [
+        "sql:1"
+      ],
+      "git_commit": "28147706d95bbce6c407434826332989384d84d5",
+      "known_limitations": [
+        "the run is the recording of the scripted model, and it reproduces the run of the capture byte for byte",
+        "the artifact attests to a claim about the code of the repository and says nothing about a person"
+      ],
+      "links": [
+        "data/eval/replay/s04/events.jsonl",
+        "data/eval/replay/s04/memory_snapshot.json",
+        "data/scenarios.json",
+        "data/eval/report_heldout.json"
+      ],
+      "media": "data/eval/replay/s04/events.jsonl",
+      "media_dropped": false,
+      "missing": [],
+      "numbers": [
+        {
+          "name": "heldout_accuracy",
+          "report_digest": "4aa1dd96ce6e3d0fd28bcb14279ad6cfa47475f3e53dcdeb7584eb1401f5c91a",
+          "report_path": "data/eval/report_heldout.json",
+          "value": "0.500"
+        }
+      ],
+      "recipe": "LEDGERLENS_OFFLINE=1 uv run python scripts/capture_replay.py --scenario S04",
+      "scenario_id": "S04",
+      "status": "verified",
+      "transcript": "the run of the scenario S04 of the repository, over the ledger of the dataset data/scenarios.json. The question of the run: What is the status of TX-9999? The verdicts of the deterministic verifier: CL1 supported.",
+      "verdict_summary": "CL1 supported"
+    },
+    {
+      "artifact_id": "2878b5e4159464d012502d934c557b60133627ded4662a3cb3a0bdc8c0c10b48",
+      "capture_kind": "scripted_fixture",
+      "catalog": "replay",
+      "claim": "the run of the scenario S07 of the repository: Is refund R-0720 for TX-2030 correct? Is there any difference?",
+      "cost_provenance": "replayed",
+      "cost_usd": null,
+      "evidence_refs": [
+        "sql:1",
+        "calc:1"
+      ],
+      "git_commit": "28147706d95bbce6c407434826332989384d84d5",
+      "known_limitations": [
+        "the run is the recording of the scripted model, and it reproduces the run of the capture byte for byte",
+        "the artifact attests to a claim about the code of the repository and says nothing about a person"
+      ],
+      "links": [
+        "data/eval/replay/s07/events.jsonl",
+        "data/eval/replay/s07/memory_snapshot.json",
+        "data/scenarios.json",
+        "data/eval/report_heldout.json"
+      ],
+      "media": "data/eval/replay/s07/events.jsonl",
+      "media_dropped": false,
+      "missing": [],
+      "numbers": [
+        {
+          "name": "heldout_accuracy",
+          "report_digest": "4aa1dd96ce6e3d0fd28bcb14279ad6cfa47475f3e53dcdeb7584eb1401f5c91a",
+          "report_path": "data/eval/report_heldout.json",
+          "value": "0.500"
+        }
+      ],
+      "recipe": "LEDGERLENS_OFFLINE=1 uv run python scripts/capture_replay.py --scenario S07",
+      "scenario_id": "S07",
+      "status": "verified",
+      "transcript": "the run of the scenario S07 of the repository, over the ledger of the dataset data/scenarios.json. The question of the run: Is refund R-0720 for TX-2030 correct? Is there any difference? The verdicts of the deterministic verifier: CL1 supported; CL2 supported.",
+      "verdict_summary": "CL1 supported; CL2 supported"
+    },
+    {
+      "artifact_id": "776f932784be6a8d93c0326b61f504cb160c57ec3934176d65ce6abdb9fc2c5e",
+      "capture_kind": "scripted_fixture",
+      "catalog": "replay",
+      "claim": "the run of the scenario S08 of the repository: How was payout ST-0044 for merchant M-03 calculated and when is it paid?",
+      "cost_provenance": "replayed",
+      "cost_usd": null,
+      "evidence_refs": [
+        "sql:1",
+        "policy:settlement-schedule#payout-timing",
+        "policy:settlement-schedule#late-payout",
+        "policy:settlement-schedule#explaining-a-settlement",
+        "policy:settlement-schedule#overview",
+        "policy:settlement-schedule#settlement-currency",
+        "policy:settlement-schedule#holiday-example",
+        "policy:settlement-schedule#status",
+        "policy:chargeback-handling#outcomes",
+        "calc:1"
+      ],
+      "git_commit": "28147706d95bbce6c407434826332989384d84d5",
+      "known_limitations": [
+        "the run is the recording of the scripted model, and it reproduces the run of the capture byte for byte",
+        "the artifact attests to a claim about the code of the repository and says nothing about a person"
+      ],
+      "links": [
+        "data/eval/replay/s08/events.jsonl",
+        "data/eval/replay/s08/memory_snapshot.json",
+        "data/scenarios.json",
+        "data/eval/report_heldout.json"
+      ],
+      "media": "data/eval/replay/s08/events.jsonl",
+      "media_dropped": false,
+      "missing": [],
+      "numbers": [
+        {
+          "name": "heldout_accuracy",
+          "report_digest": "4aa1dd96ce6e3d0fd28bcb14279ad6cfa47475f3e53dcdeb7584eb1401f5c91a",
+          "report_path": "data/eval/report_heldout.json",
+          "value": "0.500"
+        }
+      ],
+      "recipe": "LEDGERLENS_OFFLINE=1 uv run python scripts/capture_replay.py --scenario S08",
+      "scenario_id": "S08",
+      "status": "verified",
+      "transcript": "the run of the scenario S08 of the repository, over the ledger of the dataset data/scenarios.json. The question of the run: How was payout ST-0044 for merchant M-03 calculated and when is it paid? The verdicts of the deterministic verifier: CL1 supported; CL2 supported; CL3 supported; CL4 not_enough_evidence.",
+      "verdict_summary": "CL1 supported; CL2 supported; CL3 supported; CL4 not_enough_evidence"
+    },
+    {
+      "artifact_id": "15ea18b2bc472cde5aa0ece0cd05e03382101b596b45c550772d16205a7cb5f0",
+      "capture_kind": "scripted_fixture",
+      "catalog": "replay",
+      "claim": "the run of the scenario S09 of the repository: What is the status of refund R-0750 for TX-2095?",
+      "cost_provenance": "replayed",
+      "cost_usd": null,
+      "evidence_refs": [
+        "sql:1"
+      ],
+      "git_commit": "28147706d95bbce6c407434826332989384d84d5",
+      "known_limitations": [
+        "the run is the recording of the scripted model, and it reproduces the run of the capture byte for byte",
+        "the artifact attests to a claim about the code of the repository and says nothing about a person"
+      ],
+      "links": [
+        "data/eval/replay/s09/events.jsonl",
+        "data/eval/replay/s09/memory_snapshot.json",
+        "data/scenarios.json",
+        "data/eval/report_heldout.json"
+      ],
+      "media": "data/eval/replay/s09/events.jsonl",
+      "media_dropped": false,
+      "missing": [],
+      "numbers": [
+        {
+          "name": "heldout_accuracy",
+          "report_digest": "4aa1dd96ce6e3d0fd28bcb14279ad6cfa47475f3e53dcdeb7584eb1401f5c91a",
+          "report_path": "data/eval/report_heldout.json",
+          "value": "0.500"
+        }
+      ],
+      "recipe": "LEDGERLENS_OFFLINE=1 uv run python scripts/capture_replay.py --scenario S09",
+      "scenario_id": "S09",
+      "status": "verified",
+      "transcript": "the run of the scenario S09 of the repository, over the ledger of the dataset data/scenarios.json. The question of the run: What is the status of refund R-0750 for TX-2095? The verdicts of the deterministic verifier: CL1 supported; CL2 not_enough_evidence; CL3 not_enough_evidence.",
+      "verdict_summary": "CL1 supported; CL2 not_enough_evidence; CL3 not_enough_evidence"
+    },
+    {
+      "artifact_id": "d92172978a1023164e8791a386b28ca17c4740f4db8940848b090cdbf4ed1d6c",
+      "capture_kind": "scripted_fixture",
+      "catalog": "replay",
+      "claim": "the run of the scenario S10 of the repository: What was the reference FX rate for TX-2099, paid in ARS?",
+      "cost_provenance": "replayed",
+      "cost_usd": null,
+      "evidence_refs": [
+        "sql:1"
+      ],
+      "git_commit": "28147706d95bbce6c407434826332989384d84d5",
+      "known_limitations": [
+        "the run is the recording of the scripted model, and it reproduces the run of the capture byte for byte",
+        "the artifact attests to a claim about the code of the repository and says nothing about a person"
+      ],
+      "links": [
+        "data/eval/replay/s10/events.jsonl",
+        "data/eval/replay/s10/memory_snapshot.json",
+        "data/scenarios.json",
+        "data/eval/report_heldout.json"
+      ],
+      "media": "data/eval/replay/s10/events.jsonl",
+      "media_dropped": false,
+      "missing": [],
+      "numbers": [
+        {
+          "name": "heldout_accuracy",
+          "report_digest": "4aa1dd96ce6e3d0fd28bcb14279ad6cfa47475f3e53dcdeb7584eb1401f5c91a",
+          "report_path": "data/eval/report_heldout.json",
+          "value": "0.500"
+        }
+      ],
+      "recipe": "LEDGERLENS_OFFLINE=1 uv run python scripts/capture_replay.py --scenario S10",
+      "scenario_id": "S10",
+      "status": "verified",
+      "transcript": "the run of the scenario S10 of the repository, over the ledger of the dataset data/scenarios.json. The question of the run: What was the reference FX rate for TX-2099, paid in ARS? The verdicts of the deterministic verifier: CL1 supported; CL2 not_enough_evidence; CL3 not_enough_evidence.",
+      "verdict_summary": "CL1 supported; CL2 not_enough_evidence; CL3 not_enough_evidence"
+    },
+    {
+      "artifact_id": "31c3607b13ff8ee2f3cb85f5c1cc52031dec71d37e87ac09dbeb1d280269f7c8",
+      "capture_kind": "scripted_fixture",
+      "catalog": "replay",
+      "claim": "the run of the scenario S11 of the repository: Why was the BRL refund for TX-2048 lower than the EUR payment?",
+      "cost_provenance": "replayed",
+      "cost_usd": null,
+      "evidence_refs": [
+        "sql:1"
+      ],
+      "git_commit": "28147706d95bbce6c407434826332989384d84d5",
+      "known_limitations": [
+        "the run is the recording of the scripted model, and it reproduces the run of the capture byte for byte",
+        "the artifact attests to a claim about the code of the repository and says nothing about a person"
+      ],
+      "links": [
+        "data/eval/replay/s11/events.jsonl",
+        "data/eval/replay/s11/memory_snapshot.json",
+        "data/scenarios.json",
+        "data/eval/report_heldout.json"
+      ],
+      "media": "data/eval/replay/s11/events.jsonl",
+      "media_dropped": false,
+      "missing": [],
+      "numbers": [
+        {
+          "name": "heldout_accuracy",
+          "report_digest": "4aa1dd96ce6e3d0fd28bcb14279ad6cfa47475f3e53dcdeb7584eb1401f5c91a",
+          "report_path": "data/eval/report_heldout.json",
+          "value": "0.500"
+        }
+      ],
+      "recipe": "LEDGERLENS_OFFLINE=1 uv run python scripts/capture_replay.py --scenario S11",
+      "scenario_id": "S11",
+      "status": "verified",
+      "transcript": "the run of the scenario S11 of the repository, over the ledger of the dataset data/scenarios.json. The question of the run: Why was the BRL refund for TX-2048 lower than the EUR payment? The verdicts of the deterministic verifier: CL1 supported; CL2 not_enough_evidence; CL3 not_enough_evidence.",
+      "verdict_summary": "CL1 supported; CL2 not_enough_evidence; CL3 not_enough_evidence"
+    },
+    {
+      "artifact_id": "488841ab56c5015ee5330ec3f72cf05a167adf4f7b6e56434e07fcdf6054c453",
+      "capture_kind": "scripted_fixture",
+      "catalog": "replay",
+      "claim": "the run of the scenario S13 of the repository: Why was the BRL refund for TX-2096 lower than the EUR payment?",
+      "cost_provenance": "replayed",
+      "cost_usd": null,
+      "evidence_refs": [
+        "sql:1",
+        "policy:cross-currency-refunds#overview",
+        "policy:cross-currency-refunds#what-is-cross-currency",
+        "policy:duplicate-charges#duplicates-with-fx",
+        "policy:cross-currency-refunds#payout-currency",
+        "fx:2026-10-23:EUR-BRL",
+        "calc:1"
+      ],
+      "git_commit": "28147706d95bbce6c407434826332989384d84d5",
+      "known_limitations": [
+        "the run is the recording of the scripted model, and it reproduces the run of the capture byte for byte",
+        "the artifact attests to a claim about the code of the repository and says nothing about a person"
+      ],
+      "links": [
+        "data/eval/replay/s13/events.jsonl",
+        "data/eval/replay/s13/memory_snapshot.json",
+        "data/scenarios.json",
+        "data/eval/report_heldout.json"
+      ],
+      "media": "data/eval/replay/s13/events.jsonl",
+      "media_dropped": false,
+      "missing": [],
+      "numbers": [
+        {
+          "name": "heldout_accuracy",
+          "report_digest": "4aa1dd96ce6e3d0fd28bcb14279ad6cfa47475f3e53dcdeb7584eb1401f5c91a",
+          "report_path": "data/eval/report_heldout.json",
+          "value": "0.500"
+        }
+      ],
+      "recipe": "LEDGERLENS_OFFLINE=1 uv run python scripts/capture_replay.py --scenario S13",
+      "scenario_id": "S13",
+      "status": "verified",
+      "transcript": "the run of the scenario S13 of the repository, over the ledger of the dataset data/scenarios.json. The question of the run: Why was the BRL refund for TX-2096 lower than the EUR payment? The verdicts of the deterministic verifier: CL1 supported; CL2 supported; CL3 supported; CL4 supported; CL5 supported; CL6 supported.",
+      "verdict_summary": "CL1 supported; CL2 supported; CL3 supported; CL4 supported; CL5 supported; CL6 supported"
+    },
+    {
+      "artifact_id": "f91b532abc3efb9d7bf10134282c400e3c7049346f49f78bd28a760b78e90155",
+      "capture_kind": "real_model_recorded",
+      "catalog": "replay-real",
+      "claim": "the run of the scenario S01 of the repository: Why was the BRL refund for TX-2048 lower than the EUR payment?",
+      "cost_provenance": "unknown",
+      "cost_usd": null,
+      "evidence_refs": [
+        "sql:1",
+        "sql:2",
+        "sql:3",
+        "fx:2026-10-20:EUR-BRL",
+        "calc:1"
+      ],
+      "git_commit": "37aa9b66f6bb9cd120c09f00dac1f1fd95a3a5fe",
+      "known_limitations": [
+        "the run is the recording of one run of a real model, and it is not reproducible byte for byte",
+        "the artifact attests to a claim about the code of the repository and says nothing about a person"
+      ],
+      "links": [
+        "data/eval/replay-real/s01/events.jsonl",
+        "data/scenarios.json",
+        "data/eval/report_heldout.json"
+      ],
+      "media": "data/eval/replay-real/s01/events.jsonl",
+      "media_dropped": false,
+      "missing": [],
+      "numbers": [
+        {
+          "name": "heldout_accuracy",
+          "report_digest": "4aa1dd96ce6e3d0fd28bcb14279ad6cfa47475f3e53dcdeb7584eb1401f5c91a",
+          "report_path": "data/eval/report_heldout.json",
+          "value": "0.500"
+        }
+      ],
+      "recipe": "uv run python scripts/capture_live_replay.py --scenario S01",
+      "scenario_id": "S01",
+      "status": "verified",
+      "transcript": "the run of the scenario S01 of the repository, over the ledger of the dataset data/scenarios.json. The question of the run: Why was the BRL refund for TX-2048 lower than the EUR payment? The verdicts of the deterministic verifier: CL1 supported; CL2 supported; CL3 supported; CL4 supported; CL5 supported; CL6 not_enough_evidence.",
+      "verdict_summary": "CL1 supported; CL2 supported; CL3 supported; CL4 supported; CL5 supported; CL6 not_enough_evidence"
+    },
+    {
+      "artifact_id": "f3513dcab60ef84d5d3a3bc68343b0a9484e14dd747cbdb4e6b2173874d09abe",
+      "capture_kind": "real_model_recorded",
+      "catalog": "replay-real",
+      "claim": "the run of the scenario S02 of the repository: Customer C-0733 was charged twice for the same amount, TX-2051 and TX-2052. Was it a duplicate charge?",
+      "cost_provenance": "unknown",
+      "cost_usd": null,
+      "evidence_refs": [
+        "sql:1",
+        "sql:2"
+      ],
+      "git_commit": "37aa9b66f6bb9cd120c09f00dac1f1fd95a3a5fe",
+      "known_limitations": [
+        "the run is the recording of one run of a real model, and it is not reproducible byte for byte",
+        "the artifact attests to a claim about the code of the repository and says nothing about a person"
+      ],
+      "links": [
+        "data/eval/replay-real/s02/events.jsonl",
+        "data/scenarios.json",
+        "data/eval/report_heldout.json"
+      ],
+      "media": "data/eval/replay-real/s02/events.jsonl",
+      "media_dropped": false,
+      "missing": [],
+      "numbers": [
+        {
+          "name": "heldout_accuracy",
+          "report_digest": "4aa1dd96ce6e3d0fd28bcb14279ad6cfa47475f3e53dcdeb7584eb1401f5c91a",
+          "report_path": "data/eval/report_heldout.json",
+          "value": "0.500"
+        }
+      ],
+      "recipe": "uv run python scripts/capture_live_replay.py --scenario S02",
+      "scenario_id": "S02",
+      "status": "verified",
+      "transcript": "the run of the scenario S02 of the repository, over the ledger of the dataset data/scenarios.json. The question of the run: Customer C-0733 was charged twice for the same amount, TX-2051 and TX-2052. Was it a duplicate charge? The verdicts of the deterministic verifier: CL1 not_enough_evidence; CL2 not_enough_evidence.",
+      "verdict_summary": "CL1 not_enough_evidence; CL2 not_enough_evidence"
+    },
+    {
+      "artifact_id": "2fe9dc44d8d915620e09f9a31c3abd9aebd0df7a3a101330a50d1cc4aa3bd7e3",
+      "capture_kind": "real_model_recorded",
+      "catalog": "replay-real",
+      "claim": "the run of the scenario S03 of the repository: What is the deadline for dispute CB-0310 and what do we need to do?",
+      "cost_provenance": "unknown",
+      "cost_usd": null,
+      "evidence_refs": [
+        "sql:1"
+      ],
+      "git_commit": "37aa9b66f6bb9cd120c09f00dac1f1fd95a3a5fe",
+      "known_limitations": [
+        "the run is the recording of one run of a real model, and it is not reproducible byte for byte",
+        "the artifact attests to a claim about the code of the repository and says nothing about a person"
+      ],
+      "links": [
+        "data/eval/replay-real/s03/events.jsonl",
+        "data/scenarios.json",
+        "data/eval/report_heldout.json"
+      ],
+      "media": "data/eval/replay-real/s03/events.jsonl",
+      "media_dropped": false,
+      "missing": [],
+      "numbers": [
+        {
+          "name": "heldout_accuracy",
+          "report_digest": "4aa1dd96ce6e3d0fd28bcb14279ad6cfa47475f3e53dcdeb7584eb1401f5c91a",
+          "report_path": "data/eval/report_heldout.json",
+          "value": "0.500"
+        }
+      ],
+      "recipe": "uv run python scripts/capture_live_replay.py --scenario S03",
+      "scenario_id": "S03",
+      "status": "verified",
+      "transcript": "the run of the scenario S03 of the repository, over the ledger of the dataset data/scenarios.json. The question of the run: What is the deadline for dispute CB-0310 and what do we need to do? The verdicts of the deterministic verifier: CL1 supported; CL2 not_enough_evidence.",
+      "verdict_summary": "CL1 supported; CL2 not_enough_evidence"
+    },
+    {
+      "artifact_id": "31f55f1a20a9714c0798b9f88d784eeab05b91b729804dd62dab17ce9be38147",
+      "capture_kind": "real_model_recorded",
+      "catalog": "replay-real",
+      "claim": "the run of the scenario S04 of the repository: What is the status of TX-9999?",
+      "cost_provenance": "unknown",
+      "cost_usd": null,
+      "evidence_refs": [
+        "sql:1"
+      ],
+      "git_commit": "37aa9b66f6bb9cd120c09f00dac1f1fd95a3a5fe",
+      "known_limitations": [
+        "the run is the recording of one run of a real model, and it is not reproducible byte for byte",
+        "the artifact attests to a claim about the code of the repository and says nothing about a person"
+      ],
+      "links": [
+        "data/eval/replay-real/s04/events.jsonl",
+        "data/scenarios.json",
+        "data/eval/report_heldout.json"
+      ],
+      "media": "data/eval/replay-real/s04/events.jsonl",
+      "media_dropped": false,
+      "missing": [],
+      "numbers": [
+        {
+          "name": "heldout_accuracy",
+          "report_digest": "4aa1dd96ce6e3d0fd28bcb14279ad6cfa47475f3e53dcdeb7584eb1401f5c91a",
+          "report_path": "data/eval/report_heldout.json",
+          "value": "0.500"
+        }
+      ],
+      "recipe": "uv run python scripts/capture_live_replay.py --scenario S04",
+      "scenario_id": "S04",
+      "status": "verified",
+      "transcript": "the run of the scenario S04 of the repository, over the ledger of the dataset data/scenarios.json. The question of the run: What is the status of TX-9999? The verdicts of the deterministic verifier: CL1 not_enough_evidence; CL2 not_enough_evidence.",
+      "verdict_summary": "CL1 not_enough_evidence; CL2 not_enough_evidence"
+    },
+    {
+      "artifact_id": "27a0495da68627d017da75681675aae9266a2e5b71cf8138bc708a79d1fbe5cb",
+      "capture_kind": "real_model_recorded",
+      "catalog": "replay-real",
+      "claim": "the run of the scenario S07 of the repository: Is refund R-0720 for TX-2030 correct? Is there any difference?",
+      "cost_provenance": "unknown",
+      "cost_usd": null,
+      "evidence_refs": [
+        "api:1",
+        "api:2",
+        "calc:1"
+      ],
+      "git_commit": "37aa9b66f6bb9cd120c09f00dac1f1fd95a3a5fe",
+      "known_limitations": [
+        "the run is the recording of one run of a real model, and it is not reproducible byte for byte",
+        "the artifact attests to a claim about the code of the repository and says nothing about a person"
+      ],
+      "links": [
+        "data/eval/replay-real/s07/events.jsonl",
+        "data/scenarios.json",
+        "data/eval/report_heldout.json"
+      ],
+      "media": "data/eval/replay-real/s07/events.jsonl",
+      "media_dropped": false,
+      "missing": [],
+      "numbers": [
+        {
+          "name": "heldout_accuracy",
+          "report_digest": "4aa1dd96ce6e3d0fd28bcb14279ad6cfa47475f3e53dcdeb7584eb1401f5c91a",
+          "report_path": "data/eval/report_heldout.json",
+          "value": "0.500"
+        }
+      ],
+      "recipe": "uv run python scripts/capture_live_replay.py --scenario S07",
+      "scenario_id": "S07",
+      "status": "verified",
+      "transcript": "the run of the scenario S07 of the repository, over the ledger of the dataset data/scenarios.json. The question of the run: Is refund R-0720 for TX-2030 correct? Is there any difference? The verdicts of the deterministic verifier: CL1 supported; CL2 not_enough_evidence.",
+      "verdict_summary": "CL1 supported; CL2 not_enough_evidence"
+    },
+    {
+      "artifact_id": "00d758beeef3f8ce12c077ff1e97d97f4f13d27a24350ea613c0f432d54f5dc8",
+      "capture_kind": "real_model_recorded",
+      "catalog": "replay-real",
+      "claim": "the run of the scenario S08 of the repository: How was payout ST-0044 for merchant M-03 calculated and when is it paid?",
+      "cost_provenance": "unknown",
+      "cost_usd": null,
+      "evidence_refs": [
+        "sql:1"
+      ],
+      "git_commit": "37aa9b66f6bb9cd120c09f00dac1f1fd95a3a5fe",
+      "known_limitations": [
+        "the run is the recording of one run of a real model, and it is not reproducible byte for byte",
+        "the artifact attests to a claim about the code of the repository and says nothing about a person"
+      ],
+      "links": [
+        "data/eval/replay-real/s08/events.jsonl",
+        "data/scenarios.json",
+        "data/eval/report_heldout.json"
+      ],
+      "media": "data/eval/replay-real/s08/events.jsonl",
+      "media_dropped": false,
+      "missing": [],
+      "numbers": [
+        {
+          "name": "heldout_accuracy",
+          "report_digest": "4aa1dd96ce6e3d0fd28bcb14279ad6cfa47475f3e53dcdeb7584eb1401f5c91a",
+          "report_path": "data/eval/report_heldout.json",
+          "value": "0.500"
+        }
+      ],
+      "recipe": "uv run python scripts/capture_live_replay.py --scenario S08",
+      "scenario_id": "S08",
+      "status": "verified",
+      "transcript": "the run of the scenario S08 of the repository, over the ledger of the dataset data/scenarios.json. The question of the run: How was payout ST-0044 for merchant M-03 calculated and when is it paid? The verdicts of the deterministic verifier: CL1 supported; CL2 not_enough_evidence.",
+      "verdict_summary": "CL1 supported; CL2 not_enough_evidence"
+    },
+    {
+      "artifact_id": "cec0f1ffb3a1ffc37ad7318feac39c638068291c85945dccca7f9fda92aa987f",
+      "capture_kind": "real_model_recorded",
+      "catalog": "replay-real",
+      "claim": "the run of the scenario S09 of the repository: What is the status of refund R-0750 for TX-2095?",
+      "cost_provenance": "unknown",
+      "cost_usd": null,
+      "evidence_refs": [
+        "sql:1"
+      ],
+      "git_commit": "37aa9b66f6bb9cd120c09f00dac1f1fd95a3a5fe",
+      "known_limitations": [
+        "the run is the recording of one run of a real model, and it is not reproducible byte for byte",
+        "the artifact attests to a claim about the code of the repository and says nothing about a person"
+      ],
+      "links": [
+        "data/eval/replay-real/s09/events.jsonl",
+        "data/scenarios.json",
+        "data/eval/report_heldout.json"
+      ],
+      "media": "data/eval/replay-real/s09/events.jsonl",
+      "media_dropped": false,
+      "missing": [],
+      "numbers": [
+        {
+          "name": "heldout_accuracy",
+          "report_digest": "4aa1dd96ce6e3d0fd28bcb14279ad6cfa47475f3e53dcdeb7584eb1401f5c91a",
+          "report_path": "data/eval/report_heldout.json",
+          "value": "0.500"
+        }
+      ],
+      "recipe": "uv run python scripts/capture_live_replay.py --scenario S09",
+      "scenario_id": "S09",
+      "status": "verified",
+      "transcript": "the run of the scenario S09 of the repository, over the ledger of the dataset data/scenarios.json. The question of the run: What is the status of refund R-0750 for TX-2095? The verdicts of the deterministic verifier: CL1 not_enough_evidence.",
+      "verdict_summary": "CL1 not_enough_evidence"
+    },
+    {
+      "artifact_id": "a834c0765d933073465f6e623957a0162f1f136d84aeb8c65fc97c90c68a3d13",
+      "capture_kind": "real_model_recorded",
+      "catalog": "replay-real",
+      "claim": "the run of the scenario S10 of the repository: What was the reference FX rate for TX-2099, paid in ARS?",
+      "cost_provenance": "unknown",
+      "cost_usd": null,
+      "evidence_refs": [
+        "api:1"
+      ],
+      "git_commit": "37aa9b66f6bb9cd120c09f00dac1f1fd95a3a5fe",
+      "known_limitations": [
+        "the run is the recording of one run of a real model, and it is not reproducible byte for byte",
+        "the artifact attests to a claim about the code of the repository and says nothing about a person"
+      ],
+      "links": [
+        "data/eval/replay-real/s10/events.jsonl",
+        "data/scenarios.json",
+        "data/eval/report_heldout.json"
+      ],
+      "media": "data/eval/replay-real/s10/events.jsonl",
+      "media_dropped": false,
+      "missing": [],
+      "numbers": [
+        {
+          "name": "heldout_accuracy",
+          "report_digest": "4aa1dd96ce6e3d0fd28bcb14279ad6cfa47475f3e53dcdeb7584eb1401f5c91a",
+          "report_path": "data/eval/report_heldout.json",
+          "value": "0.500"
+        }
+      ],
+      "recipe": "uv run python scripts/capture_live_replay.py --scenario S10",
+      "scenario_id": "S10",
+      "status": "verified",
+      "transcript": "the run of the scenario S10 of the repository, over the ledger of the dataset data/scenarios.json. The question of the run: What was the reference FX rate for TX-2099, paid in ARS? The verdicts of the deterministic verifier: CL1 not_enough_evidence; CL2 not_enough_evidence.",
+      "verdict_summary": "CL1 not_enough_evidence; CL2 not_enough_evidence"
+    },
+    {
+      "artifact_id": "6d8977b1a122f476e903d78cb7351552dcaaa7953f4b24ca91acd9747436e618",
+      "capture_kind": "real_model_recorded",
+      "catalog": "replay-real",
+      "claim": "the run of the scenario S11 of the repository: Why was the BRL refund for TX-2048 lower than the EUR payment?",
+      "cost_provenance": "unknown",
+      "cost_usd": null,
+      "evidence_refs": [
+        "sql:1",
+        "api:1"
+      ],
+      "git_commit": "37aa9b66f6bb9cd120c09f00dac1f1fd95a3a5fe",
+      "known_limitations": [
+        "the run is the recording of one run of a real model, and it is not reproducible byte for byte",
+        "the artifact attests to a claim about the code of the repository and says nothing about a person"
+      ],
+      "links": [
+        "data/eval/replay-real/s11/events.jsonl",
+        "data/scenarios.json",
+        "data/eval/report_heldout.json"
+      ],
+      "media": "data/eval/replay-real/s11/events.jsonl",
+      "media_dropped": false,
+      "missing": [],
+      "numbers": [
+        {
+          "name": "heldout_accuracy",
+          "report_digest": "4aa1dd96ce6e3d0fd28bcb14279ad6cfa47475f3e53dcdeb7584eb1401f5c91a",
+          "report_path": "data/eval/report_heldout.json",
+          "value": "0.500"
+        }
+      ],
+      "recipe": "uv run python scripts/capture_live_replay.py --scenario S11",
+      "scenario_id": "S11",
+      "status": "verified",
+      "transcript": "the run of the scenario S11 of the repository, over the ledger of the dataset data/scenarios.json. The question of the run: Why was the BRL refund for TX-2048 lower than the EUR payment? The verdicts of the deterministic verifier: CL1 not_enough_evidence; CL2 supported; CL3 not_enough_evidence.",
+      "verdict_summary": "CL1 not_enough_evidence; CL2 supported; CL3 not_enough_evidence"
+    },
+    {
+      "artifact_id": "764d32aa42a7c220509dad8cb94a348a92e12ed4cfc35d6088317847c3c42f60",
+      "capture_kind": "real_model_recorded",
+      "catalog": "replay-real",
+      "claim": "the run of the scenario S13 of the repository: Why was the BRL refund for TX-2096 lower than the EUR payment?",
+      "cost_provenance": "unknown",
+      "cost_usd": null,
+      "evidence_refs": [
+        "sql:1",
+        "fx:2026-10-23:EUR-BRL",
+        "calc:1"
+      ],
+      "git_commit": "37aa9b66f6bb9cd120c09f00dac1f1fd95a3a5fe",
+      "known_limitations": [
+        "the run is the recording of one run of a real model, and it is not reproducible byte for byte",
+        "the artifact attests to a claim about the code of the repository and says nothing about a person"
+      ],
+      "links": [
+        "data/eval/replay-real/s13/events.jsonl",
+        "data/scenarios.json",
+        "data/eval/report_heldout.json"
+      ],
+      "media": "data/eval/replay-real/s13/events.jsonl",
+      "media_dropped": false,
+      "missing": [],
+      "numbers": [
+        {
+          "name": "heldout_accuracy",
+          "report_digest": "4aa1dd96ce6e3d0fd28bcb14279ad6cfa47475f3e53dcdeb7584eb1401f5c91a",
+          "report_path": "data/eval/report_heldout.json",
+          "value": "0.500"
+        }
+      ],
+      "recipe": "uv run python scripts/capture_live_replay.py --scenario S13",
+      "scenario_id": "S13",
+      "status": "verified",
+      "transcript": "the run of the scenario S13 of the repository, over the ledger of the dataset data/scenarios.json. The question of the run: Why was the BRL refund for TX-2096 lower than the EUR payment? The verdicts of the deterministic verifier: CL1 supported; CL2 supported; CL3 supported; CL4 not_enough_evidence.",
+      "verdict_summary": "CL1 supported; CL2 supported; CL3 supported; CL4 not_enough_evidence"
+    }
+  ]
+}

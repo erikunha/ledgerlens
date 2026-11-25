@@ -9,6 +9,11 @@ The default output is `site/replay`, the folder the repository publishes and the
 recorded artifacts. The frontend tree is open now, and the build of the frontend copies `site/replay` into
 `apps/web/public/replay`, so the export never writes inside `apps/`.
 
+The site publishes two catalogs, and the export writes one of them per run. The second one, the recordings of a
+real model, lives in `site/replay-real` and comes from `data/eval/replay-real`. The mode of the catalog is named
+with `--mode`, so that a recording of a real model cannot land in the folder of the sandbox and the other way
+round (ADR-075).
+
 The export is reproducible: every timestamp comes from the bundle and not from the clock, so running the script
 twice leaves the same bytes on the disk. The `--check` mode verifies the artifacts that are already there without
 writing anything, which is what the gate uses to prove that what is published matches the recording.
@@ -19,6 +24,7 @@ Usage:
 uv run python scripts/export_replay_site.py                     # the bundles of data/eval/replay, into site/replay
 uv run python scripts/export_replay_site.py data/eval/replay/s01 --out site/replay
 uv run python scripts/export_replay_site.py --check             # verifies what is on the disk
+uv run python scripts/export_replay_site.py data/eval/replay-real --out site/replay-real --mode live_agent
 ```
 
 Exit code 0 on success, 1 when the bundle does not hold up or when the check finds a difference.
@@ -51,20 +57,28 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("bundle", nargs="?", default=str(DEFAULT_BUNDLE), help="folder of the bundle to export")
     parser.add_argument("--out", default=str(DEFAULT_OUT), help="folder the artifacts go to (site/replay)")
     parser.add_argument(
+        "--mode",
+        default=None,
+        help="the mode of the catalog being written (deterministic_sandbox or live_agent); with it, a bundle of "
+        "another mode is refused (ADR-075)",
+    )
+    parser.add_argument(
         "--check",
         action="store_true",
         help="compares what would be written with what is on the disk, and writes nothing",
     )
     args = parser.parse_args(argv)
+    out = Path(args.out)
 
     try:
         bundles = discover_bundles(Path(args.bundle))
-        files = build_export(bundles)
+        # The folder of the output names the catalog, so a recording of a real model cannot land in the folder of
+        # the sandbox and the other way round, even when the command line does not name the mode (ADR-075).
+        files = build_export(bundles, expected_mode=args.mode, output=out)
     except ExportError as exc:
         print(f"export_replay_site: {exc}", file=sys.stderr)
         return 1
 
-    out = Path(args.out)
     if args.check:
         differences = check_export(files, out)
         if differences:

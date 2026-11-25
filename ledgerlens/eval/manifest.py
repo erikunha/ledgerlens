@@ -120,11 +120,24 @@ HELD_OUT_SOURCE_PATHS: tuple[str, ...] = (
     "data/eval/heldout/labels_reader_a.jsonl",
     "data/eval/heldout/labels_reader_b.jsonl",
     "data/eval/heldout/recipes.jsonl",
+    # The sources of the held out set of the retrieval, reserved for the same reason: the questions the
+    # readers saw, the labels of the two readings and of the adjudication, and the answer key of the generator.
+    "data/eval/heldout/retrieval_cases.jsonl",
+    "data/eval/heldout/retrieval_labels_adjudicated.jsonl",
+    "data/eval/heldout/retrieval_labels_reader_a.jsonl",
+    "data/eval/heldout/retrieval_labels_reader_b.jsonl",
+    "data/eval/heldout/retrieval_recipes.jsonl",
 )
 
 HELD_OUT_RESERVED_PATHS: tuple[str, ...] = (
     "data/eval/verification_heldout.jsonl",
+    # The held out set of the retrieval: the questions and the adjudicated labels of the two blind readings.
+    "data/eval/retrieval_heldout.jsonl",
     *HELD_OUT_SOURCE_PATHS,
+    # The pre-registration of the comparison of the orchestration studio. It names the set of the comparison and it
+    # carries the role `held_out`, so the path is reserved for the same reason the path of the set is: a dataset
+    # with that role may not be tuned against, whatever role a hand edit of the manifest gives it later.
+    "data/runtime/orchestration/comparison.json",
 )
 
 # The paths of the reports of the measurement of the held out set. Why they are reserved and not only the sources of
@@ -155,6 +168,11 @@ HELD_OUT_RESERVED_DIGESTS: tuple[str, ...] = (
     # a copy of either of them under another name carries the predictions of the model over the cases of the set.
     "3afc037b88c9955143c2436ea2e3a1a3743b37faf80ad3dff0a1c0c03e536c75",
     "262cffcac2a6830c8f95684610e47782f5a94532b40ecc78ecce332aff86cd68",
+    # The same two reports with the policy of the manifest of the datasets that says that the comparison of the
+    # studio is a second set with the role `held_out`. The previous digests stay reserved: a copy of the report of
+    # the day before carries the same predictions over the same cases, whatever the sentence that limits it.
+    "4aa1dd96ce6e3d0fd28bcb14279ad6cfa47475f3e53dcdeb7584eb1401f5c91a",
+    "2bae16eda8f5a0f3ecd4be621aea8f281d4dbb4ae72fa22b2b89f9efff31ef8e",
 )
 
 # The digests of the records of the same files, with the records of a JSONL file read and written back in the

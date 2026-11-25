@@ -23,6 +23,10 @@ hold, `LEDGERLENS_SANDBOX_RATE_LIMIT_REQUESTS` is the number of requests one ses
 The limits of one branch: `LEDGERLENS_SANDBOX_MAX_COMMITTED_MUTATIONS` is the number of the mutations a branch may
 commit and `LEDGERLENS_SANDBOX_MAX_EVENTS` is the number of the events its log may hold. Their defaults are the limits
 of the branch layer, so a deployment that declares nothing keeps the limits of today.
+
+The studio of the orchestration: `LEDGERLENS_ORCHESTRATION_STUDIO` opens the experimental variant of the runtime that
+dispatches parts of a case to specialists. It is off by default and it stays off until a paired comparison measures
+a gain, under ADR-P007.
 """
 
 from __future__ import annotations
@@ -60,6 +64,23 @@ class Settings(BaseModel):
 
     offline: bool = False
     model: str | None = None
+    # The cascade of the deployment: the models it may run, from the lightest to the most capable. It is empty when
+    # the deployment declares nothing, and the run then uses the model of `LEDGERLENS_MODEL` in every slot, which
+    # is how the product behaved before the router existed (ADR-078).
+    model_cascade: tuple[str, ...] = ()
+    # The consent of the deployment about the retries of a task: how many retries a failed task may get, and in
+    # which direction of the cascade they go. Zero is the default, because a retry is a call that the plan of
+    # the run did not ask for, and nobody asked for it until somebody says so (ADR-084).
+    fallback_attempts: int = 0
+    fallback_direction: Literal["up", "down"] = "up"
+    # The flag of the studio of the orchestration: off in the shipped configuration, because ADR-P007 keeps the
+    # runtime a single agent with a deterministic verifier until a paired comparison measures a gain. It opens only
+    # for an experiment that is registered before it runs.
+    orchestration_studio: bool = False
+    # The flag of the adversarial laboratory: off in the shipped configuration, because the laboratory is a
+    # research feature and its output is a trace and a published page, never a route a stranger may call. The
+    # exercises run in the offline mode with the fake provider, so an attack never spends the money of anybody.
+    adversarial_lab: bool = False
     embeddings: Literal["fastembed", "openai"] = "fastembed"
     openai_api_key: SecretStr | None = None
     langsmith_api_key: SecretStr | None = None
@@ -114,6 +135,18 @@ def _secret(value: str | None) -> SecretStr | None:
     return SecretStr(value) if value else None
 
 
+def _cascade(value: str | None) -> tuple[str, ...]:
+    """The models of the cascade, in the order the deployment declared them.
+
+    Why the order is kept: the cascade is read from the lightest model to the most capable one, and the router
+    reads the level of a task against that order. A model that is named twice stays twice, because the deployment
+    may want the same model at two levels, and the router decides by the position and not by the name.
+    """
+    if not value:
+        return ()
+    return tuple(name.strip() for name in value.split(",") if name.strip())
+
+
 def _origins(value: str | None) -> tuple[str, ...]:
     """The origins of the CORS, read from a comma separated list of exact origins.
 
@@ -162,9 +195,32 @@ def get_settings(env: Mapping[str, str] | None = None) -> Settings:
     max_committed_mutations = _text(values.get("LEDGERLENS_SANDBOX_MAX_COMMITTED_MUTATIONS"))
     max_events = _text(values.get("LEDGERLENS_SANDBOX_MAX_EVENTS"))
     cors_origins = _text(values.get("LEDGERLENS_CORS_ORIGINS"))
+    fallback_attempts = _text(values.get("LEDGERLENS_FALLBACK_ATTEMPTS"))
+    fallback_direction = (_text(values.get("LEDGERLENS_FALLBACK_DIRECTION")) or "up").lower()
+    if fallback_direction not in ("up", "down"):
+        raise ConfigError(
+            "LEDGERLENS_FALLBACK_DIRECTION must be 'up' or 'down', because the direction of a retry in the cascade "
+            "is the only thing it can be"
+        )
+    attempts = 0
+    if fallback_attempts:
+        try:
+            attempts = int(fallback_attempts)
+        except ValueError as exc:
+            raise ConfigError(
+                f"LEDGERLENS_FALLBACK_ATTEMPTS must be a number of retries, and it is {fallback_attempts!r}"
+            ) from exc
+        if attempts < 0:
+            raise ConfigError(
+                f"LEDGERLENS_FALLBACK_ATTEMPTS must not be negative, and it is {attempts}: a consent with a negative "
+                "number of retries is not a consent"
+            )
     settings = Settings(
         offline=_flag(values.get("LEDGERLENS_OFFLINE")),
+        orchestration_studio=_flag(values.get("LEDGERLENS_ORCHESTRATION_STUDIO")),
+        adversarial_lab=_flag(values.get("LEDGERLENS_ADVERSARIAL_LAB")),
         model=_text(values.get("LEDGERLENS_MODEL")),
+        model_cascade=_cascade(values.get("LEDGERLENS_MODEL_CASCADE")),
         embeddings=embeddings,  # type: ignore[arg-type]
         openai_api_key=_secret(values.get("OPENAI_API_KEY")),
         langsmith_api_key=_secret(values.get("LANGSMITH_API_KEY")),
@@ -184,6 +240,8 @@ def get_settings(env: Mapping[str, str] | None = None) -> Settings:
         **({"sandbox_max_committed_mutations": int(max_committed_mutations)} if max_committed_mutations else {}),
         **({"sandbox_max_events": int(max_events)} if max_events else {}),
         **({"cors_origins": _origins(cors_origins)} if cors_origins else {}),
+        **({"fallback_attempts": attempts} if fallback_attempts else {}),
+        **({"fallback_direction": fallback_direction} if fallback_direction != "up" else {}),
     )
     log.debug("settings loaded: %r", settings)
     return settings
@@ -200,28 +258,37 @@ def http_mode(settings: Settings | None = None) -> Literal["fixtures", "live"]:
 
 
 def get_chat_model(
-    settings: Settings | None = None, *, script: list[ScriptItem] | None = None, **kwargs: Any
+    settings: Settings | None = None,
+    *,
+    script: list[ScriptItem] | None = None,
+    model: str | None = None,
+    **kwargs: Any,
 ) -> BaseChatModel:
     """The chat model for the current mode.
 
     Offline: a `ScriptedChatModel` replaying `script` (empty by default). Online: the model named in
     `LEDGERLENS_MODEL` as `<provider>:<name>`, built by `init_chat_model` with `kwargs`.
+
+    `model` names another model of the same deployment, and it exists because the router gives each slot of the
+    run the model that fits its task (ADR-078). The name is never a URL and never a free text: it is a model
+    name, and the provider is added the same way it is added to the name of the environment.
     """
     settings = settings or get_settings()
     if settings.offline:
         log.debug("chat model: scripted (offline), %d scripted message(s)", len(script or []))
         return ScriptedChatModel(script=list(script or []))
 
-    if not settings.model:
+    name = (model or settings.model or "").strip()
+    if not name:
         raise ConfigError("LEDGERLENS_MODEL is not set; name the chat model as '<provider>:<model>'")
-    model = _with_provider(settings.model)
-    if settings.openai_api_key is not None and model.split(":", 1)[0] == "openai":
+    resolved = _with_provider(name)
+    if settings.openai_api_key is not None and resolved.split(":", 1)[0] == "openai":
         kwargs.setdefault("api_key", settings.openai_api_key.get_secret_value())
-    log.debug("chat model: %s (online)", model)
+    log.debug("chat model: %s (online)", resolved)
     try:
-        return init_chat_model(model, **kwargs)
+        return init_chat_model(resolved, **kwargs)
     except Exception as exc:
-        raise ConfigError(f"could not build chat model '{model}': {_redact(str(exc), settings)}") from None
+        raise ConfigError(f"could not build chat model '{resolved}': {_redact(str(exc), settings)}") from None
 
 
 # Prefixes that init_chat_model assigns to OpenAI when the name comes with no provider.
@@ -237,6 +304,42 @@ def _with_provider(name: str) -> str:
     if ":" in name or not name.startswith(_OPENAI_PREFIXES):
         return name
     return f"openai:{name}"
+
+
+def model_name(name: str) -> str:
+    """The name of a model with the provider it belongs to, as the deployment names it.
+
+    Why it is public: the report of the comparison names the model of each slot, and the name of the model is
+    the name with the provider, because a model alone is not a model (two providers may know a model by the
+    same name).
+    """
+    return _with_provider(name.strip())
+
+
+def model_profile(settings: Settings | None = None) -> str:
+    """The name of the model with the provider that serves it, as the provenance of a recording states it.
+
+    Why it exists: the recording of a real model names the model that produced it, and the name in the environment
+    carries no provider when the provider is the one that everybody uses. The profile is empty when the environment
+    names no model, because a profile that is invented is worse than a profile that is absent.
+    """
+    settings = settings or get_settings()
+    name = (settings.model or "").strip()
+    return _with_provider(name) if name else ""
+
+
+def model_cascade(settings: Settings | None = None) -> tuple[str, ...]:
+    """The models the deployment may run, from the lightest to the most capable.
+
+    Why it exists: the router reads the level of the task of a slot against this order, and the order is what the
+    deployment declares. A deployment that declares no cascade gets the model of `LEDGERLENS_MODEL` in every slot,
+    which is the behaviour the product had before the router existed (ADR-078).
+    """
+    settings = settings or get_settings()
+    if settings.model_cascade:
+        return tuple(_with_provider(name) for name in settings.model_cascade)
+    name = (settings.model or "").strip()
+    return (_with_provider(name),) if name else ()
 
 
 def get_embeddings(settings: Settings | None = None) -> Embeddings:

@@ -25,6 +25,8 @@ import type { ReactElement, ReactNode } from "react";
 import { loadReplay } from "@/lib/api/replay";
 import type { BundleIntegrity, LoadedReplay } from "@/lib/api/replay";
 import type { LedgerArtifact, ReplayBundleManifest, ScenarioIndexEntry, TraceEvent } from "@/lib/api/schemas";
+import { DEFAULT_CATALOG } from "@/lib/replay/catalogs";
+import type { ReplayCatalogId } from "@/lib/replay/catalogs";
 
 /**
  * The six situations of the reader of a recording.
@@ -294,6 +296,13 @@ export interface ReplayProviderProps {
   readonly scenario: ScenarioIndexEntry | null;
   /** The function that reads the bundle. The default reads the published one. */
   readonly loader?: (index: ScenarioIndexEntry) => Promise<LoadedReplay | { error: string }>;
+  /**
+   * The catalog of the scenarios the provider reads.
+   *
+   * Why the catalog is a prop: the site publishes two catalogs, and the bundle of a scenario of one of them is
+   * published under the root of that one (ADR-075). The default is the sandbox.
+   */
+  readonly catalog?: ReplayCatalogId;
 }
 
 /**
@@ -366,7 +375,7 @@ function stateForScenario(state: ReplayState, scenarioId: string | null): Replay
  * knows.
  */
 export function ReplayProvider(props: ReplayProviderProps): ReactElement {
-  const { children, scenario, loader } = props;
+  const { children, scenario, loader, catalog = DEFAULT_CATALOG } = props;
 
   const [state, dispatch] = useReducer(replayReducer, INITIAL_STATE);
 
@@ -377,6 +386,11 @@ export function ReplayProvider(props: ReplayProviderProps): ReactElement {
   scenarioRef.current = scenario;
   const loaderRef = useRef<ReplayProviderProps["loader"]>(loader);
   loaderRef.current = loader;
+
+  // The catalog is kept in a reference, because the reading is decided by the identifier of the scenario alone:
+  // a page that changes the catalog changes the page, not the bundle that is being read.
+  const catalogRef = useRef<ReplayCatalogId>(catalog);
+  catalogRef.current = catalog;
 
   const scenarioId = scenario?.id ?? null;
 
@@ -393,7 +407,8 @@ export function ReplayProvider(props: ReplayProviderProps): ReactElement {
     dispatch({ type: "load", scenario: target });
 
     async function read(): Promise<void> {
-      const load = loaderRef.current ?? ((index: ScenarioIndexEntry) => loadReplay(index));
+      const load =
+        loaderRef.current ?? ((index: ScenarioIndexEntry) => loadReplay(index, { catalog: catalogRef.current }));
 
       let result: LoadedReplay | { error: string };
       try {

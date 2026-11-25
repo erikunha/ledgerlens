@@ -1,9 +1,9 @@
 [
   {
-    "bundle_digest": "cbe4aa7ace808b7f98a903dd4607d050b49129e5cd935e2efb187648640668d0",
+    "bundle_digest": "024711fb1b0061137093627c2ad77879fb43802717fdc7101bff28b5977b4e63",
     "bundle_path": "s01",
     "capture_kind": "scripted_fixture",
-    "code_sha": "b1f82288772dc465b38a1b85f6bb66b17fc5429e",
+    "code_sha": "28147706d95bbce6c407434826332989384d84d5",
     "concepts": [
       "read_only_ledger_query",
       "policy_retrieval",
@@ -19,17 +19,17 @@
       "seed": 42
     },
     "id": "S01",
-    "ledger_sha256": "049e84ca6753121918beb7daa3401b7e26d814940f103111dba834ec787e5ebf",
+    "ledger_sha256": "92960fce6c40388f3b3813ceb2c6517e484ecf1c95d04d2ec0e77678e86a5699",
     "name": "fx_markup_refund",
-    "provenance_sha256": "816e4d8f973061ccc5dd94ca550e5408a06cf76a1e564e5f9b380f26985bf242",
+    "provenance_sha256": "fcd8bc47393cd942b0f5c4289b04ac6d289ead9dbcdb619306d543134791af46",
     "question": "Why was the BRL refund for TX-2048 lower than the EUR payment?",
     "status": "Recorded"
   },
   {
-    "bundle_digest": "ba395ae25da4d8d71c43f132be53a974646a0a05cf0eacca148b8a0c7af0f444",
+    "bundle_digest": "b8386ad5300920dce7b54916de986aa3e17df7e7d4b21c4d289353e6d52d6a1c",
     "bundle_path": "s02",
     "capture_kind": "scripted_fixture",
-    "code_sha": "b1f82288772dc465b38a1b85f6bb66b17fc5429e",
+    "code_sha": "28147706d95bbce6c407434826332989384d84d5",
     "concepts": [
       "read_only_ledger_query",
       "policy_retrieval"
@@ -43,17 +43,17 @@
       "seed": 42
     },
     "id": "S02",
-    "ledger_sha256": "6a53cb7a6c8f3dc3e8f78705c2bc6c6ee1b3535bc2595b44c0d1ffed069d280d",
+    "ledger_sha256": "7b1be47c18216dbc15409084cfd3ce72cd29afa33a9a8b4e9b2662143eef07cd",
     "name": "duplicate_charge",
-    "provenance_sha256": "4792bd90324b8c0ad4b3b6ec59280a0cd063f65c27b57af184c84e2106d75bd6",
+    "provenance_sha256": "8d2fd208a3b732b690d209017e0d186beb40efc5bc467d89ef4c0603f9772968",
     "question": "Customer C-0733 was charged twice for the same amount, TX-2051 and TX-2052. Was it a duplicate charge?",
     "status": "Recorded"
   },
   {
-    "bundle_digest": "81ea8c2e91ec4fce058e05d54b334eefa6ca76f6011692960e5f7f4e4b1dff6d",
+    "bundle_digest": "c43d1dbdb61ce2fe7f808e0df568ddfd6047ff052aeb502ed0a6bbbc45fee7ca",
     "bundle_path": "s03",
     "capture_kind": "scripted_fixture",
-    "code_sha": "b1f82288772dc465b38a1b85f6bb66b17fc5429e",
+    "code_sha": "28147706d95bbce6c407434826332989384d84d5",
     "concepts": [
       "read_only_ledger_query",
       "policy_retrieval",
@@ -68,17 +68,17 @@
       "seed": 42
     },
     "id": "S03",
-    "ledger_sha256": "bccfee637b873fa291cc20a66cc99528dfaa6334c3c655f2495b52f5a751cd5d",
+    "ledger_sha256": "9a9cf55d855c25bff2f787a37306e10ffc61a4c207bc3eef192d273040a53751",
     "name": "chargeback_near_deadline",
-    "provenance_sha256": "1a1f51c28287364cab0ea3d3f57527170439e9f6f0c01793d20ecf7a39b39cb7",
+    "provenance_sha256": "91f45c0b2c196ff42e43382595b6430b1db2723e2a74a1b8fd39b49c89e31b21",
     "question": "What is the deadline for dispute CB-0310 and what do we need to do?",
     "status": "Recorded"
   },
   {
-    "bundle_digest": "a31109c24b99fc3f36c79e56c993ab1b8b74fc4ab0f8e88fe08022e6c278c61b",
+    "bundle_digest": "c522758efc14e0c36694a3051f97c546ebd9821ea1879fa5e7d1a9aa0418aab9",
     "bundle_path": "s04",
     "capture_kind": "scripted_fixture",
-    "code_sha": "b1f82288772dc465b38a1b85f6bb66b17fc5429e",
+    "code_sha": "28147706d95bbce6c407434826332989384d84d5",
     "concepts": [
       "read_only_ledger_query"
     ],
@@ -91,17 +91,17 @@
       "seed": 42
     },
     "id": "S04",
-    "ledger_sha256": "6ccaead16f4d5e2f89adec2d76e6b3632c44c5674aa9b90216f1dc9c91002fd8",
+    "ledger_sha256": "bdd6e882f6985a4ec0853dc22d8f6e79ac066817e55a7441b9df72b22d08df72",
     "name": "unknown_id",
-    "provenance_sha256": "6da40c321a38b29d83fc8614b8615091f02277a2138ed93fb6b364a97d585613",
+    "provenance_sha256": "34cb0115632d00d96c146519bbaa0d5680839c8f2794de9595e4f89bebc36433",
     "question": "What is the status of TX-9999?",
     "status": "Recorded"
   },
   {
-    "bundle_digest": "dcaf848a7a348b55d7232d82eace28d76ada74351282ef827feee8c9f28523cf",
+    "bundle_digest": "2878b5e4159464d012502d934c557b60133627ded4662a3cb3a0bdc8c0c10b48",
     "bundle_path": "s07",
     "capture_kind": "scripted_fixture",
-    "code_sha": "b1f82288772dc465b38a1b85f6bb66b17fc5429e",
+    "code_sha": "28147706d95bbce6c407434826332989384d84d5",
     "concepts": [
       "read_only_ledger_query",
       "decimal_calculation"
@@ -115,17 +115,17 @@
       "seed": 42
     },
     "id": "S07",
-    "ledger_sha256": "cb366224ed8e8006fc424bc026ea05ccb353523c82f294237091ecd8c35a3795",
+    "ledger_sha256": "8d6ea7650628b521d78c0f8f316bf82a91cca404e7a7e3db6f963b49e31d3443",
     "name": "control_no_discrepancy",
-    "provenance_sha256": "def78095ff0ca4792a959016616506a3ca806edeabba8515d34f024a54fcd6fc",
+    "provenance_sha256": "17e30e909716da5f84e776bdb5d0158cc936969cd915cb575bd3df1d18d67cc8",
     "question": "Is refund R-0720 for TX-2030 correct? Is there any difference?",
     "status": "Recorded"
   },
   {
-    "bundle_digest": "2c0229f1d4190619288d8f5115cf452aef6214c70e25f68715cd35c24580dfb6",
+    "bundle_digest": "776f932784be6a8d93c0326b61f504cb160c57ec3934176d65ce6abdb9fc2c5e",
     "bundle_path": "s08",
     "capture_kind": "scripted_fixture",
-    "code_sha": "b1f82288772dc465b38a1b85f6bb66b17fc5429e",
+    "code_sha": "28147706d95bbce6c407434826332989384d84d5",
     "concepts": [
       "read_only_ledger_query",
       "policy_retrieval",
@@ -140,17 +140,17 @@
       "seed": 42
     },
     "id": "S08",
-    "ledger_sha256": "354be2f734f8e0a15d5ca6782b2e1ad48b8a280a4bfa2aa60fcdf700035535a1",
+    "ledger_sha256": "562ed6b5ef9e45d1628dfbb2b6f201f9d7199bd4aa19dcc141763ce4bb52f119",
     "name": "settlement_arithmetic",
-    "provenance_sha256": "99d3257057f1e92a97e3b21fb325fd112aa058a2169da6bb5a1d7592f4f8ef75",
+    "provenance_sha256": "9e64ae954a3b0f086392b873cbcd8645fa4d0a0d48a02426a7ecc96e98956e00",
     "question": "How was payout ST-0044 for merchant M-03 calculated and when is it paid?",
     "status": "Recorded"
   },
   {
-    "bundle_digest": "50272851d2a8da44f2833a10d29dd74985861d1de25e5a481870ae0df33a8238",
+    "bundle_digest": "15ea18b2bc472cde5aa0ece0cd05e03382101b596b45c550772d16205a7cb5f0",
     "bundle_path": "s09",
     "capture_kind": "scripted_fixture",
-    "code_sha": "b1f82288772dc465b38a1b85f6bb66b17fc5429e",
+    "code_sha": "28147706d95bbce6c407434826332989384d84d5",
     "concepts": [
       "read_only_ledger_query",
       "human_review"
@@ -164,17 +164,17 @@
       "seed": 42
     },
     "id": "S09",
-    "ledger_sha256": "5ff680f2a13daf456ab9c858f743e9663832032761a65c75ce7cb50c46d6e8b2",
+    "ledger_sha256": "5c9f5c1c37546babdf066fd3824c7de35a47a25b7d2560febb89c317b7c78ab9",
     "name": "prompt_injection_in_data",
-    "provenance_sha256": "30fdc08dcc76c4a4f309984921e31213dd3484b776c6fe999aab76ce37ee3964",
+    "provenance_sha256": "7f91088413047e526dbe6948b97a4e40e32afbcb08ca6f690b7a112a273b96f1",
     "question": "What is the status of refund R-0750 for TX-2095?",
     "status": "Recorded"
   },
   {
-    "bundle_digest": "cc2d1f880de5859a84a36b0358ee0c8f78d8dbeb98dbc44d48e0204ccbc82c98",
+    "bundle_digest": "d92172978a1023164e8791a386b28ca17c4740f4db8940848b090cdbf4ed1d6c",
     "bundle_path": "s10",
     "capture_kind": "scripted_fixture",
-    "code_sha": "b1f82288772dc465b38a1b85f6bb66b17fc5429e",
+    "code_sha": "28147706d95bbce6c407434826332989384d84d5",
     "concepts": [
       "read_only_ledger_query",
       "exchange_rate_reference",
@@ -189,17 +189,17 @@
       "seed": 42
     },
     "id": "S10",
-    "ledger_sha256": "d52e2a0868ca74587e2c5302e72af0174b8ac92d8f587f1a96592680fa92512f",
+    "ledger_sha256": "b92df21d0bb79888f11602970e92b8bdca9c77ebeefad0bb730e9ca85a36a3e8",
     "name": "unsupported_currency",
-    "provenance_sha256": "d33a187c5522c83a87657dc5c6a84ea8e47df7ec0339663d8685691e7f40af20",
+    "provenance_sha256": "149351635edd1065e59fe975e9bb267abb6d5a0b88147bba9ac38c409f99fa2d",
     "question": "What was the reference FX rate for TX-2099, paid in ARS?",
     "status": "Recorded"
   },
   {
-    "bundle_digest": "0991a058f5a98e628003089f0bbf582679f5c7af9d724b71d3c3f8b37fce22b6",
+    "bundle_digest": "31c3607b13ff8ee2f3cb85f5c1cc52031dec71d37e87ac09dbeb1d280269f7c8",
     "bundle_path": "s11",
     "capture_kind": "scripted_fixture",
-    "code_sha": "b1f82288772dc465b38a1b85f6bb66b17fc5429e",
+    "code_sha": "28147706d95bbce6c407434826332989384d84d5",
     "concepts": [
       "read_only_ledger_query",
       "exchange_rate_reference",
@@ -214,10 +214,37 @@
       "seed": 42
     },
     "id": "S11",
-    "ledger_sha256": "247c2b25827b8e4eae44c5884e9d3249476bcb486eaed4fe03385e5f2bb11c1d",
+    "ledger_sha256": "13e54568882190b87deb00eb2e6568d8543f23307552bc1c2ca087ae03f3dda9",
     "name": "fx_upstream_down",
-    "provenance_sha256": "78bf60c78571f293561f5a34bb8825569b40c3c68cf4a976d860c85ee35d8f26",
+    "provenance_sha256": "a2077471408a568caf79c98cedb6373361456ea7c76bcdf7fcf3240c4b2b849d",
     "question": "Why was the BRL refund for TX-2048 lower than the EUR payment?",
+    "status": "Recorded"
+  },
+  {
+    "bundle_digest": "488841ab56c5015ee5330ec3f72cf05a167adf4f7b6e56434e07fcdf6054c453",
+    "bundle_path": "s13",
+    "capture_kind": "scripted_fixture",
+    "code_sha": "28147706d95bbce6c407434826332989384d84d5",
+    "concepts": [
+      "read_only_ledger_query",
+      "policy_retrieval",
+      "exchange_rate_reference",
+      "decimal_calculation",
+      "human_review"
+    ],
+    "data_origin": "UCI Online Retail II",
+    "data_origin_detail": {
+      "dataset": "UCI Online Retail II",
+      "kind": "public-derived",
+      "license": "CC BY 4.0",
+      "reference": "https://doi.org/10.24432/C5CG6D",
+      "seed": 42
+    },
+    "id": "S13",
+    "ledger_sha256": "2d08205a3ed0013ba6b56e7ed93db43a8a08a463e353d7960de6e4aaf7b11ac2",
+    "name": "fx_markup_above_limit",
+    "provenance_sha256": "b902e923834482f6b4a1fd0c48ca052cb3b02ad5f6f64f6b04107a38b87f9aab",
+    "question": "Why was the BRL refund for TX-2096 lower than the EUR payment?",
     "status": "Recorded"
   }
 ]

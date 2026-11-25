@@ -216,3 +216,30 @@ def test_a_graph_that_runs_out_of_steps_comes_back_as_a_result_and_not_as_an_exc
     assert result.requires_human_review is True
     assert result.recommended_action == "escalate_to_human"
     assert any("max_model_calls" in item for item in result.missing_information)
+
+
+def test_the_result_carries_the_calls_the_tokens_and_the_two_costs(
+    ledger_db: Path, index_root: Path, cases: CaseMemory
+) -> None:
+    """The usage of the turn travels on the result, and not only on the trace.
+
+    Why it matters: a reader of the result has to see what the turn spent without opening the trace, and the
+    money of a turn whose price is unknown is unknown and never zero.
+    """
+    script = [
+        tool_call_message("query_ledger", {"question": "fx rates applied to TX-2048"}),
+        text_message("The refund was applied at a lower rate [sql:1]."),
+    ]
+    model = ScriptedChatModel(script=script)
+    agent = integrator_for(ledger_db, index_root, cases, model)
+
+    result = investigate(agent, S01["questions"][0], thread_id="t-result-usage")
+
+    assert result.usage is not None
+    assert result.usage["model_calls"] == len(model.calls) + 1  # the triage is a call of a model too
+    assert result.usage["tool_calls"] == 1
+    assert result.usage["input_tokens"] >= 0
+    assert result.usage["output_tokens"] >= 0
+    assert result.usage["observed_cost_usd"] is None
+    assert result.usage["estimated_cost_usd"] is None
+    assert result.usage["price_known"] is False

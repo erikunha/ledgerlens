@@ -98,6 +98,51 @@
         "type": "string"
       },
       "default": []
+    },
+    "usage": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "What the turn spent against what it was allowed: the calls, the tokens and the two costs, or null when no coordinator saw the turn. The money is a text or null, because a zero would read as the model was free (ADR-054).",
+      "properties": {
+        "model_calls": {
+          "type": "integer"
+        },
+        "tool_calls": {
+          "type": "integer"
+        },
+        "input_tokens": {
+          "type": "integer"
+        },
+        "output_tokens": {
+          "type": "integer"
+        },
+        "elapsed_seconds": {
+          "type": "number"
+        },
+        "observed_cost_usd": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "estimated_cost_usd": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "price_known": {
+          "type": "boolean"
+        },
+        "cut_by": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
     }
   },
   "$defs": {

@@ -14,8 +14,8 @@ line. Offline, a scripted model answers; this module holds those scripts, so the
 
 The scripts cover the complaints that end in a verdict and the ones that end in a handover: the refund that paid
 exactly what was charged (S07), the refund whose reason field carries an order (S09), the payment in a currency the
-reference source does not publish (S10) and the refund whose reference rate could not be read (S11). A catalogue
-that holds only the cases the agent resolves is a catalogue that never shows what it does with the ones it cannot.
+reference source does not publish (S10) and the refund whose reference rate could not be read (S11). A catalog
+that holds only the cases the agent resolves is a catalog that never shows what it does with the ones it cannot.
 
 Numbers in the scripted answers come from the scenario's ground truth and are checked by the verifier like any
 other answer.
@@ -27,7 +27,7 @@ import json
 import re
 from dataclasses import dataclass
 from datetime import date, timedelta
-from decimal import Decimal
+from decimal import ROUND_HALF_EVEN, Decimal
 from pathlib import Path
 from typing import Any
 
@@ -35,6 +35,7 @@ from langchain_core.messages import AIMessage
 
 from ledgerlens.observability.trace import review_reasons
 from ledgerlens.offline import text_message, tool_call_message
+from ledgerlens.policy_limits import FX_MARKUP_LIMIT_PCT
 from ledgerlens.schemas import Entities, Evidence, InvestigationResult, PlanStep, ToolCallRecord, Triage
 from ledgerlens.tools.sql import major_amount
 
@@ -42,7 +43,13 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SCENARIOS_PATH = PROJECT_ROOT / "data" / "scenarios.json"
 LEDGER_ID = re.compile(r"\b(?:(?:TX|R|CB|ST|FX)-\d{4}|M-\d{2}|C-\d{4})\b")
 LEDGER_SOURCES = ("sql", "ledger_api")  # the evidence that comes from ledger rows
-FX_SQL = "SELECT kind, applied_rate, applied_at FROM fx_applied WHERE transaction_id = 'TX-2048' ORDER BY applied_at"
+FX_SQL = (
+    "SELECT f.kind, f.applied_rate, f.applied_at, m.id AS merchant_id, m.name AS merchant_name, m.fx_plan "
+    "FROM fx_applied f JOIN transactions t ON t.id = f.transaction_id JOIN merchants m ON m.id = t.merchant_id "
+    "WHERE f.transaction_id = 'TX-2048' ORDER BY f.applied_at"
+)
+# The rounding of a money value, the same as the policy and the calculator.
+_CENT = Decimal("0.01")
 UNKNOWN_ID_QUESTION = "What is the status of TX-9999?"
 
 
@@ -99,6 +106,7 @@ def planted(manifest: dict[str, Any]) -> list[Planted]:
         Planted("S07", q["S07"], None, ("TX-2030",)),
         Planted("S09", q["S09"], None, ("TX-2095", "R-0750")),
         Planted("S10", q["S10"], None, ("TX-2099",)),
+        Planted("S13", q["S13"], None, ("TX-2096", "R-0751")),
     ]
 
 
@@ -150,14 +158,26 @@ def account_context(account_id: str, kind: str, name: str, selected: list[str]) 
 
 
 def _s01(truth: dict[str, Any]) -> tuple[list[AIMessage], list[str]]:
+    """The complaint of a refund in another currency, answered with the decision that closes it.
+
+    Why the case reads the merchant and not only the rates: the difference between what the customer paid and what
+    the customer received has two causes, the movement of the reference rate and the markup of the merchant, and the
+    second one is only a markup if the plan of the merchant allows one. The answer therefore names the plan, the
+    limit of that plan and the amount the refund would have been at the reference rate, and ends with the
+    conclusion: the difference is the markup of the plan and not an error.
+
+    Why the plan is read from the ledger and not from the truth of the scenario: the plan is a fact of the ledger,
+    and the scripted model has to read it the way a real model reads it, before it can state it to the calculator.
+    """
     calls = [
-        tool_call_message("query_ledger", {"question": "FX rates applied to TX-2048"}),
+        tool_call_message("query_ledger", {"question": "FX rates applied to TX-2048 and the plan of its merchant"}),
         tool_call_message("search_policies", {"query": "refund in another currency", "transform": "none"}),
         tool_call_message("get_reference_fx", {"from_currency": "EUR", "to_currency": "BRL", "date": "2026-10-20"}),
         tool_call_message(
             "calculate",
             {
-                "operation": "fx_gap_breakdown",
+                "operation": "fx_markup_check",
+                "plan": "markup",
                 "values": {
                     "units": "100.00",
                     "charge_rate": truth["charge_rate"],
@@ -167,12 +187,23 @@ def _s01(truth: dict[str, Any]) -> tuple[list[AIMessage], list[str]]:
             },
         ),
     ]
+    # The numbers of the answer come out of the truth of the scenario and out of the code, never out of the air:
+    # the same arithmetic the calculator does, so the answer and the evidence of the run agree.
+    units = Decimal("100.00")
+    reference = Decimal(truth["reference_rate_refund_date"])
+    markup_pct = Decimal(truth["implied_markup_pct"]).quantize(_CENT, ROUND_HALF_EVEN)
+    at_reference = (units * reference).quantize(_CENT, ROUND_HALF_EVEN)
+    limit = FX_MARKUP_LIMIT_PCT.quantize(_CENT, ROUND_HALF_EVEN)
     answer = (
         f"The payment came to BRL {truth['charge_brl']} and the refund to BRL {truth['refund_brl']}, "
         f"a difference of BRL {truth['gap_brl']}. [sql:1, calc:1] "
-        f"Of that, BRL {truth['rate_move_brl']} comes from the FX movement and BRL {truth['markup_brl']} is the "
-        "markup over the day's reference rate. [calc:1] "
-        f"The reference rate on 2026-10-20 was {truth['reference_rate_refund_date']}. [fx:2026-10-20:EUR-BRL]"
+        f"Of that, BRL {truth['rate_move_brl']} is the movement of the rate between the two dates and "
+        f"BRL {truth['markup_brl']} is the markup over the reference rate. [calc:1] "
+        f"The reference rate on 2026-10-20 was {truth['reference_rate_refund_date']}. [fx:2026-10-20:EUR-BRL] "
+        f"The markup was {markup_pct}% of that rate, below the {limit}% the plan allows. [calc:1] "
+        "Lumen Travel GmbH (M-17) is on the markup plan. [sql:1] "
+        f"At the reference rate the refund would have been BRL {at_reference}, so the BRL {truth['markup_brl']} in "
+        "between is the markup of the plan and not an error. [calc:1]"
     )
     return [*calls, text_message(answer)], [FX_SQL]
 
@@ -253,7 +284,7 @@ def _s08(truth: dict[str, Any]) -> tuple[list[AIMessage], list[str]]:
 def _s07(truth: dict[str, Any]) -> tuple[list[AIMessage], list[str]]:
     """The control: a refund that paid exactly what was charged, so there is no difference to explain.
 
-    Why the control matters: a catalogue that only holds the cases with a discrepancy never shows that the agent
+    Why the control matters: a catalog that only holds the cases with a discrepancy never shows that the agent
     finds nothing when there is nothing to find.
     """
     sql = (
@@ -347,6 +378,57 @@ def _s11(truth: dict[str, Any]) -> tuple[list[AIMessage], list[str]]:
     return [*calls, text_message(answer)], [sql]
 
 
+def _s13(truth: dict[str, Any]) -> tuple[list[AIMessage], list[str]]:
+    """The refund whose markup is above the limit of the plan of the merchant: the case goes to a person.
+
+    Why the answer says the markup is above the limit and not only how much it is: the policy sends a markup above
+    the limit of the plan to a person, and the decision belongs to the code, which reads the applied rate, the
+    reference rate and the plan out of the ledger and of the run. The answer states what the calculation found and
+    names the rule that decides, and the answer does not decide anything the code did not decide.
+    """
+    sql = (
+        "SELECT f.kind, f.applied_rate, f.applied_at, m.id AS merchant_id, m.name AS merchant_name, m.fx_plan "
+        "FROM fx_applied f JOIN transactions t ON t.id = f.transaction_id JOIN merchants m ON m.id = t.merchant_id "
+        "WHERE f.transaction_id = 'TX-2096' ORDER BY f.applied_at"
+    )
+    calls = [
+        tool_call_message("query_ledger", {"question": "FX rates applied to TX-2096 and the plan of its merchant"}),
+        tool_call_message("search_policies", {"query": "refund in another currency", "transform": "none"}),
+        tool_call_message("get_reference_fx", {"from_currency": "EUR", "to_currency": "BRL", "date": "2026-10-23"}),
+        tool_call_message(
+            "calculate",
+            {
+                "operation": "fx_markup_check",
+                "plan": "markup",
+                "values": {
+                    "units": truth["units"],
+                    "charge_rate": truth["charge_rate"],
+                    "refund_reference_rate": truth["reference_rate_refund_date"],
+                    "refund_applied_rate": truth["applied_rate"],
+                },
+            },
+        ),
+    ]
+    units = Decimal(truth["units"])
+    reference = Decimal(truth["reference_rate_refund_date"])
+    markup_pct = Decimal(truth["implied_markup_pct"]).quantize(_CENT, ROUND_HALF_EVEN)
+    at_reference = (units * reference).quantize(_CENT, ROUND_HALF_EVEN)
+    limit = FX_MARKUP_LIMIT_PCT.quantize(_CENT, ROUND_HALF_EVEN)
+    answer = (
+        f"The payment came to BRL {truth['charge_brl']} and the refund to BRL {truth['refund_brl']}, "
+        f"a difference of BRL {truth['gap_brl']}. [sql:1, calc:1] "
+        f"Of that, BRL {truth['rate_move_brl']} is the movement of the rate and "
+        f"BRL {truth['markup_brl']} is the markup over the reference rate. [calc:1] "
+        f"The reference rate on {truth['refund_date']} was {truth['reference_rate_refund_date']}. "
+        f"[fx:2026-10-23:EUR-BRL] "
+        f"The markup was {markup_pct}% of that rate, above the {limit}% the plan allows. [calc:1] "
+        f"{truth['merchant_name']} ({truth['merchant']}) is on the markup plan. [sql:1] "
+        f"At the reference rate the refund would have been BRL {at_reference}, so the BRL {truth['markup_brl']} in "
+        "between is the markup of the plan, and a case like this goes to a person. [calc:1]"
+    )
+    return [*calls, text_message(answer)], [sql]
+
+
 _SCRIPTS = {
     "S01": _s01,
     "S02": _s02,
@@ -357,6 +439,7 @@ _SCRIPTS = {
     "S09": _s09,
     "S10": _s10,
     "S11": _s11,
+    "S13": _s13,
 }
 
 

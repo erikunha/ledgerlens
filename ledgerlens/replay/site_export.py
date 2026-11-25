@@ -28,11 +28,12 @@ which runs on every machine. The export refuses an artifact whose digest of the 
 declares, because that artifact belongs to another recording, and it refuses a bundle that names an account and has no
 artifact, because the recording owes the site the ledger of that account.
 
-The labels are the point of the module. The mode it writes is always `deterministic_sandbox`, because the published
-bundles are deterministic recordings made with the scripted model and the recorded exchange rate. A bundle that
-declares any other mode is refused rather than relabelled: a live execution published under a sandbox label would be
-a lie, and a lie in a manifest is worse than a missing file. The note that goes with the manifest says the same
-thing in words, so nobody has to read the format to know what the recording is.
+The labels are the point of the module. A catalog is one mode: the site publishes the sandbox catalog, whose
+bundles were recorded with the scripted model and the recorded exchange rate, and the real catalog, whose bundles
+were recorded with a real model. A bundle whose capture kind does not match its mode is refused rather than
+relabelled: a live execution published under a sandbox label would be a lie, and a lie in a manifest is worse than a
+missing file. The note that goes with the manifest says the same thing in words, so nobody has to read the format to
+know what the recording is (ADR-075).
 
 The export refuses what it cannot prove. Every recorded line is validated against the versioned public schema, as it
 was recorded and not as the core re-derives it, because a re-derivation coerces a wrong type into a right one. The
@@ -55,6 +56,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from ledgerlens.memory.snapshot import SNAPSHOT_FILE
 from ledgerlens.replay.bundle import (
     EVENTS_FILE,
     MANIFEST_FILE,
@@ -74,8 +76,35 @@ ROOT = Path(__file__).resolve().parents[2]
 TRACE_EVENT_SCHEMA = ROOT / "docs" / "v3" / "contracts" / "schemas" / "trace-event.schema.json"
 DATASET_FILE = ROOT / "data" / "scenarios.json"
 
-# The only mode the site publishes. A recorded sandbox is what the visitor sees, and the label never says live.
-SITE_MODE = "deterministic_sandbox"
+# The two catalogs the site publishes, and the kind of capture each one holds. A catalog is one mode: the sandbox
+# catalog holds the recordings of the scripted model and the real catalog holds the recordings of a real model. A
+# bundle whose kind does not match its mode is refused rather than relabelled: a live execution published under a
+# sandbox label would be a lie, and a lie in a manifest is worse than a missing file (ADR-075).
+CATALOG_MODES = {
+    "deterministic_sandbox": "scripted_fixture",
+    "live_agent": "real_model_recorded",
+}
+
+# The folder of the site each catalog is published in. The folder names the catalog, so a recording of a real
+# model cannot land in the folder of the sandbox and the other way round, even when the command line does not say
+# which mode is being written (ADR-075).
+CATALOG_FOLDERS = {
+    "deterministic_sandbox": "replay",
+    "live_agent": "replay-real",
+}
+
+
+def catalog_mode_of_folder(folder: Path) -> str | None:
+    """The mode of the catalog a folder of the site holds, or None when the folder names no catalog.
+
+    Why the folder names the catalog: the site publishes two catalogs and each one has its own folder. A folder
+    that the site does not publish, such as a temporary folder of a test, names no catalog and the caller says
+    with `--mode` which mode is being written.
+    """
+    for mode, name in CATALOG_FOLDERS.items():
+        if folder.name == name:
+            return mode
+    return None
 
 # The name of the file that holds the provenance of a scenario, next to the events and the manifest.
 PROVENANCE_FILE = "provenance.json"
@@ -105,9 +134,10 @@ SCENARIO_ID_PATTERN = re.compile(r"^[S][0-9]{2}$")
 # with this name is a scenario folder, so the write never removes a folder of somebody else.
 SCENARIO_SLUG_PATTERN = re.compile(r"^[sS][0-9]{2}$")
 
-# The four files of a scenario. They are the only files the export writes inside a scenario folder, and therefore
-# the only files the write may delete: a file outside this list is not an artifact of the export.
-SCENARIO_ARTIFACT_NAMES = (EVENTS_FILE, MANIFEST_FILE, PROVENANCE_FILE, LEDGER_FILE)
+# The files of a scenario. They are the only files the export writes inside a scenario folder, and therefore
+# the only files the write may delete: a file outside this list is not an artifact of the export. The snapshot of
+# the memory is published when the manifest of the bundle declares it (ADR-073).
+SCENARIO_ARTIFACT_NAMES = (EVENTS_FILE, MANIFEST_FILE, PROVENANCE_FILE, LEDGER_FILE, SNAPSHOT_FILE)
 
 # The concept each tool of the agent demonstrates, in the words a visitor of the site understands.
 TOOL_CONCEPTS = {
@@ -384,26 +414,62 @@ def _frozen_ledger(bundle_dir: Path, slug: str, manifest: BundleManifest) -> byt
     return raw
 
 
+def _memory_snapshot(bundle_dir: Path, manifest: BundleManifest) -> bytes | None:
+    """The bytes of the snapshot of the memory of the run, or None when the bundle declares none.
+
+    The snapshot travels with the bundle so that a replay of an old case reads the memory of its generation
+    (ADR-073), and the manifest declares its digest, so the site publishes the file and the reader checks it. A
+    bundle that declares the snapshot and does not carry it, or carries one whose digest is not the declared one,
+    is a bundle whose claim cannot be checked, and the export refuses it.
+    """
+    declared = manifest.files.get(SNAPSHOT_FILE)
+    if declared is None:
+        return None
+    scenario = str(manifest.scenario)
+    path = bundle_dir / SNAPSHOT_FILE
+    if not path.is_file():
+        raise ExportError(
+            f"the bundle of the scenario {scenario} declares the snapshot of the memory and the file is missing: "
+            f"{path}"
+        )
+    raw = path.read_bytes()
+    if _sha256_bytes(raw) != declared:
+        raise ExportError(
+            f"the snapshot of the memory of the scenario {scenario} does not have the digest the manifest declares"
+        )
+    return raw
+
+
 def _scenario_artifacts(
     bundle_dir: Path,
     dataset: dict[str, Any],
     dataset_sha256: str,
     schema_path: Path,
-) -> tuple[str, dict[str, bytes], dict[str, Any]]:
+) -> tuple[str, dict[str, bytes], dict[str, Any], str]:
     """The four files of one scenario, and the card the index holds for it.
 
     The bundle is read with the loader of the core, which checks the hashes, the secret and the order of the
     events, and its recorded lines are checked against the versioned public schema. The file of the ledger is copied
     from the frozen artifact beside the bundle, and the export refuses it when it belongs to another recording.
+
+    The mode of the bundle comes back with them: a catalog holds one mode, and the caller refuses a set that mixes
+    two of them (ADR-075).
     """
     events_bytes, lines = _recorded_lines(bundle_dir)
     _validate_recorded_events(lines, schema_path)
     manifest = _load_manifest(bundle_dir)
 
-    if manifest.mode != SITE_MODE:
+    expected_kind = CATALOG_MODES.get(str(manifest.mode))
+    if expected_kind is None:
         raise ExportError(
-            f"the bundle in {bundle_dir.name} declares the mode {manifest.mode} and the site publishes only "
-            f"{SITE_MODE}"
+            f"the bundle in {bundle_dir.name} declares the mode {manifest.mode}, which is not the mode of a catalog "
+            f"of the site"
+        )
+    if manifest.capture_kind != expected_kind:
+        raise ExportError(
+            f"the bundle in {bundle_dir.name} declares the mode {manifest.mode} and the capture kind "
+            f"{manifest.capture_kind}, and the catalog of the mode {manifest.mode} holds the bundles of the kind "
+            f"{expected_kind}"
         )
 
     scenario = str(manifest.scenario)
@@ -424,6 +490,9 @@ def _scenario_artifacts(
     # frozen one are the same file and the digest of the chain of the scenario describes both.
     ledger_bytes = _frozen_ledger(bundle_dir, slug, manifest)
 
+    # The snapshot of the memory of the run is copied byte for byte from the bundle, when the bundle carries one.
+    snapshot_bytes = _memory_snapshot(bundle_dir, manifest)
+
     provenance_payload: dict[str, Any] = {
         "mode": manifest.mode,
         "files": dict(manifest.files),
@@ -438,6 +507,8 @@ def _scenario_artifacts(
     }
     if ledger_bytes is not None:
         provenance_payload["artifacts"][LEDGER_FILE] = _sha256_bytes(ledger_bytes)
+    if snapshot_bytes is not None:
+        provenance_payload["artifacts"][SNAPSHOT_FILE] = _sha256_bytes(snapshot_bytes)
     if manifest.snapshot_sha256:
         provenance_payload["snapshot_sha256"] = manifest.snapshot_sha256
     # The provenance is declared field by field: a field the bundle does not declare never reaches the artifact,
@@ -455,6 +526,8 @@ def _scenario_artifacts(
     }
     if ledger_bytes is not None:
         files[f"{slug}/{LEDGER_FILE}"] = ledger_bytes
+    if snapshot_bytes is not None:
+        files[f"{slug}/{SNAPSHOT_FILE}"] = snapshot_bytes
     card: dict[str, Any] = {
         "id": scenario,
         "name": metadata["name"],
@@ -476,7 +549,11 @@ def _scenario_artifacts(
     if manifest.code_sha:
         # The card is what the visitor reads first, so it says which commit produced the recording.
         card["code_sha"] = manifest.code_sha
-    return slug, files, card
+    if manifest.model_profiles:
+        # The card says which model ran which task of the run, so a reader sees the division of work and not only
+        # the name of the model that wrote the answer (ADR-078).
+        card["model_profiles"] = dict(manifest.model_profiles)
+    return slug, files, card, str(manifest.mode)
 
 
 def build_export(
@@ -484,20 +561,57 @@ def build_export(
     *,
     schema_path: Path = TRACE_EVENT_SCHEMA,
     dataset_path: Path = DATASET_FILE,
+    expected_mode: str | None = None,
+    output: Path | None = None,
 ) -> dict[str, bytes]:
     """The bytes of every file the export would write, keyed by the path relative to the output folder.
 
     Nothing is written here. The same function serves the write and the check, so the check compares the disk with
     exactly what the write would have produced. The result depends only on the bundles and on the public dataset.
+
+    A catalog holds one mode: the bundles of a set that mixes the mode of the sandbox and the mode of a real model
+    are refused, because a folder with two modes has no honest name and the visitor of the index would not know what
+    a card of it is (ADR-075).
+
+    `expected_mode` names the mode of the catalog the caller is writing, and `output` names the folder the catalog
+    goes to. The two have to agree: the folder of the site publishes one mode, and a recording of a real model
+    written into the folder of the sandbox would publish a live execution under the label of a fixture. When the
+    folder names no catalog of the site, the mode of the bundles is the mode of the write, and the caller may still
+    state it with `expected_mode`.
     """
+    if expected_mode is not None and expected_mode not in CATALOG_MODES:
+        raise ExportError(
+            f"the mode {expected_mode} is not the mode of a catalog of the site: {sorted(CATALOG_MODES)}"
+        )
+    folder_mode = catalog_mode_of_folder(output) if output is not None else None
+    if folder_mode is not None and expected_mode is not None and folder_mode != expected_mode:
+        raise ExportError(
+            f"the catalog of the mode {expected_mode} does not go to the folder {output.name}, which publishes the "
+            f"catalog of the mode {folder_mode}"
+        )
+    if expected_mode is None:
+        expected_mode = folder_mode
     dataset, dataset_sha256 = _load_dataset(dataset_path)
     files: dict[str, bytes] = {}
     cards: list[dict[str, Any]] = []
+    modes: set[str] = set()
     for bundle_dir in bundles:
-        _slug, scenario_files, card = _scenario_artifacts(bundle_dir, dataset, dataset_sha256, schema_path)
+        _slug, scenario_files, card, mode = _scenario_artifacts(
+            bundle_dir, dataset, dataset_sha256, schema_path
+        )
+        if expected_mode is not None and mode != expected_mode:
+            raise ExportError(
+                f"the bundle in {bundle_dir.name} declares the mode {mode} and the catalog being written is the "
+                f"catalog of the mode {expected_mode}"
+            )
         files.update(scenario_files)
         cards.append(card)
+        modes.add(mode)
 
+    if len(modes) > 1:
+        raise ExportError(
+            f"the bundles do not share one mode ({', '.join(sorted(modes))}), so one catalog cannot hold them"
+        )
     cards.sort(key=lambda card: str(card["id"]))
     files[INDEX_FILE] = _json_bytes(cards)
     return files

@@ -1,4 +1,4 @@
-"""The twelve scenarios of `data/scenarios.json` end to end, offline, through the integrator.
+"""The thirteen scenarios of `data/scenarios.json` end to end, offline, through the integrator.
 
 What they guarantee, and why: each scenario runs with the real tools (SQL over the ledger built from the
 committed sample, the in-process ledger API, the policy index, recorded FX, the `Decimal` calculator, case
@@ -503,6 +503,123 @@ def test_s12_a_past_case_is_recalled_from_memory(ctx: dict[str, Any]) -> None:
     assert result.recommended_action == s["expected_action"]
 
 
+# ---- S13: a markup above the limit of the plan goes to a person --------------------------------------
+
+
+S13_SQL = (
+    "SELECT f.kind, f.applied_rate, f.applied_at, m.id AS merchant_id, m.name AS merchant_name, m.fx_plan "
+    "FROM fx_applied f JOIN transactions t ON t.id = f.transaction_id JOIN merchants m ON m.id = t.merchant_id "
+    "WHERE f.transaction_id = 'TX-2096' ORDER BY f.applied_at"
+)
+
+
+def s13_script() -> list[Any]:
+    """The script of the scenario S13: the rates, the plan of the merchant and the markup against the limit."""
+    t = SCENARIOS["S13"]["truth"]
+    return [
+        tool_call_message("query_ledger", {"question": "fx rates applied to TX-2096 and the plan of its merchant"}),
+        tool_call_message("search_policies", {"query": "refund in another currency", "transform": "none"}),
+        tool_call_message("get_reference_fx", {"from_currency": "EUR", "to_currency": "BRL", "date": "2026-10-23"}),
+        tool_call_message(
+            "calculate",
+            {
+                "operation": "fx_markup_check",
+                "plan": "markup",
+                "values": {
+                    "units": t["units"],
+                    "charge_rate": t["charge_rate"],
+                    "refund_reference_rate": t["reference_rate_refund_date"],
+                    "refund_applied_rate": t["applied_rate"],
+                },
+            },
+        ),
+        text_message(
+            f"The payment came to BRL {t['charge_brl']} and the refund to BRL {t['refund_brl']} [sql:1, calc:1]. "
+            f"The markup was 4.50% of the reference rate, above the 3.00% the plan allows [calc:1]. "
+            f"{t['merchant_name']} ({t['merchant']}) is on the markup plan [sql:1]."
+        ),
+    ]
+
+
+def test_s13_the_markup_above_the_limit_of_the_plan_goes_to_a_person(ctx: dict[str, Any]) -> None:
+    """The scenario S13: a merchant on the markup plan applied 4.50%, the plan allows 3.00%, and a person decides.
+
+    Why it matters: the rule that sends the case to a person reads the applied rate, the reference rate and the
+    plan out of the ledger and of the run, not out of the words of the answer, and this case is the one that proves
+    the rule fires on a ledger that carries the violation.
+    """
+    s = SCENARIOS["S13"]
+    t = s["truth"]
+    result = run("S13", s13_script(), [S13_SQL], **ctx)
+
+    assert tools_of(result) == s["expected_tools"]
+    # The rates the calculation used are the ones of the ledger, not ones the model made up.
+    ledger = {r["kind"]: r["applied_rate"] for r in rows_of(result, "sql:1")}
+    assert ledger == {"charge": t["charge_rate"], "refund": t["applied_rate"]}
+    assert rows_of(result, "sql:1")[0]["fx_plan"] == t["plan"] == "markup"
+    # The calculator states the limit of the plan and that the markup is over it.
+    check = json.loads(next(e for e in result.evidence if e.id == "calc:1").content)["result"]
+    assert check["markup_pct"] == "4.50" and check["markup_limit_pct"] == "3.00"
+    assert check["within_limit"] == "no" and check["refund_at_reference"] == "451.88"
+    # The case goes to a person, and the reason names the policy of the limit.
+    assert result.requires_human_review is s["requires_human_review"] is True
+    assert result.recommended_action == s["expected_action"] == "escalate_to_human"
+    assert any("policy:cross-currency-refunds#merchant-fx-markup" in item for item in result.missing_information)
+    assert any(t["merchant"] in item and t["refund_date"] not in item for item in result.missing_information)
+
+
+# ---- S14: the fee of an exact half cent tie rounds the way the platform chose ------------------------
+
+
+S14_SQL = (
+    "SELECT id, merchant_id, period_start, gross_minor, refunds_minor, fees_minor, net_minor "
+    "FROM settlements WHERE merchant_id = 'M-25' AND period_start = '2026-09-28'"
+)
+
+
+def s14_script() -> list[Any]:
+    """The script of the scenario S14: the settlement of the week and the fee of the tie, computed."""
+    return [
+        tool_call_message("query_ledger", {"question": "settlement of M-25 of the week of 2026-09-28"}),
+        tool_call_message(
+            "calculate",
+            {"operation": "fee", "values": {"gross": "25.00", "percent": "2.9", "fixed_per_item": "0", "items": "0"}},
+        ),
+        text_message(
+            "The processing fee of the settlement of M-25 of the week of 2026-09-28 was 0.72 USD [calc:1]."
+        ),
+    ]
+
+
+def test_s14_the_fee_of_an_exact_half_cent_tie_rounds_the_way_the_platform_chose(ctx: dict[str, Any]) -> None:
+    """The scenario S14: the fee of the week is an exact half cent, and the platform rounds it half to even.
+
+    Why it matters: the policy says the mode of the rounding is the choice of the platform, and this case is the
+    one that proves the choice is exercised: 72.5 minor units become 72, and the net of the settlement adds up.
+    """
+    s = SCENARIOS["S14"]
+    t = s["truth"]
+    result = run("S14", s14_script(), [S14_SQL], **ctx)
+
+    assert tools_of(result) == s["expected_tools"]
+    (row,) = rows_of(result, "sql:1")
+    assert (row["gross_minor"], row["fees_minor"], row["net_minor"]) == (
+        t["gross_minor"],
+        t["fees_minor"],
+        t["net_minor"],
+    )
+    assert row["period_start"] == t["period_start"]
+    assert row["net_minor"] == row["gross_minor"] - row["refunds_minor"] - row["fees_minor"]
+    # The fee before the rounding is the exact half cent of the truth, and the calculator rounds it the way the
+    # platform chose: half to even, so 0.725 becomes 0.72 and the row of the ledger says the same.
+    fee = json.loads(next(e for e in result.evidence if e.id == "calc:1").content)
+    assert fee["result"] == "0.72"
+    assert t["fee_before_rounding"] == "72.5" and t["rounding_mode"] == "half_to_even"
+    all_supported(result)
+    assert result.requires_human_review is s["requires_human_review"]
+    assert result.recommended_action == s["expected_action"]
+
+
 # ---- turns with no tool and answers with no citation ----------------------------------------------
 
 
@@ -534,5 +651,5 @@ def test_the_integrator_prompt_tells_the_model_to_cite_evidence_ids_in_brackets(
 
 
 def test_every_scenario_of_the_file_is_covered_by_a_test_here() -> None:
-    covered = {f"S{n:02d}" for n in range(1, 13)}
+    covered = {f"S{n:02d}" for n in range(1, 15)}
     assert set(SCENARIOS) == covered

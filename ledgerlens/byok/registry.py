@@ -1,7 +1,7 @@
 """The server side allowlist of the models a visitor may run, with the price and its provenance.
 
 Why it exists: the visitor picks a model from a list the server holds, and never from a name the visitor types.
-The catalogue is the only answer the interface may show, and the server refuses by itself any identifier that is
+The catalog is the only answer the interface may show, and the server refuses by itself any identifier that is
 not in the allowlist, so a request that skips the interface is refused exactly like one that goes through it
 (FR-016, FR-027).
 
@@ -20,7 +20,7 @@ the visitor sent, because the identifier of a model is a value of the visitor an
 their provider in that field (FR-018, SC-001).
 
 The allowlist is data in this module, next to the code that reads it, so that the price and the date it was last
-verified travel with the model they belong to (FR-031). The catalogue exposes the status and the capabilities of
+verified travel with the model they belong to (FR-031). The catalog exposes the status and the capabilities of
 each profile, because the interface has to show the visitor what the model can do (FR-030).
 """
 
@@ -38,7 +38,7 @@ __all__ = [
     "ALLOWLIST",
     "ARCHITECTURE_CAPABILITIES",
     "CAPABILITIES",
-    "CATALOGUE_CAPABILITY",
+    "CATALOG_CAPABILITY",
     "PROVIDERS",
     "STATUSES",
     "Capability",
@@ -49,13 +49,14 @@ __all__ = [
     "Pricing",
     "ProfileStatus",
     "ProviderRegistry",
+    "profiles_by_name",
     "required_capabilities",
 ]
 
 ProfileStatus = Literal["tested", "experimental", "disabled", "retired"]
 Capability = Literal["chat", "tool_calling", "structured_output", "reasoning"]
 
-# The status of a profile says what was actually verified with it. Only `tested` unlocks the catalogue.
+# The status of a profile says what was actually verified with it. Only `tested` unlocks the catalog.
 STATUSES: tuple[ProfileStatus, ...] = ("tested", "experimental", "disabled", "retired")
 
 # The capabilities a profile may declare.
@@ -72,9 +73,9 @@ ARCHITECTURE_CAPABILITIES: Mapping[str, frozenset[str]] = {
 # The provider of each model, the way the provider itself names it.
 PROVIDERS: tuple[str, ...] = ("openai", "anthropic", "google", "local")
 
-# The capability every profile of the catalogue has to declare. The agent of the demo drives the tools of the
+# The capability every profile of the catalog has to declare. The agent of the demo drives the tools of the
 # case, so a model that cannot call a tool is not a model the demo can run (FR-015, SC-009).
-CATALOGUE_CAPABILITY = "tool_calling"
+CATALOG_CAPABILITY = "tool_calling"
 
 # The tokens of one million, the unit the prices of the registry are quoted in.
 TOKENS_PER_MILLION = Decimal(1_000_000)
@@ -297,8 +298,12 @@ class ModelProfile:
 # (`PRICE_PER_MTOK` of `ledgerlens/eval/run.py`), transcribed by hand on the day the evaluation ran, so the source
 # is `manual` and the day is the day of that run.
 #
-# `gpt-4.1` is listed as experimental: this repository never exercised the tool calling of that model, so only the
-# capability everybody expects of a chat model is claimed and the price is absent.
+# `gpt-4.1` was listed as experimental because the repository had never exercised its tool calling. The nine
+# published recordings of a real model changed that: `data/eval/replay-real/` holds the runs of `gpt-4.1` that
+# called `get_ledger_record`, `search_policies`, `get_reference_fx` and `calculate` natively, and the site
+# publishes them. The status is `tested` because the evidence is a recording and not a claim. Its price is still
+# absent: nobody in this repository verified it, and a price that was not checked is unknown and never zero
+# (ADR-078).
 ALLOWLIST: tuple[ModelProfile, ...] = (
     ModelProfile(
         profile_id="openai-gpt-4.1-mini",
@@ -320,19 +325,29 @@ ALLOWLIST: tuple[ModelProfile, ...] = (
         provider="openai",
         model_id="gpt-4.1",
         display_name="GPT-4.1",
-        capabilities=("chat",),
-        status="experimental",
-        enabled_in_public_demo=False,
+        capabilities=("chat", "tool_calling"),
+        status="tested",
+        enabled_in_public_demo=True,
         pricing=Pricing(source="unknown", last_verified=None, input_per_1m_usd=None, output_per_1m_usd=None),
     ),
 )
+
+
+def profiles_by_name(profiles: Iterable[ModelProfile]) -> dict[str, ModelProfile]:
+    """The profiles of the allowlist, keyed by the name the deployment and the router use.
+
+    Why the key has the provider in it: the name of a model alone is not a model, because two providers may know
+    a model by the same name. The key is `<provider>:<model_id>`, the same shape the environment uses for
+    `LEDGERLENS_MODEL`, so the router and the configuration speak one name about one model (ADR-078).
+    """
+    return {f"{profile.provider}:{profile.model_id}": profile for profile in profiles}
 
 
 class ProviderRegistry:
     """The allowlist of the models the server is allowed to call, and the only answer to a model request.
 
     The registry answers two questions and refuses a third. It answers which models the visitor may pick (the
-    catalogue) and what a model costs (the price and its provenance). It refuses a model identifier that is not in
+    catalog) and what a model costs (the price and its provenance). It refuses a model identifier that is not in
     the allowlist, and it refuses a profile that lacks a capability the architecture needs, naming the capability
     in both cases (FR-015, FR-016, FR-027).
     """
@@ -344,22 +359,22 @@ class ProviderRegistry:
         """Every profile of the allowlist, whatever its status. The refresh of the registry reads this."""
         return self._profiles
 
-    def catalogue(self) -> tuple[ModelProfile, ...]:
+    def catalog(self) -> tuple[ModelProfile, ...]:
         """The profiles the visitor may pick: the tested ones that are enabled in the public demo.
 
-        The catalogue never grows by itself. A profile enters it when its tool calling was really exercised and
+        The catalog never grows by itself. A profile enters it when its tool calling was really exercised and
         somebody marked it enabled, and it leaves it when it is disabled or retired (FR-016, SC-009).
 
         Why the capability is a filter and not a hope: the agent of the demo drives the tools of the case, so a
         profile without the tool calling would break in the middle of the run and spend the money of the visitor
-        while it breaks. The catalogue answers only the profiles that have the capability (FR-015).
+        while it breaks. The catalog answers only the profiles that have the capability (FR-015).
         """
         return tuple(
             profile
             for profile in self._profiles
             if profile.status == "tested"
             and profile.enabled_in_public_demo
-            and CATALOGUE_CAPABILITY in profile.capabilities
+            and CATALOG_CAPABILITY in profile.capabilities
         )
 
     def get(self, profile_id: str) -> ModelProfile | None:

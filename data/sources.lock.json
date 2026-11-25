@@ -14,9 +14,10 @@
     "ecb_eurofxref_hist": {
       "attribution": "European Central Bank, euro foreign exchange reference rates, https://www.ecb.europa.eu",
       "bytes": 642720,
+      "cross_rates_note": "the cross rates of the committed recordings are computed through the euro by this project and are not rates the ECB publishes",
       "fetched_at": "2026-11-08T01:40:34Z",
       "filename": "eurofxref-hist.zip",
-      "license": "ECB reuse with source acknowledged",
+      "license": "European Central Bank: the reference rates are published for information purposes only, and using them for transaction purposes is strongly discouraged; the source must be acknowledged as the European Central Bank; the ECB accepts no responsibility for any use of the rates",
       "redistributable": true,
       "sha256": "d34817759624a46b58a42ac585f6d9d2fb12ece793d158656dcc7ddd128779a3",
       "url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.zip"

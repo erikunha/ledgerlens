@@ -8,14 +8,24 @@ and one line that says what the file holds.
 
 ## docs
 
+- [The adversarial laboratory](adversarial-lab.md): The laboratory measures the boundaries of the repository with a list of canned exercises whose payloads are synthetic. It adds no defense of its own: a...
 - [LedgerLens cognitive architecture](architecture.md): This document covers the anatomy of the agent, its type and maturity level, the planning design, the choice between imperative and declarative composition...
+- [Causal counterfactual interventions](causal.md): The causal engine of the repository answers one question: if one field of the synthetic world had been different, what else would be different. The answer...
 - [Demo recording](demo.md): The site of the demo and the local run of its two modes are in docs/frontend.md. The recorded run is below.
+- [The document pipeline](documents.md): The pipeline reads the fields of a document, says where on the page it read each one, and hands the result to the verifier as evidence of the repository. A...
 - [The evaluation of this repository, and what each number is allowed to claim](evaluation.md): This page answers one question, for a reader who did not read the code: is any number published by this repository a generalization, or is it a fit? The...
+- [Verified feedback to evaluation and training](feedback.md): The repository publishes two catalogs of recorded scenarios, and the catalogs hold the failures and not only the cases the agent resolves. The verified...
 - [The frontend of LedgerLens](frontend.md): The site of the demo has three rooms, and they live on two origins.
-- [The rules of the world and the rules of Acme: what the corpus of the policies really is](policies-of-acme.md): The eight policies of data/policies/ are the contract of a fictional company, and this document says, rule by rule, which of them are a rule of the world...
+- [The versioned memory](memory.md): The memory of the repository holds what a verified case concluded, and the versioned memory adds the four things the case memory of today does not have: a...
+- [The policies of Acme, and what is real in them](policies-of-acme.md): Acme Payments is a fictional company, created for this project. The corpus of data/policies/ is the contract of that company: every rule of it is either a...
+- [Portable proof of work](proof.md): The repository publishes two catalogs of recorded scenarios, and every bundle names the commit it was produced from, carries the digest of every file, and...
+- [The queue of the review](queue.md): The repository decides that a case goes to a person and stops there. The rule that escalates is in ledgerlens/verify/escalation.py, the task of the review...
 - [Production readiness, 2027 and onwards](readiness-2027.md): This document is the public face of an audit of the LedgerLens, carried out on 22 November 2026 against the branch feature/v3. It is not a review of the...
+- [The review of a case by a person](review.md): The repository decides that a case goes to a person and stops there. The rule that escalates is in ledgerlens/verify/escalation.py and the numbers of the...
 - [Roadmap v3: the LedgerLens as a public laboratory of applied AI engineering](roadmap-v3.md): This document is the work plan from 2026-11-11 onwards. The decision that anchors it is the ADR-011. The detailed specification of each release lives in...
+- [The routing of the inference](routing.md): The router of ADR-078 chooses the model of each slot of a run by the task the slot does. This page says what the cascade is, what the router writes down...
 - [LedgerLens tool catalog](tools.md): This catalog covers the name, description and logic of each tool (separating hardcoded from semantic ones), the integrations by kind of use, and...
+- [The operations digital twin](twin.md): The twin simulates the operations of a payment business over a modelled arrival process: how cases arrive, how many cases a team can carry at once, what a...
 - [The sets of the verifier and what each number means](verification_sets.md): The LedgerLens verifier works with four different sets, and the number 30 appears in two of them with different meanings. A wrong citation here becomes a...
 
 ## docs/api
@@ -105,11 +115,51 @@ and one line that says what the file holds.
 - [ADR-071: The wall and the ceiling of the loop are in every path, and the cut is named to the visitor](decisions/ADR-071-the-wall-and-the-ceiling-of-the-loop-are-in-every-path-and-the-cut-is-named-to-the-visitor.md): Status: accepted. Date: 2026-11-24.
 - [ADR-072: A currency the reference source does not publish is missing data, and the case goes to a person](decisions/ADR-072-a-currency-the-reference-source-does-not-publish-is-missing-data-and-the-case-goes-to-a-person.md): Status: accepted. Date: 2026-11-24.
 - [ADR-073: The published bundle carries the evidence its verdict was computed on, and it is reproducible](decisions/ADR-073-the-published-bundle-carries-the-evidence-its-verdict-was-computed-on-and-it-is-reproducible.md): Status: accepted. Date: 2026-11-24.
+- [ADR-074: A case ends in a decision, and the decision belongs to the code](decisions/ADR-074-a-case-ends-in-a-decision-and-the-decision-belongs-to-the-code.md): Status: accepted. Date: 2026-11-24.
+- [ADR-075: The site publishes two catalogs, and each bundle declares the one it belongs to](decisions/ADR-075-the-site-publishes-two-catalogs-and-each-bundle-declares-the-one-it-belongs-to.md): Status: accepted. Date: 2026-11-24.
+- [ADR-076: The answer of the run is published whole, because the claims are extracted from it](decisions/ADR-076-the-answer-of-the-run-is-published-whole-because-the-claims-are-extracted-from-it.md): Status: accepted. Date: 2026-11-24.
+- [ADR-077: The published bundle is verified against the answer the run verified](decisions/ADR-077-the-published-bundle-is-verified-against-the-answer-the-run-verified.md): Status: accepted. Date: 2026-11-24.
+- [ADR-078: The model of each slot is chosen by the work it does](decisions/ADR-078-the-model-of-each-slot-is-chosen-by-the-work-it-does.md): Status: accepted. Date: 2026-11-24.
+- [ADR-079: The records of a result are published whole, because the claims are checked against them](decisions/ADR-079-the-records-of-a-result-are-published-whole-because-the-claims-are-checked-against-them.md): Status: accepted. Date: 2026-11-24.
+- [ADR-080: The rule of the dashes governs the writing of the repository, and the recording of a real model is published as it is](decisions/ADR-080-the-rule-of-the-dashes-governs-the-writing-of-the-repository-and-the-recording-of-a-real-model-is-published-as-it-is.md): Status: accepted. Date: 2026-11-24.
+- [ADR-081: The stream the simulator invents holds no violation of the policy, and a scenario plants one explicitly](decisions/ADR-081-the-stream-the-simulator-invents-holds-no-violation-of-the-policy-and-a-scenario-plants-one-explicitly.md): Status: accepted. Date: 2026-11-24.
+- [ADR-082: The number of an evaluation case is fixed once the case is published](decisions/ADR-082-the-number-of-an-evaluation-case-is-fixed-once-the-case-is-published.md): Status: accepted. Date: 2026-11-24.
+- [ADR-083: The routing is measured against one model over the same cases, and every number carries its set](decisions/ADR-083-the-routing-is-measured-against-one-model-over-the-same-cases-and-every-number-carries-its-set.md): Status: accepted. Date: 2026-11-24.
+- [ADR-084: The fallback of a run happens only with a consent of the deployment and with the budget that is left](decisions/ADR-084-the-fallback-of-a-run-happens-only-with-a-consent-of-the-deployment-and-with-the-budget-that-is-left.md): Status: accepted. Date: 2026-11-24.
+- [ADR-085: The retry of a failed model is wired into the triage of the run and into the model of the graph](decisions/ADR-085-the-retry-of-a-failed-model-is-wired-into-the-triage-of-the-run-and-into-the-model-of-the-graph.md): Status: accepted. Date: 2026-11-24.
+- [ADR-086: The economics module computes and never calls a model, and an unknown stays unknown](decisions/ADR-086-the-economics-module-computes-and-never-calls-a-model-and-an-unknown-stays-unknown.md): Status: accepted. Date: 2026-11-24.
+- [ADR-087: The review is a typed task, the identity of the reviewer is the session, and the agent never decides](decisions/ADR-087-the-review-is-a-typed-task-the-identity-of-the-reviewer-is-the-session-and-the-agent-never-decides.md): Status: accepted. Date: 2026-11-24.
+- [ADR-088: The queue of the review is a simulation with fictional defaults, and its capacity is never a plan of a team](decisions/ADR-088-the-queue-of-the-review-is-a-simulation-with-fictional-defaults-and-its-capacity-is-never-a-plan-of-a-team.md): Status: accepted. Date: 2026-11-24.
+- [ADR-089: The studio stays off in the shipped configuration, and the comparison that measured it was registered before it ran](decisions/ADR-089-the-studio-stays-off-in-the-shipped-configuration-and-the-comparison-was-registered-before-it-ran.md): Status: accepted. Date: 2026-11-24.
+- [ADR-090: The versioned memory has a quarantine that is a state, a promotion that is simulated and a snapshot that freezes a run](decisions/ADR-090-the-versioned-memory-has-a-quarantine-that-is-a-state-a-promotion-that-is-simulated-and-a-snapshot-that-freezes-a-run.md): Status: accepted. Date: 2026-11-24.
+- [ADR-091: The adversarial laboratory adds no defense of its own, and its count says nothing about an attack that is not in the list](decisions/ADR-091-the-adversarial-laboratory-adds-no-defense-of-its-own-and-its-count-says-nothing-about-an-attack-that-is-not-in-the-list.md): Status: accepted. Date: 2026-11-24.
+- [ADR-092: The journal of a run reuses the idempotence of the branch, and a step that is not idempotent is not run again](decisions/ADR-092-the-journal-of-a-run-reuses-the-idempotence-of-the-branch-and-a-step-that-is-not-idempotent-is-not-run-again.md): Status: accepted. Date: 2026-11-24.
+- [ADR-093: The simulation of the twin is not a recording of a run, and the twin models slots and never people](decisions/ADR-093-the-simulation-of-the-twin-is-not-a-recording-of-a-run-and-the-twin-models-slots-and-never-people.md): Status: accepted. Date: 2026-11-24.
+- [ADR-094: A document is a source of evidence and it never corrects the ledger](decisions/ADR-094-a-document-is-a-source-of-evidence-and-it-never-corrects-the-ledger.md): Status: accepted. Date: 2026-11-24.
+- [ADR-095: The registry of the structural functions is the only source of a dependency](decisions/ADR-095-the-registry-of-the-structural-functions-is-the-only-source-of-a-dependency.md): Status: accepted. Date: 2026-11-24.
+- [ADR-096: The deterministic verdict is the gate of the training data](decisions/ADR-096-the-deterministic-verdict-is-the-gate-of-the-training-data.md): Status: accepted. Date: 2026-11-24.
+- [ADR-097: The proof of work carries the provenance and the digest discipline of the catalogs](decisions/ADR-097-the-proof-of-work-carries-the-provenance-and-the-digest-discipline-of-the-catalogs.md): Status: accepted. Date: 2026-11-24.
+- [ADR-098: The latency and the cost of a turn](decisions/ADR-098-the-latency-and-the-cost-of-a-turn.md): Status: accepted. Date: 2026-11-24.
+- [ADR-099: The truth of the policies and the money is the contract of Acme, and the rules of the world carry their source](decisions/ADR-099-the-truth-of-the-policies-and-the-money-is-the-contract-of-acme-and-the-rules-of-the-world-carry-their-source.md): Status: accepted. Date: 2026-11-25.
+- [ADR-100: The guide of the cold start is data that names regions of the reader](decisions/ADR-100-the-guide-of-the-cold-start-is-data-that-names-regions-of-the-reader.md): Status: accepted. Date: 2026-11-25.
+- [ADR-101: The conformance of the sandbox runs over the seeded scenarios, the generator of the sequences is seeded, and the diff of a branch is published as data](decisions/ADR-101-the-conformance-of-the-sandbox-runs-over-the-seeded-scenarios-and-the-diff-is-published-as-data.md): Status: accepted. Date: 2026-11-25.
+- [ADR-102: The identifier of an experiment is the hash of its manifest, and a published experiment is never rewritten](decisions/ADR-102-the-identifier-of-an-experiment-is-the-hash-of-its-manifest-and-a-published-experiment-is-never-rewritten.md): Status: accepted. Date: 2026-11-25.
+- [ADR-103: The evidence graph is a read over the evidence of the run, and it is never a second verdict](decisions/ADR-103-the-evidence-graph-is-a-read-over-the-evidence-of-the-run-and-it-is-never-a-second-verdict.md): Status: accepted. Date: 2026-11-25.
+- [ADR-104: The routing reads the registry and the budget and never writes them, and the comparison of the routes is a hypothesis until it is measured](decisions/ADR-104-the-routing-reads-the-registry-and-the-budget-and-never-writes-them.md): Status: accepted. Date: 2026-11-25.
 - [Decision records](decisions/README.md): Every decision that restricts the future of the work is a record in this folder, and this index lists them in the order of their number, with their status...
+
+## docs/orchestration
+
+- [The baseline of the orchestration studio](orchestration/baseline.md): The studio of the multi-agent orchestration is experimental and it is measured against the path that the repository ships today. A reference that moves is...
+- [The comparison of the studio against the single agent](orchestration/comparison.md): The set of the comparison is 31 cases (eval_cases.jsonl, digest 28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351), the denominator of every...
 
 ## docs/pt-BR
 
 - [roadmap-v3.md](pt-BR/roadmap-v3.md): the Portuguese edition of [roadmap-v3.md](roadmap-v3.md); its own title is in Portuguese, so the file name names it here.
+
+## docs/runbook
+
+- [Runbook: the durability of a run](runbook/durability.md): This runbook is for the person who has to restart a run that died, read the state of a run, or roll the journal of a run back. The journal of a run is the...
 
 ## docs/v3
 

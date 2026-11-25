@@ -1,0 +1,10 @@
+{
+  "call_past_the_cap.json": "83fae18ebacd46a94ffadaa194259322925b451c023b045a6653777c9f5c217b",
+  "forged_evidence_identifier.json": "445b5bcfadb02c4af8ac31acd65019ba4b0bef0aab87d508d767e940d95c970c",
+  "invented_citation.json": "df2d99dda593a566ce1669290189db3d9854f47b376aadc9233609dfd7e86b8b",
+  "row_of_another_visitor.json": "ec0fe83ce1572914e106b0ed6a284a168c995c06c9dcda86d781a262cc3a1f45",
+  "s09_injected_note.json": "2edeb806b8bcfdb41ff6f9a7ce56d8a7279039f4faca954e1fb49fdef2d52ea0",
+  "table_outside_the_allowlist.json": "147401eca16b8dd0fbb28de887d26dca675d4b4849a37a9faf1b05985b89f4d1",
+  "tool_that_does_not_exist.json": "fa855c78cbbd6cff25b1ca7d6a9f61f74d9486f14f879fbe82a028b2da81f6cd",
+  "write_in_generated_query.json": "d2d2ada45dad42333d8676c25ef127c8e54ded025157c7767deda9a822ff266e"
+}

@@ -1,0 +1,27 @@
+{
+  "artifacts": {
+    "events.jsonl": "45dd2c396cb6a14d7c1d318baef3efbeebeffd1276fd3322fa13767e71718cc6",
+    "ledger.json": "74a2f5221dd5b439a44ad7517d61d011be9bb402f45cf341f96e98016ef40d7c",
+    "manifest.json": "6d8977b1a122f476e903d78cb7351552dcaaa7953f4b24ca91acd9747436e618"
+  },
+  "bundle_digest": "6d8977b1a122f476e903d78cb7351552dcaaa7953f4b24ca91acd9747436e618",
+  "capture_kind": "real_model_recorded",
+  "code_sha": "37aa9b66f6bb9cd120c09f00dac1f1fd95a3a5fe",
+  "created_at": "2026-11-24T03:45:34+00:00",
+  "dataset_sha256": "809f2c34cc47adde75fc5894c4d36dfb7e8fec2d7a38f48339c3af5f41118e78",
+  "files": {
+    "events.jsonl": "45dd2c396cb6a14d7c1d318baef3efbeebeffd1276fd3322fa13767e71718cc6"
+  },
+  "mode": "live_agent",
+  "model_profile": "openai:gpt-4.1",
+  "model_profiles": {
+    "agent": "openai:gpt-4.1",
+    "policy": "openai:gpt-4.1-mini",
+    "sql": "openai:gpt-4.1",
+    "triage": "openai:gpt-4.1-mini"
+  },
+  "note": "Real execution of the scenario S11, account M-17, with the model openai:gpt-4.1 and the live reference rate. The work was split by the task: the triage and the rewrite of the search of the policies ran on openai:gpt-4.1-mini, the statement that reads the ledger ran on openai:gpt-4.1 and the answer with the tools ran on openai:gpt-4.1. This is the recording of a real run and it is not reproducible byte for byte. The verdicts of the claims were computed by the deterministic verifier of the repository, the judge the sandbox catalog uses, so that anybody can re-verify this bundle offline.",
+  "policy_version": "policies-v1",
+  "recorded_at": "2026-11-24T03:45:34+00:00",
+  "snapshot_sha256": "ebccbb640b75979ea2d392c0ca968a06f60b9323119d05b39d4a14e692721c15"
+}

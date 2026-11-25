@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.invalid/ledgerlens/spec/model-profile.schema.json",
-  "$comment": "Published contract of the model catalogue of R3. A price travels as text or as a number and the domain parses it into a Decimal, because a price is money and money is never a float.",
+  "$comment": "Published contract of the model catalog of R3. A price travels as text or as a number and the domain parses it into a Decimal, because a price is money and money is never a float.",
   "title": "ModelProfile",
   "type": "object",
   "additionalProperties": false,

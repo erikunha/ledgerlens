@@ -1,0 +1,31 @@
+{
+  "artifact_id": "b8386ad5300920dce7b54916de986aa3e17df7e7d4b21c4d289353e6d52d6a1c",
+  "claim_evidence_refs": [
+    "sql:1",
+    "policy:refund-policy#duplicate-exception",
+    "policy:duplicate-charges#detection-rule",
+    "policy:duplicate-charges#retries-after-failure",
+    "policy:duplicate-charges#overview",
+    "policy:chargeback-handling#evidence-dup",
+    "policy:duplicate-charges#time-gap",
+    "policy:duplicate-charges#records",
+    "policy:duplicate-charges#who-refunds"
+  ],
+  "cost_provenance": "replayed",
+  "cost_usd": null,
+  "known_limitations": [
+    "the run is the recording of the scripted model, and it reproduces the run of the capture byte for byte",
+    "the artifact attests to a claim about the code of the repository and says nothing about a person"
+  ],
+  "mode": "deterministic_sandbox",
+  "privacy_reviewed": true,
+  "scenario_id": "S02",
+  "schema_version": "3",
+  "snapshot_hash": "901d58ec241029c12a42835aa4504966c73abdbf72c65f906258266f2cd30e8e",
+  "source_commit": "86ab658d259847c7272e655115f1d8cf73ce63b51dbb5eb958b5b6abef37933d",
+  "trace_refs": [
+    "data/eval/replay/s02/events.jsonl",
+    "data/eval/replay/s02/memory_snapshot.json"
+  ],
+  "verdict_summary": "CL1 supported; CL2 supported; CL3 not_enough_evidence"
+}

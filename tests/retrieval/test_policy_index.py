@@ -178,14 +178,14 @@ def test_a_policy_edited_after_the_build_makes_the_loader_refuse(
     current = corpus_digest(corpus)
     assert built != current, "the digest of the meta must move when the policy moves"
 
-    class ForbiddenFaiss:
-        """Stands in for FAISS: the loader must refuse before it opens the store."""
+    class ForbiddenStore:
+        """Stands in for the loader of the store: the loader must refuse before it opens the store."""
 
         @staticmethod
-        def load_local(*args: object, **kwargs: object) -> None:
+        def load(*args: object, **kwargs: object) -> None:
             raise AssertionError("the store must never be loaded")
 
-    monkeypatch.setattr(retrieval, "FAISS", ForbiddenFaiss)
+    monkeypatch.setattr(retrieval, "load_index", ForbiddenStore.load)
 
     with pytest.raises(IndexStale) as refusal:
         load_policy_index(folder, embeddings, policies_dir=corpus)
@@ -202,7 +202,7 @@ def test_an_index_of_the_corpus_of_the_disk_is_accepted(tmp_path: Path, embeddin
     build_policy_index(load_policy_documents(corpus), embeddings, folder, policies_dir=corpus)
 
     store = load_policy_index(folder, embeddings, policies_dir=corpus)
-    assert store.index.ntotal > 0
+    assert store.count > 0
 
 
 def test_the_meta_carries_the_digest_of_the_corpus_it_was_built_from(

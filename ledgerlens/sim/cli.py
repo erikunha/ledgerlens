@@ -41,7 +41,7 @@ def _scenarios(text: str) -> tuple[str, ...]:
     wanted = tuple(part.strip().upper() for part in text.split(",") if part.strip())
     unknown = [item for item in wanted if item not in SCENARIO_IDS]
     if unknown:
-        raise argparse.ArgumentTypeError(f"unknown scenario(s): {', '.join(unknown)} (use all, none or S01 to S12)")
+        raise argparse.ArgumentTypeError(f"unknown scenario(s): {', '.join(unknown)} (use all, none or S01 to S13)")
     return tuple(sorted(set(wanted)))
 
 

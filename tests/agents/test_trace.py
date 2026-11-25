@@ -278,8 +278,17 @@ def test_the_summary_line_counts_sources_tokens_and_verdicts() -> None:
 
 
 def test_compact_cuts_long_lists_and_texts_and_redacts_keys() -> None:
-    data = {"rows": [[n] for n in range(20)], "note": "x" * 700, "auth": "Bearer abc.def-123", "key": "sk-" + "a" * 20}
+    data = {
+        "rows": [[n] for n in range(20)],
+        "tags": [f"tag-{n}" for n in range(20)],
+        "note": "x" * 700,
+        "auth": "Bearer abc.def-123",
+        "key": "sk-" + "a" * 20,
+    }
     out = compact(data)
-    assert out["rows"][-1] == "…+12 rows" and len(out["rows"]) == 9
+    # The records of a result are published whole, because the tool bounded them and said what it read
+    # (ADR-079). A list of plain values keeps the cut.
+    assert out["rows"] == [[n] for n in range(20)]
+    assert out["tags"][-1] == "…+12 items" and len(out["tags"]) == 9
     assert out["note"].endswith("…+100 chars")
     assert out["auth"] == "[REDACTED]" and out["key"] == "[REDACTED]"

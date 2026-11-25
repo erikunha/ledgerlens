@@ -1,0 +1,5 @@
+Receipt
+Store: Harbor Goods LLC
+Date: 2026-10-20
+Transaction: TX-2099
+Total: 1,000.00 USD

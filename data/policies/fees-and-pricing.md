@@ -26,7 +26,7 @@ The total fees of a settlement are the processing fee plus the fixed fee multipl
 
 ## Rounding {#rounding}
 
-The processing fee is rounded to the currency's smallest unit, for example the cent, with round half to even. A tie goes to the even digit: 14.5 cents become 14 and 43.5 cents become 44. The fixed chargeback fee is already an exact amount and is not rounded.
+The processing fee is rounded to the currency's smallest unit, for example the cent, with round half to even. A tie goes to the even digit: 14.5 cents become 14 and 43.5 cents become 44. The mode of the rounding is the choice of the platform: the common commercial practice rounds a tie away from zero, and Acme chose the even digit instead. The fixed chargeback fee is already an exact amount and is not rounded.
 
 ## Calculation example {#fee-example}
 

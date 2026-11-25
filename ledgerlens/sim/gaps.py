@@ -50,10 +50,17 @@ def convert_minor(amount_minor: int, rate: Decimal, from_currency: str, to_curre
     return int(scaled.quantize(Decimal(1), ROUND_HALF_EVEN))
 
 
-def refund_applied_rate(reference_rate: Decimal, markup_pct: Decimal) -> Decimal:
-    """Rate the merchant applies: the reference rate of the refund date times `1 - markup`, 4 decimals."""
-    if markup_pct < 0 or markup_pct > MAX_MARKUP_PCT:
-        raise ValueError(f"markup must be between 0 and {MAX_MARKUP_PCT} percent, got {markup_pct}")
+def refund_applied_rate(
+    reference_rate: Decimal, markup_pct: Decimal, *, policy_ceiling: Decimal | None = MAX_MARKUP_PCT
+) -> Decimal:
+    """Rate the merchant applies: the reference rate of the refund date times `1 - markup`, 4 decimals.
+
+    The ceiling is the limit of the policy, and the natural stream never goes over it: a ledger the simulator
+    invents holds no violation of the policy. A scenario that plants the violation passes `policy_ceiling=None`,
+    because the case that catches it is the work of the product and not a fact the simulator may invent.
+    """
+    if markup_pct < 0 or (policy_ceiling is not None and markup_pct > policy_ceiling):
+        raise ValueError(f"markup must be between 0 and {policy_ceiling} percent, got {markup_pct}")
     return (reference_rate * (Decimal(1) - markup_pct / Decimal(100))).quantize(FOUR_DECIMALS, ROUND_HALF_EVEN)
 
 
@@ -66,10 +73,20 @@ class CrossCurrencyRefund:
 
 
 def cross_currency_refund(
-    amount_minor: int, from_currency: str, to_currency: str, reference_rate: Decimal, markup_pct: Decimal
+    amount_minor: int,
+    from_currency: str,
+    to_currency: str,
+    reference_rate: Decimal,
+    markup_pct: Decimal,
+    *,
+    policy_ceiling: Decimal | None = MAX_MARKUP_PCT,
 ) -> CrossCurrencyRefund:
-    """Refund of `amount_minor` (in `from_currency`) paid to the customer in `to_currency`."""
-    applied = refund_applied_rate(reference_rate, markup_pct)
+    """Refund of `amount_minor` (in `from_currency`) paid to the customer in `to_currency`.
+
+    The ceiling of the policy is the one of the natural stream; a scenario that plants the violation passes
+    `policy_ceiling=None` (see `refund_applied_rate`).
+    """
+    applied = refund_applied_rate(reference_rate, markup_pct, policy_ceiling=policy_ceiling)
     return CrossCurrencyRefund(
         applied_rate=applied,
         payout_minor=convert_minor(amount_minor, applied, from_currency, to_currency),

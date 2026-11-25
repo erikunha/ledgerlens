@@ -36,6 +36,8 @@ A refund has three statuses. In `requested`, the request was recorded and is sti
 
 Once the request is accepted, the refund is paid on the same business day or on the next business day. The time for the money to show up in the customer's account depends on the original payment method and the issuing bank, and Acme Payments does not control that step. When there is a currency conversion, the amount the customer receives follows the cross-currency refund policy.
 
+The refund window of this policy is a house rule of Acme, and it cannot be narrower than the right of withdrawal of the consumer: the consumer of the European Union has fourteen days to withdraw from a distance contract (source: Directive 2011/83/EU, Article 9(1), read on 2026-11-25), and a window of a merchant below that floor does not apply to a consumer of the Union.
+
 ## Rejection reasons {#rejection-reasons}
 
 A request is rejected when the window has ended (`outside_refund_window`), when the requested amount plus earlier refunds exceeds the captured amount or when the payment has an open dispute. The rejection reason is kept on the refund itself. A rejection for the window is automatic and needs no review, but the analyst must check the capture date and the merchant's window before explaining the decision to the customer.

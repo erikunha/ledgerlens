@@ -1,0 +1,23 @@
+{
+  "artifact_id": "d92172978a1023164e8791a386b28ca17c4740f4db8940848b090cdbf4ed1d6c",
+  "claim_evidence_refs": [
+    "sql:1"
+  ],
+  "cost_provenance": "replayed",
+  "cost_usd": null,
+  "known_limitations": [
+    "the run is the recording of the scripted model, and it reproduces the run of the capture byte for byte",
+    "the artifact attests to a claim about the code of the repository and says nothing about a person"
+  ],
+  "mode": "deterministic_sandbox",
+  "privacy_reviewed": true,
+  "scenario_id": "S10",
+  "schema_version": "3",
+  "snapshot_hash": "8ed0701ef63e637599e85ebc8192a340ef4017a3a1ac6915e25e145bf63d4457",
+  "source_commit": "86ab658d259847c7272e655115f1d8cf73ce63b51dbb5eb958b5b6abef37933d",
+  "trace_refs": [
+    "data/eval/replay/s10/events.jsonl",
+    "data/eval/replay/s10/memory_snapshot.json"
+  ],
+  "verdict_summary": "CL1 supported; CL2 not_enough_evidence; CL3 not_enough_evidence"
+}

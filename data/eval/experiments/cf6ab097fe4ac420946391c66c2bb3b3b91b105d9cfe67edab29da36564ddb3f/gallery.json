@@ -1,0 +1,157 @@
+{
+  "artifact": "failure_gallery",
+  "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+  "failed_runs": [],
+  "lost_cases": [
+    {
+      "case_id": "EC-03",
+      "evidence_cited": [
+        "policy:chargeback-handling#evidence-checklist",
+        "policy:chargeback-handling#stages",
+        "policy:chargeback-handling#who-submits",
+        "sql:1"
+      ],
+      "expected_facts": [
+        "2026-11-09",
+        "evidence_requested",
+        "NRC"
+      ],
+      "loser": "orchestration_studio",
+      "scores": {
+        "orchestration_studio": 0.6666666666666666,
+        "single_agent": 1.0
+      },
+      "winner": "single_agent"
+    },
+    {
+      "case_id": "EC-04",
+      "evidence_cited": [
+        "sql:1"
+      ],
+      "expected_facts": [
+        "TX-9999",
+        "row_count 0"
+      ],
+      "loser": "orchestration_studio",
+      "scores": {
+        "orchestration_studio": 0.0,
+        "single_agent": 0.5
+      },
+      "winner": "single_agent"
+    },
+    {
+      "case_id": "EC-05",
+      "evidence_cited": [
+        "sql:1"
+      ],
+      "expected_facts": [
+        "TX-2060",
+        "M-03",
+        "TX-2061",
+        "M-17"
+      ],
+      "loser": "single_agent",
+      "scores": {
+        "orchestration_studio": 1.0,
+        "single_agent": 0.5
+      },
+      "winner": "orchestration_studio"
+    },
+    {
+      "case_id": "EC-06",
+      "evidence_cited": [
+        "policy:refund-policy#customer-communication",
+        "policy:refund-policy#refund-statuses",
+        "policy:refund-policy#refund-window",
+        "policy:refund-policy#rejection-reasons",
+        "policy:refund-policy#who-can-request",
+        "sql:1",
+        "sql:2"
+      ],
+      "expected_facts": [
+        "rejected",
+        "refund-policy#refund-window"
+      ],
+      "loser": "orchestration_studio",
+      "scores": {
+        "orchestration_studio": 0.5,
+        "single_agent": 1.0
+      },
+      "winner": "single_agent"
+    },
+    {
+      "case_id": "EC-07",
+      "evidence_cited": [
+        "api:1",
+        "api:2",
+        "calc:1"
+      ],
+      "expected_facts": [
+        "0.00",
+        "8000"
+      ],
+      "loser": "single_agent",
+      "scores": {
+        "orchestration_studio": 1.0,
+        "single_agent": 0.5
+      },
+      "winner": "orchestration_studio"
+    },
+    {
+      "case_id": "EC-09",
+      "evidence_cited": [
+        "sql:1"
+      ],
+      "expected_facts": [
+        "R-0750",
+        "requested"
+      ],
+      "loser": "orchestration_studio",
+      "scores": {
+        "orchestration_studio": 0.5,
+        "single_agent": 1.0
+      },
+      "winner": "single_agent"
+    },
+    {
+      "case_id": "EC-10",
+      "evidence_cited": [
+        "api:1",
+        "fx:1"
+      ],
+      "expected_facts": [
+        "ARS",
+        "2500000"
+      ],
+      "loser": "orchestration_studio",
+      "scores": {
+        "orchestration_studio": 0.0,
+        "single_agent": 0.5
+      },
+      "winner": "single_agent"
+    },
+    {
+      "case_id": "EC-30",
+      "evidence_cited": [
+        "policy:chargeback-handling#evidence-checklist",
+        "policy:chargeback-handling#evidence-nad",
+        "policy:chargeback-handling#evidence-nrc",
+        "policy:chargeback-handling#overview",
+        "policy:chargeback-handling#who-submits"
+      ],
+      "expected_facts": [
+        "chargeback-handling#evidence-checklist"
+      ],
+      "loser": "single_agent",
+      "scores": {
+        "orchestration_studio": 1.0,
+        "single_agent": 0.0
+      },
+      "winner": "orchestration_studio"
+    }
+  ],
+  "variants": [
+    "orchestration_studio",
+    "single_agent"
+  ]
+}

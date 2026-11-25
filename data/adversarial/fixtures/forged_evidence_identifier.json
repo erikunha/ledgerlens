@@ -1,0 +1,6 @@
+{
+  "exercise_id": "forged-evidence-identifier",
+  "surface": "the join of the evidence",
+  "payload": "sql:9999",
+  "treat_as": "an identifier the join of the evidence refuses"
+}

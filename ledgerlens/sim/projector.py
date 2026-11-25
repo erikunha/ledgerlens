@@ -370,7 +370,7 @@ class Projector:
         self._require("merchants", "id", p["merchant_id"], "merchant")
         self.conn.execute(
             "INSERT INTO settlements (id, merchant_id, period_start, period_end, currency, gross_minor, refunds_minor,"
-            " fees_minor, net_minor, status, expected_payout_date, paid_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'scheduled', ?, NULL)",  # noqa: E501
+            " fees_minor, net_minor, carried_minor, status, expected_payout_date, paid_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'scheduled', ?, NULL)",  # noqa: E501
             (
                 p["settlement_id"],
                 p["merchant_id"],
@@ -381,6 +381,7 @@ class Projector:
                 p["refunds_minor"],
                 p["fees_minor"],
                 p["net_minor"],
+                p.get("carried_minor", 0),
                 p["expected_payout_date"],
             ),
         )

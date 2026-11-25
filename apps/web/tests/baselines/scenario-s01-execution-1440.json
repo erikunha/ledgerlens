@@ -50,7 +50,7 @@
       "id": "run",
       "role": "region",
       "name": "The recorded run",
-      "title": "The execution of the recording",
+      "title": "The guided path",
       "left": 104,
       "width": 1232
     },

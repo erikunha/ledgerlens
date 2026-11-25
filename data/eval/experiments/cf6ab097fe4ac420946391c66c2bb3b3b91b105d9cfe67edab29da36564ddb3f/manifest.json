@@ -1,0 +1,25 @@
+{
+  "cohort_cases": 31,
+  "cohort_path": "data/eval/eval_cases.jsonl",
+  "cohort_sha256": "28f16cabcbb7391112ac6a7bbe6567ec877eeba3207dd1caa3c3933761362351",
+  "command": "uv run python scripts/run_paired_experiment.py --manifest <manifest> --runs <runs>",
+  "commit": "b407c10e83db65a551b4beeb104493d8e948a8d5",
+  "experiment_id": "cf6ab097fe4ac420946391c66c2bb3b3b91b105d9cfe67edab29da36564ddb3f",
+  "goal": 0.8,
+  "judge": "the deterministic judge of the repository, with the stub of the NLI",
+  "method": "the paired difference, with the standard error of the differences and the normal approximation of 95 percent",
+  "registered_on": "2026-11-25",
+  "seed": 0,
+  "variants": [
+    {
+      "description": "the path that the repository ships",
+      "model": "gpt-4.1-mini",
+      "name": "single_agent"
+    },
+    {
+      "description": "the experimental variant of the studio",
+      "model": "gpt-4.1-mini",
+      "name": "orchestration_studio"
+    }
+  ]
+}

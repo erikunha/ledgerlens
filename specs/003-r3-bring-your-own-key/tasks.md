@@ -168,13 +168,13 @@ message names the missing capability.
 ### Tests for User Story 4 ⚠️
 
 - [x] T064 [P] [US4] Test a model without tool calling is refused with the capability named in tests/byok/test_registry.py
-- [x] T065 [P] [US4] Test only the allowlist answers the catalogue in tests/byok/test_registry.py
+- [x] T065 [P] [US4] Test only the allowlist answers the catalog in tests/byok/test_registry.py
 - [x] T066 [P] [US4] Test the price carries its provenance and its date in tests/byok/test_registry.py
 
 ### Implementation for User Story 4
 
 - [x] T067 [P] [US4] Implement the capability check in ledgerlens/byok/registry.py, refusing a model that lacks what the architecture needs
-- [x] T068 [US4] Implement the catalogue endpoint in ledgerlens/api/byok.py, with the tested status and the capabilities
+- [x] T068 [US4] Implement the catalog endpoint in ledgerlens/api/byok.py, with the tested status and the capabilities
 - [x] T069 [US4] Resolve the profile identifier against the allowlist in ledgerlens/api/live_run.py, refusing an unknown one
 - [x] T070 [US4] Show the capability list in the ModelSelector, in apps/web/features/models/ModelSelector.tsx
 - [x] T071 [US4] Refuse a model in the server, not only in the interface, in ledgerlens/api/live_run.py

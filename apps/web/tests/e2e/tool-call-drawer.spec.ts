@@ -16,6 +16,9 @@
  * drawer is a client component of it that calls nobody (ADR-040, ADR-042, ADR-043).
  */
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
 /**
@@ -24,8 +27,40 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
  * Why the case carries the statement of the bundle: the drawer shows the text of the recording and
  * never a text of its own, so the proof has to use the text that the bundle ships.
  */
+/**
+ * The duration of the first call of the recording, read from the bundle the site serves.
+ *
+ * Why the duration is read and not written: the duration is measured by the capture, and it changes with
+ * every re-capture of the scenario. The test proves that the drawer shows the duration of the recording,
+ * so the duration is read from the recording.
+ */
+const FIRST_CALL = (() => {
+  const events = readFileSync(join(process.cwd(), "public", "replay", "s01", "events.jsonl"), "utf8")
+    .split("\n")
+    .filter((line) => line.trim().length > 0)
+    .map(
+      (line) =>
+        JSON.parse(line) as {
+          event_type?: string;
+          payload?: { name?: string; latency_ms?: number; inputs?: { question?: string } };
+        },
+    );
+  const ended = events.find(
+    (event) => event.event_type === "span.ended" && event.payload?.name === "query_ledger",
+  );
+  const started = events.find(
+    (event) => event.event_type === "span.started" && event.payload?.name === "query_ledger",
+  );
+  return {
+    latencyMs: ended?.payload?.latency_ms ?? 0,
+    question: started?.payload?.inputs?.question ?? "",
+  };
+})();
+
+const FIRST_CALL_LATENCY_MS = FIRST_CALL.latencyMs;
+
 const RECORDED_SQL =
-  "SELECT * FROM (SELECT kind, applied_rate, applied_at FROM fx_applied WHERE transaction_id = 'TX-2048' ORDER BY applied_at) LIMIT 50";
+  "SELECT * FROM (SELECT f.kind, f.applied_rate, f.applied_at, m.id AS merchant_id, m.name AS merchant_name, m.fx_plan FROM fx_applied AS f JOIN transactions AS t ON t.id = f.transaction_id JOIN merchants AS m ON m.id = t.merchant_id WHERE f.transaction_id = 'TX-2048' ORDER BY f.applied_at) LIMIT 50";
 
 /**
  * The literal of the statement, as the recording wrote it.
@@ -223,11 +258,11 @@ test("the Enter key on the cell of the row opens the drawer with the identity, t
   await expect(identity).toContainText(FIRST_CALL_NAME);
   await expect(identity).toContainText(FIRST_CALL_EVENT);
   await expect(identity).toContainText("Succeeded");
-  await expect(identity).toContainText("12 ms");
+  await expect(identity).toContainText(`${FIRST_CALL_LATENCY_MS} ms`);
 
   // The arguments of the call, as the recording wrote them.
   const argumentsText = await drawer.locator("pre").first().textContent();
-  expect(argumentsText).toBe('{\n  "question": "FX rates applied to TX-2048"\n}');
+  expect(argumentsText).toBe(`{\n  "question": "${FIRST_CALL.question}"\n}`);
 
   // The result of the call, as the recording wrote it. The amounts of the ledger are text, and
   // the case never sees a number that the core did not write.

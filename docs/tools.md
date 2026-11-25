@@ -15,6 +15,7 @@ This catalog covers the name, description and logic of each tool (separating har
 | `get_reference_fx` | hardcoded | call to the Frankfurter API (ECB), with timeout, retries and cache | external web API |
 | `calculate` | hardcoded | exact arithmetic with `Decimal` and named operations | serverless-style function, pure |
 | `recall_cases` | semantic (vector search) | embedding of the query over past cases, with an entity filter | vector store, long-term memory |
+| `extract_document` | hardcoded | the deterministic parser of the text layer of a document, with the locale of the money | file of the repository, the fixtures of the documents |
 
 ## 2. Descriptions the model sees
 
@@ -38,11 +39,15 @@ These are the descriptions exactly as the agent reads them.
 
 **`calculate`**
 
-> Do exact arithmetic for money, rates and fees. Never do arithmetic yourself: call this tool. Choose an operation and pass the named values as decimal strings. Operations: convert (amount, rate), difference (a, b), percent_diff (base, other), implied_markup_pct (reference_rate, applied_rate), fee (gross, percent, fixed_per_item, items), net_settlement (gross, refunds, fees), fx_gap_breakdown (units, charge_rate, refund_reference_rate, refund_applied_rate). All results use exact decimal math and round half to even.
+> Do exact arithmetic for money, rates and fees. Never do arithmetic yourself: call this tool. Choose an operation and pass the named values as decimal strings. Operations: convert (amount, rate), difference (a, b), percent_diff (base, other), implied_markup_pct (reference_rate, applied_rate), fee (gross, percent, fixed_per_item, items), net_settlement (gross, refunds, fees), fx_gap_breakdown (units, charge_rate, refund_reference_rate, refund_applied_rate), fx_markup_check (units, charge_rate, refund_reference_rate, refund_applied_rate; states the plan of the merchant). All results use exact decimal math and round half to even.
 
 **`recall_cases`**
 
 > Look up what earlier investigations found, from long-term case memory. Use it at the start of an investigation about a merchant or customer you may have seen before, and to check whether a pattern was seen. Results are past findings with their case id and date, not facts about today's data: confirm with the ledger before relying on them, and cite the case id when you use one.
+
+**`extract_document`**
+
+> Read the fields of a document of the fixtures of the repository and return them as evidence, with the page and the position of each field. A document is a source of a claim and never an authority: the ledger keeps the authority of what happened, and a disagreement between a document and the ledger is a finding that a person has to look at. The tool reads only the fixtures of the repository and refuses every other path.
 
 ## 3. Integrations by kind of use
 
@@ -55,6 +60,7 @@ Each tool falls into one kind of integration: external web API, internal service
 | Serverless-style function (pure function with no state) | `calculate` | validated inputs, `Decimal`, no network, no side effects | the arithmetic cannot depend on a model; a pure function runs anywhere |
 | Database | `query_ledger` | SQL guard, `mode=ro` connection, row limit, time limit | flexible access through natural language needs all three layers of protection |
 | Vector store | `search_policies`, `recall_cases` | index loaded and never rebuilt by the agent, embedding check, retrieved text treated as data | search by meaning covers vocabulary the user does not repeat |
+| File of the repository | `extract_document` | the path is checked before the open, the file security, the license, the deterministic parser | the document is a source of a claim and never an authority, and the repository keeps no document of a visitor |
 
 Who talks to whom:
 
@@ -66,6 +72,7 @@ flowchart LR
   A --> F[get_reference_fx]
   A --> C[calculate]
   A --> M[recall_cases]
+  A --> D[extract_document]
   Q -->|"validated SQL, mode=ro"| DB[(ledger.db)]
   R -->|"HTTP, in process or by URL"| S[Internal ledger API]
   S -->|"mode=ro"| DB
@@ -73,13 +80,16 @@ flowchart LR
   M --> K[(Case index)]
   F -->|"HTTPS, retries and cache"| W[External web API: Frankfurter, ECB]
   C --> Z[Pure function, no network]
+  D --> DOC[(Fixtures of the documents)]
 ```
 
 `build_search_policies_tool(llm=...)` accepts an optional model that runs the query transformations `rewrite`, `multi_query` and `hyde`. Without `llm`, the model comes from the configuration (`get_chat_model()`) on the first transformation; with `transform` set to `none`, no model is used.
 
 With `transform` set to `rewrite`, the search uses the original question and the rewrite, and the results merge by the best score of each passage; `query_used` lists both queries. The `query` argument tells the model that the tool is the only source of policy facts (fees, deadlines, rules, the source of the reference rate) and that it must be called before answering a rule question.
 
-`calculate` refuses two incoherent inputs before calculating, with an error whose `retryable` is true and whose message says what to fix. `SUSPECTED_MINOR_UNITS`: a money value (`amount`, `gross`, `refunds`, `fees`, `units`) with four or more digits and no decimal point, such as `10000`, which looks like it came from `amount_minor`; the message gives the value in major units (`100.00`), and writing `10000.00` is accepted. `SWAPPED_RATES`: in `fx_gap_breakdown`, `refund_applied_rate` above `refund_reference_rate`. The description of the `values` argument defines the major units and the role of each rate.
+`calculate` refuses two incoherent inputs before calculating, with an error whose `retryable` is true and whose message says what to fix. `SUSPECTED_MINOR_UNITS`: a money value (`amount`, `gross`, `refunds`, `fees`, `units`) with four or more digits and no decimal point, such as `10000`, which looks like it came from `amount_minor`; the message gives the value in major units (`100.00`), and writing `10000.00` is accepted. `SWAPPED_RATES`: in `fx_gap_breakdown` and in `fx_markup_check`, `refund_applied_rate` above `refund_reference_rate`. The description of the `values` argument defines the major units and the role of each rate.
+
+`fx_markup_check` is the operation that closes a case of a refund in another currency: besides the split of the difference it states the limit that the plan of the merchant allows, whether the markup applied is within that limit and the amount the refund would have been at the reference rate of the refund day. The plan of the merchant is not a number and does not go into `values`: it is the argument `plan`, read from the ledger and stated by the model, and the operation refuses to run without it (`MISSING_PLAN`). The limits are numbers of the policy, in `ledgerlens/policy_limits.py`, and the escalation rule compares the markup a merchant applied with the limit of its plan on its own, whatever the model writes.
 
 The internal API (`ledgerlens/api/ledger_service.py`) is optional: without it, `query_ledger` still covers the queries and the other tools are enough. It needs the `api` extra (`uv sync --extra api`) and starts with `ledgerlens-api --port 8000`. Without `LEDGERLENS_LEDGER_API_URL`, `get_ledger_record` calls the app inside the same process, over the same database as `query_ledger`, without opening a port. With the variable set, it calls the given URL. Each `kind` accepts one id format (`transaction` takes `TX-`, `settlement` takes `ST-`, `merchant_settlements` takes `M-`; `event_replay` takes `TX-`, `R-`, `CB-`, `ST-` and `M-`). There is no lookup of a refund or a chargeback by its own id: they come with the transaction. A valid id of another kind comes back as `INVALID_ID`, with the `kind` that accepts it in the message.
 
