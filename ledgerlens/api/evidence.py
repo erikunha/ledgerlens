@@ -17,14 +17,20 @@ the scope, in a number.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import APIRouter, FastAPI, HTTPException
 
+from ledgerlens.replay.bundle import BundleError, bundle_digest, load_bundle
+from ledgerlens.replay.graph_artifact import ARTIFACT_SCHEMA_VERSION
 from ledgerlens.replay.verdict import published_result_with_claims
 from ledgerlens.schemas import InvestigationResult
 from ledgerlens.verify.graph import EvidenceGraph, build_graph
+
+_EVIDENCE_GRAPH_ARTIFACT = "evidence_graph"
+_CORPUS_DIGEST_PATTERN = re.compile(r"[0-9a-f]{64}")
 
 
 def _result_of(bundle_dir: Path) -> InvestigationResult:
@@ -42,6 +48,33 @@ def _bundle_of(bundle_root: Path, run_id: str) -> Path | None:
         if manifest.get("run_id") == run_id:
             return manifest_path.parent
     return None
+
+
+def _published_corpus_digest(bundle_dir: Path) -> str:
+    """Read the corpus digest recorded for this bundle. An empty digest means it is unknown."""
+    path = bundle_dir.parent / "graph" / f"{bundle_dir.name}.json"
+    try:
+        artifact = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(artifact, dict):
+            return ""
+        digest = artifact.get("corpus_digest")
+        if not isinstance(digest, str) or not _CORPUS_DIGEST_PATTERN.fullmatch(digest):
+            return ""
+        if artifact.get("bundle_digest") != bundle_digest(bundle_dir):
+            return ""
+        manifest, _events = load_bundle(bundle_dir)
+        expected = {
+            "artifact": _EVIDENCE_GRAPH_ARTIFACT,
+            "schema_version": ARTIFACT_SCHEMA_VERSION,
+            "scenario": str(manifest.scenario),
+            "run_id": str(manifest.run_id),
+            "snapshot_hash": str(manifest.snapshot_sha256 or ""),
+        }
+    except (OSError, ValueError, KeyError, TypeError, BundleError):
+        return ""
+    if any(artifact.get(field) != value for field, value in expected.items()):
+        return ""
+    return digest
 
 
 def _account_of(bundle_dir: Path) -> str | None:
@@ -112,12 +145,15 @@ def _graph_dict(graph: EvidenceGraph) -> dict[str, Any]:
     }
 
 
-def create_app(bundle_root: Path) -> FastAPI:
-    """The application of the evidence graph, over the published bundles of the runs."""
-    app = FastAPI(title="LedgerLens evidence graph")
-    index_meta = bundle_root.parents[2] / "index" / "policies_fastembed" / "index_meta.json"
+def evidence_router(bundle_root: Path) -> APIRouter:
+    """Serve evidence graphs from the supplied published replay directory.
 
-    @app.get("/evidence/{run_id}")
+    The account query selects the matching account in the public replay. The wired app supplies the synthetic
+    repository fixtures, which visitors can read without a session.
+    """
+    router = APIRouter()
+
+    @router.get("/evidence/{run_id}")
     def evidence_graph(run_id: str, account: str) -> dict[str, Any]:
         bundle_dir = _bundle_of(bundle_root, run_id)
         if bundle_dir is None:
@@ -144,17 +180,21 @@ def create_app(bundle_root: Path) -> FastAPI:
             in_scope.append(evidence)
         result.evidence = in_scope
 
-        corpus_digest = ""
-        if index_meta.is_file():
-            corpus_digest = str(json.loads(index_meta.read_text(encoding="utf-8")).get("corpus_sha256", ""))
         manifest = json.loads((bundle_dir / "manifest.json").read_text(encoding="utf-8"))
         graph = build_graph(
             result,
-            corpus_digest=corpus_digest,
+            corpus_digest=_published_corpus_digest(bundle_dir),
             snapshot_hash=str(manifest.get("snapshot_sha256", "")),
         )
         body = _graph_dict(graph)
         body["filtered"] = filtered
         return body
 
+    return router
+
+
+def create_app(bundle_root: Path) -> FastAPI:
+    """The application of the evidence graph, over the published bundles of the runs."""
+    app = FastAPI(title="LedgerLens evidence graph")
+    app.include_router(evidence_router(bundle_root))
     return app

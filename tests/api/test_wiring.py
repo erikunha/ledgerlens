@@ -410,7 +410,7 @@ def _the_rows_of(data: list[dict[str, Any]], *, grouped: bool) -> list[Any]:
 def test_the_paths_of_the_wired_application_are_the_two_contracts(
     app: FastAPI, store: FileBranchStore, issuer: SessionIssuer, vault: CredentialVault, runtime: Path
 ) -> None:
-    """ADR-039: the paths of the wired application are the union of the two contracts, without a repetition.
+    """ADR-039: the /v1 paths are the union of the two contracts, without a repetition.
 
     Why the two routes are removed from the union: the session of the wired application is the one of the live mode
     and the end of the session is the one of the sandbox, so the session of the sandbox and the end of the session
@@ -429,15 +429,17 @@ def test_the_paths_of_the_wired_application_are_the_two_contracts(
 
 
 def _the_positions_of_the_two_mounts(app: FastAPI) -> tuple[int, int]:
-    """The positions of the two included routers in the list of the routes of the application.
+    """Find the two included routers that own the /v1 contracts.
 
     Why the routers are found by the attribute that carries them: fastapi keeps an included router as one entry of
     the list of the routes, and that entry is the one that carries the router it brought.
     """
-    positions = [
-        index for index, route in enumerate(app.router.routes) if getattr(route, "original_router", None) is not None
-    ]
-    assert len(positions) == 2, "the application does not carry the two included routers"
+    positions = []
+    for index, route in enumerate(app.router.routes):
+        inner = getattr(route, "original_router", None)
+        if inner is not None and _the_pairs(inner.routes):
+            positions.append(index)
+    assert len(positions) == 2, "the application does not carry the two /v1 routers"
     return positions[0], positions[1]
 
 
