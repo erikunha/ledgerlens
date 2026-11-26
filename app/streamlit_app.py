@@ -85,8 +85,7 @@ TEST_MESSAGES = {"teste", "test", "testing", "hello", "hi", "oi", "olá", "ola"}
 SCOPE_REPLY = "I received your message. Ask about a payment, refund, dispute or payout, or choose a sample question."
 OFFLINE_REFUSAL = "I can only answer the suggested questions in this offline payments demo."
 PAYMENTS_MODE = (
-    "Offline demo: scripted answers, recorded FX rates and synthetic account data. "
-    "Learned verification is unavailable. This workspace uses deterministic checks."
+    "Try a suggested question for a scripted answer, or connect your OpenAI key to investigate a published case."
 )
 OFFLINE_ASK_HELP = "This offline demo has scripted answers for some lines only. Try a suggested question."
 TABS = {"activity": None, "refunds": "Refund", "disputes": "Chargeback", "payouts": "Payout"}
@@ -615,7 +614,7 @@ def render_lines(tab: str, lines: list[dict[str, Any]], account: Account, marks:
                     "Explore data",
                     key=f"explore-{tab}-{line['id']}",
                     on_click=open_data,
-                    args=(payment,),
+                    args=(payment, CURRENT_ACCOUNT),
                 )
             if line["id"] in st.session_state["selected"]:
                 st.caption("Your question is ready to review.")
@@ -658,10 +657,13 @@ def render_portal(account: Account, lines: list[dict[str, Any]], marks: dict[str
 
 
 DATA_PAGE = "Data"
+PROJECT_PAGE = "Project"
+FULL_SAMPLE = "Full sample database"
+CURRENT_ACCOUNT = "Current demo account"
 
 
-def open_data(payment_id=None) -> None:
-    st.session_state.update(explore_payment=payment_id, go_to=DATA_PAGE)
+def open_data(payment_id=None, scope=FULL_SAMPLE) -> None:
+    st.session_state.update(explore_payment=payment_id, data_scope=scope, go_to=DATA_PAGE)
 
 
 def account_picker(accounts, pending_live: bool) -> None:
@@ -680,11 +682,18 @@ def account_picker(accounts, pending_live: bool) -> None:
 def render_account_data() -> None:
     from app.data_explorer import render_explorer
 
+    st.title("Explore data")
+    st.session_state.setdefault("data_scope", FULL_SAMPLE)
+    scope = st.radio("Data scope", [FULL_SAMPLE, CURRENT_ACCOUNT], key="data_scope", horizontal=True)
+    if scope == FULL_SAMPLE:
+        st.caption("All demo accounts and events. Browse the sample without an OpenAI key.")
+        render_explorer(sample_ledger(), "sample", None, None, full_sample=True)
+        return
+
     accounts = {account.id: account for account in portal_accounts()}
     st.session_state.setdefault("account", DEFAULT_ACCOUNT if DEFAULT_ACCOUNT in accounts else next(iter(accounts)))
     account = accounts[st.session_state["account"]]
     title, switch = st.columns([3, 1.2], vertical_alignment="center")
-    title.title("Explore data")
     title.caption(f"{account.name} · {account.id} · Sample ledger")
     with switch:
         account_picker(accounts, has_pending_turn())
@@ -790,7 +799,7 @@ def render_payments() -> None:
                 key="explore-featured",
                 icon=":material/table_view:",
                 on_click=open_data,
-                args=(payment,),
+                args=(payment, CURRENT_ACCOUNT),
             )
     right, left = st.columns([6, 5], gap="large")
     with left:
@@ -936,9 +945,12 @@ def main() -> None:
 
     st.set_page_config(page_title=BRAND, page_icon=":material/payments:", layout="wide")
     st.html(STYLE)
+    from app.project_view import render_project
+
     pages = {
         "Payments": render_payments,
         DATA_PAGE: render_account_data,
+        PROJECT_PAGE: render_project,
         "Replay": render_replay,
         "Sandbox": render_sandbox,
         "Evaluation": render_evaluation,
@@ -960,7 +972,12 @@ def main() -> None:
     if page not in pages:
         page = "Payments"
     with st.container(horizontal=True, gap="small", key="demo-navigation"):
-        for target, label in (("Payments", "Investigation"), (DATA_PAGE, "Explore data"), ("Replay", "Recordings")):
+        for target, label in (
+            ("Payments", "Investigation"),
+            (DATA_PAGE, "Explore data"),
+            ("Replay", "Recordings"),
+            (PROJECT_PAGE, "Project details"),
+        ):
             st.button(
                 label,
                 key=f"nav-{target}",
@@ -971,14 +988,6 @@ def main() -> None:
     if page == "Replay":
         st.caption(AI_DISCLOSURE)
     pages[page]()
-    with st.expander("Tools and technical reference"):
-        for target, label in (
-            ("Sandbox", "Case simulator"),
-            ("Proof", "Published proofs"),
-            ("Evaluation", "Evaluation results"),
-            ("Engineering", "Engineering reference"),
-        ):
-            st.button(label, key=f"nav-{target}", on_click=navigate, args=(target,))
 
 
 main()
