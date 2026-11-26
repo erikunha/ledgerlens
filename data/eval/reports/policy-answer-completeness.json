@@ -1,6 +1,6 @@
 {
   "model": "gpt-4.1",
-  "base_commit": "44ef7afd6470",
+  "base_commit": "44ef7afd6673529729fb79fdbacf3f421a8878cf",
   "primary_metric": "Fully correct and responsive answers. Appropriate requests for missing status identifiers count as complete.",
   "grading": "One blinded model reviewer per set, with the same reviewer grading both versions within that set.",
   "candidate_sources": {
