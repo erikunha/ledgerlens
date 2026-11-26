@@ -112,3 +112,4 @@ by hand: run `uv run python scripts/build_docs_index.py` and commit the result.
 | 102 | [ADR-102: The identifier of an experiment is the hash of its manifest, and a published experiment is never rewritten](ADR-102-the-identifier-of-an-experiment-is-the-hash-of-its-manifest-and-a-published-experiment-is-never-rewritten.md) | accepted | 2026-11-25 |
 | 103 | [ADR-103: The evidence graph is a read over the evidence of the run, and it is never a second verdict](ADR-103-the-evidence-graph-is-a-read-over-the-evidence-of-the-run-and-it-is-never-a-second-verdict.md) | accepted | 2026-11-25 |
 | 104 | [ADR-104: The routing reads the registry and the budget and never writes them, and the comparison of the routes is a hypothesis until it is measured](ADR-104-the-routing-reads-the-registry-and-the-budget-and-never-writes-them.md) | accepted | 2026-11-25 |
+| 105 | [ADR-105: Serve the workspace with Streamlit](ADR-105-streamlit-frontend.md) | accepted | 2026-11-26 |

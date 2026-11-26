@@ -59,10 +59,8 @@ run (FR-007). Three places of the repository fall back to it: the model of the a
 rewrites the question of the policy search in `ledgerlens/tools/policies.py`. The live mode fills the four slots of
 the agent, so none of the three is ever taken, and a test proves it by making the fallback raise.
 
-What is NOT counted, and why: the judge of the demo is the local NLI cross-encoder of `ledgerlens/verify/nli.py`.
-It is not a provider model, it never calls a provider, it runs on the machine of the server and its cost is not the
-money of the visitor, so it is not reserved, not counted and not capped by the budget of the run. A judge that were a
-provider model would have to be the bridge too, exactly like the four slots above (FR-012).
+Policy retrieval and case memory use deterministic word-count embeddings by default. Verification compares
+amounts against the branch ledger and applies deterministic text rules. Callers can supply both dependencies.
 
 The cancellation of the run is not swallowed: the caller raises `RunCancelled` before the next call, and the case
 turns any failure of a cancelled run back into the cancellation, so the run ends as cancelled and not as a mystery
@@ -89,6 +87,7 @@ import json
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -110,10 +109,13 @@ from ledgerlens.byok import arguments_text
 from ledgerlens.byok.adapter import ProviderMessage, ProviderRequest, ProviderResponse, ToolCall, ToolSchema
 from ledgerlens.byok.budget import BudgetExceededError
 from ledgerlens.byok.errors import ByokError
+from ledgerlens.embeddings import OfflineEmbeddings
 from ledgerlens.memory.long_term import CaseMemory
 from ledgerlens.run_context import RunContext
 from ledgerlens.schemas import ESCALATION_PREFIX, InvestigationResult
 from ledgerlens.tools.fx import FxClient
+from ledgerlens.verify import verify_result
+from ledgerlens.verify.nli import StubNli
 
 __all__ = [
     "MAX_BRIDGE_REQUESTS",
@@ -345,9 +347,7 @@ def build_demo_agent(
     model and the triage model. All four are the bridge over the caller of the run, so every call of the agent is
     reserved, counted, traced and capped by the budget of the run (FR-012).
 
-    The judge of the demo is not one of the four: it is the local NLI cross-encoder, it is not a provider model, it
-    never calls a provider and it is not counted by the budget of the run. A judge that were a provider model would
-    have to be the bridge too.
+    The default verifier runs deterministic checks against the same ledger the investigation reads.
 
     Why the graph is built twice: `build_integrator` does not take the tools, so the tools it built are wrapped
     here and the graph of the agent is bound over the wrapped tools. The agent itself is not rewritten: the same
@@ -366,12 +366,12 @@ def build_demo_agent(
     agent = build_integrator(
         bridges[SLOT_AGENT],
         db_path=db_path,
-        verifier=verifier,
+        verifier=verifier if verifier is not None else partial(verify_result, nli=StubNli(), ledger_db=db_path),
         checkpointer=checkpointer,
         query_model=bridges[SLOT_SQL],
         fx_client=fx_client,
         index_root=index_root,
-        embeddings=embeddings,
+        embeddings=embeddings if embeddings is not None else OfflineEmbeddings(),
         case_memory=case_memory,
         policy_model=bridges[SLOT_POLICY],
         triage_model=bridges[SLOT_TRIAGE],

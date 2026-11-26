@@ -592,7 +592,7 @@ def test_the_cancellation_of_the_run_stops_the_next_call_of_the_case(case: DemoC
 
 
 def test_the_executor_of_the_demo_answers_with_the_answer_of_the_agent(
-    embeddings: FastEmbedEmbeddings, ledger_of_the_visitor: LedgerView
+    monkeypatch: pytest.MonkeyPatch, ledger_of_the_visitor: LedgerView
 ) -> None:
     """The case of the demo is a case of the run: it answers with what the agent answered.
 
@@ -600,11 +600,13 @@ def test_the_executor_of_the_demo_answers_with_the_answer_of_the_agent(
     the ledger of the visitor is a refusal, because the fallback would hand the model the rows of every account of the
     repository (ADR-038).
     """
-    adapter = FakeProviderAdapter(provider="openai", api_key=MARKER)
-    adapter.script_answer(SIMPLE_TRIAGE_ANSWER)
-    adapter.script_tool_call("query_ledger", json.dumps({"question": "the status of TX-0001"}), call_id="call_sql")
-    adapter.script_answer(SQL_ANSWER)
-    adapter.script_answer(FINAL_ANSWER)
+    def unexpected_inference(*args, **kwargs):
+        pytest.fail("Live retrieval and verification must not use a configured inference backend.")
+
+    monkeypatch.setattr("ledgerlens.tools.policies.get_embeddings", unexpected_inference)
+    monkeypatch.setattr("ledgerlens.memory.long_term.get_embeddings", unexpected_inference)
+    monkeypatch.setattr("ledgerlens.verify.nli.get_nli", unexpected_inference)
+    adapter = scripted_adapter()
     vault = CredentialVault()
     coordinator = _coordinator(adapter, vault, executor=demo_executor)
     handle = vault.accept(MARKER, "openai", session_id=SESSION)
@@ -615,7 +617,7 @@ def test_the_executor_of_the_demo_answers_with_the_answer_of_the_agent(
     assert result is not None
     assert result.status == "completed"
     assert result.answer == FINAL_ANSWER
-    assert len(adapter.calls) == 4
+    assert len(adapter.calls) == 6
 
 
 def test_the_case_reads_the_ledger_of_the_plan_and_never_the_ledger_of_the_case(

@@ -109,14 +109,6 @@ Events go into an append-only `events` table, and a projector builds the tables 
 
 ## Quickstart
 
-The site of the demo shows the product, and it answers on http://localhost:3000. The two prerequisites are Python 3.12, for the agent, and Node 24, for the site:
-
-```bash
-cd apps/web
-npm ci
-npm run dev
-```
-
 ### Offline, no keys
 
 Needs Python 3.12 and [uv](https://docs.astral.sh/uv/).
@@ -133,36 +125,21 @@ Offline mode uses scripted chat, recorded HTTP responses and the committed sampl
 
 The demo is a small payments portal, LedgerLens Pay, with fictional accounts from the generated data. It opens signed in as customer C-0412; **Switch demo account** at the top picks another customer or merchant of a planted case (for example merchant M-03 or merchant M-09). The left side shows that account's activity in tabs (Activity, Refunds, Disputes and, for a merchant, Payouts): amount first, then what the line is, its date and a status pill, with filters. Open a line to see its details (transaction id, card, exchange rate applied, fees, deadlines) and press **Ask about this**: the question about that line lands in the Help box on the right, ready to edit before sending. The agent answers as the support assistant. It gets the signed-in account and the line you picked as context, and its tools read a copy of the ledger that holds only that account's records.
 
-Each answer carries the agent trace, a run tree like LangSmith's, drawn live while the agent works: triage, each model call (with tokens) and tool call (arguments, the response envelope and the generated SQL), the verdict on each claim and escalation. When the investigation ends, the trace collapses into a one-line summary and the answer appears below it, with its citations and the ledger records the assistant read marked on the statement. The switch **Show the agent trace** (on by default) hides the trace and the citations, so the answer reads as a support reply. Offline, the planted questions have scripted answers: the FX refund gap (TX-2048), the duplicate charge (TX-2051 and TX-2052), the dispute near its deadline (CB-0310), the payout calculation (ST-0044) and an id that does not exist (TX-9999). **Ask about this** is offered only on those lines; other questions need a configured model.
+Each answer carries the agent trace, a run tree like LangSmith's, drawn live while the agent works: triage, each model call (with tokens) and tool call (arguments, the response envelope and the generated SQL), the verdict on each claim and escalation. When the investigation ends, the trace collapses into a one-line summary and the answer appears below it, with its citations and the ledger records the assistant read marked on the statement. The switch **Show the agent trace** (on by default) hides the trace and the citations, so the answer reads as a support reply. Offline, the planted questions have scripted answers: the FX refund gap (TX-2048), the duplicate charge (TX-2051 and TX-2052), the dispute near its deadline (CB-0310), the payout calculation (ST-0044) and an id that does not exist (TX-9999). **Ask about this** is offered only on those lines; use Live for a provider-backed investigation.
 
 ```bash
-uv run streamlit run app/streamlit_app.py
+uv run uvicorn app.server:portal --host 127.0.0.1 --port 8501
 ```
 
-### The public site (Next.js)
+### Streamlit workspace
 
-The public site of the demo is a static export of Next.js that plays the recorded investigations of the design package.
+Open http://localhost:8501. Use the workspace menu to switch between Payments, Replay, Sandbox, Live, Evaluation, Proof and Engineering. Replay reads recordings without a key. Start the API in a second terminal for Sandbox and Live.
 
 ```bash
-cd apps/web
-npm ci              # the locked install, once
-npm run build       # produces the static export in out/
-npm run preview     # serves the export as plain files, on http://localhost:3000
+uv run ledgerlens-demo --port 8010
 ```
 
-The two commands that produce the site and serve it are `npm run build` and `npm run preview`. The site needs Node 24 and nothing else.
-
-The two routes that reach the backend, the sandbox and the live mode, need the backend of the demo running in another terminal, with the origin of this site declared so that the browser may call it:
-
-```bash
-LEDGERLENS_CORS_ORIGINS=http://localhost:3000 uv run ledgerlens-demo --port 8010
-```
-
-`LEDGERLENS_CORS_ORIGINS` takes a comma separated list of the exact origins of the browser, and the backend sends the CORS headers only to the origins of that list. This site is served on `http://localhost:3000`, so that is the origin to declare. Without it the browser blocks the calls and the page reports `NETWORK_ERROR` instead of the catalogue of the models.
-
-The recorded half of the site serves the recorded artifacts of the repository and calls nobody, so it works with no key, no account and no network. It publishes two catalogs of the same ten scenarios. `/replay` is the catalog of the recordings made with the scripted model, and `/replay/scenario/<id>`, for example `/replay/scenario/S01`, is one of them: the recording is a formula, and anybody can run the capture again and get the same bytes. `/replay-real` is the catalog of the recordings made with a real model, and `/replay-real/scenario/<id>` is one of those: the recording is a run, and it is not reproducible byte for byte. A visitor opens `/sandbox` as well, the sandbox of the visitor, where a published case is forked into a private branch of the session. The sandbox is the one route that reaches the backend of the demo, and it needs no key. A fourth route, `/live`, is the live mode and it needs a key of your own. The tour of the architecture is at `/engineering`.
-
-[`apps/web/README.md`](apps/web/README.md) has the commands, the tests and the rules of the folder. [`docs/frontend.md`](docs/frontend.md) has the three rooms of the site and the contract of its URL.
+[Streamlit](docs/frontend.md)
 
 ### Watch it run
 
@@ -172,32 +149,20 @@ The video below is the demo app running online with a real model, recorded on 20
 
 [docs/demo.md](docs/demo.md) has the recording notes: the mode, what the video shows, the numbers on screen and how it was recorded.
 
-### Online, with a real model
+### Use OpenAI in Live
 
-Copy `.env.example` to `.env`, fill in the keys (`OPENAI_API_KEY` and, for traces and experiments, `LANGSMITH_API_KEY`), and run without `LEDGERLENS_OFFLINE`. The default model is `gpt-4.1-mini`, with live exchange rates.
+Start Streamlit and the API with `LEDGERLENS_OFFLINE=0`. Open **Live**, choose the model and limits, and connect your OpenAI key. Payments uses demo data.
 
-## Live mode: bring your own key
+## Live runs with your own key
 
-The demo runs with no key at all. The live mode is the opt-in branch of it: the visitor runs a real case with a key of their own provider, inside a hard budget, and everything else keeps working exactly as before. In this milestone the branch is server side and it is complete: the routes and the pages that consume them were delivered in R3 ([ADR-035](docs/decisions/ADR-035-the-facade-of-the-live-mode.md), [ADR-066](docs/decisions/ADR-066-the-pages-of-the-live-mode-exist-and-the-readme-was-the-one-that-was-wrong.md)).
+Live uses the API from the quickstart above. The Streamlit server shares one API session between Sandbox and Live for each visitor.
 
-The demo of the visitor is served by one command, with the origin of the site declared so that the browser of the visitor may call it:
-
-```bash
-LEDGERLENS_CORS_ORIGINS=http://localhost:3000 uv run ledgerlens-demo --port 8010
-```
-
-The origin of the site is `http://localhost:3000`, the origin of this README, and the backend sends the CORS headers only to the origins that the deployment declares in `LEDGERLENS_CORS_ORIGINS`. The name of the variable, the list of the exact origins and the refusal of the wildcard are in [docs/frontend.md](docs/frontend.md).
-
-That command serves the wired application of the demo: the live mode and the sandbox of the visitor in one application, over one session issuer, one store of branches, one branch layer and one vault of the credentials, so the branch that the sandbox forks is the branch that the live run reads ([ADR-039](docs/decisions/ADR-039-the-wired-application-of-the-demo.md)). The visitor sees one cookie and one session over the two facades. The two facades alone are two visitors with an issuer each, and the plain factory of `uvicorn` still serves a live mode without a branch layer, which refuses every run with `503 BRANCH_LAYER_MISSING`. [The quickstart of the live mode](specs/003-r3-bring-your-own-key/quickstart.md) shows the whole flow, with the real answers.
-
-What it does:
-
-- the key arrives once, in `POST /v1/credentials`, and it lives in the memory of the server process and nowhere else: no file, no database, no log, no trace, no URL. The answer carries an opaque handle, the provider and the expiry, and never the key itself;
+- Streamlit forwards the key to the API through `POST /v1/credentials`. The vault holds it in process memory: no file, no database, no log, no trace, no URL. The answer carries an opaque handle, the provider and the expiry, and never the key itself;
 - the handle is bound to the session of the visitor. A handle of another session is refused with the same message as a handle that never existed;
 - the credential dies when the visitor forgets it, when the session ends, when its time to live passes, when the vault is full, when the server restarts, or when the provider refuses the key too many times. A credential never outlives the session that holds it;
 - the model comes from the catalogue of the server, which lists only the models whose tool calling was really tested. A model that is not in the allowlist is refused by the server, and a model that lacks the capability the architecture needs is refused with the missing capability named, never replaced by another one;
 - the run is bounded by the caps the visitor sets: the calls of the model, the calls of the tools, the output tokens, the wall clock and the money. The contract also accepts the optional cap of the input tokens, which is checked on the plan of the run, before the call, because the size of the request is known before the call. The cost report shows the observed cost and the estimated cost apart, and a model whose price was never verified shows no amount at all;
-- "forget key" is always there and takes effect at once, and cancelling a run stops the calls that have not started. A call that was already at the provider is a best effort, and the answer says so.
+- forgetting a key takes effect at once, and cancelling a run stops the calls that have not started. A call that was already at the provider is a best effort, and the answer says so.
 
 **The disclosure.** It travels in headers, because the contract of the handle accepts no other field:
 

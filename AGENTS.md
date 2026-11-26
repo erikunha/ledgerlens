@@ -24,12 +24,10 @@ A LangChain agent that investigates payment complaints. Public repository, read-
 ## Before each commit
 ```bash
 bash scripts/gate.sh      # ruff, pytest offline, the check of the export
-bash scripts/gate_web.sh  # npm ci, typecheck, lint, vitest, next build
+bash scripts/gate_web.sh  # Streamlit rendering, interactions and published artifact checks
 ```
 The Python gate (`scripts/gate.sh`) is the one that runs everywhere, including in GitHub Actions
-(`.github/workflows/gate.yml`). The Node gate (`scripts/gate_web.sh`) is the one of the frontend, and it runs in the
-second job of the same workflow. The Node gate is not folded into the Python gate: a gate that fails because a tool is
-missing is not a gate.
+(`.github/workflows/gate.yml`). The Streamlit gate runs in a separate job in the same workflow.
 
 ## Secrets
 - Keys only in `.env` (out of git). `.env.example` lists the names without values.

@@ -1,13 +1,8 @@
 #!/usr/bin/env python3
 """Exports the recorded replay bundles into the static artifacts that the public web site reads.
 
-Why it exists: the site is a static export, so the artifacts it shows have to exist as files before anyone opens
-the page. This script turns a bundle into those files: the events, the manifest, the provenance and the index. It
-runs offline, with no key and with no network, and it calls no model at all.
-
-The default output is `site/replay`, the folder the repository publishes and the only source of truth for the
-recorded artifacts. The frontend tree is open now, and the build of the frontend copies `site/replay` into
-`apps/web/public/replay`, so the export never writes inside `apps/`.
+The offline exporter writes the events, manifest, provenance and index under `site/replay`.
+Streamlit reads the published files directly.
 
 The site publishes two catalogs, and the export writes one of them per run. The second one, the recordings of a
 real model, lives in `site/replay-real` and comes from `data/eval/replay-real`. The mode of the catalog is named

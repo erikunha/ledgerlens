@@ -37,12 +37,17 @@ RUN useradd --system --create-home --uid 10001 --home-dir /srv/ledgerlens ledger
 # The manifest and the lock file come first, so the layer of the dependencies is reused when only the code
 # changes. The project itself is not installed yet, because the source is not in the image yet.
 COPY pyproject.toml uv.lock README.md LICENSE ./
-RUN uv sync --frozen --no-install-project --extra api --extra dev
+RUN uv sync --frozen --no-install-project --extra api --extra dev --extra app
 
 # The source of the repository and the data it reads: the committed sample, the policies and the prebuilt
 # index of the retrieval. The image carries no key and needs none: the offline mode is the default of the
 # image, so nothing in it ever calls a provider.
 COPY --chown=ledgerlens:ledgerlens ledgerlens/ ./ledgerlens/
+COPY --chown=ledgerlens:ledgerlens app/ ./app/
+COPY --chown=ledgerlens:ledgerlens site/ ./site/
+COPY --chown=ledgerlens:ledgerlens docs/design/contracts/ ./docs/design/contracts/
+COPY --chown=ledgerlens:ledgerlens .streamlit/config.toml ./.streamlit/config.toml
+COPY --chown=ledgerlens:ledgerlens specs/003-r3-bring-your-own-key/contracts/live-run-request.schema.json ./specs/003-r3-bring-your-own-key/contracts/live-run-request.schema.json
 COPY --chown=ledgerlens:ledgerlens data/ ./data/
 # The tools of the repository and its suite travel with the image: the schema of the store is applied from the
 # container with `scripts/apply_sandbox_schema.py`, and the suite of the store runs in it against the database
@@ -52,13 +57,13 @@ COPY --chown=ledgerlens:ledgerlens tests/ ./tests/
 
 # The project itself is installed here, and the whole tree belongs to the user of the image, so the
 # process may write in the runtime folder it owns.
-RUN uv sync --frozen --extra api --extra dev \
+RUN uv sync --frozen --extra api --extra dev --extra app \
     && chown -R ledgerlens:ledgerlens /app \
     && chmod -R a+rX /app
 
 USER ledgerlens
 
-EXPOSE 8010 3000
+EXPOSE 8010 8501
 
 # The default command is the demo server of the visitor: the wired application of the demo (ADR-039). The
 # host is the address of the container, because the port is published by the compose file.

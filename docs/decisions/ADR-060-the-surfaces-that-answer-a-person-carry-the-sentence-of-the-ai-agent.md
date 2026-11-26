@@ -113,6 +113,6 @@ catches it.
 ## Links
 
 - [the module of the domain](../../ledgerlens/prompts/ai_disclosure.py) and [the file of the words](../../ledgerlens/prompts/ai_disclosure.json)
-- [the test of the domain](../../tests/test_ai_disclosure.py) and [the test of the site](../../apps/web/tests/unit/features/ai-disclosure.test.tsx)
+- [the test of the domain](../../tests/test_ai_disclosure.py) and [the test of the site](https://github.com/erikunha/ledgerlens/blob/870b2f9/apps/web/tests/unit/features/ai-disclosure.test.tsx)
 - [the programme of readiness for 2027](../readiness-2027.md)
 - [the live mode of the demo](../../specs/003-r3-bring-your-own-key/spec.md)
