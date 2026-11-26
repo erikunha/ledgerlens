@@ -272,7 +272,7 @@ class PaintMeasurement:
 
 
 def measure_the_paint(app_url: str = DEFAULT_APP_URL) -> PaintMeasurement:
-    """Sample paint after Streamlit renders the recorded investigation and its trace selector."""
+    """Sample paint after Streamlit renders the recorded investigation and its proof button."""
     try:
         from playwright.sync_api import Error, sync_playwright
     except ImportError as exc:
@@ -302,7 +302,7 @@ def measure_the_paint(app_url: str = DEFAULT_APP_URL) -> PaintMeasurement:
             """)
             page.goto(url)
             page.get_by_role("heading", name="Recorded investigations", exact=True).wait_for()
-            page.get_by_role("combobox", name="Trace event").wait_for()
+            page.get_by_role("button", name="Open proof for this recording").wait_for()
             page.evaluate("document.fonts.ready")
             page.wait_for_load_state("networkidle")
             numbers = page.evaluate("""() => ({

@@ -34,6 +34,7 @@ import logging
 from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -155,6 +156,7 @@ def build_wired_app(
         store=the_store,
         layer=layer,
         session_issuer=the_issuer,
+        session_end_guard=partial(byok.guard_session_end, coordinator),
         credential_vault=the_vault,
         runtime_dir=runtime,
         # The settings travel to the router of the sandbox because the limits of the facade are read from them.

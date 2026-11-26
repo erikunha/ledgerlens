@@ -123,9 +123,9 @@ Offline mode uses scripted chat, recorded HTTP responses and the committed sampl
 
 ### Demo app (Streamlit)
 
-The demo is a small payments portal, LedgerLens Pay, with fictional accounts from the generated data. It opens signed in as customer C-0412; **Switch demo account** at the top picks another customer or merchant of a planted case (for example merchant M-03 or merchant M-09). The left side shows that account's activity in tabs (Activity, Refunds, Disputes and, for a merchant, Payouts): amount first, then what the line is, its date and a status pill, with filters. Open a line to see its details (transaction id, card, exchange rate applied, fees, deadlines) and press **Ask about this**: the question about that line lands in the Help box on the right, ready to edit before sending. The agent answers as the support assistant. It gets the signed-in account and the line you picked as context, and its tools read a copy of the ledger that holds only that account's records.
+The guided demo opens on a synthetic refund for customer C-0412. Compare the amount paid with the amount refunded, then investigate the payment. **Switch demo account** opens another customer or merchant. Expand a statement entry for its dates, fees and exchange rates. **Ask about this** prepares an editable question about that entry. The tools can read only the selected account’s records.
 
-Each answer carries the agent trace, a run tree like LangSmith's, drawn live while the agent works: triage, each model call (with tokens) and tool call (arguments, the response envelope and the generated SQL), the verdict on each claim and escalation. When the investigation ends, the trace collapses into a one-line summary and the answer appears below it, with its citations and the ledger records the assistant read marked on the statement. The switch **Show the agent trace** (on by default) hides the trace and the citations, so the answer reads as a support reply. Offline, the planted questions have scripted answers: the FX refund gap (TX-2048), the duplicate charge (TX-2051 and TX-2052), the dispute near its deadline (CB-0310), the payout calculation (ST-0044) and an id that does not exist (TX-9999). **Ask about this** is offered only on those lines; use Live for a provider-backed investigation.
+Enable **Show the agent trace** to inspect tool inputs, citations, claim verification and escalation. The trace starts collapsed and disabled. The scripted cases cover refunds, duplicate charges, disputes, payouts and missing transactions.
 
 ```bash
 uv run uvicorn app.server:portal --host 127.0.0.1 --port 8501
@@ -133,7 +133,7 @@ uv run uvicorn app.server:portal --host 127.0.0.1 --port 8501
 
 ### Streamlit workspace
 
-Open http://localhost:8501. Use the workspace menu to switch between Payments, Replay, Sandbox, Live, Evaluation, Proof and Engineering. Replay reads recordings without a key. Start the API in a second terminal for Sandbox and Live.
+Open http://localhost:8501. Choose **Investigate this payment**, review the question and press **Send**. Open the recorded calculation to inspect the evidence. **Recordings** works without a key. **Use OpenAI** opens Live. The simulator, proofs, evaluation and engineering pages are under **Tools and technical reference**. Start the API in a second terminal for Sandbox and Live.
 
 ```bash
 uv run ledgerlens-demo --port 8010

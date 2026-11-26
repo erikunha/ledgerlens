@@ -49,6 +49,6 @@ def test_recorded_and_live_answers_display_the_disclosure(monkeypatch) -> None:
     monkeypatch.setenv("LEDGERLENS_API_BASE_URL", "http://127.0.0.1:1")
     app = AppTest.from_file(str(APP), default_timeout=60).run()
     for workspace in ("Replay", "Live"):
-        app.radio(key="view").set_value(workspace).run()
+        app.button(key=f"nav-{workspace}").click().run()
         assert not app.exception
         assert any(AI_DISCLOSURE in caption.value for caption in app.caption)

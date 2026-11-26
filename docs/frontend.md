@@ -6,7 +6,7 @@ Install the application and API dependencies with `uv sync --extra app --extra a
 LEDGERLENS_OFFLINE=1 uv run uvicorn app.server:portal --host 127.0.0.1 --port 8501
 ```
 
-Open http://localhost:8501. The Workspace selector updates the URL. A link such as `/?view=Replay` opens that workspace.
+Open http://localhost:8501. Start with **Investigate this payment**, edit the suggested question, then press **Send**. The trace is optional. Follow **See the recorded calculation** to inspect the same case and open its published proof. **Recordings** and **Use OpenAI** are in the top navigation. The simulator, proofs, evaluation and engineering pages are under **Tools and technical reference**. Navigation updates the URL. A link such as `/?view=Replay` opens that workspace.
 
 | Workspace | What you can do |
 | --- | --- |
@@ -20,7 +20,7 @@ Open http://localhost:8501. The Workspace selector updates the URL. A link such 
 
 ## Connect the API
 
-Start `uv run ledgerlens-demo --port 8010` in a second terminal for Sandbox and Live. Streamlit connects from its server process. Set `LEDGERLENS_API_BASE_URL` if the API listens elsewhere. Each visitor's Streamlit session holds its own API cookies. Reloading the browser can start a new session.
+Start `uv run ledgerlens-demo --port 8010` in a second terminal for Sandbox and Live. Streamlit connects from its server process. Set `LEDGERLENS_API_BASE_URL` if the API listens elsewhere. Each visitor's Streamlit session holds its own API cookies. The simulator previews the changed refund before you apply it and offers Undo afterward. Live shows the model and budget before you enter a key. Finish or cancel an active investigation before ending its session from either workspace. The API returns HTTP 409 (`RUN_RUNNING`) if a run is still active. Its credential and case remain available. Forgetting a key or letting it expire blocks new runs. An active run can continue using its copy. Cancellation can still incur charges for a request already in progress. The running API publishes its contract at `/openapi.json`. Reloading the browser can start a new session.
 
 To enable Live, start both processes with `LEDGERLENS_OFFLINE=0`. Payments stays scripted when Live is enabled. Live uses deterministic retrieval and verification. The visitor enters an OpenAI key in a password field. Streamlit forwards it to the API, which returns a session-bound handle. Remote API connections carrying credentials require HTTPS.
 

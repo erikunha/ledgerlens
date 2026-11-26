@@ -458,7 +458,7 @@ def test_statement_filters_and_tabs_narrow_the_lines(at: AppTest) -> None:
     assert "CB-0310" in shown and all(i.startswith("CB-") for i in shown)
 
 
-def test_the_trace_is_on_by_default_and_the_toggle_turns_it_into_a_support_reply(
+def test_trace_is_opt_in_and_preserves_the_original_evidence(
     ledger_db: Path,  # noqa: F811  (fixtures imported from the integrator tests)
     index_root: Path,  # noqa: F811
     cases,  # noqa: F811
@@ -467,7 +467,8 @@ def test_the_trace_is_on_by_default_and_the_toggle_turns_it_into_a_support_reply
     app = AppTest.from_file(str(APP), default_timeout=30)
     app.session_state["agent"] = integrator_for(ledger_db, index_root, cases, script, verifier=verifier)
     app.run()
-    assert app.toggle(key="observer").value is True
+    assert app.toggle(key="observer").value is False
+    app.toggle(key="observer").set_value(True).run()
     ask_button(app, "TX-2048").click().run()
     send(app, draft(app))
     assert not app.exception
@@ -500,8 +501,8 @@ def test_offline_ask_is_offered_only_on_lines_with_a_scripted_answer() -> None:
 
 def test_ask_confirms_where_the_question_went(at: AppTest) -> None:
     ask_button(at, "TX-2048").click().run()
-    assert any("Question ready in Help" in c.value for c in at.caption)
-    assert any("Question added to Help" in t.value for t in at.toast)
+    assert any("Your question is ready to review" in c.value for c in at.caption)
+    assert any("Review your question" in t.value for t in at.toast)
 
 
 def test_after_sending_the_line_picked_is_cleared(at: AppTest) -> None:
@@ -513,6 +514,7 @@ def test_after_sending_the_line_picked_is_cleared(at: AppTest) -> None:
 
 def test_offline_an_id_on_no_statement_is_answered_as_absent_with_a_scripted_triage() -> None:
     app = AppTest.from_file(str(APP), default_timeout=300).run()
+    app.toggle(key="observer").set_value(True).run()
     suggestion(app, "What is the status of TX-9999?").click().run()
     send(app, draft(app))
     assert not app.exception
@@ -535,6 +537,7 @@ def test_a_review_reason_is_shown_once(
 
     app = AppTest.from_file(str(APP), default_timeout=30)
     app.session_state["agent"] = integrator_for(ledger_db, index_root, cases, s01_script(), verifier=unsupported)
+    app.session_state["observer"] = True
     send(app.run(), QUESTION)
     assert not app.exception
     assert not [c.value for c in app.caption if missing in c.value]

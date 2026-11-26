@@ -1,11 +1,7 @@
-"""LedgerLens Pay: a demo payments portal whose Help panel is the investigation agent.
+"""LedgerLens Pay presents an editable, scripted investigation alongside the selected account.
 
-The person is signed in to one account from the generated data (a customer `C-nnnn` or a merchant `M-nn`; "Switch
-demo account" at the top picks another). The left side is their portal: an account card, and their activity in
-tabs (Activity, Refunds, Disputes and, for a merchant, Payouts), amount first, with a status pill and filters. A line
-opens to its details. "Ask about this" only fills the Help box with a question about that line and puts the cursor
-there; the person edits it and sends it. The right side is the Help panel, where the agent answers as the support
-assistant; the conversation scrolls inside the panel, so the box stays on screen.
+Start with the featured payment or choose a statement entry. Both actions prepare a question that the visitor
+can edit before sending. Customers and merchants see their own activity, refunds, disputes and applicable payouts.
 
 What the agent gets: the question, and a context message with the signed-in account and the line picked. Its tools
 and the verifier read a copy of the ledger that holds only that account's records (`scoped_ledger`), so a query
@@ -26,7 +22,7 @@ answer does not stream token by token: the verifier reads the whole answer and m
 gets named), so it appears finished, after verification. `st.chat_input` takes no initial value, so the question box
 is a form with `st.text_input` and a submit button.
 
-The switch "Show the agent trace" (on by default) shows the trace on each answer, the evidence citations in the text
+The switch "Show the agent trace" (off by default) shows the trace on each answer, the evidence citations in the text
 and the ledger records the agent read, and marks the lines read on the statement. With it off, the answer shows with
 no trace and no citations, as a support reply would, and the trace stays stored with the message.
 
@@ -87,7 +83,7 @@ PAYMENTS_MODE = (
     "Offline demo: scripted answers, recorded FX rates and synthetic account data. "
     "Learned verification is unavailable. This workspace uses deterministic checks."
 )
-OFFLINE_ASK_HELP = "This offline demo has scripted answers for some lines only. Try a suggested question in Help."
+OFFLINE_ASK_HELP = "This offline demo has scripted answers for some lines only. Try a suggested question."
 TABS = {"activity": None, "refunds": "Refund", "disputes": "Chargeback", "payouts": "Payout"}
 CITATION = re.compile(r"\s*\[((?:sql|api|policy|fx|calc|case):[^\]]*)\]")
 STYLE = """
@@ -95,12 +91,15 @@ STYLE = """
 header[data-testid="stHeader"], [data-testid="stMainMenu"], [data-testid="stStatusWidget"],
 [data-testid="stHeadingActionElements"], [data-testid="stSidebarCollapsedControl"],
 [data-testid="InputInstructions"] { display: none !important; }
-.block-container { padding-top: 2rem; max-width: 1480px; }
+.block-container { padding-top: 2rem; max-width: 1160px; }
 [data-testid="stCaptionContainer"] { opacity: 1; }
 [data-testid="stCaptionContainer"] p { color: #5f5c58; }
 .st-key-brand h1 { font-size: 1.75rem; padding: 0; }
+.st-key-featured-case { background: #eef4ff; border-left: 4px solid #2f5bd3; }
+.st-key-featured-case h3 { max-width: 35ch; }
 .st-key-account-card { background: var(--secondary-background-color); }
 .st-key-account-card [data-testid="stMetricValue"] { font-size: 1.35rem; }
+.st-key-account-card [data-testid="stMetricLabel"] p { white-space: normal; overflow-wrap: anywhere; }
 .ll-avatar { width: 2.6rem; height: 2.6rem; border-radius: 50%; background: #2f5bd3; color: #fff;
   display: flex; align-items: center; justify-content: center; font-weight: 600; letter-spacing: 0.02em; }
 .st-key-help h3 { font-size: 1.2rem; font-weight: 600; padding-top: 0; }
@@ -456,12 +455,11 @@ def initials(name: str) -> str:
 
 def account_card(account: Account, lines: list[dict[str, Any]], profile: dict[str, Any]) -> None:
     with st.container(border=True, key="account-card"):
-        who, *figures = st.columns([1.7, 1, 1, 1], vertical_alignment="center")
-        with who.container(horizontal=True, vertical_alignment="center", gap="small"):
+        with st.container(horizontal=True, vertical_alignment="center", gap="small"):
             st.html(f'<div class="ll-avatar">{initials(account.name)}</div>', width="content")
             plan = "Personal account" if account.kind == "customer" else f"Business account, {profile['category']}"
             st.markdown(f":gray[Signed in as]  \n**{account.name}**  \n:gray[{plan}, {account.id}]")
-        for cell, (label, value) in zip(figures, demo.account_summary(lines, account.kind), strict=True):
+        for cell, (label, value) in zip(st.columns(3), demo.account_summary(lines, account.kind), strict=True):
             cell.metric(label, value)
 
 
@@ -501,14 +499,14 @@ def render_lines(tab: str, lines: list[dict[str, Any]], account: Account, marks:
             st.button(
                 "Ask about this",
                 key=f"ask-{tab}-{line['id']}",
-                help=OFFLINE_ASK_HELP if not scripted else f"Puts this question in Help: {question}",
+                help=OFFLINE_ASK_HELP if not scripted else f"Prepare this question: {question}",
                 on_click=fill_draft,
                 args=(question, [line["id"]]),
                 type="primary",
                 disabled=not scripted,
             )
             if line["id"] in st.session_state["selected"]:
-                st.caption("Question ready in Help: review it and press Send.")
+                st.caption("Your question is ready to review.")
     if len(visible) < len(lines):
         st.button(f"Show all {len(lines)}", key=f"show-all-{tab}", type="tertiary", on_click=show_all, args=(tab,))
 
@@ -558,7 +556,7 @@ def render_payments() -> None:
     brand, switch = st.columns([3, 1.2], vertical_alignment="center")
     with brand.container(key="brand"):
         st.title(BRAND, anchor=False)
-        st.caption("Demo payments portal with simulated data. Help is answered by the LedgerLens agent.")
+        st.caption("Guided demo · Scripted answers · Sample payments")
     with switch.popover("Switch demo account", icon=":material/swap_horiz:", width="stretch"):
         st.selectbox(
             "Signed in as",
@@ -568,13 +566,13 @@ def render_payments() -> None:
             format_func=lambda i: accounts[i].label,
             on_change=switch_account,
         )
-        st.caption(f"Conversation `{st.session_state['thread_id']}`")
+
     account = accounts[st.session_state["account"]]
 
     lines = account_statement(account_ledger(account.id), account.id)
     statement_ids = {i for line in lines for i in [line["id"], *line["ids"]]}
     turns = st.session_state["turns"]
-    st.session_state.setdefault("observer", True)  # the trace shows by default; the switch hides it
+    st.session_state.setdefault("observer", False)
     observer = bool(st.session_state["observer"])
     last = turns[-1] if turns else None
     marks: dict[str, set[str]] = {"asked": set(), "read": set()}
@@ -582,13 +580,26 @@ def render_payments() -> None:
         marks["read"] = demo.ids_read(last["result"]) if last else set()
         marks["asked"] = set(st.session_state["selected"]) | (set(demo.ledger_ids(last["question"])) if last else set())
 
-    left, right = st.columns([7, 4], gap="large")
+    questions = demo.account_questions(account.id, manifest)
+    featured = questions[0] if questions else None
+    case = next((item for item in manifest["scenarios"] if featured in item["questions"]), None)
+    if featured:
+        with st.container(border=True, key="featured-case"):
+            st.subheader(featured)
+            truth = case["truth"] if case else {}
+            if "charge_brl" in truth and "refund_brl" in truth:
+                st.caption(f"Paid BRL {truth['charge_brl']} · Refunded BRL {truth['refund_brl']}")
+            st.button(
+                "Investigate this payment", key="featured", type="primary",
+                on_click=fill_draft, args=(featured, demo.ledger_ids(featured)),
+            )
+    right, left = st.columns([6, 5], gap="large")
     with left:
         render_portal(account, lines, marks)
 
     with right, st.container(border=True, key="help"):
-        st.subheader("Help", anchor="help")
-        st.caption("Ask the support assistant about your payments, refunds, disputes or payouts. " + PAYMENTS_MODE)
+        st.subheader("Investigation", anchor="help")
+        st.caption(PAYMENTS_MODE)
         # The sentence of the disclosure of the AI agent sits under the question box, where the person
         # reads it before the first answer. It comes from the domain, so the demo and the public site
         # say the same thing (Article 50 of the EU AI Act, applied since 2 August 2026).
@@ -610,7 +621,7 @@ def render_payments() -> None:
             for turn in turns:
                 show_turn(turn, observer, statement_ids)
 
-        tries = st.expander("Questions to try") if turns else st.container()
+        tries = st.expander("More sample questions")
         with tries:
             for index, text in enumerate(demo.account_questions(account.id, manifest)):
                 st.button(text, key=f"suggestion-{index}", width="stretch", on_click=fill_draft, args=(text, []))
@@ -628,7 +639,7 @@ def render_payments() -> None:
             )
             send.form_submit_button("Send", key="send", type="primary", width="stretch", on_click=submit_draft)
         if st.session_state.pop("focus_draft", False):
-            st.toast("Question added to Help. Review it and press Send.", icon=":material/support_agent:")
+            st.toast("Review your question, then press Send.", icon=":material/support_agent:")
             st.html(FOCUS_DRAFT, unsafe_allow_javascript=True)
         question = st.session_state.pop("question", "")
 
@@ -656,6 +667,19 @@ def render_payments() -> None:
             st.session_state["selected"] = []  # the line picked belongs to the question just sent
             st.rerun()  # draws the activity again with the lines the assistant read
 
+    if case:
+        def open_case(destination):
+            if destination == "Replay":
+                st.session_state["replay_target"] = ("replay", case["id"])
+            else:
+                st.query_params["case"] = case["id"]
+            st.session_state["go_to"] = destination
+
+        with st.container(horizontal=True):
+            recording_label = "See the recorded calculation" if "gap_brl" in truth else "See the recording"
+            st.button(recording_label, key="recording-link", on_click=open_case, args=("Replay",))
+            st.button("Simulate a change to this case", key="sandbox-link", on_click=open_case, args=("Sandbox",))
+
 
 def main() -> None:
     from app.artifact_views import render_engineering, render_evaluation, render_proof, render_replay
@@ -672,10 +696,26 @@ def main() -> None:
         "Proof": render_proof,
         "Engineering": render_engineering,
     }
-    page = st.radio("Workspace", list(pages), horizontal=True, key="view", bind="query-params")
+    def navigate(destination):
+        st.query_params["view"] = destination
+
+    destination = st.session_state.pop("go_to", None)
+    if destination in pages:
+        navigate(destination)
+    page = st.query_params.get("view", "Payments")
+    if page not in pages:
+        page = "Payments"
+    with st.container(horizontal=True, gap="small", key="demo-navigation"):
+        for target, label in (("Payments", "Guided demo"), ("Replay", "Recordings"), ("Live", "Use OpenAI")):
+            st.button(label, key=f"nav-{target}", on_click=navigate, args=(target,),
+                      type="primary" if page == target else "tertiary")
     if page in {"Replay", "Live"}:
         st.caption(AI_DISCLOSURE)
     pages[page]()
+    with st.expander("Tools and technical reference"):
+        for target, label in (("Sandbox", "Case simulator"), ("Proof", "Published proofs"),
+                              ("Evaluation", "Evaluation results"), ("Engineering", "Engineering reference")):
+            st.button(label, key=f"nav-{target}", on_click=navigate, args=(target,))
 
 
 main()
