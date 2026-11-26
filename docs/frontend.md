@@ -25,3 +25,9 @@ Start `uv run ledgerlens-demo --port 8010` in a second terminal for Sandbox and 
 To enable Live, start both processes with `LEDGERLENS_OFFLINE=0`. The investigation starts in scripted mode. Switch to OpenAI to use your own key. Live uses deterministic retrieval and verification. The visitor enters an OpenAI key in a password field. Streamlit forwards it to the API, which returns a session-bound handle. Remote API connections carrying credentials require HTTPS.
 
 A deployment must serve Streamlit's WebSocket connection and package the published artifacts from `site/`. Run one API worker or route each visitor to the same worker throughout the session. The credential vault and live-run coordinator are process-local. Use HTTPS for visitor traffic. Run `bash scripts/gate_web.sh` to check the application and its artifacts.
+
+### Consult the account ledger
+
+Open **Explore data** in the main navigation to browse the account on its own page at `/?view=Data`. The shortcut on a payment opens the same page with that payment selected. **Records** shows payments, refunds, disputes, currency conversions and settlements. **Events** shows the event history and details. The explorer opens on the related payment when available. Clear the payment filter to browse the account, including merchant settlements. **Ask about this record** returns to **Investigation** with an editable draft. Sending the draft is a separate action. Switching accounts clears the explorer selection. Browsing works in scripted mode and does not call OpenAI.
+
+The investigation acknowledges short greetings and test messages, including `teste`, in either mode without calling a provider. If an investigation finishes without answer text, the chat suggests a more specific question.

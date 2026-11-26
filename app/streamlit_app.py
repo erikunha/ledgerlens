@@ -81,6 +81,8 @@ SPAN_ICONS = {
 VERDICT_COLORS = {"supported": "green", "contradicted": "red", "not_enough_evidence": "orange"}
 # what Streamlit's Markdown would read as formatting: emphasis, code, link and quote, math, HTML, table
 MARKDOWN_SPECIAL = re.compile(r"([\\`*_\[\]$<>~|])")
+TEST_MESSAGES = {"teste", "test", "testing", "hello", "hi", "oi", "olá", "ola"}
+SCOPE_REPLY = "I received your message. Ask about a payment, refund, dispute or payout, or choose a sample question."
 OFFLINE_REFUSAL = "I can only answer the suggested questions in this offline payments demo."
 PAYMENTS_MODE = (
     "Offline demo: scripted answers, recorded FX rates and synthetic account data. "
@@ -139,6 +141,33 @@ setTimeout(() => {
   const box = document.querySelector('.st-key-draft input');
   if (box) { box.scrollIntoView({block: 'nearest', behavior: 'smooth'}); box.focus({preventScroll: true}); }
 }, 250);
+</script>
+"""
+
+
+# Scroll once after a reply, including when the last live poll finishes below the fold.
+REVEAL_REPLY = """
+<script>
+requestAnimationFrame(() => {
+  const replies = document.querySelectorAll('.st-key-chat [data-testid="stChatMessage"]');
+  replies[replies.length - 1]?.scrollIntoView({block: 'nearest'});
+});
+</script>
+"""
+
+
+# Keep native blur-to-save behavior when opening settings, and route Enter to the same submit button.
+COMPOSER_ENTER = """
+<script>
+const composer = document.querySelector('.st-key-composer');
+if (composer && !composer.dataset.enterBound) {
+  composer.dataset.enterBound = 'true';
+  composer.addEventListener('keydown', event => {
+    if (event.key !== 'Enter' || event.isComposing || event.repeat || !event.target.matches('input')) return;
+    const send = composer.querySelector('.st-key-send button');
+    if (send && !send.disabled) setTimeout(() => send.click(), 0);
+  });
+}
 </script>
 """
 
@@ -267,9 +296,14 @@ def paid_case_for(manifest, account_id, planted, selected, question, fallback):
     return None
 
 
+def is_test_message(question: str) -> bool:
+    return question.casefold().strip(" .!?") in TEST_MESSAGES
+
+
 def submit_draft() -> None:
     """Keeps the box's text as the turn's question and clears the box."""
     st.session_state["question"] = st.session_state.get("draft", "").strip()
+    st.session_state["reveal_reply"] = bool(st.session_state["question"])
     st.session_state["submission_mode"] = st.session_state.get("investigation_mode", SCRIPTED_MODE)
     if st.session_state["submission_mode"] != OPENAI_MODE:
         st.session_state["draft"] = ""
@@ -278,6 +312,7 @@ def submit_draft() -> None:
 def switch_account() -> None:
     """Another account signs in: new conversation, empty box, filters reset."""
     st.session_state.pop("live_run", None)
+    st.session_state.pop("explore_payment", None)
     st.session_state.pop("question", None)
     st.session_state["turns"] = []
     st.session_state["thread_id"] = f"app-{uuid.uuid4().hex[:8]}"
@@ -451,6 +486,9 @@ def render_result(result: InvestigationResult, observer: bool, statement_ids: se
 
     The trace, above the answer, already shows each tool with its arguments and envelope, each verdict and the review
     reason; here goes only what it does not show."""
+    if not CITATION.sub("", result.answer).strip():
+        st.markdown("The investigation returned no answer. Try asking about a specific payment or refund.")
+        return
     if result.answer == OFFLINE_REFUSAL:  # nothing was looked up: there is nothing to verify or review
         st.markdown(result.answer)
         return
@@ -475,6 +513,7 @@ def watch_live_turn(turn: dict[str, Any]) -> None:
     terminal = render_live_status()
     if terminal:
         turn["live_result"] = terminal
+        st.session_state["reveal_reply"] = True
         st.rerun()
     elif not st.session_state.get("live_run"):
         st.rerun()
@@ -487,6 +526,9 @@ def show_turn(turn: dict[str, Any], observer: bool, statement_ids: set[str]) -> 
         if turn.get("selected"):
             st.caption(f"About {', '.join(turn['selected'])}")
     with st.chat_message("assistant", avatar=ASSISTANT_AVATAR):
+        if "notice" in turn:
+            st.markdown(turn["notice"])
+            return
         if "live_id" in turn:
             from app.interactive_views import render_live_status
 
@@ -568,6 +610,13 @@ def render_lines(tab: str, lines: list[dict[str, Any]], account: Account, marks:
                 type="primary",
                 disabled=not available,
             )
+            if payment := next((rid for rid in line["ids"] if rid.startswith("TX-")), None):
+                st.button(
+                    "Explore data",
+                    key=f"explore-{tab}-{line['id']}",
+                    on_click=open_data,
+                    args=(payment,),
+                )
             if line["id"] in st.session_state["selected"]:
                 st.caption("Your question is ready to review.")
     if len(visible) < len(lines):
@@ -608,6 +657,57 @@ def render_portal(account: Account, lines: list[dict[str, Any]], marks: dict[str
         st.html(f"<style>{selectors} {{ background: rgba(250, 170, 40, 0.12); border-radius: 0.5rem; }}</style>")
 
 
+DATA_PAGE = "Data"
+
+
+def open_data(payment_id=None) -> None:
+    st.session_state.update(explore_payment=payment_id, go_to=DATA_PAGE)
+
+
+def account_picker(accounts, pending_live: bool) -> None:
+    with st.popover("Switch demo account", icon=":material/swap_horiz:", width="stretch"):
+        st.selectbox(
+            "Signed in as",
+            list(accounts),
+            key="account",
+            persist_state="session",
+            format_func=lambda i: accounts[i].label,
+            on_change=switch_account,
+            disabled=pending_live,
+        )
+
+
+def render_account_data() -> None:
+    from app.data_explorer import render_explorer
+
+    accounts = {account.id: account for account in portal_accounts()}
+    st.session_state.setdefault("account", DEFAULT_ACCOUNT if DEFAULT_ACCOUNT in accounts else next(iter(accounts)))
+    account = accounts[st.session_state["account"]]
+    title, switch = st.columns([3, 1.2], vertical_alignment="center")
+    title.title("Explore data")
+    title.caption(f"{account.name} · {account.id} · Sample ledger")
+    with switch:
+        account_picker(accounts, has_pending_turn())
+    path = account_ledger(account.id)
+
+    def ask_record(question, ids):
+        lines = account_statement(path, account.id)
+        record = next((line for line in lines if line["id"] == ids[0]), None) if ids else None
+        if record:
+            question = demo.ask_question(record, account.id, demo.load_manifest())
+        fill_draft(question, ids)
+        st.session_state["go_to"] = "Payments"
+
+    render_explorer(path, account.id, st.session_state.get("explore_payment"), ask_record)
+
+
+def has_pending_turn() -> bool:
+    return any(
+        "live_id" in turn and turn["live_id"] == st.session_state.get("live_run") and not turn.get("live_result")
+        for turn in st.session_state.get("turns", [])
+    )
+
+
 def render_payments() -> None:
     from app.interactive_views import render_live_settings, render_live_status, submit_live_question
 
@@ -620,10 +720,7 @@ def render_payments() -> None:
 
     if st.session_state.pop("clear_sent_draft", False):
         st.session_state["draft"] = ""
-    pending_live = any(
-        "live_id" in turn and turn["live_id"] == st.session_state.get("live_run") and not turn.get("live_result")
-        for turn in st.session_state["turns"]
-    )
+    pending_live = has_pending_turn()
     if requested := st.session_state.pop("requested_answer_mode", None):
         st.session_state["investigation_mode"] = requested
     mode = st.session_state.setdefault("investigation_mode", SCRIPTED_MODE)
@@ -651,16 +748,8 @@ def render_payments() -> None:
     with brand.container(key="brand"):
         st.title(BRAND, anchor=False)
         st.caption("Sample payments · Account investigation")
-    with switch.popover("Switch demo account", icon=":material/swap_horiz:", width="stretch"):
-        st.selectbox(
-            "Signed in as",
-            list(accounts),
-            key="account",
-            persist_state="session",
-            format_func=lambda i: accounts[i].label,
-            on_change=switch_account,
-            disabled=pending_live,
-        )
+    with switch:
+        account_picker(accounts, pending_live)
 
     account = accounts[st.session_state["account"]]
 
@@ -692,6 +781,16 @@ def render_payments() -> None:
                 type="primary",
                 on_click=fill_draft,
                 args=(featured, demo.ledger_ids(featured)),
+            )
+            payment = (
+                next((rid for rid in featured_case.lines if rid.startswith("TX-")), None) if featured_case else None
+            )
+            st.button(
+                "Explore data",
+                key="explore-featured",
+                icon=":material/table_view:",
+                on_click=open_data,
+                args=(payment,),
             )
     right, left = st.columns([6, 5], gap="large")
     with left:
@@ -729,6 +828,9 @@ def render_payments() -> None:
             for turn in turns:
                 show_turn(turn, observer, statement_ids)
 
+        if turns and not st.session_state.get("question") and st.session_state.pop("reveal_reply", False):
+            st.html(REVEAL_REPLY, unsafe_allow_javascript=True)
+
         tries = st.expander("More sample questions")
         with tries:
             for index, text in enumerate(demo.account_questions(account.id, manifest)):
@@ -754,8 +856,13 @@ def render_payments() -> None:
                 type="primary",
                 width="stretch",
                 on_click=submit_draft,
-                disabled=paid and (not ready or not paid_scenario or pending_live),
+                disabled=paid
+                and (
+                    pending_live
+                    or (not is_test_message(st.session_state.get("draft", "")) and (not ready or not paid_scenario))
+                ),
             )
+        st.html(COMPOSER_ENTER, unsafe_allow_javascript=True)
         if st.session_state.pop("focus_draft", False):
             st.toast("Review your question, then press Send.", icon=":material/support_agent:")
             st.html(FOCUS_DRAFT, unsafe_allow_javascript=True)
@@ -763,6 +870,10 @@ def render_payments() -> None:
 
         if question and st.session_state.pop("submission_mode", mode) == mode:
             selected = list(st.session_state["selected"])
+            if is_test_message(question):
+                turns.append({"question": question, "notice": SCOPE_REPLY, "selected": []})
+                st.session_state.update(selected=[], clear_sent_draft=True)
+                st.rerun()
             if paid:
                 if not ready or not paid_scenario or pending_live:
                     return
@@ -789,6 +900,13 @@ def render_payments() -> None:
                         agent, question, thread_id=st.session_state["thread_id"], context=context, show=observer
                     )
                     if result is None:
+                        turns.append(
+                            {
+                                "question": question,
+                                "notice": "The investigation could not finish. Please try again.",
+                                "selected": selected,
+                            }
+                        )
                         return
                     render_result(result, observer, statement_ids)
             turns.append(
@@ -820,6 +938,7 @@ def main() -> None:
     st.html(STYLE)
     pages = {
         "Payments": render_payments,
+        DATA_PAGE: render_account_data,
         "Replay": render_replay,
         "Sandbox": render_sandbox,
         "Evaluation": render_evaluation,
@@ -841,12 +960,12 @@ def main() -> None:
     if page not in pages:
         page = "Payments"
     with st.container(horizontal=True, gap="small", key="demo-navigation"):
-        for target, label in (("Payments", "Investigation"), ("Replay", "Recordings")):
+        for target, label in (("Payments", "Investigation"), (DATA_PAGE, "Explore data"), ("Replay", "Recordings")):
             st.button(
                 label,
                 key=f"nav-{target}",
-                on_click=navigate,
-                args=(target,),
+                on_click=open_data if target == DATA_PAGE else navigate,
+                args=() if target == DATA_PAGE else (target,),
                 type="primary" if page == target else "tertiary",
             )
     if page == "Replay":

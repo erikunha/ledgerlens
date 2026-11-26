@@ -411,7 +411,9 @@ def test_a_failed_investigation_shows_the_error_and_keeps_the_page(
     send(at, QUESTION)
     assert not at.exception
     assert any("The investigation failed: RuntimeError: model unavailable" in e.value for e in at.error)
-    assert at.session_state["turns"] == []
+    at.run()
+    assert at.session_state["turns"][-1]["question"] == QUESTION
+    assert "Please try again" in at.chat_message[-1].markdown[0].value
 
 
 @pytest.mark.parametrize(

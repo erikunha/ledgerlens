@@ -307,6 +307,8 @@ def _run_result():
             st.rerun()
         st.caption("A provider call already in progress may finish and incur charges.")
         return None
+    if not (run.get("answer") or "").strip() and not run.get("error") and run["status"] == "completed":
+        run["answer"] = "The investigation returned no answer. Try asking about a specific payment or refund."
     if run.get("answer"):
         st.write(run["answer"])
     if run.get("error"):

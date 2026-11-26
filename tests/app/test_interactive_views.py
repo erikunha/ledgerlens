@@ -289,3 +289,24 @@ def test_submission_rejects_a_stale_handle_and_offers_reconnection():
         assert not page.exception
         assert "credential" not in page.session_state
         assert page.session_state.open_live_settings
+
+
+def test_completed_run_without_text_explains_how_to_continue():
+    import httpx
+
+    def backend(request):
+        body = {} if request.url.path.endswith("/cost") else {"status": "completed", "answer": " "}
+        return httpx.Response(200, json=body)
+
+    with httpx.Client(transport=httpx.MockTransport(backend), base_url="https://demo.test") as client:
+        page = AppTest.from_string(
+            "import streamlit as st\nfrom app.interactive_views import render_live_status\n"
+            "st.session_state.result = render_live_status()"
+        )
+        page.session_state["_visitor_http"] = client
+        page.session_state["visitor"] = {"id": "visitor"}
+        page.session_state["live_run"] = "empty"
+        page.run()
+        assert not page.exception
+        assert "returned no answer" in page.session_state.result["answer"]
+        assert any(page.session_state.result["answer"] in message.value for message in page.markdown)
