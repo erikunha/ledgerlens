@@ -59,7 +59,8 @@ META_FILE = "index_meta.json"
 # The marker of the fiction: every chunk of the index and every result of the tool carries it, so an
 # excerpt says that the company is fictional even when it is read out of its file (gap 10 of the audit).
 FICTION_MARKER = "Acme Payments is a fictional company, created only for this project"
-INDEX_FILES = ("index.faiss", "index.pkl", META_FILE)
+INDEX_ARTIFACTS = ("index.faiss", "index.pkl")
+INDEX_FILES = (*INDEX_ARTIFACTS, META_FILE)
 METRIC = "l2 on unit vectors"
 BUILD_HINT = "run `uv run python scripts/build_index.py` to build it"
 
@@ -67,6 +68,7 @@ __all__ = [
     "BUILD_HINT",
     "CHUNK_OVERLAP",
     "CHUNK_SIZE",
+    "INDEX_ARTIFACTS",
     "INDEX_FILES",
     "META_FILE",
     "METRIC",
@@ -225,6 +227,7 @@ def build_policy_index(
         "chunk_overlap": CHUNK_OVERLAP,
         "built_on": datetime.now(UTC).date().isoformat(),
         "corpus_sha256": corpus_digest(policies_dir),
+        "artifact_sha256": {name: hashlib.sha256((folder / name).read_bytes()).hexdigest() for name in INDEX_ARTIFACTS},
     }
     (folder / META_FILE).write_text(json.dumps(meta, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return meta

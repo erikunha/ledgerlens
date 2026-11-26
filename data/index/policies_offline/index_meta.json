@@ -1,0 +1,14 @@
+{
+  "embedding": "offline:wordcount-crc32-64",
+  "dimension": 64,
+  "chunks": 106,
+  "metric": "l2 on unit vectors",
+  "chunk_size": 800,
+  "chunk_overlap": 100,
+  "built_on": "2026-11-26",
+  "corpus_sha256": "0b79819fc26a34e36b992d771db5d70238a949562c74f6ee3d551f42304dfd0e",
+  "artifact_sha256": {
+    "index.faiss": "0aad03cd2d5403dd22d267e51f6fa19a514401e2516bd05a5ab10f2ea50dd034",
+    "index.pkl": "8bc305fffd6a209e4d43e6fb18adb0fa5afc4bdb48598512cf70e127e944853e"
+  }
+}

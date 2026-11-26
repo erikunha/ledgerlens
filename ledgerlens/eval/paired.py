@@ -13,9 +13,8 @@ Why the interval names its method: an interval without the method that computed 
 measurement. The method of the uncertainty is declared in the result, and the goal of the experiment is checked
 against the measured score, so a score of 0.73 never meets a goal of 0.80.
 
-Why a stratum below the minimum carries no mean: a mean over one or two cases is a number that looks like a
-measurement and is not one. The minimum of a stratum is declared in the result, a stratum below it carries the
-mark and no mean, and every stratum names its count, so the totals of the strata add up to the cohort.
+The result declares the minimum number of measured pairs needed for a stratum mean. Each stratum counts all
+its cases, including excluded ones, so the totals of the strata add up to the cohort.
 """
 
 from __future__ import annotations
@@ -137,10 +136,13 @@ def read_runs(path: Path) -> tuple[CaseRun, ...]:
 
 
 def _by_case(runs: Sequence[CaseRun]) -> dict[str, dict[str, CaseRun]]:
-    """The runs grouped by case and by variant."""
+    """Group runs by case and variant, rejecting repeated observations."""
     grouped: dict[str, dict[str, CaseRun]] = {}
     for run in runs:
-        grouped.setdefault(run.case_id, {})[run.variant] = run
+        by_variant = grouped.setdefault(run.case_id, {})
+        if run.variant in by_variant:
+            raise ComparisonError(f"duplicate observation for case {run.case_id} and variant {run.variant}")
+        by_variant[run.variant] = run
     return grouped
 
 
@@ -155,8 +157,8 @@ def compare(
     """Compares two variants over a cohort, case by case.
 
     The runs of the two variants must name the same cohort, or the comparison is refused. A case is paired when
-    both variants ran it and both runs carry a score; every other case is excluded with the reason. The mean of a
-    variant is over the paired cases only, so a missing run never lowers it.
+    both variants ran it and both runs carry a score. Every other case is excluded with the reason. A repeated
+    case and variant observation is refused. The mean of a variant is over the paired cases only.
 
     The goal is checked against the mean of the `goal_variant`, and the result names that variant, because a
     check of the goal that does not say which variant it checked is a check a reader cannot read. The
@@ -262,8 +264,7 @@ def _stratify(
 
     The count of a stratum is the count of the cases of the stratum, paired or excluded, so the totals of the
     strata of one dimension add up to the cohort. The mean of a stratum is the mean of the differences of the
-    paired cases of the stratum, and a stratum below the declared minimum carries no mean: a mean over one or
-    two cases is a number that looks like a measurement and is not one.
+    paired cases of the stratum. A stratum below the declared minimum of measured pairs carries no mean.
     """
     difference_of = {item.case_id: item.difference for item in differences}
     strata: list[Stratum] = []
@@ -275,14 +276,16 @@ def _stratify(
             case_ids = by_name[name]
             paired = [difference_of[case_id] for case_id in case_ids if case_id in difference_of]
             count = len(case_ids)
-            if count < minimum_stratum:
+            pair_count = len(paired)
+            if pair_count < minimum_stratum:
+                observations = f"{count} case(s)" if pair_count == count else f"{pair_count} measured pair(s)"
                 strata.append(
                     Stratum(
                         dimension=dimension,
                         name=name,
                         count=count,
                         mean=None,
-                        marked=f"the stratum holds {count} case(s), below the declared minimum of {minimum_stratum}",
+                        marked=f"the stratum holds {observations}, below the declared minimum of {minimum_stratum}",
                     )
                 )
             else:

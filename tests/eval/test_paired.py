@@ -14,6 +14,7 @@ already happened and never calls a model.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -36,6 +37,19 @@ def test_a_comparison_over_two_cohorts_is_refused() -> None:
 
     with pytest.raises(ComparisonError):
         compare(runs, goal=0.80, method=METHOD)
+
+
+@pytest.mark.parametrize("reverse_order", [False, True])
+def test_duplicate_case_and_variant_observations_are_refused(reverse_order: bool) -> None:
+    """The score for a case and variant must be unambiguous in either input order."""
+    runs = _runs()
+    repeated_run = runs[0]
+    observations = (*runs, replace(repeated_run, score=0.25))
+    if reverse_order:
+        observations = observations[::-1]
+
+    with pytest.raises(ComparisonError, match=rf"duplicate.*{repeated_run.case_id}.*{repeated_run.variant}"):
+        compare(observations, goal=0.80, method=METHOD)
 
 
 def test_a_missing_run_never_lowers_the_mean_of_the_variant_that_ran() -> None:
@@ -74,22 +88,36 @@ def test_a_score_of_0_73_never_meets_a_goal_of_0_80() -> None:
 
 
 def test_a_stratum_below_the_minimum_carries_no_mean_and_the_totals_add_up() -> None:
-    """A stratum below the declared minimum carries no mean, every stratum names its count, and the totals of
-    the strata add up to the cohort."""
+    """Counts cover the whole cohort. Only measured pairs qualify a stratum for a mean."""
     comparison = compare(_runs(), goal=0.80, method=METHOD, minimum_stratum=2)
 
     assert comparison.minimum_stratum == 2
     for stratum in comparison.strata:
         assert stratum.count > 0
-        if stratum.count < comparison.minimum_stratum:
-            assert stratum.mean is None
-            assert stratum.marked
-        else:
-            assert stratum.mean is not None
+        assert stratum.mean is None
+        assert stratum.marked
+    strata = {(stratum.dimension, stratum.name): stratum for stratum in comparison.strata}
+    low_complexity = strata["complexity", "low"]
+    assert low_complexity.count == 3
+    assert low_complexity.marked == "the stratum holds 1 measured pair(s), below the declared minimum of 2"
+    assert strata["intent", "duplicate_charge"].marked == (
+        "the stratum holds 0 measured pair(s), below the declared minimum of 2"
+    )
+    assert strata["complexity", "high"].marked == "the stratum holds 1 case(s), below the declared minimum of 2"
     # The totals of the strata of one dimension add up to the cohort: the paired cases and the excluded ones.
     for dimension in ("intent", "complexity"):
         total = sum(stratum.count for stratum in comparison.strata if stratum.dimension == dimension)
         assert total == comparison.paired_cases + len(comparison.excluded)
+
+
+def test_a_stratum_at_the_minimum_uses_only_measured_pairs_for_its_mean() -> None:
+    """The low complexity stratum has one pair whose difference is -1.0."""
+    comparison = compare(_runs(), goal=0.80, method=METHOD, minimum_stratum=1)
+
+    low_complexity = next(s for s in comparison.strata if (s.dimension, s.name) == ("complexity", "low"))
+    assert low_complexity.count == 3
+    assert low_complexity.mean == pytest.approx(-1.0)
+    assert low_complexity.marked is None
 
 
 def test_the_fixture_holds_the_three_shapes_of_run() -> None:

@@ -869,3 +869,51 @@ def world_as_evidence(entry: dict) -> Evidence:
         ref=entry["url"],
         retrieved_at=NOW,
     )
+
+
+@pytest.mark.parametrize("include_calendar", [False, True])
+def test_monday_conditional_claim_with_offline_stub(include_calendar: bool) -> None:
+    from ledgerlens.verify.nli import StubNli
+
+    deadline = "Evidence must be sent at least one business day before the response deadline of the dispute."
+    calendar = (
+        "Business days exclude Saturdays, Sundays and the bank holidays of the calendar of the "
+        "merchant's settlement currency."
+    )
+    conditional = (
+        "When the response deadline falls on a Monday and Friday is a business day for your settlement currency, "
+        "the internal cutoff is the Friday before."
+    )
+    excerpts = [
+        evidence("policy:chargeback-handling#response-deadline", deadline),
+        evidence(
+            "policy:chargeback-handling#response-deadline-2",
+            "Response deadline\nsent after the response deadline loses the dispute automatically, with no review "
+            "of the merits. When the deadline falls on a Monday, the internal cutoff is the Friday before.",
+        ),
+    ]
+    sentences = [f"{deadline[:-1]} [{excerpts[0].id}]."]
+    if include_calendar:
+        excerpts.append(evidence("policy:chargeback-handling#business-days", calendar))
+        sentences.append(f"{calendar[:-1]} [{excerpts[-1].id}].")
+    sentences.append(f"{conditional[:-1]} [{excerpts[1].id}].")
+    result = make_result([], excerpts).model_copy(update={"answer": " ".join(sentences)})
+    conditions = []
+    out = verify_result(result, nli=StubNli(), review_conditions=conditions)
+    assert out.missing_information == [f"Missing evidence for: {conditional}"]
+    assert out.verdicts[-1].label == "not_enough_evidence"
+    assert out.verdicts[-1].scores.entailment == 0.2
+    assert out.requires_human_review == (not include_calendar)
+    if include_calendar:
+        assert conditions == []
+    else:
+        assert conditions == [
+            {
+                "stage": "verify",
+                "condition": "unsupported_share_review",
+                "claim_ids": [out.claims[-1].id],
+                "total_claims": 2,
+                "share": 0.5,
+                "threshold": 0.34,
+            }
+        ]

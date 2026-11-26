@@ -43,7 +43,6 @@ import re
 import sys
 import tempfile
 import warnings
-import zlib
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -52,7 +51,7 @@ from pathlib import Path
 from typing import Any
 from uuid import NAMESPACE_URL, uuid5
 
-import numpy as np
+from langchain_core.embeddings import Embeddings
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
 from langchain_core.output_parsers import StrOutputParser
@@ -61,7 +60,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from ledgerlens.agents.integrator import _assemble, build_integrator, investigate
 from ledgerlens.agents.legacy_react import build_legacy_agent, build_legacy_tools
 from ledgerlens.config import PROJECT_ROOT, get_chat_model, get_embeddings, get_settings
-from ledgerlens.embeddings import FastEmbedEmbeddings
+from ledgerlens.embeddings import OfflineEmbeddings
 from ledgerlens.eval.dataset import (
     EVIDENCE_PREFIX,
     EXPECTATION_CHANGES,
@@ -160,38 +159,6 @@ B_NO_DATA = "I could not look up this information with the tools I have."
 # --- offline environment ----------------------------------------------------------------------------
 
 
-class _HashingModel:
-    """Stands in for the fastembed model: each word adds 1 at a fixed position out of 64. Deterministic."""
-
-    def __init__(self, model_name: str, **kwargs: object) -> None:
-        self.model_name = model_name
-
-    @staticmethod
-    def _vector(text: str) -> np.ndarray:
-        vector = np.zeros(64, dtype=np.float32)
-        for word in re.findall(r"\w+", text.lower()):
-            vector[zlib.crc32(word.encode()) % 64] += 1.0
-        return vector
-
-    def passage_embed(self, texts: Sequence[str], **kwargs: object):
-        return (self._vector(t) for t in texts)
-
-    def query_embed(self, query: str | Sequence[str], **kwargs: object):
-        return (self._vector(t) for t in ([query] if isinstance(query, str) else query))
-
-
-class OfflineEmbeddings(FastEmbedEmbeddings):
-    """Embeddings with no download: the same fastembed wrapper over a word-count model."""
-
-    def __init__(self) -> None:
-        super().__init__("offline-wordcount")
-
-    def _load(self) -> Any:
-        if self._model is None:
-            self._model = _HashingModel(self.model_name)
-        return self._model
-
-
 @dataclass
 class World:
     """What the three variants share: the ledger, the policy index and a folder for the memories."""
@@ -199,7 +166,7 @@ class World:
     root: Path
     db_path: Path
     index_root: Path
-    embeddings: FastEmbedEmbeddings
+    embeddings: Embeddings
     nli: Nli
     offline: bool = True
 

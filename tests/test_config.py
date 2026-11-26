@@ -12,7 +12,7 @@ import pytest
 
 from ledgerlens import config
 from ledgerlens.config import ConfigError, Settings
-from ledgerlens.embeddings import FastEmbedEmbeddings
+from ledgerlens.embeddings import FastEmbedEmbeddings, embedding_id
 from ledgerlens.offline import ScriptedChatModel
 
 SECRET = "fake-value-for-redaction-tests"
@@ -55,17 +55,21 @@ def test_offline_model_replays_the_given_script() -> None:
     assert model.invoke("b").content == "second"
 
 
-def test_offline_selects_fastembed_even_when_openai_is_requested(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_offline_uses_word_counts_even_when_openai_is_requested(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LEDGERLENS_EMBEDDINGS", "openai")
     monkeypatch.setenv("OPENAI_API_KEY", SECRET)
     embeddings = config.get_embeddings()
-    assert isinstance(embeddings, FastEmbedEmbeddings)
+    assert embedding_id(embeddings) == "offline:wordcount-crc32-64"
 
 
-def test_offline_embeddings_do_not_load_a_model_at_construction() -> None:
+def test_offline_vectors_need_no_learned_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    from ledgerlens import embeddings as providers
+
+    monkeypatch.setattr(providers, "_text_embedding_class", _never_called)
     embeddings = config.get_embeddings()
-    assert isinstance(embeddings, FastEmbedEmbeddings)
-    assert embeddings.is_loaded is False
+    vector = embeddings.embed_query("refund refund")
+    assert embeddings.embed_documents(["refund refund"]) == [vector]
+    assert sum(vector) == 2 and len(vector) == 64
 
 
 def test_http_mode_is_fixtures_offline_and_live_online(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -129,13 +133,13 @@ def test_online_openai_embeddings_with_a_key(monkeypatch: pytest.MonkeyPatch) ->
     from langchain_openai import OpenAIEmbeddings
 
     monkeypatch.setenv("LEDGERLENS_OFFLINE", "0")
-    monkeypatch.setenv("LEDGERLENS_EMBEDDINGS", "openai")
     monkeypatch.setenv("OPENAI_API_KEY", SECRET)
     assert isinstance(config.get_embeddings(), OpenAIEmbeddings)
 
 
-def test_online_default_embeddings_are_fastembed(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_online_fastembed_is_explicit(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LEDGERLENS_OFFLINE", "0")
+    monkeypatch.setenv("LEDGERLENS_EMBEDDINGS", "fastembed")
     assert isinstance(config.get_embeddings(), FastEmbedEmbeddings)
 
 

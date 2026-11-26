@@ -61,7 +61,7 @@ def test_is_a_langchain_embeddings_subclass() -> None:
 
 
 def test_default_model_is_an_english_model_supported_by_fastembed() -> None:
-    """The policies and the questions are in English, so the offline default is an English model.
+    """The policies and the questions are in English, so the optional FastEmbed provider uses an English model.
 
     Checks the name against fastembed's own catalog (no download), so a typo or a model the installed
     fastembed cannot load fails here and not on the first embedding.

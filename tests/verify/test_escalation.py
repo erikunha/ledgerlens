@@ -693,9 +693,7 @@ def scenario_s10(amount_minor: int = 2500000) -> InvestigationResult:
     row = {"id": "TX-2099", "amount_minor": amount_minor, "currency": "ARS"}
     return result_with(ev("sql:1", table(row))).model_copy(
         update={
-            "tool_trace": [
-                fx_call(1, ok=False, code="UNSUPPORTED_CURRENCY", to_currency="ARS", day="2026-10-27")
-            ],
+            "tool_trace": [fx_call(1, ok=False, code="UNSUPPORTED_CURRENCY", to_currency="ARS", day="2026-10-27")],
             "answer": "TX-2099 is a payment of ARS 25000.00. [sql:1]",
         }
     )
@@ -949,9 +947,7 @@ def ledger_with_merchant(path: Path, settlement_currency: str, *rows: dict[str, 
         "INSERT INTO chargebacks VALUES (:id, :transaction_id, :amount_minor, :currency, :stage, :deadline)", rows
     )
     for row in rows:
-        conn.execute(
-            "INSERT INTO transactions VALUES (?, ?, ?)", (row["transaction_id"], "M-1", row["currency"])
-        )
+        conn.execute("INSERT INTO transactions VALUES (?, ?, ?)", (row["transaction_id"], "M-1", row["currency"]))
     conn.execute("INSERT INTO merchants VALUES ('M-1', ?)", (settlement_currency,))
     conn.commit()
     conn.close()
@@ -1009,3 +1005,17 @@ def test_the_cutoff_of_a_dispute_whose_currency_is_not_the_settlement_currency_o
         ledger_db=db_usd,
     )
     assert not any("internal cutoff" in item for item in out_usd.missing_information)
+
+
+def test_escalation_records_each_triggered_rule() -> None:
+    conditions = []
+    out = apply_escalation(
+        result_with(ev("sql:1", table(chargeback("2026-11-04")))),
+        as_of=date(2026, 11, 2),
+        review_conditions=conditions,
+    )
+    assert len(conditions) == 1
+    assert conditions[0]["stage"] == "escalation"
+    assert conditions[0]["condition"] == "policy_rule"
+    assert DEADLINE_POLICY in conditions[0]["reason"]
+    assert any(conditions[0]["reason"] in message for message in out.missing_information)

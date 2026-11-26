@@ -335,7 +335,9 @@ def _text_verdict(claim: Claim, by_id: Mapping[str, Evidence], nli: Nli, thresho
     )
 
 
-def verify_result(result: InvestigationResult, *, nli: Nli | None = None) -> InvestigationResult:
+def verify_result(
+    result: InvestigationResult, *, nli: Nli | None = None, review_conditions: list[dict[str, Any]] | None = None
+) -> InvestigationResult:
     """Gives each claim a verdict and returns a copy with coherence, missing information and human review.
 
     With no claims in the result, they are extracted from the answer and the evidence.
@@ -370,17 +372,33 @@ def verify_result(result: InvestigationResult, *, nli: Nli | None = None) -> Inv
         if issue.rule == "fx_date_origin" and issue.message not in missing:
             missing.append(issue.message)  # the date stays named: it is what the agent must look up in the ledger
     share = len(unsupported) / len(result.claims) if result.claims else 0.0
-    review = (
-        result.requires_human_review
-        or any(v.label == "contradicted" for v in verdicts)
-        or not coherence.passed
-        or share > thresholds["unsupported_share_review"]
-    )
+    conditions: list[dict[str, Any]] = []
+    if result.requires_human_review:
+        conditions.append({"stage": "verify", "condition": "already_flagged"})
+    contradicted = [v.claim_id for v in verdicts if v.label == "contradicted"]
+    if contradicted:
+        conditions.append({"stage": "verify", "condition": "contradicted", "claim_ids": contradicted})
+    for issue in coherence.issues:
+        conditions.append({"stage": "verify", "condition": "coherence", **issue.model_dump()})
+    threshold = thresholds["unsupported_share_review"]
+    if share > threshold:
+        conditions.append(
+            {
+                "stage": "verify",
+                "condition": "unsupported_share_review",
+                "claim_ids": [c.id for c in unsupported],
+                "total_claims": len(result.claims),
+                "share": share,
+                "threshold": threshold,
+            }
+        )
+    if review_conditions is not None:
+        review_conditions.extend(conditions)
     return result.model_copy(
         update={
             "verdicts": verdicts,
             "coherence": coherence,
             "missing_information": missing,
-            "requires_human_review": review,
+            "requires_human_review": bool(conditions),
         }
     )

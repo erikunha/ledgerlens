@@ -146,7 +146,22 @@ DATE_RULE = (
     "`refund_reference_rate` is the reference rate on the refund date, read in the ledger; never the one of the "
     "charge nor today's."
 )
-INTEGRATOR_SYSTEM_PROMPT = DEFAULT_SYSTEM_PROMPT + CITATION_RULE + DATE_RULE
+POLICY_EVIDENCE_RULE = (
+    " When a policy question asks when something is required and could mean either the triggering event or the "
+    "submission deadline, search for both. If the first search supports only one, look up the other before "
+    "answering. Cite the evidence for each part, and identify any part you could not establish. "
+    "When only policy passages are available, frame the action conditionally on the facts supplied. "
+    "A missed cutoff requiring review does not by itself establish that submission is impossible "
+    "or verify a case status. "
+    "For an exact merchant evidence cutoff date, search the rule and use calculate with previous_business_day, "
+    "the response deadline and the settlement currency. Ask for the currency if it is missing. "
+    "For policy questions, distinguish an internal cutoff from the final deadline. Attribute each consequence "
+    "only to the condition the passage states. When asked how far in advance evidence is due, give the interval "
+    "and its reference deadline. Include consequences only when asked, and quote their triggering condition "
+    "from the retrieved passage. If the retrieved passages do not answer the question, say what "
+    "you could not establish from those passages. A ranked search does not establish what the entire handbook covers."
+)
+INTEGRATOR_SYSTEM_PROMPT = DEFAULT_SYSTEM_PROMPT + CITATION_RULE + DATE_RULE + POLICY_EVIDENCE_RULE
 
 # The evidence id prefix says where it came from (`docs/contracts/tools.md`).
 _SOURCE_BY_PREFIX = {

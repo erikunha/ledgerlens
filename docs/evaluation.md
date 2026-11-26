@@ -155,22 +155,198 @@ It does not measure the blind spot of the reader either: the labels came from tw
 evidence, so the number over the set says what the verifier does with the labels of two careful machine readers, and
 not what it would do with the labels of a person.
 
-## The debt: the held out set of the retrieval does not exist
+## Retrieval evaluation
 
-The retrieval of this repository is measured with a recall at 3 over the twelve questions of
-`data/eval/policy_questions.jsonl`, and those twelve questions are a tuning set: ADR-006 chose the embedding and
-the query transform with the recall over them. So the retrieval number of this repository is a fit and not a
-generalization, in the same words that ADR-052 used for the verifier. When the roadmap asks for a dense against a
-hybrid comparison over the same relevance labels, the labels have to come from a set that no decision of the
-retrieval was taken against, and such a set does not exist yet.
+The twelve policy questions used to choose the embedding and query transform are a tuning set.
+The independent retrieval set has sixteen questions with an adjudicated target passage. Two machine
+readers initially disagreed on four. This set measures retrieval on answerable questions. Measuring
+abstention requires questions for which the corpus has no supporting passage.
+[Dataset roles and adjudication](../data/eval/datasets.json)
 
-The three properties of the held out set of the verification are the three the retrieval set needs as well: the
-cases written by a generator, the labels read blind to the recipe, and the guard that refuses a tuning script that
-reads them. The instrument of the blind reading serves both, because the evidence of a retrieval question is a
-passage and the evidence of a verification case is an envelope, and the reader judges the same three labels in both.
-The reading is a machine reading with two readings and an adjudication, as ADR-059 decided, and the cost of that
-decision is paid here too: the labels of the retrieval set will carry the same blind spot that the labels of the
-verification set carry.
+## Reading paired and repeated experiments
+
+A paired comparison requires one observation per case and variant. Each stratum counts all observed
+cases for coverage. Its mean difference requires the declared minimum number of cases with scores for
+both variants.
+
+For error analysis on the public orchestration cohort, use 0.80 as a per-case diagnostic cutoff.
+The experiment's registered goal applies to the variant mean. In six of 31 pairs, both scores fell
+below the diagnostic cutoff. Four had equal scores and consequently do not appear in the disagreement
+gallery. Inspect those alongside the two disagreements before selecting a tool or retrieval change.
+[Recorded paired differences](../data/eval/experiments/cf6ab097fe4ac420946391c66c2bb3b3b91b105d9cfe67edab29da36564ddb3f/result.json)
+
+| Both variants below 0.80 | Studio | Single agent |
+|---|---:|---:|
+| EC-01 | 0.250 | 0.250 |
+| EC-04 | 0.000 | 0.500 |
+| EC-10 | 0.000 | 0.500 |
+| EC-11 | 0.000 | 0.000 |
+| EC-28 | 0.000 | 0.000 |
+| EC-31 | 0.143 | 0.143 |
+
+The archived online evaluation measures consistency across trials. Recompute the counts offline:
+
+    uv run python scripts/report_repeatability.py --report data/eval/report_online.json
+
+Variant C earned full correctness credit at least once on 24 of 30 cases and on every trial on 20.
+For groundedness the corresponding counts were 20 and 16. Each case had three trials. These are
+descriptive frequencies on the historical tuning cohort. Each metric has its own denominator of
+cases with a numeric score on every trial. The archive producer records zero for missing metric scores,
+including failed trials. Those recorded zeros count as misses. [Online measurements](../data/eval/report_online.json)
+
+The distinction between occasional and consistent success follows the repeated-trial evaluation in
+[τ-bench](https://arxiv.org/abs/2406.12045). Here, full credit is counted separately for each recorded metric.
+
+## Transaction lookup controls
+
+Run `uv run python -m scripts.report_lookup_arguments` to compare the existing trajectory scores
+with the transaction kind and identifier in each structured lookup. The expected transaction and
+the swapped transaction each score 1 for the strict trajectory. Argument credit falls from 1 to 0
+when the identifier changes.
+
+Of six synthetic traces, four are eligible for argument scoring. One is correct, one uses the wrong
+identifier, one omits the lookup and one mixes correct and incorrect lookups. The remaining controls
+cover an absent trace and an equivalent free-text query whose arguments cannot prove which record it
+read. Across the five structured calls, two match the expected transaction. No tool is executed.
+
+## Passage IDs in the replay catalogs
+
+Run `uv run python -m scripts.report_evidence_stages` to inspect the policy tool results, tool
+messages in the final model input, and citations in the published answer. A complete record allows
+the report to establish that an ID is absent. A partial record can establish that an ID is present.
+
+| Catalog | Runs | Complete candidate records | Complete model inputs for passage IDs | Complete answers for citations |
+|---|---:|---:|---:|---:|
+| Scripted | 10 | 5 | 8 | 10 |
+| Real model | 10 | 0 | 7 | 10 |
+
+In scripted runs S02, S03 and S08, all eight candidate IDs were visible to the final model. Each
+answer cited one. An uncited passage may be irrelevant. Deciding whether the omission was an error
+requires an independently labeled target for the case. For the ten real-model replays, candidate
+coverage is unknown, so these recordings cannot establish a retrieval failure. The distinction
+between retrieval, context assembly and generation follows
+[Seven Failure Points When Engineering a Retrieval Augmented Generation System](https://arxiv.org/abs/2401.05856).
+
+## Synthetic evidence controls
+
+The claim-support experiment gives the textual entailment model a fixed passage and a proposed claim. It
+uses the chargeback response deadline as an answerable control and applies it to a refund as a
+neighboring-policy error. A pet insurance claim tests an unrelated topic. The final two controls use
+the same refund record to check a supported amount and an unsupported promise of delivery within two days.
+
+With the pinned entailment model and its calibrated thresholds, both supported claims received support
+and none of the three unsupported claims did. The two-day promise received the verdict
+`not_enough_evidence`. These five development controls score individual claims against supplied evidence.
+They bypass claim extraction and the separate numeric and coherence checks.
+Measuring whether the agent retrieves the passage and abstains in its final answer requires a separate run.
+
+Run from the repository root with the verification dependencies and cached model weights:
+
+    HF_HUB_OFFLINE=1 LEDGERLENS_OFFLINE=0 uv run python -m scripts.report_policy_support
+
+With `LEDGERLENS_OFFLINE=1` the report counts five cases without a verdict and zero eligible cases
+for both metrics. The distinction between support for individual claims and support for an entire
+answer follows [RAGAS](https://arxiv.org/abs/2309.15217).
+
+## Final answers with OpenAI
+
+Run `uv run python -m scripts.report_policy_journeys` to exercise the investigator on three
+synthetic policy questions. The command uses the configured OpenAI key for GPT-4.1 and the
+policy embeddings. OpenAI receives the public policy passages and the synthetic investigation
+messages. Each case gets its own empty ledger and memory. The offline verification stub supplies
+no independent semantic verdict. The JSON includes each final answer, the observed candidate IDs
+and the text of cited passages when available. Join each verdict to its claim using `claim_id`
+and the claim's `id`. The report includes the verifier method, evidence IDs and recorded review reasons.
+Each case includes `review_conditions` from the verifier and escalation decision. A share-based trigger
+records the numerator, denominator and configured threshold. `review_reasons` contains the messages shown to the operator.
+
+Use `--all` for all controls or `--case ID` for one. `--repeat N` runs each selected case N times
+with a fresh ledger and memory. Use `--checkpoint PATH` to create a new JSONL file with a flushed
+record per completed case. An existing file is refused. `--strict` signals operational failures
+after writing the report. A content mistake still requires a judgment.
+
+The runner validates and reuses the delivered OpenAI index. Reports identify the source revision,
+source digests, index metadata and model. HTTP usage covers chat input, cached input, output and
+query embeddings. The estimate applies the standard per-million-token rates for
+[GPT-4.1](https://developers.openai.com/api/docs/models/gpt-4.1) and
+[text-embedding-3-small](https://developers.openai.com/api/docs/models/text-embedding-3-small).
+It measures the marginal online cost with an existing index. The original index build, review
+labor and any account-specific discount are outside that estimate.
+
+The [recorded 17-case run](../data/eval/reports/policy-journeys-openai.json) includes the original
+questions, paraphrases, neighboring topics and a status lookup without an identifier.
+For June 1, 2026 in USD, the agent called the calculator and returned May 29.
+When the settlement currency was missing it asked for the currency. The actual-status control
+requested the dispute ID. The deadline paraphrase called for same-day review and distinguished
+automatic loss after the response deadline.
+
+An independent model-assisted review scored one response per synthetic development case. The reviewer compared the answers with retrieved passages, calculator receipts and the recorded actions. These controls informed development, so the figures describe this run and cannot estimate production accuracy. [Scoring rules and per-case judgments](../data/eval/policy_journey_review.json)
+
+| Measure | Result |
+|---|---|
+| Required policy evidence retrieved | 15 of 15 applicable cases. The insurance and missing-ID cases had no target passage. |
+| Citations supported material claims | 13 of 16 applicable cases. The missing-ID clarification needed no citation. |
+| Substantive answer correct | 16 of 17 cases. The missed-cutoff answer added unsupported claims about refusing late evidence and possible exceptions. |
+| Operational action appropriate | 10 of 17 passed. Six escalations were unnecessary. The handbook did not establish how to route the insurance inquiry. |
+| Original question resolved | 7 of 17 received a definitive, supported answer and an appropriate action. Clarification and abstention can be correct responses while the original question remains open. |
+
+The three dated cutoff answers agreed with the calculator, but all three escalated after the offline verifier flagged the computed dates. The 17 investigations cost an estimated $0.16595268 in provider usage. Dividing that total by the seven resolved questions gives $0.02370753 per resolution. [Recorded answers, tool calls and token usage](../data/eval/reports/policy-journeys-openai.json)
+
+In a separate paired search, the original and revised rewrites put the refund threshold and
+delayed-payout passages first and the chargeback-fee passage second. Each prompt ran once per
+topic with eight candidates. These ranks describe the three selected queries. [Queries, candidates and ranks](../data/eval/reports/policy-rewrite-comparison.json)
+
+The recorded Monday answers illustrate why the evidence warning and review action can differ.
+The offline stub gave the conditional Friday sentence 0.20 entailment in both answers. One
+answer had one unsupported claim out of three, below the 0.34 review threshold. The other
+had one out of two, above the threshold. The claim added the currency qualification from
+the question to the earlier handbook passage. This replay characterizes the deterministic stub.
+
+The optional `july-cutoff-usd` and `july-cutoff-eur` questions share a July 7, 2025 deadline.
+The calendar gives July 3 for USD and July 4 for EUR. The handbook contains this worked example,
+so these cases check retrieval and reporting. They do not measure calendar reasoning on unseen dates.
+
+| Question | First OpenAI run |
+|---|---|
+| When does Acme require merchant evidence for a chargeback? | The answer described when a dispute opens and omitted the one-business-day cutoff. None of the four retrieved passages was the response-deadline passage. |
+| Must a refund request be submitted before the chargeback response deadline? | The answer distinguished the two rules and cited the passage explaining how an open dispute affects a refund. |
+| How much pet insurance coverage does Acme provide? | The answer declined to give an amount. Its broader claim about the entire handbook exceeded what the four retrieved passages established. |
+
+The first question can also mean “what triggers the evidence request?” The opt-in case
+`--case explicit-chargeback-deadline` asks how far before the response deadline evidence is due.
+Its first run cited the one-business-day cutoff correctly but attributed automatic loss to missing
+that cutoff. The [chargeback policy](../data/policies/chargeback-handling.md) ties automatic loss to the final deadline.
+
+With instructions to match each consequence to its stated condition, a second run gave the cutoff
+and correctly cited [same-day human review](../data/policies/escalation-and-review.md) after it passes.
+A further run again attributed automatic loss to the internal cutoff despite citing the correct passage.
+The instruction alone did not consistently preserve the distinction. After restricting an interval question
+to the requested timing, three runs gave the correct interval and citation. Two still volunteered a consequence,
+but both tied automatic loss to the response deadline.
+One repeat of the pet insurance question limited its conclusion to the retrieved passages.
+Each observation describes one response to that wording. A repeat of the ambiguous baseline question again described what triggers the request and omitted the interval.
+
+Three more runs with instructions to address both readings still omitted the interval.
+The search traces showed that the original query and its rewrite both asked about the trigger.
+After the rewrite prompt directed the second query toward the deadline, all three repeats of the
+same question described the trigger, gave the one-business-day interval, and cited the deadline passage.
+One answer used “this deadline” for automatic loss after mentioning both dates. A correct citation
+and interval therefore do not establish that every claim in the answer is clear.
+
+Three optional deadline cases exercise different decisions with an empty ledger:
+
+| CLI case | Observed policy answer |
+|---|---|
+| `cutoff-passed` | With the response deadline tomorrow, the final run recommended same-day human review and distinguished automatic loss after the response deadline. |
+| `monday-deadline` | Both runs identified Friday as the cutoff when Friday is a business day for the settlement currency. |
+| `response-late` | The agent cited automatic loss for a merchant response sent after the response deadline. |
+
+The first runs of the cutoff-passed and late-response cases asked for a dispute ID without searching.
+Triage now requests a policy search when the supplied facts support conditional guidance.
+Verifying a particular dispute's status still needs a record. The scored cutoff-passed answer incorrectly inferred that new evidence could no longer be submitted.
+
+A completed answer remains available for judgment when any search succeeded, even if a later
+search failed. The report keeps each search error and the passages cited by the final answer.
 
 ## Where the truth lives
 

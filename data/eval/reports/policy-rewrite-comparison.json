@@ -1,0 +1,151 @@
+{
+  "baseline_commit": "c6f06ff835d52ec7eb413dab31fe8359a9fec08c",
+  "model": "gpt-4.1",
+  "embedding": "text-embedding-3-small",
+  "index": {
+    "embedding": "openai:text-embedding-3-small",
+    "dimension": 1536,
+    "chunks": 106,
+    "metric": "l2 on unit vectors",
+    "chunk_size": 800,
+    "chunk_overlap": 100,
+    "built_on": "2026-11-26",
+    "corpus_sha256": "0b79819fc26a34e36b992d771db5d70238a949562c74f6ee3d551f42304dfd0e",
+    "artifact_sha256": {
+      "index.faiss": "db00c5e3700082d33e2cd99ff017aee6d5bdd2a7a9d95f811902aad87a4462ac",
+      "index.pkl": "c6b05cfe31f75997d43dafc29c70b536cd6773593465e222ee4f99729e5d7dd0"
+    }
+  },
+  "prompts": {
+    "baseline": "You rewrite customer questions to search the policy manual of a payments company (refund, FX, chargeback, duplicate charge, settlement, fees, escalation). Swap everyday language for the terms the manual would use, keep the meaning and do not make up facts. Answer only with the rewritten question, in English, on one line.",
+    "current": "You rewrite customer questions to search the policy manual of a payments company (refund, FX, chargeback, duplicate charge, settlement, fees, escalation). Swap everyday language for the terms the manual would use, keep the meaning and do not make up facts. If a question about when something is required leaves the timing ambiguous, the original question already covers the triggering event. Use the rewrite to ask for the submission deadline or cutoff. Answer only with the rewritten question, in English, on one line."
+  },
+  "runs": [
+    {
+      "case": "refund-trigger",
+      "variant": "baseline",
+      "queries": [
+        "When does a refund need human review because of its amount?",
+        "What is the transaction amount threshold that triggers manual review for refund processing?"
+      ],
+      "target": "escalation-and-review#high-amount",
+      "rank_at_8": 1,
+      "in_default_top4": true,
+      "candidates": [
+        "escalation-and-review#high-amount",
+        "refund-policy#refund-statuses",
+        "duplicate-charges#checks-before-recommending",
+        "refund-policy#rejection-reasons",
+        "refund-policy#who-can-request",
+        "duplicate-charges#who-refunds",
+        "duplicate-charges#records",
+        "escalation-and-review#human-review-flag"
+      ]
+    },
+    {
+      "case": "refund-trigger",
+      "variant": "current",
+      "queries": [
+        "When does a refund need human review because of its amount?",
+        "What is the transaction amount threshold that triggers manual review for refund processing?"
+      ],
+      "target": "escalation-and-review#high-amount",
+      "rank_at_8": 1,
+      "in_default_top4": true,
+      "candidates": [
+        "escalation-and-review#high-amount",
+        "refund-policy#refund-statuses",
+        "duplicate-charges#checks-before-recommending",
+        "refund-policy#rejection-reasons",
+        "refund-policy#who-can-request",
+        "duplicate-charges#who-refunds",
+        "duplicate-charges#records",
+        "escalation-and-review#human-review-flag"
+      ]
+    },
+    {
+      "case": "settlement-trigger",
+      "variant": "baseline",
+      "queries": [
+        "When is a payout considered delayed?",
+        "What are the criteria for classifying a settlement as delayed?"
+      ],
+      "target": "settlement-schedule#late-payout",
+      "rank_at_8": 1,
+      "in_default_top4": true,
+      "candidates": [
+        "settlement-schedule#late-payout",
+        "settlement-schedule#status",
+        "settlement-schedule#payout-timing",
+        "settlement-schedule#explaining-a-settlement",
+        "chargeback-handling#response-deadline-2",
+        "settlement-schedule#overview",
+        "settlement-schedule#period",
+        "escalation-and-review#deadline-within-2-days"
+      ]
+    },
+    {
+      "case": "settlement-trigger",
+      "variant": "current",
+      "queries": [
+        "When is a payout considered delayed?",
+        "What is the policy definition of a delayed settlement?"
+      ],
+      "target": "settlement-schedule#late-payout",
+      "rank_at_8": 1,
+      "in_default_top4": true,
+      "candidates": [
+        "settlement-schedule#late-payout",
+        "settlement-schedule#overview",
+        "settlement-schedule#status",
+        "settlement-schedule#payout-timing",
+        "settlement-schedule#period",
+        "settlement-schedule#explaining-a-settlement",
+        "chargeback-handling#response-deadline-2",
+        "fees-and-pricing#fee-changes"
+      ]
+    },
+    {
+      "case": "fee-trigger",
+      "variant": "baseline",
+      "queries": [
+        "When is the chargeback fee charged?",
+        "At what point in the chargeback process is the chargeback fee assessed to the merchant account?"
+      ],
+      "target": "fees-and-pricing#chargeback-fee",
+      "rank_at_8": 2,
+      "in_default_top4": true,
+      "candidates": [
+        "chargeback-handling#fee-reference",
+        "fees-and-pricing#chargeback-fee",
+        "chargeback-handling#overview",
+        "refund-policy#refunds-and-chargebacks",
+        "fees-and-pricing#overview",
+        "fees-and-pricing#fee-questions",
+        "fees-and-pricing#escalation",
+        "fees-and-pricing#fee-total"
+      ]
+    },
+    {
+      "case": "fee-trigger",
+      "variant": "current",
+      "queries": [
+        "When is the chargeback fee charged?",
+        "What is the timing of the assessment of the chargeback fee?"
+      ],
+      "target": "fees-and-pricing#chargeback-fee",
+      "rank_at_8": 2,
+      "in_default_top4": true,
+      "candidates": [
+        "chargeback-handling#fee-reference",
+        "fees-and-pricing#chargeback-fee",
+        "chargeback-handling#overview",
+        "refund-policy#refunds-and-chargebacks",
+        "fees-and-pricing#fee-questions",
+        "fees-and-pricing#overview",
+        "fees-and-pricing#fee-currency",
+        "fees-and-pricing#fee-example"
+      ]
+    }
+  ]
+}

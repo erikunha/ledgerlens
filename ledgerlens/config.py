@@ -3,8 +3,8 @@
 Why it exists: the rest of the project asks here "am I offline?" and "which model do I use?", so switching
 providers or running with no key needs no change to any tool.
 
-Offline mode (`LEDGERLENS_OFFLINE=1`) swaps the providers and nothing else: a scripted chat model, fastembed
-embeddings and recorded HTTP responses. Online mode builds the model named in `LEDGERLENS_MODEL` with
+Offline mode (`LEDGERLENS_OFFLINE=1`) uses scripted chat, deterministic word counts and recorded HTTP responses.
+Online mode builds the model named in `LEDGERLENS_MODEL` with
 `init_chat_model`; no provider is named in the code.
 
 Keys live in `SecretStr`, so `repr`, logs and `model_dump` show a mask. Errors coming from a provider are
@@ -43,7 +43,7 @@ from langchain_core.embeddings import Embeddings
 from langchain_core.language_models.chat_models import BaseChatModel
 from pydantic import BaseModel, ConfigDict, SecretStr
 
-from ledgerlens.embeddings import FastEmbedEmbeddings, openai_embeddings
+from ledgerlens.embeddings import FastEmbedEmbeddings, OfflineEmbeddings, openai_embeddings
 from ledgerlens.offline import ScriptedChatModel, ScriptItem
 
 log = logging.getLogger(__name__)
@@ -81,7 +81,7 @@ class Settings(BaseModel):
     # research feature and its output is a trace and a published page, never a route a stranger may call. The
     # exercises run in the offline mode with the fake provider, so an attack never spends the money of anybody.
     adversarial_lab: bool = False
-    embeddings: Literal["fastembed", "openai"] = "fastembed"
+    embeddings: Literal["fastembed", "openai"] = "openai"
     openai_api_key: SecretStr | None = None
     langsmith_api_key: SecretStr | None = None
     langsmith_project: str | None = None
@@ -179,7 +179,7 @@ def get_settings(env: Mapping[str, str] | None = None) -> Settings:
     values: dict[str, str | None] = dict(dotenv_values(env_file)) if env_file.is_file() else {}
     values.update(environ)
 
-    embeddings = (_text(values.get("LEDGERLENS_EMBEDDINGS")) or "fastembed").lower()
+    embeddings = (_text(values.get("LEDGERLENS_EMBEDDINGS")) or "openai").lower()
     if embeddings not in EMBEDDING_CHOICES:
         raise ConfigError(f"LEDGERLENS_EMBEDDINGS must be one of {', '.join(EMBEDDING_CHOICES)}")
 
@@ -343,9 +343,11 @@ def model_cascade(settings: Settings | None = None) -> tuple[str, ...]:
 
 
 def get_embeddings(settings: Settings | None = None) -> Embeddings:
-    """The embeddings for the current mode: fastembed offline, `LEDGERLENS_EMBEDDINGS` online."""
+    """The embeddings for the current mode: deterministic word counts offline, `LEDGERLENS_EMBEDDINGS` online."""
     settings = settings or get_settings()
-    if settings.offline or settings.embeddings == "fastembed":
+    if settings.offline:
+        return OfflineEmbeddings()
+    if settings.embeddings == "fastembed":
         log.debug("embeddings: fastembed")
         return FastEmbedEmbeddings()
     if settings.openai_api_key is None:

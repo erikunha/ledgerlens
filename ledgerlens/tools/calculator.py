@@ -43,6 +43,7 @@ from __future__ import annotations
 import itertools
 import re
 from collections.abc import Callable
+from datetime import date
 from decimal import ROUND_HALF_EVEN, Decimal, localcontext
 from typing import Any
 
@@ -50,7 +51,10 @@ from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, ConfigDict, Field
 
 from ledgerlens.policy_limits import FX_MARKUP_LIMIT_PCT, FX_MARKUP_TOLERANCE_PCT
+from ledgerlens.sim.calendars import calendar_for, calendar_name, previous_business_day
 from ledgerlens.tools.envelope import error, invalid_input, ok
+
+PREVIOUS_BUSINESS_DAY = "previous_business_day"
 
 DESCRIPTION = (
     "Do exact arithmetic for money, rates and fees. Never do arithmetic yourself: call this tool. "
@@ -59,7 +63,9 @@ DESCRIPTION = (
     "fee (gross, percent, fixed_per_item, items), net_settlement (gross, refunds, fees), "
     "fx_gap_breakdown (units, charge_rate, refund_reference_rate, refund_applied_rate), "
     "fx_markup_check (units, charge_rate, refund_reference_rate, refund_applied_rate; states the plan of the "
-    "merchant). All results use exact decimal math and round half to even."
+    "merchant). Money results use exact decimal math and round half to even. For the dispute cutoff, use "
+    "previous_business_day with values date (response deadline, YYYY-MM-DD) and currency (settlement currency). "
+    "Ask for the settlement currency if it is unknown."
 )
 
 # Digits only, with optional sign and point: no exponent ("1e5"), no NaN, no space, no comma.
@@ -214,12 +220,37 @@ def _plan_of(operation: str, plan: str | None) -> str | None:
     return name
 
 
+def _calendar_cutoff(values: dict[str, str]) -> tuple[str, str]:
+    for key in ("date", "currency"):
+        if not values.get(key):
+            raise CalcError("MISSING_VALUE", f"previous_business_day requires {key}", True)
+    currency = values["currency"].strip().upper()
+    if calendar_for(currency) is None:
+        raise CalcError(
+            "UNSUPPORTED_CURRENCY",
+            "No supported settlement holiday calendar for this currency. Confirm the cutoff with the merchant.",
+            True,
+        )
+    try:
+        deadline = date.fromisoformat(values["date"])
+        if deadline.isoformat() != values["date"]:
+            raise ValueError
+        cutoff = previous_business_day(deadline, currency)
+    except (ValueError, OverflowError) as failure:
+        message = "Supply a YYYY-MM-DD deadline with a preceding business day."
+        raise CalcError("INVALID_DATE", message, True) from failure
+    formula = f"One business day before {deadline} on the {currency} calendar ({calendar_name(currency)})"
+    return cutoff.isoformat(), formula
+
+
 def compute(
     operation: str, values: dict[str, str], decimals: int = 2, plan: str | None = None
 ) -> tuple[str | dict[str, str], str]:
     """Does the math. Returns (result, formula) or raises `CalcError`."""
+    if operation == PREVIOUS_BUSINESS_DAY:
+        return _calendar_cutoff(values)
     if operation not in OPERATIONS:
-        known = ", ".join(OPERATIONS)
+        known = ", ".join((*OPERATIONS, PREVIOUS_BUSINESS_DAY))
         raise CalcError("UNKNOWN_OPERATION", f"unknown operation '{operation}'; use one of {known}", False)
     required, function = OPERATIONS[operation]
     missing = [key for key in required if key not in values]
@@ -279,10 +310,14 @@ def guard_inputs(operation: str, values: dict[str, str]) -> None:
                 f"amount, write it with decimals, '{text}.00'."
             )
             raise CalcError("SUSPECTED_MINOR_UNITS", message, True)
-    if operation in ("fx_gap_breakdown", "fx_markup_check") and {
-        "refund_reference_rate",
-        "refund_applied_rate",
-    } <= values.keys():
+    if (
+        operation in ("fx_gap_breakdown", "fx_markup_check")
+        and {
+            "refund_reference_rate",
+            "refund_applied_rate",
+        }
+        <= values.keys()
+    ):
         reference, applied = values["refund_reference_rate"], values["refund_applied_rate"]
         numbers = [value for value in (reference, applied) if len(value) <= MAX_NUMBER_CHARS and _NUMBER.match(value)]
         # a zero reference is division by zero, a compute error; here the comparison runs only with a real reference
@@ -299,7 +334,8 @@ def guard_inputs(operation: str, values: dict[str, str]) -> None:
 # What the model reads about `values`: units and the role of each rate. The tool description stays as it is
 # (it matches docs/contracts/tools.md); this text goes into the argument schema.
 VALUES_DESCRIPTION = (
-    "Named values as decimal strings. Money is always in MAJOR units written with a decimal point, such as "
+    "For previous_business_day, pass date (YYYY-MM-DD) and currency (settlement currency code). "
+    "For arithmetic, pass named values as decimal strings. Money is in MAJOR units with a decimal point, such as "
     '"100.00": the ledger stores amount_minor, so amount_minor 10000 is "100.00", never "10000". Rates are '
     'decimal strings such as "5.6339". For fx_gap_breakdown and fx_markup_check: units = the amount paid, in '
     "major units of the charge currency; charge_rate = the rate that converted the charge; "
@@ -333,9 +369,7 @@ def build_calculate_tool() -> StructuredTool:
     """Builds the tool. Each tool has its own `calc:<n>` counter, which only counts successes."""
     counter = itertools.count(1)
 
-    def calculate(
-        operation: str, values: dict[str, str], decimals: int = 2, plan: str | None = None
-    ) -> dict[str, Any]:
+    def calculate(operation: str, values: dict[str, str], decimals: int = 2, plan: str | None = None) -> dict[str, Any]:
         try:
             guard_inputs(operation, values)
             result, formula = compute(operation, values, decimals, plan)

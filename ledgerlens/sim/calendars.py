@@ -52,6 +52,13 @@ def add_business_days(day: date, count: int, currency: str) -> date:
     return current
 
 
+def previous_business_day(day: date, currency: str) -> date:
+    current = day - timedelta(days=1)
+    while not is_business_day(current, currency):
+        current -= timedelta(days=1)
+    return current
+
+
 def payout_date(period_end: date, currency: str, business_days: int = 2) -> date:
     """Payout date of a settlement: `business_days` business days after the period end."""
     return add_business_days(period_end, business_days, currency)

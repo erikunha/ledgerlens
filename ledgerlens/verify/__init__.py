@@ -9,6 +9,7 @@ Escalation (deadline, high amount) and the recommended action come from the evid
 
 from datetime import date
 from pathlib import Path
+from typing import Any
 
 from ledgerlens.schemas import InvestigationResult
 from ledgerlens.verify.checks import verify_result as verify_claims
@@ -22,14 +23,17 @@ def verify_result(
     nli: Nli | None = None,
     as_of: date | None = None,
     ledger_db: Path | str | None = None,
+    review_conditions: list[dict[str, Any]] | None = None,
 ) -> InvestigationResult:
     """Verifies the claims and applies the escalation and the recommended action, decided by code.
 
     `as_of` is the reference day for dispute deadlines (default: the day the evidence was read). `ledger_db` is the
     ledger from which the deadline and the free text of cited records the model's query did not bring are read,
     read-only (default: the configured one, the same the tools read).
+    Pass an empty list as `review_conditions` to collect the criteria that fired in both stages.
     """
-    return apply_escalation(verify_claims(result, nli=nli), as_of=as_of, ledger_db=ledger_db)
+    verified = verify_claims(result, nli=nli, review_conditions=review_conditions)
+    return apply_escalation(verified, as_of=as_of, ledger_db=ledger_db, review_conditions=review_conditions)
 
 
 __all__ = ["verify_result"]

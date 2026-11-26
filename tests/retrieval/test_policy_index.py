@@ -39,7 +39,7 @@ from ledgerlens.retrieval import (
 
 REPO = Path(__file__).resolve().parents[2]
 POLICIES = REPO / "data" / "policies"
-COMMITTED = REPO / "data" / "index" / "policies_fastembed"
+COMMITTED = REPO / "data" / "index" / "policies_openai"
 SCRIPT = REPO / "scripts" / "check_policy_index.py"
 DIM = 64
 POLICY = "refund-policy.md"
@@ -212,6 +212,7 @@ def test_the_meta_carries_the_digest_of_the_corpus_it_was_built_from(
     folder = index_dir_for(tmp_path / "index", embeddings)
     meta = build_policy_index(load_policy_documents(corpus), embeddings, folder, policies_dir=corpus)
     written = json.loads((folder / "index_meta.json").read_text(encoding="utf-8"))
+    assert check_policy_index.check(corpus, folder) == []
     assert written["corpus_sha256"] == meta["corpus_sha256"] == corpus_digest(corpus)
 
 
@@ -221,6 +222,20 @@ def test_the_meta_carries_the_digest_of_the_corpus_it_was_built_from(
 def test_the_check_of_the_gate_is_green_on_the_committed_tree() -> None:
     """The committed index describes the committed policies, so the check of the gate passes."""
     assert check_policy_index.main([]) == 0
+
+
+@pytest.mark.parametrize("filename", ("index.faiss", "index.pkl"))
+@pytest.mark.parametrize("missing", (False, True), ids=("modified", "missing"))
+def test_gate_refuses_damaged_index_artifacts(tmp_path: Path, filename: str, missing: bool) -> None:
+    index = tmp_path / "index"
+    shutil.copytree(COMMITTED, index)
+    artifact = index / filename
+    if missing:
+        artifact.unlink()
+    else:
+        content = artifact.read_bytes()
+        artifact.write_bytes(content[:-1] + bytes([content[-1] ^ 1]))
+    assert any(filename in problem for problem in check_policy_index.check(POLICIES, index))
 
 
 def test_the_check_of_the_gate_refuses_a_tree_whose_policy_was_edited(tmp_path: Path) -> None:

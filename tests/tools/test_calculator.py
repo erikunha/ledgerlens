@@ -454,3 +454,33 @@ def test_an_applied_rate_outside_the_rounding_band_is_still_a_swapped_pair() -> 
             },
         )
     assert refusal.value.code == "SWAPPED_RATES"
+
+
+@pytest.mark.parametrize(
+    ("currency", "expected", "calendar"),
+    [
+        ("USD", "2026-11-25", "US"),
+        ("EUR", "2026-11-26", "TARGET"),
+        ("brl", "2026-11-26", "B3"),
+    ],
+)
+def test_previous_business_day_uses_the_settlement_calendar(currency, expected, calendar):
+    answer = run("previous_business_day", date="2026-11-27", currency=currency)
+    assert answer["ok"], answer
+    assert answer["data"]["result"] == expected
+    assert calendar in answer["data"]["formula"]
+    assert answer["evidence_ids"] == ["calc:1"]
+
+
+@pytest.mark.parametrize(
+    ("values", "code"),
+    [
+        ({"date": "2026-11-27"}, "MISSING_VALUE"),
+        ({"date": "2026-11-27", "currency": "unknown"}, "UNSUPPORTED_CURRENCY"),
+        ({"date": "2026-11-27", "currency": "ZZZ"}, "UNSUPPORTED_CURRENCY"),
+        ({"date": "2025-07-02", "currency": "CAD"}, "UNSUPPORTED_CURRENCY"),
+        ({"date": "2026-02-31", "currency": "USD"}, "INVALID_DATE"),
+    ],
+)
+def test_previous_business_day_refuses_unusable_calendar_inputs(values, code):
+    assert code_of("previous_business_day", **values) == code

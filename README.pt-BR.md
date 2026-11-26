@@ -129,7 +129,7 @@ export LEDGERLENS_OFFLINE=1
 bash scripts/gate.sh        # ruff and pytest, all offline
 ```
 
-No modo offline o modelo de chat é um modelo scriptado, os embeddings são locais (fastembed), o HTTP lê respostas gravadas e os dados vêm de uma amostra commitada. O código do agente não muda. Na primeira execução, o fastembed baixa o modelo de embeddings para o cache local.
+No modo offline, o chat segue um roteiro, o HTTP lê respostas gravadas e os dados vêm da amostra versionada. A busca de políticas e casos conta palavras em 64 posições de hash, sem baixar modelos. A busca online usa OpenAI por padrão. Para usar FastEmbed, defina `LEDGERLENS_EMBEDDINGS=fastembed` e construa o índice correspondente. O índice de políticas offline fica em `data/index/policies_offline/`. Para reconstruí-lo, execute `LEDGERLENS_OFFLINE=1 uv run python scripts/build_index.py`.
 
 ### Aplicativo de demonstração (Streamlit)
 
@@ -256,7 +256,7 @@ docs/         architecture, tools, contracts, the roadmap and decisions (ADRs)
 - A taxa de câmbio é uma referência do BCE, não a taxa que o adquirente aplicou. O agente diz isso.
 - Os pedidos de origem são reais, mas antigos, com datas deslocadas. Chargebacks, settlements, fees e markups são simulados e marcados na coluna `origin`.
 - Trinta casos de avaliação mostram uma tendência, não significância estatística.
-- A recuperação de políticas pelo índice offline perde algumas perguntas difíceis; a reescrita de consulta recupera a maioria delas ([ADR-006](docs/decisions/ADR-006-embeddings-and-index.md)).
+- O benchmark com FastEmbed mede a recuperação nas perguntas difíceis com e sem reescrita da consulta ([ADR-006](docs/decisions/ADR-006-embeddings-and-index.md)).
 - O modelo de NLI costuma marcar frases verdadeiras como sem evidência suficiente, então muitas respostas reais ainda vão para revisão humana. Números, taxas e datas de câmbio são conferidos por código.
 - A resposta é produzida por um agente de IA, e uma pessoa revisa os casos que precisam de revisão.
 - O modelo de cada tarefa de uma execução é escolhido pela tarefa, e a afirmação de que isso custa menos para a mesma resposta é uma hipótese até a comparação pareada da avaliação medir isso. O estúdio de agentes especialistas é experimental e só vira o padrão se essa comparação medir um ganho ([ADR-P007](docs/v3/adrs/ADR-P007-no-multiagent-by-default.md)).

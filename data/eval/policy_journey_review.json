@@ -1,0 +1,258 @@
+{
+  "scope": "Independent model-assisted review of one run per synthetic development case. The investigator used OpenAI chat and embeddings with an offline verification stub. These controls were used during development.",
+  "source_checkpoint_sha256": "4239c1bd8f7ee49a57e7ffa66688e78bc1fe15a6de8efe0ee544e94708d3fe3d",
+  "source_revision": "c6f06ff835d52ec7eb413dab31fe8359a9fec08c",
+  "source_sha256": {
+    "ledgerlens/agents/integrator.py": "e315aa42908b13a27e58bf40bccc4bcdf5a21fd7ba479adec0b3bfba3f479b9d",
+    "ledgerlens/prompts/templates.py": "f8422066c0c97160a27b5557725cd7892c587b3e0efb616397c08c99271f341d",
+    "ledgerlens/tools/policies.py": "3a1d1f36e54210f723e1ae34edf76f1b269f22b2efa0a3b771a41a363ab7cfb8",
+    "scripts/report_policy_journeys.py": "757e65c8549650906fd8ea33e283d3b238efa5ce74909eacb9c3c53278eb21b5",
+    "ledgerlens/tools/calculator.py": "49f48c5a28f3b6147158fe173b0432cb2caeff30beb470c3978bbfd12c3c50db",
+    "ledgerlens/sim/calendars.py": "17b1659b2e1e4cb6e9be4adcb31e729fab5ee469ea26ab73506095c9a3103fc7",
+    "ledgerlens/verify/checks.py": "2f95f2ce07bec879df40dfed056814f73a0951eaf0d2a441f57c237e07157c2c",
+    "ledgerlens/verify/escalation.py": "3b4c7154af8d0aee9f1bc2bbd74cf0b99975f2e2d6b7c464c5bc84c988258f46",
+    "ledgerlens/verify/__init__.py": "47537ec17d3fc896c87f980964499f96f0a77912f2acfb99615886c9a9a05bdd"
+  },
+  "model": "gpt-4.1",
+  "index_corpus_sha256": "0b79819fc26a34e36b992d771db5d70238a949562c74f6ee3d551f42304dfd0e",
+  "judgment_rules": {
+    "retrieval": "Required policy information appeared in returned candidates. No target passage exists for out-of-scope abstention or a request for a missing dispute identifier. Calendar receipts are checked separately with the answer.",
+    "citation_use": "Citations substantiate material claims where used, including calculator receipts. A scope-limited description of unrelated search results can be supported by those results.",
+    "substantive_answer": "The answer addresses the question correctly against the handbook, user-provided facts and calendar receipts. An unsupported material addition fails. A correct clarification or limited abstention can pass.",
+    "operational_action": "The recorded recommended action and human-review flag fit the task. Generic or historical date calculation alone does not establish a live dispute requiring intervention. A correct question in prose cannot override an incorrect structured escalation. Indeterminate means policy does not settle the appropriate disposition.",
+    "resolved": "The original question receives a definitive substantive answer with appropriate citations and action, with all applicable dimensions passing. Clarification requests and out-of-scope abstentions do not resolve the original question. The cost numerator includes every case."
+  },
+  "summary": {
+    "total_cases": 17,
+    "counts": {
+      "retrieval": {
+        "pass": 15,
+        "not_applicable": 2
+      },
+      "citation_use": {
+        "pass": 13,
+        "fail": 3,
+        "not_applicable": 1
+      },
+      "substantive_answer": {
+        "pass": 16,
+        "fail": 1
+      },
+      "operational_action": {
+        "fail": 6,
+        "indeterminate": 1,
+        "pass": 10
+      }
+    },
+    "resolved_cases": 7,
+    "estimated_online_usd": "0.16595268",
+    "estimated_online_usd_per_resolved_case": "0.02370753"
+  },
+  "cases": [
+    {
+      "case_id": "chargeback-cutoff",
+      "answer_sha256": "47e0b8c33d72e41bf6a7e6460b631811376d425ce2d9bc9aee7d64c64e022a21",
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "retrieval": "pass",
+      "citation_use": "pass",
+      "substantive_answer": "pass",
+      "operational_action": "fail",
+      "resolved": false,
+      "reason": "The passages support the trigger, owner, deadline and late-response consequence. The verifier escalated a general question over the directly supported owner statement."
+    },
+    {
+      "case_id": "refund-versus-chargeback",
+      "answer_sha256": "51ef4c668f7c53bdf1ee59c6db02ad95bccf2ff90a5be69474e8a0147567f71f",
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "retrieval": "pass",
+      "citation_use": "fail",
+      "substantive_answer": "pass",
+      "operational_action": "fail",
+      "resolved": false,
+      "reason": "Search returned both the dispute deadline and open-dispute refund rule. The answer correctly separates the processes. It cites only the refund passage for a categorical conclusion about the dispute deadline. No specific record needs intervention."
+    },
+    {
+      "case_id": "pet-insurance",
+      "answer_sha256": "9a9f6af15a2f7d55fdec5499ff6d76ec1f933af73a7401f7cc8c18920fad6d1f",
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "retrieval": "not_applicable",
+      "citation_use": "pass",
+      "substantive_answer": "pass",
+      "operational_action": "indeterminate",
+      "resolved": false,
+      "reason": "The handbook has no coverage passage. The answer cites the unrelated results only to describe its search and abstains. Payment policy does not specify who handles out-of-scope insurance inquiries."
+    },
+    {
+      "case_id": "explicit-chargeback-deadline",
+      "answer_sha256": "bdaa11be172f7942a589e0d817c0a0ef12597bdec06dfaf301b89ac4f1ced804",
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "retrieval": "pass",
+      "citation_use": "pass",
+      "substantive_answer": "pass",
+      "operational_action": "pass",
+      "resolved": true,
+      "reason": "The cited passage gives the one-business-day minimum. A general policy answer needs no escalation."
+    },
+    {
+      "case_id": "cutoff-passed",
+      "answer_sha256": "00bee6043ab505cf82ee89ddfb7eb8287080f35b9887302e0a3a7edb0147ec75",
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "retrieval": "pass",
+      "citation_use": "fail",
+      "substantive_answer": "fail",
+      "operational_action": "pass",
+      "resolved": false,
+      "reason": "The retrieved policy distinguishes the two deadlines and requires same-day review. It does not categorically bar Acme from reviewing late evidence or authorize exceptional actions. Escalating today is supported."
+    },
+    {
+      "case_id": "monday-deadline",
+      "answer_sha256": "ddbac90c3c399613cea3703b533ab7a28905be897e9b8fa659ad2060608e83bf",
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "retrieval": "pass",
+      "citation_use": "pass",
+      "substantive_answer": "pass",
+      "operational_action": "pass",
+      "resolved": true,
+      "reason": "The returned Monday example and business-day rules explicitly yield Friday under the condition in the question."
+    },
+    {
+      "case_id": "response-late",
+      "answer_sha256": "d36e5c3f6b16c158b63c7508cf4a1b5b4bcdb0ed77427fb6a579305a4e85f66d",
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "retrieval": "pass",
+      "citation_use": "pass",
+      "substantive_answer": "pass",
+      "operational_action": "pass",
+      "resolved": true,
+      "reason": "The cited rule explicitly makes a response after the deadline an automatic loss. The question asks about the consequence, not the recorded status."
+    },
+    {
+      "case_id": "july-cutoff-usd",
+      "answer_sha256": "8df8dee9cf30322f03948263cd5f89967619ce8d2cc0f4a15d9c9724334971db",
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "retrieval": "pass",
+      "citation_use": "pass",
+      "substantive_answer": "pass",
+      "operational_action": "fail",
+      "resolved": false,
+      "reason": "The cited rule and calculator support July 3. The verifier treated the computed date as unsupported and escalated a date calculation."
+    },
+    {
+      "case_id": "july-cutoff-eur",
+      "answer_sha256": "1e21d286ed0f8ccbc82693877a40d90b832133d37f73b01eeeea1be48f1c3647",
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "retrieval": "pass",
+      "citation_use": "pass",
+      "substantive_answer": "pass",
+      "operational_action": "fail",
+      "resolved": false,
+      "reason": "The cited rule and calculator support July 4. The verifier treated the computed date as unsupported and escalated a date calculation."
+    },
+    {
+      "case_id": "unseen-usd",
+      "answer_sha256": "96d9f3eb7783b82ced0b95944b3af7347bc36191a79a04096a5792dd9364147c",
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "retrieval": "pass",
+      "citation_use": "pass",
+      "substantive_answer": "pass",
+      "operational_action": "fail",
+      "resolved": false,
+      "reason": "The cited rule and calculator support May 29. The verifier escalated despite the matching calendar receipt."
+    },
+    {
+      "case_id": "unknown-currency",
+      "answer_sha256": "0ea13d0c732d83f32dff532588172ec3377414858cb4b5e063702d432ec6f503",
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "retrieval": "pass",
+      "citation_use": "pass",
+      "substantive_answer": "pass",
+      "operational_action": "fail",
+      "resolved": false,
+      "reason": "The cited passage supports both conditional examples. The answer correctly requests the currency, but the recorded action escalates instead of requesting clarification."
+    },
+    {
+      "case_id": "verify-status",
+      "answer_sha256": "9cc14c07279677cbea99934eb34df9c6b800b3dcfef3482f6a9e908493d6c7fc",
+      "recommended_action": "ask_for_clarification",
+      "requires_human_review": false,
+      "retrieval": "not_applicable",
+      "citation_use": "not_applicable",
+      "substantive_answer": "pass",
+      "operational_action": "pass",
+      "resolved": false,
+      "reason": "A policy search cannot verify an individual dispute. The answer and action request the missing ID and make no unsupported status claim."
+    },
+    {
+      "case_id": "policy-status",
+      "answer_sha256": "92db143c9fc525d60ad84a6692df76df2e56d8972ee57d6fee26137078eb664d",
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "retrieval": "pass",
+      "citation_use": "pass",
+      "substantive_answer": "pass",
+      "operational_action": "pass",
+      "resolved": true,
+      "reason": "The answer distinguishes a missed internal cutoff requiring same-day review from an automatic loss at the response deadline. No actual dispute is presented for escalation."
+    },
+    {
+      "case_id": "deadline-paraphrase",
+      "answer_sha256": "46fe1392e13efb451aa75b6fa08bad0c43d606d024294ffdae728290b83678c6",
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "retrieval": "pass",
+      "citation_use": "fail",
+      "substantive_answer": "pass",
+      "operational_action": "pass",
+      "resolved": false,
+      "reason": "The missed internal cutoff warrants same-day escalation. The cited deadline-within-2-days passage supports same-day review but only explicitly labels deadlines within two days critical. The handbook separately confirms critical urgency for a missed cutoff in urgency-levels."
+    },
+    {
+      "case_id": "refund-trigger",
+      "answer_sha256": "0b3a9dfc8083b7bc021a129ea1706e5bb2ceeae273c3a46a16e65a7b108080f1",
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "retrieval": "pass",
+      "citation_use": "pass",
+      "substantive_answer": "pass",
+      "operational_action": "pass",
+      "resolved": true,
+      "reason": "The cited passage gives the strict per-record threshold, currency and rounding instruction. No actual refund is presented."
+    },
+    {
+      "case_id": "settlement-trigger",
+      "answer_sha256": "0ea4cc6d140d33436dbefd8ce15abb4a8befeb615200efb7e2ef953a4d0aaf33",
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "retrieval": "pass",
+      "citation_use": "pass",
+      "substantive_answer": "pass",
+      "operational_action": "pass",
+      "resolved": true,
+      "reason": "The cited passages establish both conditions for delay and the conditional human review. No actual payout is presented."
+    },
+    {
+      "case_id": "fee-trigger",
+      "answer_sha256": "c22cc81901c808cecaec40ff12470e461f560b95135ded986b5d21b773c18b70",
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "retrieval": "pass",
+      "citation_use": "pass",
+      "substantive_answer": "pass",
+      "operational_action": "pass",
+      "resolved": true,
+      "reason": "The cited passages support charging on opening, regardless of outcome, and deduction in the settlement of that period."
+    }
+  ],
+  "source_report": "data/eval/reports/policy-journeys-openai.json"
+}

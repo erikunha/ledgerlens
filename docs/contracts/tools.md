@@ -281,7 +281,7 @@ Type: hardcoded, pure function. Evidence id: `calc:<n>`.
 
 Description:
 
-> Do exact arithmetic for money, rates and fees. Never do arithmetic yourself: call this tool. Choose an operation and pass the named values as decimal strings. Operations: convert (amount, rate), difference (a, b), percent_diff (base, other), implied_markup_pct (reference_rate, applied_rate), fee (gross, percent, fixed_per_item, items), net_settlement (gross, refunds, fees), fx_gap_breakdown (units, charge_rate, refund_reference_rate, refund_applied_rate), fx_markup_check (units, charge_rate, refund_reference_rate, refund_applied_rate; states the plan of the merchant). All results use exact decimal math and round half to even.
+> Do exact arithmetic for money, rates and fees. Never do arithmetic yourself: call this tool. Choose an operation and pass the named values as decimal strings. Operations: convert (amount, rate), difference (a, b), percent_diff (base, other), implied_markup_pct (reference_rate, applied_rate), fee (gross, percent, fixed_per_item, items), net_settlement (gross, refunds, fees), fx_gap_breakdown (units, charge_rate, refund_reference_rate, refund_applied_rate), fx_markup_check (units, charge_rate, refund_reference_rate, refund_applied_rate; states the plan of the merchant). Money results use exact decimal math and round half to even. For the dispute cutoff, use previous_business_day with values date (response deadline, YYYY-MM-DD) and currency (settlement currency). Ask for the settlement currency if it is unknown.
 
 Input:
 
@@ -291,10 +291,10 @@ Input:
   "additionalProperties": false,
   "required": ["operation", "values"],
   "properties": {
-    "operation": {"enum": ["convert", "difference", "percent_diff", "implied_markup_pct", "fee", "net_settlement", "fx_gap_breakdown", "fx_markup_check"]},
+    "operation": {"enum": ["convert", "difference", "percent_diff", "implied_markup_pct", "fee", "net_settlement", "fx_gap_breakdown", "fx_markup_check", "previous_business_day"]},
     "values": {
       "type": "object",
-      "additionalProperties": {"type": "string", "pattern": "^-?[0-9]+(\\.[0-9]+)?$"}
+      "additionalProperties": {"type": "string"}
     },
     "decimals": {"type": "integer", "minimum": 0, "maximum": 6, "default": 2},
     "plan": {"type": ["string", "null"], "enum": ["markup", "standard", null], "description": "The FX plan of the merchant, read from the ledger. Only fx_markup_check uses it."}
@@ -302,10 +302,11 @@ Input:
 }
 ```
 
-Operations, required keys and results (`Decimal`, rounding `ROUND_HALF_EVEN`):
+Arithmetic uses `Decimal` with `ROUND_HALF_EVEN`. The calendar operation returns an ISO date.
 
 | Operation | Required keys | Result |
 |---|---|---|
+| `previous_business_day` | `date` (YYYY-MM-DD), `currency` (merchant settlement currency) | Last business day strictly before the date. EUR uses TARGET, BRL uses B3, USD uses US federal holidays, and other currencies return an error because their settlement holiday calendar is unavailable. |
 | `convert` | `amount`, `rate` | `amount * rate` |
 | `difference` | `a`, `b` | `a - b` |
 | `percent_diff` | `base`, `other` | `(base - other) / base * 100` |
@@ -328,6 +329,7 @@ Output `data`:
     "operation": {"type": "string"},
     "result": {"oneOf": [
       {"type": "string", "pattern": "^-?[0-9]+(\\.[0-9]+)?$"},
+      {"type": "string", "format": "date", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
       {"type": "object", "additionalProperties": {"type": "string"}}
     ]},
     "formula": {"type": "string", "description": "Human-readable formula with the values substituted"}
@@ -336,6 +338,8 @@ Output `data`:
 ```
 
 Worked example (S01): `fx_gap_breakdown` with `units 100.00`, `charge_rate 5.6679`, `refund_reference_rate 5.6339`, `refund_applied_rate 5.4931` returns `charge 566.79`, `refund 549.31`, `gap 17.48`, `rate_move 3.40`, `markup 14.08`, `markup_pct 2.50`. The same values in `fx_markup_check`, with the argument `plan markup`, return those six keys with `markup_limit_pct 3.00`, `within_limit yes` and `refund_at_reference 563.39`.
+
+Calendar errors are retryable. Missing inputs return `MISSING_VALUE`, a currency without a supported calendar returns `UNSUPPORTED_CURRENCY`, and a malformed date returns `INVALID_DATE`.
 
 Errors: `UNKNOWN_OPERATION` (no), `MISSING_VALUE` (yes; message names the key), `INVALID_NUMBER` (yes), `DIVISION_BY_ZERO` (no), `SUSPECTED_MINOR_UNITS` (yes; a money field with four or more digits and no decimal point looks like minor units; the message gives the value in major units), `SWAPPED_RATES` (yes; in `fx_gap_breakdown` and in `fx_markup_check` the applied rate is above the reference rate), `MISSING_PLAN` (yes; `fx_markup_check` without the plan of the merchant).
 

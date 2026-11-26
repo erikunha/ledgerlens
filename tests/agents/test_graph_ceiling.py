@@ -16,7 +16,6 @@ from typing import Any
 
 import pytest
 
-from ledgerlens import embeddings as emb
 from ledgerlens.agents import budget as budget_module
 from ledgerlens.agents.budget import (
     GRAPH_STEP_BACKSTOP,
@@ -30,7 +29,7 @@ from ledgerlens.agents.budget import (
 from ledgerlens.agents.integrator import Integrator, build_integrator, investigate
 from ledgerlens.byok.budget import BudgetCoordinator
 from ledgerlens.byok.registry import ProviderRegistry
-from ledgerlens.embeddings import FastEmbedEmbeddings
+from ledgerlens.embeddings import OfflineEmbeddings
 from ledgerlens.memory.long_term import CaseMemory
 from ledgerlens.offline import ScriptedChatModel, tool_call_message
 from ledgerlens.retrieval import build_policy_index, index_dir_for, load_policy_documents
@@ -53,14 +52,13 @@ def ledger_db(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 
 @pytest.fixture
-def embeddings(monkeypatch: pytest.MonkeyPatch) -> FastEmbedEmbeddings:
+def embeddings() -> OfflineEmbeddings:
     """The embeddings of the tests, without the download of the real model."""
-    monkeypatch.setattr(emb, "_text_embedding_class", lambda: base.WordCountModel)
-    return FastEmbedEmbeddings()
+    return OfflineEmbeddings()
 
 
 @pytest.fixture
-def index_root(tmp_path: Path, embeddings: FastEmbedEmbeddings) -> Path:
+def index_root(tmp_path: Path, embeddings: OfflineEmbeddings) -> Path:
     """The index of the policies of the tests."""
     root = tmp_path / "index"
     build_policy_index(load_policy_documents(base.POLICIES), embeddings, index_dir_for(root, embeddings))
@@ -68,7 +66,7 @@ def index_root(tmp_path: Path, embeddings: FastEmbedEmbeddings) -> Path:
 
 
 @pytest.fixture
-def cases(tmp_path: Path, embeddings: FastEmbedEmbeddings) -> CaseMemory:
+def cases(tmp_path: Path, embeddings: OfflineEmbeddings) -> CaseMemory:
     """The memory of the cases of the tests."""
     return CaseMemory(tmp_path / "cases", embeddings=embeddings)
 
