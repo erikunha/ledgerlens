@@ -740,7 +740,7 @@ def render_payments() -> None:
         if paid and not st.session_state.get("live_run"):
             render_live_status()
         with st.container(key="composer"):
-            field, send = st.columns([5, 1.3], vertical_alignment="bottom")
+            field, send = st.columns([4, 2] if paid else [5, 1.3], vertical_alignment="bottom")
             field.text_input(
                 "Question",
                 key="draft",
@@ -749,7 +749,7 @@ def render_payments() -> None:
                 label_visibility="collapsed",
             )
             send.button(
-                "Send",
+                "Send to OpenAI" if paid else "Send",
                 key="send",
                 type="primary",
                 width="stretch",
@@ -841,7 +841,7 @@ def main() -> None:
     if page not in pages:
         page = "Payments"
     with st.container(horizontal=True, gap="small", key="demo-navigation"):
-        for target, label in (("Payments", "Guided demo"), ("Replay", "Recordings")):
+        for target, label in (("Payments", "Investigation"), ("Replay", "Recordings")):
             st.button(
                 label,
                 key=f"nav-{target}",

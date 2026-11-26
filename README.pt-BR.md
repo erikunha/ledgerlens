@@ -153,7 +153,7 @@ O vídeo abaixo é o app de demonstração rodando online com um modelo real, gr
 
 ### Usar a OpenAI no modo Live
 
-Inicie o Streamlit e a API com `LEDGERLENS_OFFLINE=0`. Na demonstração guiada, selecione OpenAI, confira o modelo e os limites no painel lateral e conecte a chave. O painel fecha assim que a API aceita a conexão. Quando a conexão aparecer, escreva uma pergunta sobre a conta selecionada e clique em **Send**.
+Inicie o Streamlit e a API com `LEDGERLENS_OFFLINE=0`. Na demonstração guiada, selecione OpenAI, confira o modelo e os limites no painel lateral e conecte a chave. O painel fecha assim que a API aceita a conexão. Quando a conexão aparecer, escreva uma pergunta sobre a conta selecionada e clique em **Send to OpenAI**.
 
 ## Execução com chave própria
 

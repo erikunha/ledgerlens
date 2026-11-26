@@ -93,6 +93,7 @@ def test_paid_turns_keep_edited_questions_answers_and_account(monkeypatch):
     page.session_state["live_settings"] = {"model_profile_id": "test"}
     page.button(key="use-openai").click().run()
     page.text_input(key="draft").set_value("My edited question")
+    assert page.button(key="send").label == "Send to OpenAI"
     page.button(key="send").click().run()
     assert submitted == [("S01", "C-0412", "My edited question")]
     assert page.selectbox(key="account").disabled

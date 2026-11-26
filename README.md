@@ -151,7 +151,7 @@ The video below is the demo app running online with a real model, recorded on 20
 
 ### Use OpenAI in the guided demo
 
-Start Streamlit and the API with `LEDGERLENS_OFFLINE=0`. In the guided demo, select OpenAI, review the model and limits in the side panel, then connect your key. The panel closes when the connection succeeds. Once connected, type a question about the selected account and press **Send**.
+Start Streamlit and the API with `LEDGERLENS_OFFLINE=0`. In the guided demo, select OpenAI, review the model and limits in the side panel, then connect your key. The panel closes when the connection succeeds. Once connected, type a question about the selected account and press **Send to OpenAI**.
 
 ## Live runs with your own key
 
