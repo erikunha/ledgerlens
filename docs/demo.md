@@ -1,8 +1,8 @@
 # Demo recording
 
-The [workspace guide](frontend.md) describes the seven views and their data sources.
+The [workspace guide](frontend.md) describes the guided demo, its OpenAI mode and the published recordings.
 
-## The local run
+## Run the current demo locally
 
 Start the API and the Streamlit portal in separate terminals:
 
@@ -12,6 +12,10 @@ LEDGERLENS_OFFLINE=1 uv run uvicorn app.server:portal --host 127.0.0.1 --port 85
 ```
 
 Replay reads the published recordings. Sandbox and Live use the API.
+
+## Recorded walkthrough
+
+The video shows the interface used for the recording. The current guided demo opens with an editable refund question.
 
 - Date of the run: 2026-11-11.
 - Mode: online (`LEDGERLENS_OFFLINE=0`). Model `gpt-4.1-mini` (`LEDGERLENS_MODEL`), live exchange rates from Frankfurter, real NLI in the verifier.

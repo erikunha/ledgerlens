@@ -72,13 +72,14 @@ import secrets
 import threading
 import time
 from collections.abc import AsyncIterator, Callable, Iterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, contextmanager
 from dataclasses import replace
 from decimal import Decimal
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, FastAPI, Request, Security
+from fastapi.concurrency import run_in_threadpool
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.security import APIKeyCookie
@@ -101,6 +102,7 @@ from ledgerlens.api.sandbox import (
     SCHEMA_VERSION,
     SCHEMA_VERSION_HEADER,
     SESSION_COOKIE,
+    SESSION_END_RESPONSES,
     ContractError,
 )
 from ledgerlens.byok.adapter import ProviderAdapter
@@ -525,6 +527,15 @@ def create_app(
     return app
 
 
+@contextmanager
+def guard_session_end(coordinator: LiveRunCoordinator, session: str) -> Iterator[None]:
+    """Keep new admissions out until all session resources have been released."""
+    with coordinator.session_lock(session):
+        if coordinator.has_unfinished_run(session):
+            raise ContractError(409, CODE_RUN_RUNNING, "The session has an unfinished live run.", retryable=True)
+        yield
+
+
 def build_router(
     *,
     vault: CredentialVault,
@@ -585,7 +596,7 @@ def build_router(
         )
         return response
 
-    @router.delete("/v1/sessions/current", status_code=204)
+    @router.delete("/v1/sessions/current", status_code=204, responses=SESSION_END_RESPONSES)
     def end_session(cookie: Annotated[str | None, Security(SESSION_SCHEME)]) -> Response:
         """Ends the session of the visitor and drops the credentials of that session.
 
@@ -593,10 +604,11 @@ def build_router(
         never fails the route.
         """
         session = _session_of(cookie, issuer)
-        try:
-            vault.forget_session(session)
-        except Exception as error:  # pragma: no cover - the purge of the credentials never fails the route.
-            log.warning("the credentials of the session could not be dropped: %s", error)
+        with guard_session_end(coordinator, session):
+            try:
+                vault.forget_session(session)
+            except Exception as error:  # pragma: no cover - the purge of the credentials never fails the route.
+                log.warning("the credentials of the session could not be dropped: %s", error)
         response = Response(status_code=204, headers={SCHEMA_VERSION_HEADER: SCHEMA_VERSION})
         response.delete_cookie(SESSION_COOKIE, path="/")
         return response
@@ -673,6 +685,35 @@ def build_router(
         }
         return JSONResponse(status_code=200, content=body, headers={SCHEMA_VERSION_HEADER: SCHEMA_VERSION})
 
+    def admit_run(session: str, payload: LiveRunRequest) -> str:
+        """Snapshot the ledger and register the run under the session lock on a worker thread."""
+        run_id = f"{RUN_ID_PREFIX}{secrets.token_hex(8)}"
+        # The ledger of the visitor, materialized in the file of the run. The run never starts without it (ADR-038).
+        with coordinator.session_lock(session):
+            ledger = _the_ledger_of_the_run(branch_layer, session, payload, the_runtime, run_id)
+            plan = LiveRunPlan(
+                run_id=run_id,
+                session_id=session,
+                model_profile_id=payload.model_profile_id or "",
+                credential_handle=payload.credential_handle or "",
+                question=payload.question,
+                budget=_budget_of(payload.limits),
+                account_id=payload.account_id,
+                scenario_id=payload.scenario_id,
+                sandbox_id=payload.sandbox_id,
+                expected_revision=payload.expected_revision,
+                variant=payload.variant,
+                ledger=ledger,
+            )
+            try:
+                _start_the_run_that_never_leaves_the_ledger_behind(coordinator, plan, case, ledger)
+            except LiveModeOffline as refusal:
+                raise ContractError(503, CODE_LIVE_MODE_OFFLINE, str(refusal)) from None
+            except ByokError as refusal:
+                code = CODE_CAPABILITY_MISSING if isinstance(refusal, CapabilityMissing) else CODE_MODEL_NOT_ALLOWED
+                raise ContractError(422, code, str(refusal)) from None
+        return run_id
+
     @router.post("/v1/live-runs", status_code=201)
     async def start_run(
         request: Request,
@@ -710,32 +751,9 @@ def build_router(
         _refuse_a_session_that_may_not_run_the_live_mode(session, the_capabilities)
         _refuse_a_model_the_allowlist_does_not_hold(registry, payload)
         _refuse_a_run_without_a_case(case)
-        run_id = f"{RUN_ID_PREFIX}{secrets.token_hex(8)}"
-        # The ledger of the visitor, materialized in the file of the run. The run never starts without it (ADR-038).
-        ledger = _the_ledger_of_the_run(branch_layer, session, payload, the_runtime, run_id)
-        plan = LiveRunPlan(
-            run_id=run_id,
-            session_id=session,
-            model_profile_id=payload.model_profile_id or "",
-            credential_handle=payload.credential_handle or "",
-            question=payload.question,
-            budget=_budget_of(payload.limits),
-            account_id=payload.account_id,
-            scenario_id=payload.scenario_id,
-            sandbox_id=payload.sandbox_id,
-            expected_revision=payload.expected_revision,
-            variant=payload.variant,
-            ledger=ledger,
-        )
-        try:
-            _start_the_run_that_never_leaves_the_ledger_behind(coordinator, plan, case, ledger)
-        except LiveModeOffline as refusal:
-            raise ContractError(503, CODE_LIVE_MODE_OFFLINE, str(refusal)) from None
-        except ByokError as refusal:
-            code = CODE_CAPABILITY_MISSING if isinstance(refusal, CapabilityMissing) else CODE_MODEL_NOT_ALLOWED
-            raise ContractError(422, code, str(refusal)) from None
+        run_id = await run_in_threadpool(admit_run, session, payload)
         body = {
-            "run_id": plan.run_id,
+            "run_id": run_id,
             "status": "running",
             "mode": LIVE_MODE,
         }

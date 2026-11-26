@@ -48,7 +48,7 @@ import asyncio
 import logging
 import secrets
 from collections.abc import AsyncIterator, Callable, Mapping
-from contextlib import asynccontextmanager
+from contextlib import AbstractContextManager, asynccontextmanager, nullcontext
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any
@@ -150,6 +150,25 @@ class SandboxRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     scenario_id: str = Field(pattern=SCENARIO_ID_PATTERN)
+
+
+class ContractErrorBody(BaseModel):
+    """Describe the error returned by the session and live APIs for OpenAPI consumers."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    code: str
+    message: str
+    retryable: bool
+    request_id: str
+
+
+SESSION_END_RESPONSES = {
+    409: {
+        "description": "RUN_RUNNING (retryable). Wait for the live run to finish, then retry ending the session.",
+        "model": ContractErrorBody,
+    },
+}
 
 
 class ContractError(Exception):
@@ -344,6 +363,7 @@ def build_router(
     store: BranchStore,
     layer: BranchLayer,
     session_issuer: SessionIssuer,
+    session_end_guard: Callable[[str], AbstractContextManager] = nullcontext,
     credential_vault: CredentialVault | None = None,
     runtime_dir: Path | str | None = None,
     clock: Callable[[], datetime] | None = None,
@@ -381,6 +401,7 @@ def build_router(
         store=store,
         layer=layer,
         session_issuer=session_issuer,
+        session_end_guard=session_end_guard,
         credential_vault=credential_vault,
         runtime_dir=runtime_dir,
         clock=clock,
@@ -396,6 +417,7 @@ def _the_routes_of_the_sandbox(
     store: BranchStore,
     layer: BranchLayer,
     session_issuer: SessionIssuer,
+    session_end_guard: Callable[[str], AbstractContextManager] = nullcontext,
     credential_vault: CredentialVault | None = None,
     runtime_dir: Path | str | None = None,
     clock: Callable[[], datetime] | None = None,
@@ -498,7 +520,7 @@ def _the_routes_of_the_sandbox(
     # (ADR-047).
     _the_router_of(target).dependencies.append(Depends(_count_the_request))
 
-    @target.delete("/v1/sessions/current", status_code=204)
+    @target.delete("/v1/sessions/current", status_code=204, responses=SESSION_END_RESPONSES)
     def end_session(cookie: Annotated[str | None, Security(SESSION_SCHEME)]) -> Response:
         """Ends the session of the visitor, purges its branches and purges its case memory.
 
@@ -512,20 +534,21 @@ def _the_routes_of_the_sandbox(
         application was given, so the purge of a session drops from the vault of the application it belongs to.
         """
         session = _session(cookie, issuer)
-        for row in branch_store.list_branches(session):
-            branch_store.delete_branch(row.branch_id, session)
-        # The counter of the rate of the session dies with the session: the memory of an anonymous visitor dies with
-        # the visitor (ADR-030, ADR-047).
-        limiter.forget(session)
-        try:
-            purge_session_memory(session, runtime)
-        except Exception as error:  # pragma: no cover - the purge of the memory never fails the route.
-            log.warning("the memory of the session could not be purged: %s", error)
-        if credential_vault is not None:
+        with session_end_guard(session):
+            for row in branch_store.list_branches(session):
+                branch_store.delete_branch(row.branch_id, session)
+            # The counter of the rate of the session dies with the session: the memory of an anonymous visitor dies with
+            # the visitor (ADR-030, ADR-047).
+            limiter.forget(session)
             try:
-                credential_vault.forget_session(session)
-            except Exception as error:  # pragma: no cover - the drop of the credentials never fails the route.
-                log.warning("the credentials of the session could not be dropped: %s", error)
+                purge_session_memory(session, runtime)
+            except Exception as error:  # pragma: no cover - the purge of the memory never fails the route.
+                log.warning("the memory of the session could not be purged: %s", error)
+            if credential_vault is not None:
+                try:
+                    credential_vault.forget_session(session)
+                except Exception as error:  # pragma: no cover - the drop of the credentials never fails the route.
+                    log.warning("the credentials of the session could not be dropped: %s", error)
         # The version of the shape of the answers travels in the header of every answer of the facade (FR-042).
         response = Response(status_code=204, headers={SCHEMA_VERSION_HEADER: SCHEMA_VERSION})
         response.delete_cookie(SESSION_COOKIE, path="/")

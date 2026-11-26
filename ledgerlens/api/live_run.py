@@ -68,6 +68,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Protocol
+from weakref import WeakValueDictionary
 
 from ledgerlens.byok.adapter import ProviderAdapter, ProviderRequest, ProviderResponse, build_adapter
 from ledgerlens.byok.budget import BudgetCoordinator, BudgetExceededError, CostReport
@@ -708,12 +709,27 @@ class LiveRunCoordinator:
         self._clock = clock
         self._call_timeout = call_timeout
         self._runs: dict[str, _Run] = {}
+        self._session_locks: WeakValueDictionary[str, threading.RLock] = WeakValueDictionary()
         self._lock = threading.Lock()
 
     @property
     def sink(self) -> InMemoryTraceSink:
         """The sink of the trace of the runs, where the events are read from."""
         return self._sink
+
+    def session_lock(self, session_id: str) -> threading.RLock:
+        """Serialize run admission and teardown for one visitor, including preflight ledger reads."""
+        with self._lock:
+            lock = self._session_locks.get(session_id)
+            if lock is None:
+                lock = threading.RLock()
+                self._session_locks[session_id] = lock
+            return lock
+
+    def has_unfinished_run(self, session_id: str) -> bool:
+        """Include cancellation and final cleanup until the worker signals completion."""
+        with self._lock:
+            return any(run.plan.session_id == session_id and not run.done.is_set() for run in self._runs.values())
 
     def start(self, plan: LiveRunPlan, *, case: CaseExecutor | None = None) -> LiveRunResult | None:
         """Starts a run and answers what is known about it right now.
@@ -743,7 +759,7 @@ class LiveRunCoordinator:
             # The run never starts, so the file of the ledger of the run goes away with it (ADR-038).
             remove_the_ledger_of_the_run(plan.ledger)
             raise
-        with self._lock:
+        with self.session_lock(plan.session_id), self._lock:
             existing = self._runs.get(plan.run_id)
             if existing is not None:
                 if existing.profile.profile_id != profile.profile_id:

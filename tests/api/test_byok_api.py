@@ -650,6 +650,15 @@ def test_the_cancel_route_ends_the_run_and_says_that_the_cancellation_is_a_best_
         run_id = client.post("/v1/live-runs", json=_run_body(client, handle)).json()["run_id"]
         assert entered.wait(5.0)
 
+        responses = client.get("/openapi.json").json()["paths"]["/v1/sessions/current"]["delete"]["responses"]
+        assert "RUN_RUNNING (retryable)" in responses["409"]["description"]
+        schema = responses["409"]["content"]["application/json"]["schema"]
+        assert schema["$ref"].endswith("/ContractErrorBody")
+        refused = client.delete("/v1/sessions/current")
+        assert refused.status_code == 409
+        assert refused.json()["code"] == "RUN_RUNNING"
+        assert len(vault) == 1
+
         answer = client.post(f"/v1/live-runs/{run_id}/cancel").json()
 
         assert answer["status"] == "cancelling"

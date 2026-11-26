@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 APP = ROOT / "app" / "streamlit_app.py"
 WORDS_FILE = ROOT / "ledgerlens" / "prompts" / "ai_disclosure.json"
 
+
 def test_the_module_of_the_domain_holds_a_sentence() -> None:
     """The sentence exists, it is not empty, and it says what the obligation asks for.
 
@@ -48,7 +49,11 @@ def test_the_demo_application_shows_the_sentence() -> None:
 def test_recorded_and_live_answers_display_the_disclosure(monkeypatch) -> None:
     monkeypatch.setenv("LEDGERLENS_API_BASE_URL", "http://127.0.0.1:1")
     app = AppTest.from_file(str(APP), default_timeout=60).run()
-    for workspace in ("Replay", "Live"):
-        app.radio(key="view").set_value(workspace).run()
+    for workspace in ("Replay", "Payments"):
+        app.button(key=f"nav-{workspace}").click().run()
+        if workspace == "Payments":
+            app.session_state["credential"] = {"handle": "test"}
+            app.session_state["live_settings"] = {"model_profile_id": "test"}
+            app.button(key="use-openai").click().run()
         assert not app.exception
         assert any(AI_DISCLOSURE in caption.value for caption in app.caption)

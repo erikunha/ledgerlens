@@ -36,6 +36,7 @@ import json
 import threading
 import time
 import tomllib
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, cast
 
@@ -1043,3 +1044,82 @@ def test_the_list_of_the_routes_does_not_change_when_the_cors_is_installed(app: 
     change the contract of the deployment without anybody deciding it.
     """
     assert _the_pairs_of_the_schema(cors_app) == _the_pairs_of_the_schema(app)
+
+
+def test_active_run_preserves_the_session_and_branch(client, adapter, vault, issuer, runtime, monkeypatch):
+    """An unfinished run retains its session resources while another visitor can leave."""
+    entered = threading.Event()
+    release = threading.Event()
+    complete = adapter.complete
+
+    def blocked(request):
+        entered.set()
+        assert release.wait(10)
+        return complete(request)
+
+    monkeypatch.setattr(adapter, "complete", blocked)
+    branch = _the_branch_of_the_visitor(client)
+    handle = _the_credential_of_the_visitor(client)
+    owner_cookie = client.cookies[SESSION_COOKIE]
+    memory = session_memory_dir(issuer.session_id(owner_cookie), runtime)
+    memory.mkdir(parents=True, exist_ok=True)
+    marker = memory / "active-session.txt"
+    marker.write_text("keep", encoding="utf-8")
+    run = client.post("/v1/live-runs", json=_the_body_of_the_run(branch, handle)).json()["run_id"]
+    try:
+        assert entered.wait(10)
+        responses = client.get("/openapi.json").json()["paths"]["/v1/sessions/current"]["delete"]["responses"]
+        assert "RUN_RUNNING (retryable)" in responses["409"]["description"]
+        schema = responses["409"]["content"]["application/json"]["schema"]
+        assert schema["$ref"].endswith("/ContractErrorBody")
+        refused = client.delete("/v1/sessions/current")
+        assert refused.status_code == 409
+        assert refused.json()["code"] == "RUN_RUNNING"
+        assert client.cookies[SESSION_COOKIE] == owner_cookie
+        assert marker.read_text(encoding="utf-8") == "keep"
+        other = client.post("/v1/sessions")
+        assert other.status_code == 201
+        assert client.delete("/v1/sessions/current").status_code == 204
+        client.cookies.set(SESSION_COOKIE, owner_cookie)
+        assert len(vault) == 1
+        assert client.get(f"/v1/sandboxes/{branch}").status_code == 200
+    finally:
+        release.set()
+    assert _wait_for_the_end(client, run)["status"] == "completed"
+    assert client.delete("/v1/sessions/current").status_code == 204
+
+def test_waiting_for_session_teardown_keeps_other_requests_responsive(client, vault, monkeypatch):
+    """A run waiting for the visitor's teardown must release the ASGI event loop."""
+    branch = _the_branch_of_the_visitor(client)
+    handle = _the_credential_of_the_visitor(client)
+    payload = _the_body_of_the_run(branch, handle)
+    ending = threading.Event()
+    admission = threading.Event()
+    release = threading.Event()
+    forget = vault.forget_session
+    session_lock = byok_api.LiveRunCoordinator.session_lock
+
+    def pause_teardown(session):
+        ending.set()
+        assert release.wait(10)
+        return forget(session)
+
+    def observe_admission(coordinator, session):
+        if ending.is_set():
+            admission.set()
+        return session_lock(coordinator, session)
+
+    monkeypatch.setattr(vault, "forget_session", pause_teardown)
+    monkeypatch.setattr(byok_api.LiveRunCoordinator, "session_lock", observe_admission)
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        teardown = pool.submit(client.delete, "/v1/sessions/current")
+        try:
+            assert ending.wait(5)
+            run = pool.submit(client.post, "/v1/live-runs", json=payload)
+            assert admission.wait(5)
+            catalog = pool.submit(client.get, "/v1/models")
+            assert catalog.result(timeout=2).status_code == 200
+        finally:
+            release.set()
+        assert teardown.result(timeout=5).status_code == 204
+        assert run.result(timeout=5).status_code == 404

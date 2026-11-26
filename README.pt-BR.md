@@ -125,9 +125,9 @@ No modo offline, o chat segue um roteiro, o HTTP lê respostas gravadas e os dad
 
 ### Aplicativo de demonstração (Streamlit)
 
-A demonstração é um pequeno portal de pagamentos, o LedgerLens Pay, com contas fictícias vindas dos dados gerados. Ele abre já autenticado como o cliente C-0412; o **Switch demo account**, no topo, escolhe outro cliente ou merchant de um caso plantado (por exemplo o merchant M-03 ou o merchant M-09). O lado esquerdo mostra a atividade da conta em abas (Activity, Refunds, Disputes e, para um merchant, Payouts): primeiro o valor, depois o que é a linha, sua data e um selo de status, com filtros. Abra uma linha para ver os detalhes (id da transação, cartão, taxa de câmbio aplicada, fees, prazos) e pressione **Ask about this**: a pergunta sobre aquela linha cai na caixa Help, à direita, pronta para editar antes de enviar. O agente responde como o assistente de suporte. Ele recebe como contexto a conta autenticada e a linha escolhida, e suas ferramentas leem uma cópia do ledger que contém apenas os registros dessa conta.
+A demonstração começa com um reembolso simulado do cliente C-0412. Compare o valor pago com o valor devolvido e investigue o pagamento. **Switch demo account** abre a conta de outro cliente ou lojista. Expanda um lançamento para consultar datas, tarifas e taxas de câmbio. **Ask about this** prepara uma pergunta editável sobre o lançamento. As ferramentas só consultam os registros da conta selecionada.
 
-Cada resposta carrega o trace do agente, uma árvore de execução como a do LangSmith, desenhada ao vivo enquanto o agente trabalha: a triagem, cada chamada de modelo (com tokens) e cada chamada de ferramenta (argumentos, o envelope de resposta e o SQL gerado), o veredito sobre cada afirmação e o escalonamento. Quando a investigação termina, o trace recolhe em um resumo de uma linha e a resposta aparece abaixo dele, com suas citações e os registros do ledger que o assistente leu marcados no extrato. A opção **Show the agent trace** (ativada por padrão) oculta o trace e as citações, e a resposta passa a ler como uma resposta de suporte. Offline, as perguntas plantadas têm respostas scriptadas: a diferença no reembolso por câmbio (TX-2048), a cobrança duplicada (TX-2051 e TX-2052), a disputa perto do prazo (CB-0310), o cálculo do payout (ST-0044) e um id que não existe (TX-9999). O **Ask about this** aparece apenas nessas linhas; use Live para investigar com a OpenAI.
+Ative **Show the agent trace** para consultar chamadas de ferramentas, citações, verificação das afirmações e encaminhamentos. Essa opção começa desligada. Os casos simulados cobrem reembolsos, cobranças duplicadas, disputas, repasses e transações ausentes.
 
 ```bash
 uv run uvicorn app.server:portal --host 127.0.0.1 --port 8501
@@ -135,7 +135,7 @@ uv run uvicorn app.server:portal --host 127.0.0.1 --port 8501
 
 ### Portal Streamlit
 
-Abra http://localhost:8501. O menu reúne Payments, Replay, Sandbox, Live, Evaluation, Proof e Engineering. Replay permite consultar as gravações sem chave. Para usar Sandbox e Live, inicie a API em outro terminal.
+Abra http://localhost:8501. Clique em **Investigate this payment**, revise a pergunta e pressione **Send**. Abra o cálculo gravado para conferir as evidências. **Recordings** funciona sem chave. O indicador mostra se as respostas são simuladas ou usam sua chave. **Use my OpenAI key** abre o painel de configuração. Simulador, comprovantes, avaliações e documentação técnica ficam em **Tools and technical reference**. Para usar Sandbox e Live, inicie a API em outro terminal.
 
 ```bash
 uv run ledgerlens-demo --port 8010
@@ -153,7 +153,7 @@ O vídeo abaixo é o app de demonstração rodando online com um modelo real, gr
 
 ### Usar a OpenAI no modo Live
 
-Inicie o Streamlit e a API com `LEDGERLENS_OFFLINE=0`. Abra **Live**, escolha o modelo e os limites e conecte sua chave OpenAI. O portal Payments usa dados de demonstração.
+Inicie o Streamlit e a API com `LEDGERLENS_OFFLINE=0`. Na demonstração guiada, selecione OpenAI, confira o modelo e os limites no painel lateral e conecte a chave. O painel fecha assim que a API aceita a conexão. Quando a conexão aparecer, escreva uma pergunta sobre a conta selecionada e clique em **Send to OpenAI**.
 
 ## Execução com chave própria
 
