@@ -1,6 +1,6 @@
 # Demo recording
 
-The [workspace guide](frontend.md) describes the seven views and their data sources.
+The [workspace guide](frontend.md) describes the guided demo, its OpenAI mode and the published recordings.
 
 ## Run the current demo locally
 

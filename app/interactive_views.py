@@ -11,6 +11,7 @@ from uuid import uuid4
 import httpx
 import streamlit as st
 
+from ledgerlens.byok.errors import CredentialExpired, CredentialRevoked, CredentialUnknown
 from ledgerlens.config import offline
 from ledgerlens.demo import load_manifest
 from ledgerlens.sandbox.mutation import (
@@ -25,7 +26,10 @@ SESSION = "/v1/sessions"
 SANDBOXES = "/v1/sandboxes"
 RUNS = "/v1/live-runs"
 CREDENTIALS = "/v1/credentials"
-LIVE_SCENARIO = "S01"
+FX_EXAMPLE_SCENARIO = "S01"
+RUN_UNAVAILABLE = "unavailable"
+UNKNOWN_RUN_CODE = "NOT_FOUND"
+STALE_CREDENTIAL_REASONS = {CredentialExpired.reason, CredentialRevoked.reason, CredentialUnknown.reason}
 ACTIVE_RUN = {"running", "cancelling"}
 CHANGE_TYPES = {
     KIND_FX_ADJUSTMENT: "Adjust refund exchange rate",
@@ -47,6 +51,10 @@ VISITOR_KEYS = (
     "branch_read",
     "credential",
     "live_run",
+    "live_run_handle",
+    "live_settings",
+    "live_drawer",
+    "open_live_settings",
     "last_change",
     "live_consent",
     "effective_time",
@@ -69,15 +77,23 @@ def _clear_visitor():
         st.session_state.pop(key, None)
 
 
+class InvestigationAPIError(Exception):
+    """Describe an API failure without interrupting the rest of the payment page."""
+
+    def __init__(self, message, *, status=None, code=None, detail=""):
+        super().__init__(message)
+        self.status = status
+        self.code = code
+        self.detail = detail
+
+
 def _request(method, path, **kwargs):
     try:
         response = _http().request(method, path, **kwargs)
-    except httpx.RequestError:
-        st.error("The investigation API is unavailable. Check the connection and retry.")
-        st.stop()
+    except httpx.RequestError as exc:
+        raise InvestigationAPIError("The investigation API is unavailable. Check the connection and retry.") from exc
     if response.is_redirect:
-        st.error("The investigation API returned an unexpected redirect.")
-        st.stop()
+        raise InvestigationAPIError("The investigation API returned an unexpected redirect.")
     if response.is_error:
         try:
             error = response.json()
@@ -87,10 +103,12 @@ def _request(method, path, **kwargs):
             _clear_visitor()
         wait = response.headers.get("Retry-After")
         detail = error.get("message", "The investigation API could not complete the request.")
-        st.error(
-            f"{error.get('code', response.status_code)}: {detail}" + (f" Retry in {wait} seconds." if wait else "")
+        raise InvestigationAPIError(
+            f"{error.get('code', response.status_code)}: {detail}" + (f" Retry in {wait} seconds." if wait else ""),
+            status=response.status_code,
+            code=error.get("code"),
+            detail=detail,
         )
-        st.stop()
     return response
 
 
@@ -105,9 +123,9 @@ def _end_session():
     with st.expander("Session settings"):
         active = False
         if run_id := st.session_state.get("live_run"):
-            active = _request("GET", f"{RUNS}/{run_id}").json()["status"] in ACTIVE_RUN
+            active = _read_run(run_id)["status"] in ACTIVE_RUN
         if active:
-            st.caption("Cancel the active investigation in Live, or wait for it to finish before ending this session.")
+            st.caption("Cancel the active investigation or wait for it to finish before ending this session.")
         else:
             st.caption("Ending this session removes your private branches and forgets your provider key.")
         if st.button("End session", disabled=active):
@@ -183,8 +201,11 @@ def _comparison(command, result, *, committed):
 
 def render_sandbox():
     """Keep session controls below the case workflow, including when no branch is open."""
-    _sandbox()
-    _end_session()
+    try:
+        _sandbox()
+        _end_session()
+    except InvestigationAPIError as exc:
+        st.error(str(exc))
 
 
 def _sandbox():
@@ -200,7 +221,7 @@ def _sandbox():
         format_func=lambda key: f"{key} · {cases[key]['name'].replace('_', ' ').capitalize()}",
     )
     st.write(cases[selected]["questions"][0])
-    if selected == LIVE_SCENARIO:
+    if selected == FX_EXAMPLE_SCENARIO:
         st.write(
             "What would the customer receive at a different exchange rate? "
             "Preview the refund before applying a change to your private branch."
@@ -257,9 +278,26 @@ def _sandbox():
         st.json(result)
 
 
+def _read_run(run_id):
+    try:
+        return _request("GET", f"{RUNS}/{run_id}").json()
+    except InvestigationAPIError as exc:
+        if exc.status != 404 or exc.code != UNKNOWN_RUN_CODE:
+            raise
+        return {
+            "run_id": run_id,
+            "status": RUN_UNAVAILABLE,
+            "error": "This run is no longer available in this session.",
+        }
+
+
 def _run_result():
     run_path = f"{RUNS}/{st.session_state.live_run}"
-    run = _request("GET", run_path).json()
+    run = _read_run(st.session_state.live_run)
+    if run["status"] == RUN_UNAVAILABLE:
+        st.session_state.pop("live_run", None)
+        st.warning(run["error"])
+        return run
     st.subheader("Run result")
     st.write(f"Status: {run['status']}")
     if run["status"] in ACTIVE_RUN:
@@ -268,11 +306,19 @@ def _run_result():
             _request("POST", f"{run_path}/cancel")
             st.rerun()
         st.caption("A provider call already in progress may finish and incur charges.")
-        return True
+        return None
     if run.get("answer"):
         st.write(run["answer"])
     if run.get("error"):
         st.warning(run["error"])
+        current_handle = st.session_state.get("credential", {}).get("handle")
+        if (
+            current_handle
+            and current_handle == st.session_state.get("live_run_handle")
+            and run["error"].partition(":")[0] in STALE_CREDENTIAL_REASONS
+        ):
+            st.session_state.pop("credential", None)
+            st.info("Configure OpenAI to reconnect the key before another investigation.")
     cost = _request("GET", f"{run_path}/cost").json()
     reported, estimate = st.columns(2)
     for column, label, field in (
@@ -288,7 +334,7 @@ def _run_result():
         for line in trace.text.splitlines():
             if line.startswith("data:"):
                 st.json(json.loads(line.removeprefix("data:")))
-    return False
+    return run
 
 
 def _secure_api():
@@ -307,46 +353,86 @@ def _secure_api():
 
 def _forget_key():
     if credential := st.session_state.get("credential"):
-        st.caption(f"Connected OpenAI key · Expires {credential['expires_at']}")
         if st.button("Forget key"):
             _request("POST", f"{CREDENTIALS}/forget", json={"handle": credential["handle"]})
             del st.session_state.credential
+            st.session_state.requested_answer_mode = "Scripted demo"
             st.rerun()
 
 
-def render_live():
-    """Keep credential and session controls accessible throughout the run."""
-    _live()
-    if "visitor" in st.session_state:
+def render_live_status():
+    """Show the current investigation and the visitor's credential and session controls."""
+    if "visitor" not in st.session_state:
+        return None
+    try:
+        result = _run_result() if st.session_state.get("live_run") else None
         _forget_key()
         _end_session()
+        return result
+    except InvestigationAPIError as exc:
+        st.error(str(exc))
+        return None
 
 
-def _live():
-    """Submit a visitor's consent and credential before starting a budgeted live investigation."""
-    st.header("Live investigation")
-    st.write("Live OpenAI run · Uses your provider account.")
-    st.caption("This demo uses deterministic checks. Learned verification is unavailable.")
+def render_live_settings(*, configure: bool = False, active: bool = True) -> bool:
+    """Collect the visitor's limits and consent, then enable the shared investigation composer."""
+    try:
+        return _live_settings(configure, active)
+    except InvestigationAPIError as exc:
+        st.error(str(exc))
+        return False
+
+
+def _live_settings(configure, active):
+    requested = st.session_state.pop("open_live_settings", False) or configure
+    if not active and not requested and not st.session_state.get("live_drawer"):
+        return False
     if offline():
         st.info("Live investigations are disabled in offline mode. The visitor sandbox remains available.")
-        return
+        return False
     if not _secure_api():
         st.error("Configure an HTTPS investigation API to connect a provider key.")
-        return
+        return False
     _session()
-    if st.session_state.get("live_run") and _run_result():
-        return
+    if (run_id := st.session_state.get("live_run")) and _read_run(run_id)["status"] in ACTIVE_RUN:
+        return False
+    if requested:
+        st.session_state.live_drawer = True
+    if st.session_state.get("live_drawer"):
+        _settings_drawer()
+    return bool(st.session_state.get("live_settings") and st.session_state.get("credential"))
+
+
+def _close_drawer():
+    st.session_state.pop("live_drawer", None)
+
+
+@st.dialog("Configure OpenAI", position="right", on_dismiss=_close_drawer)
+def _settings_drawer():
+    try:
+        _configure_key()
+    except InvestigationAPIError as exc:
+        st.error(str(exc))
+
+
+def _configure_key():
+    st.caption("This demo uses deterministic checks. Learned verification is unavailable.")
+    saved = st.session_state.get("live_settings", {})
     models = _request("GET", "/v1/models").json()["models"]
     profiles = {
         item["profile_id"]: item for item in models if item["enabled_in_public_demo"] and item["provider"] == "openai"
     }
     if not profiles:
         st.info("No models are enabled for this deployment.")
-        return
-    case = _cases()[LIVE_SCENARIO]
-    st.subheader(f"{LIVE_SCENARIO} · Refund for {case['ids']['transaction_ids'][0]}")
-    st.write(case["questions"][0])
-    selected = st.selectbox("Provider model", profiles, format_func=lambda key: profiles[key]["display_name"])
+        return False
+    profile_ids = list(profiles)
+    saved_profile = saved.get("model_profile_id")
+    selected = st.selectbox(
+        "Provider model",
+        profile_ids,
+        index=profile_ids.index(saved_profile) if saved_profile in profiles else 0,
+        format_func=lambda key: profiles[key]["display_name"],
+    )
     provider = profiles[selected]["provider"]
     price = _request("GET", f"/v1/models/{selected}").json()
     st.caption(price["price_note"])
@@ -356,9 +442,20 @@ def _live():
             f"Per million tokens: USD {pricing['input_per_1m_usd']} input · USD {pricing['output_per_1m_usd']} output."
         )
     with st.expander("Run limits"):
-        limits = {key: st.number_input(*settings) for key, settings in LIMITS.items()}
-        limits["max_input_tokens"] = st.number_input("Input token cap (optional)", min_value=1, value=None)
-        limits["max_estimated_usd"] = st.text_input("Estimated cost cap in USD (optional)").strip() or None
+        saved_limits = saved.get("limits", {})
+        limits = {
+            key: st.number_input(label, low, high, value=saved_limits.get(key, default))
+            for key, (label, low, high, default) in LIMITS.items()
+        }
+        limits["max_input_tokens"] = st.number_input(
+            "Input token cap (optional)", min_value=1, value=saved_limits.get("max_input_tokens")
+        )
+        limits["max_estimated_usd"] = (
+            st.text_input(
+                "Estimated cost cap in USD (optional)", value=saved_limits.get("max_estimated_usd") or ""
+            ).strip()
+            or None
+        )
     money_limit = limits["max_estimated_usd"]
     financial_limit = f"USD {money_limit} estimated cap" if money_limit else "No estimated spending cap"
     st.write(
@@ -378,36 +475,74 @@ def _live():
     if credential:
         if provider != credential["provider"]:
             st.info("Forget the current key to connect a different provider.")
+            return False
+        st.caption(f"Connected key expires {credential['expires_at']}")
+        if not st.button("Save settings"):
             return
     else:
-        consent = st.checkbox(
-            "I agree to send my key to the investigation API and pay OpenAI for this run.", key="live_consent"
-        )
-        with st.form("accept_key", clear_on_submit=True):
-            key = st.text_input("Provider API key", type="password", disabled=not consent)
-            accepted = st.form_submit_button("Connect key", disabled=not consent)
-        if accepted:
-            if not key or not consent:
-                st.warning("Enter a key and confirm consent to connect.")
-            else:
-                st.session_state.credential = _request(
-                    "POST", CREDENTIALS, json={"provider": provider, "api_key": key}
-                ).json()
-                st.rerun()
-        return
-    if st.button("Start live run"):
-        branch = _request("POST", SANDBOXES, json={"scenario_id": LIVE_SCENARIO}).json()
-        body = {
-            "mode": "live_agent",
-            "scenario_id": LIVE_SCENARIO,
-            "sandbox_id": branch["id"],
-            "expected_revision": branch["revision"],
-            "account_id": case["ids"]["customer_ids"][0],
-            "question": case["questions"][0],
-            "variant": "C",
-            "model_profile_id": selected,
-            "credential_handle": credential["handle"],
-            "limits": limits,
-        }
-        st.session_state.live_run = _request("POST", RUNS, json=body).json()["run_id"]
-        st.rerun()
+        entry = st.empty()
+        with entry.container():
+            consent = st.checkbox(
+                "I agree to send my key to the investigation API and pay OpenAI for this run.", key="live_consent"
+            )
+            with st.form("accept_key", clear_on_submit=True):
+                key = st.text_input("Provider API key", type="password", disabled=not consent)
+                accepted = st.form_submit_button("Connect key", disabled=not consent)
+        if not accepted:
+            return False
+        if not key or not consent:
+            st.warning("Enter a key and confirm consent to connect.")
+            return False
+        credential = _request("POST", CREDENTIALS, json={"provider": provider, "api_key": key}).json()
+        st.session_state.credential = credential
+        entry.empty()
+    st.session_state.live_settings = {"model_profile_id": selected, "limits": limits}
+    st.session_state.requested_answer_mode = "OpenAI"
+    _close_drawer()
+    st.rerun()
+
+
+def submit_live_question(scenario_id: str, account_id: str, question: str) -> str | None:
+    """Start a budgeted run using the current account and the visitor's edited question."""
+    try:
+        return _submit_live_question(scenario_id, account_id, question)
+    except InvestigationAPIError as exc:
+        st.error(str(exc))
+        return None
+
+
+def _submit_live_question(scenario_id, account_id, question):
+    settings = st.session_state.get("live_settings")
+    credential = st.session_state.get("credential")
+    if not settings or not credential or not question.strip():
+        return None
+    branch = _request("POST", SANDBOXES, json={"scenario_id": scenario_id}).json()
+    body = {
+        "mode": "live_agent",
+        "scenario_id": scenario_id,
+        "sandbox_id": branch["id"],
+        "expected_revision": branch["revision"],
+        "account_id": account_id,
+        "question": question.strip(),
+        "variant": "C",
+        "credential_handle": credential["handle"],
+        **settings,
+    }
+    try:
+        run_id = _request("POST", RUNS, json=body).json()["run_id"]
+    except InvestigationAPIError as exc:
+        if (
+            exc.status == 422
+            and exc.code == "MODEL_NOT_ALLOWED"
+            and exc.detail.partition(":")[0] in STALE_CREDENTIAL_REASONS
+        ):
+            st.session_state.pop("credential", None)
+            st.session_state.open_live_settings = True
+            st.warning(
+                "The connected key is no longer available. Configure OpenAI to reconnect and send your question."
+            )
+            return None
+        raise
+    st.session_state.live_run_handle = credential["handle"]
+    st.session_state.live_run = run_id
+    return run_id

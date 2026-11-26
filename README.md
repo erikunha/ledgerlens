@@ -133,7 +133,7 @@ uv run uvicorn app.server:portal --host 127.0.0.1 --port 8501
 
 ### Streamlit workspace
 
-Open http://localhost:8501. Choose **Investigate this payment**, review the question and press **Send**. Open the recorded calculation to inspect the evidence. **Recordings** works without a key. **Use OpenAI** opens Live. The simulator, proofs, evaluation and engineering pages are under **Tools and technical reference**. Start the API in a second terminal for Sandbox and Live.
+Open http://localhost:8501. Choose **Investigate this payment**, review the question and press **Send**. Open the recorded calculation to inspect the evidence. **Recordings** works without a key. The mode indicator shows whether answers are scripted or use your key. **Use my OpenAI key** opens the settings panel. The simulator, proofs, evaluation and engineering pages are under **Tools and technical reference**. Start the API in a second terminal for Sandbox and Live.
 
 ```bash
 uv run ledgerlens-demo --port 8010
@@ -149,9 +149,9 @@ The video below is the demo app running online with a real model, recorded on 20
 
 [docs/demo.md](docs/demo.md) has the recording notes: the mode, what the video shows, the numbers on screen and how it was recorded.
 
-### Use OpenAI in Live
+### Use OpenAI in the guided demo
 
-Start Streamlit and the API with `LEDGERLENS_OFFLINE=0`. Open **Live**, choose the model and limits, and connect your OpenAI key. Payments uses demo data.
+Start Streamlit and the API with `LEDGERLENS_OFFLINE=0`. In the guided demo, select OpenAI, review the model and limits in the side panel, then connect your key. The panel closes when the connection succeeds. Once connected, type a question about the selected account and press **Send**.
 
 ## Live runs with your own key
 

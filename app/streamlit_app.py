@@ -20,13 +20,13 @@ spans come from `investigate(..., on_event=...)` (`ledgerlens.observability.trac
 threads, so the investigation runs in a thread of its own and the page draws the spans that arrive on a queue. The
 answer does not stream token by token: the verifier reads the whole answer and may rewrite it (an unavailable rate
 gets named), so it appears finished, after verification. `st.chat_input` takes no initial value, so the question box
-is a form with `st.text_input` and a submit button.
+uses `st.text_input` with an explicit Send button.
 
 The switch "Show the agent trace" (off by default) shows the trace on each answer, the evidence citations in the text
 and the ledger records the agent read, and marks the lines read on the statement. With it off, the answer shows with
 no trace and no citations, as a support reply would, and the trace stays stored with the message.
 
-Payments uses the synthetic ledger and scripts for the planted questions. The Live workspace configures its own runs.
+Payments offers scripted answers and visitor-funded OpenAI investigations in the same account conversation.
 Run: `uv run uvicorn app.server:portal --port 8501`.
 """
 
@@ -63,9 +63,12 @@ from ledgerlens.verify.nli import StubNli
 log = logging.getLogger(__name__)
 
 BRAND = "LedgerLens Pay"
+SCRIPTED_MODE = "Scripted demo"
+OPENAI_MODE = "OpenAI"
 DEFAULT_ACCOUNT = "C-0412"
 PAGE_SIZE = 10
 CHAT_HEIGHT = 420
+LIVE_POLL_SECONDS = 2
 USER_AVATAR = ":material/person:"
 ASSISTANT_AVATAR = ":material/support_agent:"
 WORKING = "Checking your account"
@@ -91,6 +94,10 @@ STYLE = """
 header[data-testid="stHeader"], [data-testid="stMainMenu"], [data-testid="stStatusWidget"],
 [data-testid="stHeadingActionElements"], [data-testid="stSidebarCollapsedControl"],
 [data-testid="InputInstructions"] { display: none !important; }
+.st-key-answer-mode, .st-key-paid-answer-mode { position: sticky; top: 0; z-index: 8; padding: .45rem .8rem;
+  background: var(--st-background-color); border: 1px solid currentColor; border-radius: .5rem; }
+.st-key-paid-answer-mode { background: #fff1c7; color: #533205; border: 2px solid #a66508; }
+.st-key-paid-answer-mode button { background: #fffafa; color: #533205; }
 .block-container { padding-top: 2rem; max-width: 1160px; }
 [data-testid="stCaptionContainer"] { opacity: 1; }
 [data-testid="stCaptionContainer"] p { color: #5f5c58; }
@@ -237,14 +244,41 @@ def show_all(tab: str) -> None:
     st.session_state[f"all-{tab}"] = True
 
 
+def request_openai() -> None:
+    """Reuse accepted settings or open the setup drawer without changing the active mode."""
+    if st.session_state.get("credential") and st.session_state.get("live_settings"):
+        st.session_state["requested_answer_mode"] = OPENAI_MODE
+    else:
+        st.session_state["configure_requested"] = True
+
+
+def paid_case_for(manifest, account_id, planted, selected, question, fallback):
+    """Match the question and selected records to a snapshot owned by this account."""
+    records = (set(demo.ledger_ids(question)) | set(selected)) - {account_id}
+    for item in planted:
+        if demo.accounts_of(manifest, item.scenario)[:1] != [account_id]:
+            continue
+        if records:
+            ids = demo.scenario_of(manifest, item.scenario)["ids"]
+            if records.issubset(record for group in ids.values() for record in group):
+                return item.scenario
+        elif question == item.for_account(account_id) or item.scenario == fallback:
+            return item.scenario
+    return None
+
+
 def submit_draft() -> None:
     """Keeps the box's text as the turn's question and clears the box."""
     st.session_state["question"] = st.session_state.get("draft", "").strip()
-    st.session_state["draft"] = ""
+    st.session_state["submission_mode"] = st.session_state.get("investigation_mode", SCRIPTED_MODE)
+    if st.session_state["submission_mode"] != OPENAI_MODE:
+        st.session_state["draft"] = ""
 
 
 def switch_account() -> None:
     """Another account signs in: new conversation, empty box, filters reset."""
+    st.session_state.pop("live_run", None)
+    st.session_state.pop("question", None)
     st.session_state["turns"] = []
     st.session_state["thread_id"] = f"app-{uuid.uuid4().hex[:8]}"
     st.session_state["draft"] = ""
@@ -433,6 +467,19 @@ def render_result(result: InvestigationResult, observer: bool, statement_ids: se
         st.caption(caption + (f". Not on this account: {', '.join(outside)}" if outside else ""))
 
 
+@st.fragment(run_every=LIVE_POLL_SECONDS)
+def watch_live_turn(turn: dict[str, Any]) -> None:
+    """Refresh only the unfinished answer; unlock the composer when the API reports completion."""
+    from app.interactive_views import render_live_status
+
+    terminal = render_live_status()
+    if terminal:
+        turn["live_result"] = terminal
+        st.rerun()
+    elif not st.session_state.get("live_run"):
+        st.rerun()
+
+
 def show_turn(turn: dict[str, Any], observer: bool, statement_ids: set[str]) -> None:
     """A turn already answered: the question and, below it, the assistant's reply."""
     with st.chat_message("user", avatar=USER_AVATAR):
@@ -440,6 +487,21 @@ def show_turn(turn: dict[str, Any], observer: bool, statement_ids: set[str]) -> 
         if turn.get("selected"):
             st.caption(f"About {', '.join(turn['selected'])}")
     with st.chat_message("assistant", avatar=ASSISTANT_AVATAR):
+        if "live_id" in turn:
+            from app.interactive_views import render_live_status
+
+            st.caption("OpenAI investigation")
+            if turn["live_id"] == st.session_state.get("live_run"):
+                if terminal := turn.get("live_result"):
+                    if not render_live_status():
+                        st.write(terminal.get("answer") or terminal.get("error") or terminal["status"])
+                else:
+                    watch_live_turn(turn)
+            elif terminal := turn.get("live_result"):
+                st.write(terminal.get("answer") or terminal.get("error") or terminal["status"])
+            else:
+                st.warning("This run is no longer available in this session.")
+            return
         if observer and turn.get("trace"):
             show_trace(turn["trace"])
         render_result(turn["result"], observer, statement_ids)
@@ -496,14 +558,15 @@ def render_lines(tab: str, lines: list[dict[str, Any]], account: Account, marks:
                     st.markdown(value)
             question = demo.ask_question(line, account.id, manifest)
             scripted = demo.offline_script(question, manifest) is not None
+            available = scripted or st.session_state.get("investigation_mode") == OPENAI_MODE
             st.button(
                 "Ask about this",
                 key=f"ask-{tab}-{line['id']}",
-                help=OFFLINE_ASK_HELP if not scripted else f"Prepare this question: {question}",
+                help=f"Prepare this question: {question}" if available else OFFLINE_ASK_HELP,
                 on_click=fill_draft,
                 args=(question, [line["id"]]),
                 type="primary",
-                disabled=not scripted,
+                disabled=not available,
             )
             if line["id"] in st.session_state["selected"]:
                 st.caption("Your question is ready to review.")
@@ -546,6 +609,8 @@ def render_portal(account: Account, lines: list[dict[str, Any]], marks: dict[str
 
 
 def render_payments() -> None:
+    from app.interactive_views import render_live_settings, render_live_status, submit_live_question
+
     manifest = demo.load_manifest()
     accounts = {a.id: a for a in portal_accounts()}
     st.session_state.setdefault("account", DEFAULT_ACCOUNT if DEFAULT_ACCOUNT in accounts else next(iter(accounts)))
@@ -553,10 +618,39 @@ def render_payments() -> None:
     st.session_state.setdefault("selected", [])
     st.session_state.setdefault("thread_id", f"app-{uuid.uuid4().hex[:8]}")
 
+    if st.session_state.pop("clear_sent_draft", False):
+        st.session_state["draft"] = ""
+    pending_live = any(
+        "live_id" in turn and turn["live_id"] == st.session_state.get("live_run") and not turn.get("live_result")
+        for turn in st.session_state["turns"]
+    )
+    if requested := st.session_state.pop("requested_answer_mode", None):
+        st.session_state["investigation_mode"] = requested
+    mode = st.session_state.setdefault("investigation_mode", SCRIPTED_MODE)
+    paid = mode == OPENAI_MODE
+    with st.container(key="paid-answer-mode" if paid else "answer-mode", horizontal=True, vertical_alignment="center"):
+        indicator = "OpenAI · Using your key" if paid else "Scripted demo · No API charges"
+        icon = ":material/key:" if paid else ":material/shield:"
+        st.markdown(f"{icon} **{indicator}**")
+        if paid:
+            st.button(
+                "Switch to demo",
+                disabled=pending_live,
+                on_click=st.session_state.update,
+                args=({"requested_answer_mode": SCRIPTED_MODE},),
+            )
+            configure = st.button("Configure OpenAI", disabled=pending_live)
+        else:
+            st.button("Use my OpenAI key", key="use-openai", on_click=request_openai)
+            configure = st.session_state.pop("configure_requested", False)
+    ready = render_live_settings(configure=configure, active=paid)
+    if paid and not st.session_state.get("credential"):
+        st.session_state["requested_answer_mode"] = SCRIPTED_MODE
+        st.rerun()
     brand, switch = st.columns([3, 1.2], vertical_alignment="center")
     with brand.container(key="brand"):
         st.title(BRAND, anchor=False)
-        st.caption("Guided demo · Scripted answers · Sample payments")
+        st.caption("Sample payments · Account investigation")
     with switch.popover("Switch demo account", icon=":material/swap_horiz:", width="stretch"):
         st.selectbox(
             "Signed in as",
@@ -565,6 +659,7 @@ def render_payments() -> None:
             persist_state="session",
             format_func=lambda i: accounts[i].label,
             on_change=switch_account,
+            disabled=pending_live,
         )
 
     account = accounts[st.session_state["account"]]
@@ -577,12 +672,14 @@ def render_payments() -> None:
     last = turns[-1] if turns else None
     marks: dict[str, set[str]] = {"asked": set(), "read": set()}
     if observer:
-        marks["read"] = demo.ids_read(last["result"]) if last else set()
+        marks["read"] = demo.ids_read(last["result"]) if last and "result" in last else set()
         marks["asked"] = set(st.session_state["selected"]) | (set(demo.ledger_ids(last["question"])) if last else set())
 
     questions = demo.account_questions(account.id, manifest)
     featured = questions[0] if questions else None
-    case = next((item for item in manifest["scenarios"] if featured in item["questions"]), None)
+    planted = [item for item in demo.planted(manifest) if account.id in demo.accounts_of(manifest, item.scenario)]
+    featured_case = next((item for item in planted if item.lines and item.for_account(account.id) == featured), None)
+    case = demo.scenario_of(manifest, featured_case.scenario) if featured_case else None
     if featured:
         with st.container(border=True, key="featured-case"):
             st.subheader(featured)
@@ -590,8 +687,11 @@ def render_payments() -> None:
             if "charge_brl" in truth and "refund_brl" in truth:
                 st.caption(f"Paid BRL {truth['charge_brl']} · Refunded BRL {truth['refund_brl']}")
             st.button(
-                "Investigate this payment", key="featured", type="primary",
-                on_click=fill_draft, args=(featured, demo.ledger_ids(featured)),
+                "Investigate this payment",
+                key="featured",
+                type="primary",
+                on_click=fill_draft,
+                args=(featured, demo.ledger_ids(featured)),
             )
     right, left = st.columns([6, 5], gap="large")
     with left:
@@ -599,7 +699,14 @@ def render_payments() -> None:
 
     with right, st.container(border=True, key="help"):
         st.subheader("Investigation", anchor="help")
-        st.caption(PAYMENTS_MODE)
+        fallback = (last or {}).get("scenario") or (featured_case.scenario if featured_case else None)
+        paid_scenario = paid_case_for(
+            manifest, account.id, planted, st.session_state["selected"], st.session_state.get("draft", ""), fallback
+        )
+        if paid and not paid_scenario:
+            st.info("This case supports scripted answers for this account. Switch to demo to investigate it.")
+        if not paid:
+            st.caption(PAYMENTS_MODE)
         # The sentence of the disclosure of the AI agent sits under the question box, where the person
         # reads it before the first answer. It comes from the domain, so the demo and the public site
         # say the same thing (Article 50 of the EU AI Act, applied since 2 August 2026).
@@ -616,7 +723,8 @@ def render_payments() -> None:
         with chat:
             if not talking:
                 hint = "Open a payment and press **Ask about this**, or pick a question below."
-                hint += " Suggested questions have scripted answers."
+                if not paid:
+                    hint += " Suggested questions have scripted answers."
                 st.caption(hint)
             for turn in turns:
                 show_turn(turn, observer, statement_ids)
@@ -629,22 +737,44 @@ def render_payments() -> None:
             about, clear = st.columns([4, 1], vertical_alignment="center")
             about.caption(f"About {', '.join(st.session_state['selected'])} from your activity")
             clear.button("Clear", key="clear-selection", type="tertiary", on_click=clear_selection)
-        with st.form("composer", border=False):
+        if paid and not st.session_state.get("live_run"):
+            render_live_status()
+        with st.container(key="composer"):
             field, send = st.columns([5, 1.3], vertical_alignment="bottom")
             field.text_input(
                 "Question",
                 key="draft",
+                persist_state="session",
                 placeholder="Type your question",
                 label_visibility="collapsed",
             )
-            send.form_submit_button("Send", key="send", type="primary", width="stretch", on_click=submit_draft)
+            send.button(
+                "Send",
+                key="send",
+                type="primary",
+                width="stretch",
+                on_click=submit_draft,
+                disabled=paid and (not ready or not paid_scenario or pending_live),
+            )
         if st.session_state.pop("focus_draft", False):
             st.toast("Review your question, then press Send.", icon=":material/support_agent:")
             st.html(FOCUS_DRAFT, unsafe_allow_javascript=True)
         question = st.session_state.pop("question", "")
 
-        if question:
+        if question and st.session_state.pop("submission_mode", mode) == mode:
             selected = list(st.session_state["selected"])
+            if paid:
+                if not ready or not paid_scenario or pending_live:
+                    return
+                run_id = submit_live_question(paid_scenario, account.id, question)
+                if run_id:
+                    turns.append(
+                        {"question": question, "live_id": run_id, "selected": selected, "scenario": paid_scenario}
+                    )
+                    st.session_state["selected"] = []
+                    st.session_state["clear_sent_draft"] = True
+                    st.rerun()
+                return
             with chat:
                 with st.chat_message("user", avatar=USER_AVATAR):
                     st.markdown(question)
@@ -668,6 +798,7 @@ def render_payments() -> None:
             st.rerun()  # draws the activity again with the lines the assistant read
 
     if case:
+
         def open_case(destination):
             if destination == "Replay":
                 st.session_state["replay_target"] = ("replay", case["id"])
@@ -683,7 +814,7 @@ def render_payments() -> None:
 
 def main() -> None:
     from app.artifact_views import render_engineering, render_evaluation, render_proof, render_replay
-    from app.interactive_views import render_live, render_sandbox
+    from app.interactive_views import render_sandbox
 
     st.set_page_config(page_title=BRAND, page_icon=":material/payments:", layout="wide")
     st.html(STYLE)
@@ -691,11 +822,11 @@ def main() -> None:
         "Payments": render_payments,
         "Replay": render_replay,
         "Sandbox": render_sandbox,
-        "Live": render_live,
         "Evaluation": render_evaluation,
         "Proof": render_proof,
         "Engineering": render_engineering,
     }
+
     def navigate(destination):
         st.query_params["view"] = destination
 
@@ -703,18 +834,31 @@ def main() -> None:
     if destination in pages:
         navigate(destination)
     page = st.query_params.get("view", "Payments")
+    if page == "Live":
+        page = "Payments"
+        navigate(page)
+        request_openai()
     if page not in pages:
         page = "Payments"
     with st.container(horizontal=True, gap="small", key="demo-navigation"):
-        for target, label in (("Payments", "Guided demo"), ("Replay", "Recordings"), ("Live", "Use OpenAI")):
-            st.button(label, key=f"nav-{target}", on_click=navigate, args=(target,),
-                      type="primary" if page == target else "tertiary")
-    if page in {"Replay", "Live"}:
+        for target, label in (("Payments", "Guided demo"), ("Replay", "Recordings")):
+            st.button(
+                label,
+                key=f"nav-{target}",
+                on_click=navigate,
+                args=(target,),
+                type="primary" if page == target else "tertiary",
+            )
+    if page == "Replay":
         st.caption(AI_DISCLOSURE)
     pages[page]()
     with st.expander("Tools and technical reference"):
-        for target, label in (("Sandbox", "Case simulator"), ("Proof", "Published proofs"),
-                              ("Evaluation", "Evaluation results"), ("Engineering", "Engineering reference")):
+        for target, label in (
+            ("Sandbox", "Case simulator"),
+            ("Proof", "Published proofs"),
+            ("Evaluation", "Evaluation results"),
+            ("Engineering", "Engineering reference"),
+        ):
             st.button(label, key=f"nav-{target}", on_click=navigate, args=(target,))
 
 
