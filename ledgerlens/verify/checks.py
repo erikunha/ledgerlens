@@ -49,6 +49,7 @@ from ledgerlens.verify.claims import (
     ledger_values,
     render_premise,
 )
+from ledgerlens.verify.cutoff_receipt import cutoff_receipt_verdict
 from ledgerlens.verify.nli import Nli
 
 THRESHOLDS_PATH = Path(__file__).with_name("thresholds.json")
@@ -336,7 +337,11 @@ def _text_verdict(claim: Claim, by_id: Mapping[str, Evidence], nli: Nli, thresho
 
 
 def verify_result(
-    result: InvestigationResult, *, nli: Nli | None = None, review_conditions: list[dict[str, Any]] | None = None
+    result: InvestigationResult,
+    *,
+    nli: Nli | None = None,
+    review_conditions: list[dict[str, Any]] | None = None,
+    use_cutoff_receipts: bool = False,
 ) -> InvestigationResult:
     """Gives each claim a verdict and returns a copy with coherence, missing information and human review.
 
@@ -344,6 +349,7 @@ def verify_result(
 
     Sets `requires_human_review` when there is a contradiction, when coherence fails or when the share of
     claims with no evidence goes over `unsupported_share_review`. A flag already set stays.
+    `use_cutoff_receipts` enables the experimental rule for calculator-backed cutoff claims.
     """
     thresholds = load_thresholds()
     if not result.claims:  # the integrator delivers only the answer and the evidence: claims come from the text
@@ -354,8 +360,11 @@ def verify_result(
 
         nli = get_nli()
 
+    receipt = cutoff_receipt_verdict(result) if use_cutoff_receipts else None
     verdicts = [
-        check_numeric(c, by_id)
+        receipt
+        if receipt is not None and c.id == receipt.claim_id
+        else check_numeric(c, by_id)
         if c.kind == "numeric" or c.numeric is not None
         else check_ledger_amounts(c, by_id) or check_rates(c, by_id) or _text_verdict(c, by_id, nli, thresholds)
         for c in result.claims

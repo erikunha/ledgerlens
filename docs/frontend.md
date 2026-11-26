@@ -35,3 +35,5 @@ A deployment must serve Streamlit's WebSocket connection and package the publish
 A payment shortcut opens **Current demo account** with the payment selected. In this scope **Ask about this record** prepares an editable investigation draft. The full database is for inspection. Live questions are sent only when the visitor submits a supported case against its account snapshot.
 
 The investigation acknowledges short greetings and test messages, including `teste`, in either mode without calling a provider. If an investigation finishes without answer text, the chat suggests a more specific question.
+
+In **Project details** → **Evaluation**, the cutoff verifier experiment shows the valid dates cleared, the required reviews retained and the paraphrases that still went to review. Its link opens the [case definitions and comparison](evaluation.md#receipt-backed-cutoff-verification).
