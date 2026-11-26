@@ -1,22 +1,32 @@
-"""Embeddings: a fastembed wrapper for offline mode and a factory for OpenAI.
-
-Why it exists: semantic search over the policies needs to turn text into vectors, and offline mode cannot
-depend on an API. fastembed runs the local model in ONNX, with no torch.
-
-The default model is English (`BAAI/bge-small-en-v1.5`), has 384 dimensions, is about 67 MB, and reads at most
-512 tokens per text. It is loaded only on first use: creating the object costs nothing, and tests that never
-produce vectors never download the model. The first real use downloads the files; set `FASTEMBED_CACHE_PATH`
-to keep them between runs.
-"""
+"""Text vectors for offline word-count search, local FastEmbed models and OpenAI. Provides stable index identities."""
 
 from __future__ import annotations
 
+import re
+import zlib
 from typing import Any
 
 from langchain_core.embeddings import Embeddings
 
 DEFAULT_FASTEMBED_MODEL = "BAAI/bge-small-en-v1.5"
 DEFAULT_OPENAI_MODEL = "text-embedding-3-small"
+
+
+OFFLINE_DIMENSION = 64
+OFFLINE_EMBEDDING_ID = f"offline:wordcount-crc32-{OFFLINE_DIMENSION}"
+
+
+class OfflineEmbeddings(Embeddings):
+    """Deterministic word counts over fixed CRC32 buckets, with no learned weights."""
+
+    def embed_query(self, text: str) -> list[float]:
+        vector = [0.0] * OFFLINE_DIMENSION
+        for word in re.findall(r"\w+", text.lower()):
+            vector[zlib.crc32(word.encode()) % OFFLINE_DIMENSION] += 1.0
+        return vector
+
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        return [self.embed_query(text) for text in texts]
 
 
 def _text_embedding_class() -> Any:
@@ -72,6 +82,8 @@ def embedding_dimension(embeddings: Embeddings) -> int:
 
 def embedding_id(embeddings: Embeddings) -> str:
     """Stable name of the embedding model, such as `fastembed:<model name>` or `openai:<model>`."""
+    if isinstance(embeddings, OfflineEmbeddings):
+        return OFFLINE_EMBEDDING_ID
     if isinstance(embeddings, FastEmbedEmbeddings):
         return f"fastembed:{embeddings.model_name}"
     model = getattr(embeddings, "model", None)

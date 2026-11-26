@@ -127,7 +127,7 @@ export LEDGERLENS_OFFLINE=1
 bash scripts/gate.sh        # ruff and pytest, all offline
 ```
 
-In offline mode the chat model is a scripted model, embeddings are local (fastembed), HTTP reads recorded responses, and data comes from a committed sample. The agent code does not change. On the first run, fastembed downloads the embedding model into the local cache.
+Offline mode uses scripted chat, recorded HTTP responses and the committed sample ledger. Policy and case search use deterministic word counts with 64 hash buckets. They require no model download. Online search defaults to OpenAI. Set `LEDGERLENS_EMBEDDINGS=fastembed` and build its index to use FastEmbed explicitly. The offline policy index lives in `data/index/policies_offline/`. Rebuild it with `LEDGERLENS_OFFLINE=1 uv run python scripts/build_index.py`.
 
 ### Demo app (Streamlit)
 
@@ -261,7 +261,7 @@ docs/         architecture, tools, contracts, the roadmap and decisions (ADRs)
 - The exchange rate is an ECB reference, not the rate the acquirer applied. The agent says so.
 - The source orders are real but old, with shifted dates. Chargebacks, settlements, fees and markups are simulated and marked in the `origin` column.
 - Thirty evaluation cases show a trend, not statistical significance.
-- Policy retrieval from the offline index misses some hard questions; query rewriting recovers most of them ([ADR-006](docs/decisions/ADR-006-embeddings-and-index.md)).
+- The FastEmbed benchmark measures recall on the hard questions with and without query rewriting ([ADR-006](docs/decisions/ADR-006-embeddings-and-index.md)).
 - The NLI model often marks true sentences as not enough evidence, so many real answers still go to human review. Numbers, rates and exchange-rate dates are checked by code.
 - The answer is produced by an AI agent, and a person reviews the cases that need review.
 - The model of each task of a run is chosen by the task, and the claim that this costs less for the same answer is a hypothesis until the paired comparison of the evaluation measures it. The studio of specialist agents is experimental and becomes the default only if that comparison measures a gain ([ADR-P007](docs/v3/adrs/ADR-P007-no-multiagent-by-default.md)).

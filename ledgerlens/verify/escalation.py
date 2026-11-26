@@ -71,7 +71,7 @@ from ledgerlens.policy_limits import (
     FX_STANDARD_PLAN_POLICY,
 )
 from ledgerlens.schemas import ESCALATION_PREFIX, Evidence, InvestigationResult
-from ledgerlens.sim.calendars import is_business_day
+from ledgerlens.sim.calendars import previous_business_day as _previous_business_day
 from ledgerlens.verify.checks import _OPEN_CHARGEBACK, _rows, load_thresholds
 
 _PAYMENT_KEYS = ("amount_minor", "requested_amount_minor", "payout_amount_minor")
@@ -121,13 +121,6 @@ def _day(value: Any) -> date | None:
         return date.fromisoformat(str(value)[:10])
     except ValueError:
         return None
-
-
-def _previous_business_day(day: date, currency: str) -> date:
-    current = day - timedelta(days=1)
-    while not is_business_day(current, currency):
-        current -= timedelta(days=1)
-    return current
 
 
 def _ledger_rows(result: InvestigationResult) -> list[dict[str, Any]]:
@@ -607,7 +600,11 @@ def derive_action(result: InvestigationResult, review: bool) -> str:
 
 
 def apply_escalation(
-    result: InvestigationResult, *, as_of: date | None = None, ledger_db: Path | str | None = None
+    result: InvestigationResult,
+    *,
+    as_of: date | None = None,
+    ledger_db: Path | str | None = None,
+    review_conditions: list[dict[str, Any]] | None = None,
 ) -> InvestigationResult:
     """Copy of the result with human review raised by the rules and the recommended action filled in.
 
@@ -615,6 +612,10 @@ def apply_escalation(
     ledger from which the deadline of a cited dispute the rows did not bring is read.
     """
     reasons = [f"{ESCALATION_PREFIX}{r}" for r in escalation_reasons(result, as_of, ledger_db=ledger_db)]
+    if review_conditions is not None:
+        review_conditions.extend(
+            {"stage": "escalation", "condition": "policy_rule", "reason": reason} for reason in reasons
+        )
     missing = list(result.missing_information) + [r for r in reasons if r not in result.missing_information]
     review = result.requires_human_review or bool(reasons)
     return result.model_copy(

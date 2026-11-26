@@ -38,6 +38,8 @@ immediate answer, and critical only for a risk of losing money or a deadline alr
 - The plan is a list of short steps (S1, S2, ...). Each step has the expected tool \
 (query_ledger, get_ledger_record, search_policies, get_reference_fx, calculate, recall_cases) or none, \
 and the steps it depends on. Steps that only write the answer use no tool.
+- If the customer describes a deadline and asks what the policy requires or what to do, plan search_policies. \
+Use their stated facts conditionally. An identifier is needed to verify the actual case status, not to explain the rule.
 - If the complaint carries no identifier at all and cannot be investigated, use needs_clarification=true \
 and write the question in clarification_question.
 

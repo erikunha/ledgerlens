@@ -19,9 +19,8 @@ from typing import Any
 
 import pytest
 
-from ledgerlens import embeddings as emb
 from ledgerlens.agents.integrator import build_integrator, investigate
-from ledgerlens.embeddings import FastEmbedEmbeddings
+from ledgerlens.embeddings import OfflineEmbeddings
 from ledgerlens.memory.long_term import CaseMemory
 from ledgerlens.offline import ScriptedChatModel, text_message, tool_call_message
 from ledgerlens.retrieval import build_policy_index, index_dir_for, load_policy_documents
@@ -45,20 +44,19 @@ def ledger_db(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 
 @pytest.fixture
-def embeddings(monkeypatch: pytest.MonkeyPatch) -> FastEmbedEmbeddings:
-    monkeypatch.setattr(emb, "_text_embedding_class", lambda: base.WordCountModel)
-    return FastEmbedEmbeddings()
+def embeddings() -> OfflineEmbeddings:
+    return OfflineEmbeddings()
 
 
 @pytest.fixture
-def index_root(tmp_path: Path, embeddings: FastEmbedEmbeddings) -> Path:
+def index_root(tmp_path: Path, embeddings: OfflineEmbeddings) -> Path:
     root = tmp_path / "index"
     build_policy_index(load_policy_documents(base.POLICIES), embeddings, index_dir_for(root, embeddings))
     return root
 
 
 @pytest.fixture
-def cases(tmp_path: Path, embeddings: FastEmbedEmbeddings) -> CaseMemory:
+def cases(tmp_path: Path, embeddings: OfflineEmbeddings) -> CaseMemory:
     return CaseMemory(tmp_path / "cases", embeddings=embeddings)
 
 

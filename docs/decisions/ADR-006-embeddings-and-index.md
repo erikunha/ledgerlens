@@ -6,20 +6,21 @@ date: 2026-11-07
 
 # ADR-006: Embeddings, FAISS index and metadata
 
-Status: accepted. Date: 2026-11-07.
+Status: accepted. The offline default is deterministic word counting. The FastEmbed measurements below describe the optional learned provider.
 
 ## Context
 
 The project needs semantic search with FAISS and a retrieval agent that works over an index that already exists, without rebuilding it. Offline mode cannot depend on the embeddings API. `sentence-transformers` pulls in `torch`, which is heavy. `langchain-community` is archived and warns that it will be sunset, but it still ships `FAISS`. The `langchain-faiss` 0.1.1 package exists on PyPI, but once installed it was empty (no exported names, `ImportError`).
 
-The eight policies in `data/policies/` and the 12 questions in `data/eval/policy_questions.jsonl` are in English, so an English embedding model is enough and a small one keeps the offline download short.
+The eight policies in `data/policies/` and the 12 questions in `data/eval/policy_questions.jsonl` are in English, so an English embedding model is enough and a small one serves the optional local semantic search.
 
 ## Decision
 
 - **Online:** `text-embedding-3-small` through `langchain-openai`.
-- **Offline:** `fastembed` 0.9.1 with `BAAI/bge-small-en-v1.5` (384 dimensions, about 67 MB) inside an `Embeddings` subclass of about 15 lines. The model reads up to 512 tokens per text. The dimension is read at construction and written into the index.
+- **Offline:** Lowercase word counts are mapped by CRC32 into 64 buckets. The provider requires no weights.
+- **Optional learned model:** `fastembed` 0.9.1 with `BAAI/bge-small-en-v1.5` (384 dimensions, about 67 MB) inside an `Embeddings` subclass of about 15 lines. The model reads up to 512 tokens per text. The dimension is read at construction and written into the index.
 - **Index:** `FAISS` from `langchain_community.vectorstores`, version pinned, behind `ledgerlens/retrieval.py` so a future swap touches a single file. Vectors are normalized (length 1) on input and on query, so L2 distance orders like cosine. Smaller is closer.
-- **Build:** `scripts/build_index.py` indexes once. The agent only loads. The offline index is versioned in `data/index/policies_fastembed/` (`index.faiss`, `index.pkl`, `index_meta.json`).
+- **Build:** `scripts/build_index.py` indexes once. The agent only loads. The offline index is versioned in `data/index/policies_offline/` (`index.faiss`, `index.pkl`, `index_meta.json`).
 - **Metadata per passage:** `chunk_id` (`document#section`), `document`, `section`, `topic`, `version`, `language`, `order`. The FAISS ids are the `chunk_id`s, so rebuilding with the same vectors gives the same files.
 - **Compatibility:** `index_meta.json` stores the embedding name, the dimension, the number of passages, the metric and the build date. The loader refuses an index whose embedding does not match the active one (`INDEX_MISMATCH`), because neighbors from another vector space would be wrong without any warning.
 - `load_local` requires `allow_dangerous_deserialization=True`. The index is ours and is only read from `data/index/`, and the single place where the parameter is used (`load_policy_index`) carries a comment saying so.
@@ -27,10 +28,10 @@ The eight policies in `data/policies/` and the 12 questions in `data/eval/policy
 ```mermaid
 flowchart LR
   subgraph build["Build (once): scripts/build_index.py"]
-    P["data/policies/*.md<br/>8 documents, 105 sections"] --> C["load_policy_documents<br/>passages with chunk_id and metadata"]
-    C --> E["embed_documents<br/>bge-small-en-v1.5, 384 dimensions"]
+    P["data/policies/*.md<br/>policy documents"] --> C["load_policy_documents<br/>passages with chunk_id and metadata"]
+    C --> E["embed_documents<br/>offline word counts, 64 dimensions"]
     E --> W["build_policy_index<br/>FAISS + index_meta.json"]
-    W --> D[("data/index/<br/>policies_fastembed/")]
+    W --> D[("data/index/<br/>policies_offline/")]
   end
   subgraph load["Load (always): search_policies"]
     Q["question"] --> M{"does index_meta.json match<br/>the active embedding?"}

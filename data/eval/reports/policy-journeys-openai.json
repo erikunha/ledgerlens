@@ -1,0 +1,2482 @@
+{
+  "revision": "c6f06ff835d52ec7eb413dab31fe8359a9fec08c",
+  "source_sha256": {
+    "ledgerlens/agents/integrator.py": "e315aa42908b13a27e58bf40bccc4bcdf5a21fd7ba479adec0b3bfba3f479b9d",
+    "ledgerlens/prompts/templates.py": "f8422066c0c97160a27b5557725cd7892c587b3e0efb616397c08c99271f341d",
+    "ledgerlens/tools/policies.py": "3a1d1f36e54210f723e1ae34edf76f1b269f22b2efa0a3b771a41a363ab7cfb8",
+    "scripts/report_policy_journeys.py": "757e65c8549650906fd8ea33e283d3b238efa5ce74909eacb9c3c53278eb21b5",
+    "ledgerlens/tools/calculator.py": "49f48c5a28f3b6147158fe173b0432cb2caeff30beb470c3978bbfd12c3c50db",
+    "ledgerlens/sim/calendars.py": "17b1659b2e1e4cb6e9be4adcb31e729fab5ee469ea26ab73506095c9a3103fc7",
+    "ledgerlens/verify/checks.py": "2f95f2ce07bec879df40dfed056814f73a0951eaf0d2a441f57c237e07157c2c",
+    "ledgerlens/verify/escalation.py": "3b4c7154af8d0aee9f1bc2bbd74cf0b99975f2e2d6b7c464c5bc84c988258f46",
+    "ledgerlens/verify/__init__.py": "47537ec17d3fc896c87f980964499f96f0a77912f2acfb99615886c9a9a05bdd"
+  },
+  "index": {
+    "embedding": "openai:text-embedding-3-small",
+    "dimension": 1536,
+    "chunks": 106,
+    "metric": "l2 on unit vectors",
+    "chunk_size": 800,
+    "chunk_overlap": 100,
+    "built_on": "2026-11-26",
+    "corpus_sha256": "0b79819fc26a34e36b992d771db5d70238a949562c74f6ee3d551f42304dfd0e",
+    "artifact_sha256": {
+      "index.faiss": "db00c5e3700082d33e2cd99ff017aee6d5bdd2a7a9d95f811902aad87a4462ac",
+      "index.pkl": "c6b05cfe31f75997d43dafc29c70b536cd6773593465e222ee4f99729e5d7dd0"
+    }
+  },
+  "model": "gpt-4.1",
+  "verifier": "offline_stub",
+  "standard_usd_per_million": {
+    "input": "2",
+    "cached": "0.50",
+    "output": "8",
+    "embedding": "0.02"
+  },
+  "counts": {
+    "answered": 16,
+    "clarification": 1
+  },
+  "cases": [
+    {
+      "case_id": "chargeback-cutoff",
+      "question": "When does Acme require merchant evidence for a chargeback?",
+      "status": "answered",
+      "error": null,
+      "answer": "Acme requires merchant evidence for a chargeback when a dispute is opened by the cardholder and Acme informs the merchant and prepares the defense [policy:chargeback-handling#overview]. The merchant is responsible for gathering the evidence, which is then checked and forwarded by the Acme Payments disputes team [policy:chargeback-handling#who-submits]. Evidence must be sent at least one business day before the response deadline of the dispute, which is an internal Acme cutoff and not the card network's deadline [policy:chargeback-handling#response-deadline]. If evidence is sent after the response deadline, the dispute is lost automatically, with no review of the merits [policy:chargeback-handling#response-deadline].",
+      "search_observed": true,
+      "searches": [
+        {
+          "input": {
+            "query": "When is merchant evidence required for a chargeback?"
+          },
+          "candidate_ids": [
+            "policy:chargeback-handling#overview",
+            "policy:chargeback-handling#evidence-frd",
+            "policy:chargeback-handling#response-deadline",
+            "policy:chargeback-handling#who-submits"
+          ],
+          "queries_used": [
+            "When is merchant evidence required for a chargeback?",
+            "What is the submission deadline for merchant documentation in response to a chargeback?"
+          ],
+          "transform_used": "rewrite",
+          "status": "ok",
+          "error": null
+        }
+      ],
+      "calculations": [],
+      "policy_citations": [
+        {
+          "id": "policy:chargeback-handling#overview",
+          "passage": "Overview\nA chargeback is a dispute the cardholder opens with the issuing bank to ask for a payment back. Acme Payments gets the notice of the dispute, informs the merchant and prepares the defense. This policy defines the stages, the deadlines and the evidence required."
+        },
+        {
+          "id": "policy:chargeback-handling#who-submits",
+          "passage": "Who submits the evidence\nThe merchant gathers the evidence and the Acme Payments disputes team checks it and forwards it. The analyst handling the case does not send evidence on their own. They confirm that the dispute is at the right stage, that the internal cutoff has not passed and that the evidence list for the reason code is complete."
+        },
+        {
+          "id": "policy:chargeback-handling#response-deadline",
+          "passage": "Response deadline\nEvidence must be sent at least one business day before the response deadline of the dispute. The response deadline is the deadline of Acme for the response of the merchant: it shows up in the dispute's deadline field, ten to fourteen days after the dispute is opened, and it is a house rule of Acme and not the deadline of the card network. The window of the card network itself is longer, thirty calendar days for the categories of Visa and the frames of Mastercard (source: the Visa Core Rules and the Mastercard Chargeback Guide, read on 2026-11-25), and it is written down in `docs/policies-of-acme.md`. The Acme Payments internal cutoff is one business day before the response deadline. A response sent after the response deadline loses the dispute automatically, with no review of the merits."
+        }
+      ],
+      "judgment": "pending",
+      "usage": {
+        "model_calls": 3,
+        "tool_calls": 1,
+        "input_tokens": 5600,
+        "output_tokens": 175,
+        "elapsed_seconds": 5.818,
+        "observed_cost_usd": null,
+        "estimated_cost_usd": null,
+        "price_known": false,
+        "cut_by": null
+      },
+      "recommended_action": "escalate_to_human",
+      "review_reasons": [
+        "Missing evidence for: The merchant is responsible for gathering the evidence, which is then checked and forwarded by the Acme Payments disputes team."
+      ],
+      "claims": [
+        {
+          "id": "CL1",
+          "text": "Acme requires merchant evidence for a chargeback when a dispute is opened by the cardholder and Acme informs the merchant and prepares the defense.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:chargeback-handling#overview"
+          ],
+          "numeric": null
+        },
+        {
+          "id": "CL2",
+          "text": "The merchant is responsible for gathering the evidence, which is then checked and forwarded by the Acme Payments disputes team.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:chargeback-handling#who-submits"
+          ],
+          "numeric": null
+        },
+        {
+          "id": "CL3",
+          "text": "Evidence must be sent at least one business day before the response deadline of the dispute, which is an internal Acme cutoff and not the card network's deadline.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline"
+          ],
+          "numeric": null
+        },
+        {
+          "id": "CL4",
+          "text": "If evidence is sent after the response deadline, the dispute is lost automatically, with no review of the merits.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline"
+          ],
+          "numeric": null
+        }
+      ],
+      "verdicts": [
+        {
+          "claim_id": "CL1",
+          "label": "supported",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.9586,
+            "contradiction": 0.02,
+            "neutral": 0.0214
+          },
+          "evidence_ids": [
+            "policy:chargeback-handling#overview"
+          ],
+          "note": null
+        },
+        {
+          "claim_id": "CL2",
+          "label": "not_enough_evidence",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.1636,
+            "contradiction": 0.05,
+            "neutral": 0.7864
+          },
+          "evidence_ids": [
+            "policy:chargeback-handling#who-submits"
+          ],
+          "note": null
+        },
+        {
+          "claim_id": "CL3",
+          "label": "contradicted",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.02,
+            "contradiction": 0.93,
+            "neutral": 0.05
+          },
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline"
+          ],
+          "note": null
+        },
+        {
+          "claim_id": "CL4",
+          "label": "supported",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.96,
+            "contradiction": 0.02,
+            "neutral": 0.02
+          },
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline"
+          ],
+          "note": null
+        }
+      ],
+      "missing_information": [
+        "Missing evidence for: The merchant is responsible for gathering the evidence, which is then checked and forwarded by the Acme Payments disputes team."
+      ],
+      "requires_human_review": true,
+      "plan_deviations": [],
+      "review_conditions": [
+        {
+          "stage": "verify",
+          "condition": "contradicted",
+          "claim_ids": [
+            "CL3"
+          ]
+        }
+      ],
+      "repetition": 1,
+      "provider_tokens": {
+        "cached": 3456,
+        "input": 3569,
+        "output": 351,
+        "embedding": 25
+      },
+      "estimated_online_usd": "0.0116745"
+    },
+    {
+      "case_id": "refund-versus-chargeback",
+      "question": "Do I need to submit a refund request before the chargeback response deadline?",
+      "status": "answered",
+      "error": null,
+      "answer": "The policy states that a payment with an open chargeback cannot be refunded at the same time, because the customer would get paid twice. While the dispute is open, the refund request waits for the outcome. If the merchant wins the dispute, the payment goes back to being a normal captured payment and the request can be reviewed again [policy:refund-policy#refunds-and-chargebacks]. There is no policy passage stating that a refund request must be submitted before the chargeback response deadline [policy:refund-policy#refunds-and-chargebacks]. \n\nTherefore, you are not required to submit a refund request before the chargeback response deadline. If you do submit a refund request while a chargeback is open, the request will simply wait for the dispute outcome [policy:refund-policy#refunds-and-chargebacks].",
+      "search_observed": true,
+      "searches": [
+        {
+          "input": {
+            "query": "Is a refund request required before the chargeback response deadline?"
+          },
+          "candidate_ids": [
+            "policy:chargeback-handling#response-deadline",
+            "policy:refund-policy#refunds-and-chargebacks",
+            "policy:refund-policy#who-can-request",
+            "policy:chargeback-handling#overview"
+          ],
+          "queries_used": [
+            "Is a refund request required before the chargeback response deadline?",
+            "Is submission of a refund transaction necessary prior to the chargeback representment cutoff date?"
+          ],
+          "transform_used": "rewrite",
+          "status": "ok",
+          "error": null
+        }
+      ],
+      "calculations": [],
+      "policy_citations": [
+        {
+          "id": "policy:refund-policy#refunds-and-chargebacks",
+          "passage": "Refunds and disputes\nA payment with an open chargeback cannot be refunded at the same time, because the customer would get paid twice. While the dispute is open, the refund request waits for the outcome. If the merchant wins the dispute, the payment goes back to being a normal captured payment and the request can be reviewed again."
+        }
+      ],
+      "judgment": "pending",
+      "usage": {
+        "model_calls": 3,
+        "tool_calls": 1,
+        "input_tokens": 5540,
+        "output_tokens": 189,
+        "elapsed_seconds": 5.726,
+        "observed_cost_usd": null,
+        "estimated_cost_usd": null,
+        "price_known": false,
+        "cut_by": null
+      },
+      "recommended_action": "escalate_to_human",
+      "review_reasons": [
+        "Missing evidence for: There is no policy passage stating that a refund request must be submitted before the chargeback response deadline.",
+        "Missing evidence for: If you do submit a refund request while a chargeback is open, the request will simply wait for the dispute outcome."
+      ],
+      "claims": [
+        {
+          "id": "CL1",
+          "text": "The policy states that a payment with an open chargeback cannot be refunded at the same time, because the customer would get paid twice.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:refund-policy#refunds-and-chargebacks"
+          ],
+          "numeric": null
+        },
+        {
+          "id": "CL2",
+          "text": "While the dispute is open, the refund request waits for the outcome.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:refund-policy#refunds-and-chargebacks"
+          ],
+          "numeric": null
+        },
+        {
+          "id": "CL3",
+          "text": "If the merchant wins the dispute, the payment goes back to being a normal captured payment and the request can be reviewed again.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:refund-policy#refunds-and-chargebacks"
+          ],
+          "numeric": null
+        },
+        {
+          "id": "CL4",
+          "text": "There is no policy passage stating that a refund request must be submitted before the chargeback response deadline.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:refund-policy#refunds-and-chargebacks"
+          ],
+          "numeric": null
+        },
+        {
+          "id": "CL5",
+          "text": "If you do submit a refund request while a chargeback is open, the request will simply wait for the dispute outcome.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:refund-policy#refunds-and-chargebacks"
+          ],
+          "numeric": null
+        }
+      ],
+      "verdicts": [
+        {
+          "claim_id": "CL1",
+          "label": "supported",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.9646,
+            "contradiction": 0.02,
+            "neutral": 0.0154
+          },
+          "evidence_ids": [
+            "policy:refund-policy#refunds-and-chargebacks"
+          ],
+          "note": null
+        },
+        {
+          "claim_id": "CL2",
+          "label": "supported",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.98,
+            "contradiction": 0.02,
+            "neutral": 0.0
+          },
+          "evidence_ids": [
+            "policy:refund-policy#refunds-and-chargebacks"
+          ],
+          "note": null
+        },
+        {
+          "claim_id": "CL3",
+          "label": "supported",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.98,
+            "contradiction": 0.02,
+            "neutral": 0.0
+          },
+          "evidence_ids": [
+            "policy:refund-policy#refunds-and-chargebacks"
+          ],
+          "note": null
+        },
+        {
+          "claim_id": "CL4",
+          "label": "not_enough_evidence",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.075,
+            "contradiction": 0.05,
+            "neutral": 0.875
+          },
+          "evidence_ids": [
+            "policy:refund-policy#refunds-and-chargebacks"
+          ],
+          "note": null
+        },
+        {
+          "claim_id": "CL5",
+          "label": "not_enough_evidence",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.2,
+            "contradiction": 0.05,
+            "neutral": 0.75
+          },
+          "evidence_ids": [
+            "policy:refund-policy#refunds-and-chargebacks"
+          ],
+          "note": null
+        }
+      ],
+      "missing_information": [
+        "Missing evidence for: There is no policy passage stating that a refund request must be submitted before the chargeback response deadline.",
+        "Missing evidence for: If you do submit a refund request while a chargeback is open, the request will simply wait for the dispute outcome."
+      ],
+      "requires_human_review": true,
+      "plan_deviations": [],
+      "review_conditions": [
+        {
+          "stage": "verify",
+          "condition": "unsupported_share_review",
+          "claim_ids": [
+            "CL4",
+            "CL5"
+          ],
+          "total_claims": 5,
+          "share": 0.4,
+          "threshold": 0.34
+        }
+      ],
+      "repetition": 1,
+      "provider_tokens": {
+        "cached": 5248,
+        "input": 1722,
+        "output": 356,
+        "embedding": 29
+      },
+      "estimated_online_usd": "0.00891658"
+    },
+    {
+      "case_id": "pet-insurance",
+      "question": "How much pet insurance coverage does Acme provide?",
+      "status": "answered",
+      "error": null,
+      "answer": "I could not find any policy passage that describes the amount of pet insurance coverage Acme provides. The search results only reference refund handling, fees, and FX markup, and do not mention pet insurance coverage or its limits. Therefore, I cannot establish the pet insurance coverage amount from the available policy passages [policy:refund-policy#overview, policy:fees-and-pricing#overview, policy:fees-and-pricing#chargeback-fee, policy:fees-and-pricing#fx-markup-is-not-a-fee].",
+      "search_observed": true,
+      "searches": [
+        {
+          "input": {
+            "query": "pet insurance coverage amount for Acme"
+          },
+          "candidate_ids": [
+            "policy:refund-policy#overview",
+            "policy:fees-and-pricing#overview",
+            "policy:fees-and-pricing#chargeback-fee",
+            "policy:fees-and-pricing#fx-markup-is-not-a-fee"
+          ],
+          "queries_used": [
+            "pet insurance coverage amount for Acme",
+            "What is the policy limit for pet insurance coverage for Acme?"
+          ],
+          "transform_used": "rewrite",
+          "status": "ok",
+          "error": null
+        }
+      ],
+      "calculations": [],
+      "policy_citations": [
+        {
+          "id": "policy:refund-policy#overview",
+          "passage": "Overview\nThis policy describes how Acme Payments handles refund requests for captured payments. It applies to every merchant on the platform, unless the merchant's contract says otherwise. Acme Payments is a fictional company, created only for this project."
+        },
+        {
+          "id": "policy:fees-and-pricing#overview",
+          "passage": "Overview\nAcme Payments charges the merchant two fees: a processing fee proportional to the volume sold and a fixed fee per chargeback opened. The fees are deducted in the weekly settlement, in the merchant's settlement currency. There are no other fees on the platform."
+        },
+        {
+          "id": "policy:fees-and-pricing#chargeback-fee",
+          "passage": "Chargeback fee\nFor each chargeback opened in the period, Acme charges a fixed fee of 15.00 in the merchant's settlement currency. The fee applies to each chargeback opened in the period, whether the merchant later wins or loses the dispute. What counts is the date the dispute was opened, not the date of the original payment."
+        },
+        {
+          "id": "policy:fees-and-pricing#fx-markup-is-not-a-fee",
+          "passage": "FX markup is not a fee\nThe markup some merchants apply when converting cross-currency refunds is not an Acme Payments fee. It is the merchant's choice, described in their settlement terms, and it does not show up in the settlement as a fee. The cross-currency refund policy sets the limit."
+        }
+      ],
+      "judgment": "pending",
+      "usage": {
+        "model_calls": 3,
+        "tool_calls": 1,
+        "input_tokens": 5392,
+        "output_tokens": 126,
+        "elapsed_seconds": 4.559,
+        "observed_cost_usd": null,
+        "estimated_cost_usd": null,
+        "price_known": false,
+        "cut_by": null
+      },
+      "recommended_action": "escalate_to_human",
+      "review_reasons": [
+        "Missing evidence for: The search results only reference refund handling, fees, and FX markup, and do not mention pet insurance coverage or its limits.",
+        "Missing evidence for: Therefore, I cannot establish the pet insurance coverage amount from the available policy passages."
+      ],
+      "claims": [
+        {
+          "id": "CL1",
+          "text": "The search results only reference refund handling, fees, and FX markup, and do not mention pet insurance coverage or its limits.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:refund-policy#overview",
+            "policy:fees-and-pricing#overview",
+            "policy:fees-and-pricing#chargeback-fee",
+            "policy:fees-and-pricing#fx-markup-is-not-a-fee"
+          ],
+          "numeric": null
+        },
+        {
+          "id": "CL2",
+          "text": "Therefore, I cannot establish the pet insurance coverage amount from the available policy passages.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:refund-policy#overview",
+            "policy:fees-and-pricing#overview",
+            "policy:fees-and-pricing#chargeback-fee",
+            "policy:fees-and-pricing#fx-markup-is-not-a-fee"
+          ],
+          "numeric": null
+        }
+      ],
+      "verdicts": [
+        {
+          "claim_id": "CL1",
+          "label": "not_enough_evidence",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.12,
+            "contradiction": 0.05,
+            "neutral": 0.83
+          },
+          "evidence_ids": [
+            "policy:refund-policy#overview",
+            "policy:fees-and-pricing#overview",
+            "policy:fees-and-pricing#chargeback-fee",
+            "policy:fees-and-pricing#fx-markup-is-not-a-fee"
+          ],
+          "note": null
+        },
+        {
+          "claim_id": "CL2",
+          "label": "not_enough_evidence",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.03,
+            "contradiction": 0.05,
+            "neutral": 0.92
+          },
+          "evidence_ids": [
+            "policy:refund-policy#overview",
+            "policy:fees-and-pricing#overview",
+            "policy:fees-and-pricing#chargeback-fee",
+            "policy:fees-and-pricing#fx-markup-is-not-a-fee"
+          ],
+          "note": null
+        }
+      ],
+      "missing_information": [
+        "Missing evidence for: The search results only reference refund handling, fees, and FX markup, and do not mention pet insurance coverage or its limits.",
+        "Missing evidence for: Therefore, I cannot establish the pet insurance coverage amount from the available policy passages."
+      ],
+      "requires_human_review": true,
+      "plan_deviations": [],
+      "review_conditions": [
+        {
+          "stage": "verify",
+          "condition": "unsupported_share_review",
+          "claim_ids": [
+            "CL1",
+            "CL2"
+          ],
+          "total_claims": 2,
+          "share": 1.0,
+          "threshold": 0.34
+        }
+      ],
+      "repetition": 1,
+      "provider_tokens": {
+        "cached": 3456,
+        "input": 3356,
+        "output": 285,
+        "embedding": 20
+      },
+      "estimated_online_usd": "0.0107204"
+    },
+    {
+      "case_id": "explicit-chargeback-deadline",
+      "question": "How far before the dispute response deadline must the merchant submit chargeback evidence?",
+      "status": "answered",
+      "error": null,
+      "answer": "The merchant must submit chargeback evidence at least one business day before the dispute response deadline [policy:chargeback-handling#response-deadline]. The Acme Payments internal cutoff is one business day before the response deadline [policy:chargeback-handling#response-deadline].",
+      "search_observed": true,
+      "searches": [
+        {
+          "input": {
+            "query": "How far before the dispute response deadline must the merchant submit chargeback evidence?"
+          },
+          "candidate_ids": [
+            "policy:chargeback-handling#response-deadline",
+            "policy:chargeback-handling#overview",
+            "policy:escalation-and-review#deadline-within-2-days",
+            "policy:chargeback-handling#who-submits"
+          ],
+          "queries_used": [
+            "How far before the dispute response deadline must the merchant submit chargeback evidence?",
+            "What is the required submission cutoff for merchants to provide chargeback representment documentation prior to the dispute response deadline?"
+          ],
+          "transform_used": "rewrite",
+          "status": "ok",
+          "error": null
+        }
+      ],
+      "calculations": [],
+      "policy_citations": [
+        {
+          "id": "policy:chargeback-handling#response-deadline",
+          "passage": "Response deadline\nEvidence must be sent at least one business day before the response deadline of the dispute. The response deadline is the deadline of Acme for the response of the merchant: it shows up in the dispute's deadline field, ten to fourteen days after the dispute is opened, and it is a house rule of Acme and not the deadline of the card network. The window of the card network itself is longer, thirty calendar days for the categories of Visa and the frames of Mastercard (source: the Visa Core Rules and the Mastercard Chargeback Guide, read on 2026-11-25), and it is written down in `docs/policies-of-acme.md`. The Acme Payments internal cutoff is one business day before the response deadline. A response sent after the response deadline loses the dispute automatically, with no review of the merits."
+        }
+      ],
+      "judgment": "pending",
+      "usage": {
+        "model_calls": 3,
+        "tool_calls": 1,
+        "input_tokens": 5578,
+        "output_tokens": 87,
+        "elapsed_seconds": 4.752,
+        "observed_cost_usd": null,
+        "estimated_cost_usd": null,
+        "price_known": false,
+        "cut_by": null
+      },
+      "recommended_action": "none",
+      "review_reasons": [],
+      "claims": [
+        {
+          "id": "CL1",
+          "text": "The merchant must submit chargeback evidence at least one business day before the dispute response deadline.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline"
+          ],
+          "numeric": null
+        },
+        {
+          "id": "CL2",
+          "text": "The Acme Payments internal cutoff is one business day before the response deadline.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline"
+          ],
+          "numeric": null
+        }
+      ],
+      "verdicts": [
+        {
+          "claim_id": "CL1",
+          "label": "supported",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.9723,
+            "contradiction": 0.02,
+            "neutral": 0.0077
+          },
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline"
+          ],
+          "note": null
+        },
+        {
+          "claim_id": "CL2",
+          "label": "supported",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.98,
+            "contradiction": 0.02,
+            "neutral": 0.0
+          },
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline"
+          ],
+          "note": null
+        }
+      ],
+      "missing_information": [],
+      "requires_human_review": false,
+      "plan_deviations": [],
+      "review_conditions": [],
+      "repetition": 1,
+      "provider_tokens": {
+        "cached": 2944,
+        "input": 4067,
+        "output": 264,
+        "embedding": 37
+      },
+      "estimated_online_usd": "0.01171874"
+    },
+    {
+      "case_id": "cutoff-passed",
+      "question": "Our merchant evidence cutoff passed, but the dispute response deadline is tomorrow. Have we lost? What should we do today?",
+      "status": "answered",
+      "error": null,
+      "answer": "You have not automatically lost the dispute just because the merchant evidence cutoff has passed, but you cannot submit new evidence through the standard process anymore. The internal cutoff for submitting merchant evidence is one business day before the response deadline, and evidence sent after this cutoff is not accepted for review by Acme Payments [policy:chargeback-handling#response-deadline, policy:chargeback-handling#response-deadline-2].\n\nHowever, when the response deadline is very close (2 days away or less) and the internal cutoff has passed, the case requires a human decision on the same day. The system will report the days left, the cutoff, and any evidence still missing. This means you should escalate the case for urgent review by a human today, as there may be exceptional actions or reviews possible at this stage, but these are not part of the standard evidence submission process [policy:escalation-and-review#deadline-within-2-days].\n\nIn summary: you have not lost automatically, but you cannot submit new evidence through the normal channel. Today, you should escalate the case for urgent human review, as required by policy when the deadline is this close and the cutoff has passed [policy:escalation-and-review#deadline-within-2-days].",
+      "search_observed": true,
+      "searches": [
+        {
+          "input": {
+            "query": "actions allowed after merchant evidence cutoff but before dispute response deadline"
+          },
+          "candidate_ids": [
+            "policy:chargeback-handling#response-deadline",
+            "policy:chargeback-handling#who-submits",
+            "policy:escalation-and-review#deadline-within-2-days",
+            "policy:chargeback-handling#response-deadline-2"
+          ],
+          "queries_used": [
+            "actions allowed after merchant evidence cutoff but before dispute response deadline",
+            "What actions are permitted after the merchant evidence submission cutoff but before the dispute response deadline?"
+          ],
+          "transform_used": "rewrite",
+          "status": "ok",
+          "error": null
+        }
+      ],
+      "calculations": [],
+      "policy_citations": [
+        {
+          "id": "policy:chargeback-handling#response-deadline",
+          "passage": "Response deadline\nEvidence must be sent at least one business day before the response deadline of the dispute. The response deadline is the deadline of Acme for the response of the merchant: it shows up in the dispute's deadline field, ten to fourteen days after the dispute is opened, and it is a house rule of Acme and not the deadline of the card network. The window of the card network itself is longer, thirty calendar days for the categories of Visa and the frames of Mastercard (source: the Visa Core Rules and the Mastercard Chargeback Guide, read on 2026-11-25), and it is written down in `docs/policies-of-acme.md`. The Acme Payments internal cutoff is one business day before the response deadline. A response sent after the response deadline loses the dispute automatically, with no review of the merits."
+        },
+        {
+          "id": "policy:chargeback-handling#response-deadline-2",
+          "passage": "Response deadline\nsent after the response deadline loses the dispute automatically, with no review of the merits. For a Monday deadline, the cutoff is the preceding Friday if that Friday is a business day on the settlement currency's calendar. Otherwise, continue backwards to the preceding business day. For example, for a Monday, July 7, 2025 response deadline, the USD cutoff is Thursday, July 3 because July 4 is a US federal holiday. The EUR cutoff is Friday, July 4 because the TARGET calendar is open."
+        },
+        {
+          "id": "policy:escalation-and-review#deadline-within-2-days",
+          "passage": "Deadline close\nA dispute with the response deadline 2 days away or less has critical urgency. If the internal cutoff, which is one business day before the response deadline, has already passed, the case needs a human decision on the same day. The system reports the days left, the internal cutoff and the evidence still missing."
+        }
+      ],
+      "judgment": "pending",
+      "usage": {
+        "model_calls": 3,
+        "tool_calls": 1,
+        "input_tokens": 5640,
+        "output_tokens": 281,
+        "elapsed_seconds": 5.819,
+        "observed_cost_usd": null,
+        "estimated_cost_usd": null,
+        "price_known": false,
+        "cut_by": null
+      },
+      "recommended_action": "escalate_to_human",
+      "review_reasons": [
+        "Missing evidence for: You have not automatically lost the dispute just because the merchant evidence cutoff has passed, but you cannot submit new evidence through the standard process anymore.",
+        "Missing evidence for: Today, you should escalate the case for urgent human review, as required by policy when the deadline is this close and the cutoff has passed."
+      ],
+      "claims": [
+        {
+          "id": "CL1",
+          "text": "You have not automatically lost the dispute just because the merchant evidence cutoff has passed, but you cannot submit new evidence through the standard process anymore.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline",
+            "policy:chargeback-handling#response-deadline-2"
+          ],
+          "numeric": null
+        },
+        {
+          "id": "CL2",
+          "text": "The internal cutoff for submitting merchant evidence is one business day before the response deadline, and evidence sent after this cutoff is not accepted for review by Acme Payments.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline",
+            "policy:chargeback-handling#response-deadline-2"
+          ],
+          "numeric": null
+        },
+        {
+          "id": "CL3",
+          "text": "However, when the response deadline is very close (2 days away or less) and the internal cutoff has passed, the case requires a human decision on the same day.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:escalation-and-review#deadline-within-2-days"
+          ],
+          "numeric": null
+        },
+        {
+          "id": "CL4",
+          "text": "The system will report the days left, the cutoff, and any evidence still missing.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:escalation-and-review#deadline-within-2-days"
+          ],
+          "numeric": null
+        },
+        {
+          "id": "CL5",
+          "text": "Today, you should escalate the case for urgent human review, as required by policy when the deadline is this close and the cutoff has passed.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:escalation-and-review#deadline-within-2-days"
+          ],
+          "numeric": null
+        }
+      ],
+      "verdicts": [
+        {
+          "claim_id": "CL1",
+          "label": "not_enough_evidence",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.1,
+            "contradiction": 0.05,
+            "neutral": 0.85
+          },
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline",
+            "policy:chargeback-handling#response-deadline-2"
+          ],
+          "note": null
+        },
+        {
+          "claim_id": "CL2",
+          "label": "contradicted",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.02,
+            "contradiction": 0.93,
+            "neutral": 0.05
+          },
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline",
+            "policy:chargeback-handling#response-deadline-2"
+          ],
+          "note": null
+        },
+        {
+          "claim_id": "CL3",
+          "label": "supported",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.9589,
+            "contradiction": 0.02,
+            "neutral": 0.0211
+          },
+          "evidence_ids": [
+            "policy:escalation-and-review#deadline-within-2-days"
+          ],
+          "note": null
+        },
+        {
+          "claim_id": "CL4",
+          "label": "supported",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.96,
+            "contradiction": 0.02,
+            "neutral": 0.02
+          },
+          "evidence_ids": [
+            "policy:escalation-and-review#deadline-within-2-days"
+          ],
+          "note": null
+        },
+        {
+          "claim_id": "CL5",
+          "label": "not_enough_evidence",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.12,
+            "contradiction": 0.05,
+            "neutral": 0.83
+          },
+          "evidence_ids": [
+            "policy:escalation-and-review#deadline-within-2-days"
+          ],
+          "note": null
+        }
+      ],
+      "missing_information": [
+        "Missing evidence for: You have not automatically lost the dispute just because the merchant evidence cutoff has passed, but you cannot submit new evidence through the standard process anymore.",
+        "Missing evidence for: Today, you should escalate the case for urgent human review, as required by policy when the deadline is this close and the cutoff has passed."
+      ],
+      "requires_human_review": true,
+      "plan_deviations": [],
+      "review_conditions": [
+        {
+          "stage": "verify",
+          "condition": "contradicted",
+          "claim_ids": [
+            "CL2"
+          ]
+        },
+        {
+          "stage": "verify",
+          "condition": "unsupported_share_review",
+          "claim_ids": [
+            "CL1",
+            "CL5"
+          ],
+          "total_claims": 5,
+          "share": 0.4,
+          "threshold": 0.34
+        }
+      ],
+      "repetition": 1,
+      "provider_tokens": {
+        "cached": 2944,
+        "input": 4134,
+        "output": 449,
+        "embedding": 28
+      },
+      "estimated_online_usd": "0.01333256"
+    },
+    {
+      "case_id": "monday-deadline",
+      "question": "The dispute response deadline is Monday and Friday is a business day for our settlement currency. By which day must we send evidence?",
+      "status": "answered",
+      "error": null,
+      "answer": "Evidence must be sent at least one business day before the response deadline of the dispute [policy:chargeback-handling#response-deadline]. For a Monday response deadline, if Friday is a business day for your settlement currency, the cutoff is Friday [policy:chargeback-handling#response-deadline-2]. Business days exclude Saturdays, Sundays, and the bank holidays of the settlement currency's calendar [policy:chargeback-handling#business-days].",
+      "search_observed": true,
+      "searches": [
+        {
+          "input": {
+            "query": "dispute response deadline evidence submission business days settlement currency"
+          },
+          "candidate_ids": [
+            "policy:chargeback-handling#response-deadline",
+            "policy:chargeback-handling#response-deadline-2",
+            "policy:escalation-and-review#deadline-within-2-days",
+            "policy:chargeback-handling#business-days"
+          ],
+          "queries_used": [
+            "dispute response deadline evidence submission business days settlement currency",
+            "What is the deadline in business days for submitting evidence in response to a dispute, and does the settlement currency affect this deadline?"
+          ],
+          "transform_used": "rewrite",
+          "status": "ok",
+          "error": null
+        }
+      ],
+      "calculations": [],
+      "policy_citations": [
+        {
+          "id": "policy:chargeback-handling#response-deadline",
+          "passage": "Response deadline\nEvidence must be sent at least one business day before the response deadline of the dispute. The response deadline is the deadline of Acme for the response of the merchant: it shows up in the dispute's deadline field, ten to fourteen days after the dispute is opened, and it is a house rule of Acme and not the deadline of the card network. The window of the card network itself is longer, thirty calendar days for the categories of Visa and the frames of Mastercard (source: the Visa Core Rules and the Mastercard Chargeback Guide, read on 2026-11-25), and it is written down in `docs/policies-of-acme.md`. The Acme Payments internal cutoff is one business day before the response deadline. A response sent after the response deadline loses the dispute automatically, with no review of the merits."
+        },
+        {
+          "id": "policy:chargeback-handling#response-deadline-2",
+          "passage": "Response deadline\nsent after the response deadline loses the dispute automatically, with no review of the merits. For a Monday deadline, the cutoff is the preceding Friday if that Friday is a business day on the settlement currency's calendar. Otherwise, continue backwards to the preceding business day. For example, for a Monday, July 7, 2025 response deadline, the USD cutoff is Thursday, July 3 because July 4 is a US federal holiday. The EUR cutoff is Friday, July 4 because the TARGET calendar is open."
+        },
+        {
+          "id": "policy:chargeback-handling#business-days",
+          "passage": "How to count business days\nBusiness days exclude Saturdays, Sundays and the bank holidays of the calendar of the merchant's settlement currency. To count the internal cutoff, go back one business day from the response deadline. If today's date is already past the internal cutoff, the dispute is late for the normal submission and must be escalated."
+        }
+      ],
+      "judgment": "pending",
+      "usage": {
+        "model_calls": 3,
+        "tool_calls": 1,
+        "input_tokens": 5717,
+        "output_tokens": 118,
+        "elapsed_seconds": 5.733,
+        "observed_cost_usd": null,
+        "estimated_cost_usd": null,
+        "price_known": false,
+        "cut_by": null
+      },
+      "recommended_action": "none",
+      "review_reasons": [],
+      "claims": [
+        {
+          "id": "CL1",
+          "text": "Evidence must be sent at least one business day before the response deadline of the dispute.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline"
+          ],
+          "numeric": null
+        },
+        {
+          "id": "CL2",
+          "text": "For a Monday response deadline, if Friday is a business day for your settlement currency, the cutoff is Friday.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline-2"
+          ],
+          "numeric": null
+        },
+        {
+          "id": "CL3",
+          "text": "Business days exclude Saturdays, Sundays, and the bank holidays of the settlement currency's calendar.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:chargeback-handling#business-days"
+          ],
+          "numeric": null
+        }
+      ],
+      "verdicts": [
+        {
+          "claim_id": "CL1",
+          "label": "supported",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.98,
+            "contradiction": 0.02,
+            "neutral": 0.0
+          },
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline"
+          ],
+          "note": null
+        },
+        {
+          "claim_id": "CL2",
+          "label": "supported",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.9717,
+            "contradiction": 0.02,
+            "neutral": 0.0083
+          },
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline-2"
+          ],
+          "note": null
+        },
+        {
+          "claim_id": "CL3",
+          "label": "supported",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.98,
+            "contradiction": 0.02,
+            "neutral": 0.0
+          },
+          "evidence_ids": [
+            "policy:chargeback-handling#business-days"
+          ],
+          "note": null
+        }
+      ],
+      "missing_information": [],
+      "requires_human_review": false,
+      "plan_deviations": [],
+      "review_conditions": [],
+      "repetition": 1,
+      "provider_tokens": {
+        "cached": 5248,
+        "input": 1907,
+        "output": 349,
+        "embedding": 35
+      },
+      "estimated_online_usd": "0.0092307"
+    },
+    {
+      "case_id": "response-late",
+      "question": "We sent the merchant response after the dispute response deadline. What happens to the dispute?",
+      "status": "answered",
+      "error": null,
+      "answer": "A merchant response sent after the dispute response deadline results in the dispute being lost automatically, with no review of the merits [policy:chargeback-handling#response-deadline, policy:chargeback-handling#response-deadline-2].",
+      "search_observed": true,
+      "searches": [
+        {
+          "input": {
+            "query": "what happens if merchant response is sent after dispute response deadline"
+          },
+          "candidate_ids": [
+            "policy:chargeback-handling#response-deadline",
+            "policy:chargeback-handling#response-deadline-2",
+            "policy:escalation-and-review#deadline-within-2-days",
+            "policy:chargeback-handling#business-days"
+          ],
+          "queries_used": [
+            "what happens if merchant response is sent after dispute response deadline",
+            "What are the consequences if a merchant submits a dispute response after the dispute response cutoff date?"
+          ],
+          "transform_used": "rewrite",
+          "status": "ok",
+          "error": null
+        }
+      ],
+      "calculations": [],
+      "policy_citations": [
+        {
+          "id": "policy:chargeback-handling#response-deadline",
+          "passage": "Response deadline\nEvidence must be sent at least one business day before the response deadline of the dispute. The response deadline is the deadline of Acme for the response of the merchant: it shows up in the dispute's deadline field, ten to fourteen days after the dispute is opened, and it is a house rule of Acme and not the deadline of the card network. The window of the card network itself is longer, thirty calendar days for the categories of Visa and the frames of Mastercard (source: the Visa Core Rules and the Mastercard Chargeback Guide, read on 2026-11-25), and it is written down in `docs/policies-of-acme.md`. The Acme Payments internal cutoff is one business day before the response deadline. A response sent after the response deadline loses the dispute automatically, with no review of the merits."
+        },
+        {
+          "id": "policy:chargeback-handling#response-deadline-2",
+          "passage": "Response deadline\nsent after the response deadline loses the dispute automatically, with no review of the merits. For a Monday deadline, the cutoff is the preceding Friday if that Friday is a business day on the settlement currency's calendar. Otherwise, continue backwards to the preceding business day. For example, for a Monday, July 7, 2025 response deadline, the USD cutoff is Thursday, July 3 because July 4 is a US federal holiday. The EUR cutoff is Friday, July 4 because the TARGET calendar is open."
+        }
+      ],
+      "judgment": "pending",
+      "usage": {
+        "model_calls": 3,
+        "tool_calls": 1,
+        "input_tokens": 5625,
+        "output_tokens": 76,
+        "elapsed_seconds": 4.719,
+        "observed_cost_usd": null,
+        "estimated_cost_usd": null,
+        "price_known": false,
+        "cut_by": null
+      },
+      "recommended_action": "none",
+      "review_reasons": [],
+      "claims": [
+        {
+          "id": "CL1",
+          "text": "A merchant response sent after the dispute response deadline results in the dispute being lost automatically, with no review of the merits.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline",
+            "policy:chargeback-handling#response-deadline-2"
+          ],
+          "numeric": null
+        }
+      ],
+      "verdicts": [
+        {
+          "claim_id": "CL1",
+          "label": "supported",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.9569,
+            "contradiction": 0.02,
+            "neutral": 0.0231
+          },
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline",
+            "policy:chargeback-handling#response-deadline-2"
+          ],
+          "note": null
+        }
+      ],
+      "missing_information": [],
+      "requires_human_review": false,
+      "plan_deviations": [],
+      "review_conditions": [],
+      "repetition": 1,
+      "provider_tokens": {
+        "cached": 4736,
+        "input": 2320,
+        "output": 245,
+        "embedding": 29
+      },
+      "estimated_online_usd": "0.00896858"
+    },
+    {
+      "case_id": "july-cutoff-usd",
+      "question": "Our settlement currency is USD. The dispute response deadline is Monday, July 7, 2025. On what date must we submit evidence?",
+      "status": "answered",
+      "error": null,
+      "answer": "Evidence must be submitted at least one business day before the dispute response deadline [policy:chargeback-handling#response-deadline]. For a response deadline of Monday, July 7, 2025, and a settlement currency of USD, the evidence submission cutoff is Thursday, July 3, 2025 [calc:1].",
+      "search_observed": true,
+      "searches": [
+        {
+          "input": {
+            "query": "When is evidence due for a dispute?",
+            "k": 4
+          },
+          "candidate_ids": [
+            "policy:chargeback-handling#who-submits",
+            "policy:chargeback-handling#response-deadline",
+            "policy:chargeback-handling#overview",
+            "policy:chargeback-handling#stages"
+          ],
+          "queries_used": [
+            "When is evidence due for a dispute?",
+            "What is the submission deadline for representment documentation in a chargeback case?"
+          ],
+          "transform_used": "rewrite",
+          "status": "ok",
+          "error": null
+        }
+      ],
+      "calculations": [
+        {
+          "inputs": {
+            "operation": "previous_business_day",
+            "values": {
+              "date": "2025-07-07",
+              "currency": "USD"
+            }
+          },
+          "outputs": {
+            "ok": true,
+            "evidence_ids": [
+              "calc:1"
+            ],
+            "data": {
+              "operation": "previous_business_day",
+              "result": "2025-07-03",
+              "formula": "One business day before 2025-07-07 on the USD calendar (US)"
+            }
+          }
+        }
+      ],
+      "policy_citations": [
+        {
+          "id": "policy:chargeback-handling#response-deadline",
+          "passage": "Response deadline\nEvidence must be sent at least one business day before the response deadline of the dispute. The response deadline is the deadline of Acme for the response of the merchant: it shows up in the dispute's deadline field, ten to fourteen days after the dispute is opened, and it is a house rule of Acme and not the deadline of the card network. The window of the card network itself is longer, thirty calendar days for the categories of Visa and the frames of Mastercard (source: the Visa Core Rules and the Mastercard Chargeback Guide, read on 2026-11-25), and it is written down in `docs/policies-of-acme.md`. The Acme Payments internal cutoff is one business day before the response deadline. A response sent after the response deadline loses the dispute automatically, with no review of the merits."
+        }
+      ],
+      "judgment": "pending",
+      "usage": {
+        "model_calls": 4,
+        "tool_calls": 2,
+        "input_tokens": 8877,
+        "output_tokens": 125,
+        "elapsed_seconds": 5.771,
+        "observed_cost_usd": null,
+        "estimated_cost_usd": null,
+        "price_known": false,
+        "cut_by": null
+      },
+      "recommended_action": "escalate_to_human",
+      "review_reasons": [
+        "Missing evidence for: For a response deadline of Monday, July 7, 2025, and a settlement currency of USD, the evidence submission cutoff is Thursday, July 3, 2025."
+      ],
+      "claims": [
+        {
+          "id": "CL1",
+          "text": "Evidence must be submitted at least one business day before the dispute response deadline.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline"
+          ],
+          "numeric": null
+        },
+        {
+          "id": "CL2",
+          "text": "For a response deadline of Monday, July 7, 2025, and a settlement currency of USD, the evidence submission cutoff is Thursday, July 3, 2025.",
+          "kind": "fact",
+          "evidence_ids": [
+            "calc:1"
+          ],
+          "numeric": null
+        }
+      ],
+      "verdicts": [
+        {
+          "claim_id": "CL1",
+          "label": "supported",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.9709,
+            "contradiction": 0.02,
+            "neutral": 0.0091
+          },
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline"
+          ],
+          "note": null
+        },
+        {
+          "claim_id": "CL2",
+          "label": "not_enough_evidence",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.0187,
+            "contradiction": 0.05,
+            "neutral": 0.9313
+          },
+          "evidence_ids": [
+            "calc:1"
+          ],
+          "note": null
+        }
+      ],
+      "missing_information": [
+        "Missing evidence for: For a response deadline of Monday, July 7, 2025, and a settlement currency of USD, the evidence submission cutoff is Thursday, July 3, 2025."
+      ],
+      "requires_human_review": true,
+      "plan_deviations": [
+        "calculate: called outside the plan"
+      ],
+      "review_conditions": [
+        {
+          "stage": "verify",
+          "condition": "unsupported_share_review",
+          "claim_ids": [
+            "CL2"
+          ],
+          "total_claims": 2,
+          "share": 0.5,
+          "threshold": 0.34
+        }
+      ],
+      "repetition": 1,
+      "provider_tokens": {
+        "cached": 7168,
+        "input": 3149,
+        "output": 296,
+        "embedding": 23
+      },
+      "estimated_online_usd": "0.01225046"
+    },
+    {
+      "case_id": "july-cutoff-eur",
+      "question": "Our settlement currency is EUR. The dispute response deadline is Monday, July 7, 2025. On what date must we submit evidence?",
+      "status": "answered",
+      "error": null,
+      "answer": "Evidence must be submitted at least one business day before the response deadline of the dispute [policy:chargeback-handling#response-deadline]. For a response deadline of Monday, July 7, 2025, and a settlement currency of EUR, the previous business day is Friday, July 4, 2025 [calc:1]. Therefore, you must submit evidence by July 4, 2025.",
+      "search_observed": true,
+      "searches": [
+        {
+          "input": {
+            "query": "When is evidence due for a dispute?",
+            "k": 4
+          },
+          "candidate_ids": [
+            "policy:chargeback-handling#who-submits",
+            "policy:chargeback-handling#response-deadline",
+            "policy:chargeback-handling#overview",
+            "policy:chargeback-handling#stages"
+          ],
+          "queries_used": [
+            "When is evidence due for a dispute?",
+            "What is the submission deadline for representment documentation in a chargeback case?"
+          ],
+          "transform_used": "rewrite",
+          "status": "ok",
+          "error": null
+        }
+      ],
+      "calculations": [
+        {
+          "inputs": {
+            "operation": "previous_business_day",
+            "values": {
+              "date": "2025-07-07",
+              "currency": "EUR"
+            }
+          },
+          "outputs": {
+            "ok": true,
+            "evidence_ids": [
+              "calc:1"
+            ],
+            "data": {
+              "operation": "previous_business_day",
+              "result": "2025-07-04",
+              "formula": "One business day before 2025-07-07 on the EUR calendar (TARGET)"
+            }
+          }
+        }
+      ],
+      "policy_citations": [
+        {
+          "id": "policy:chargeback-handling#response-deadline",
+          "passage": "Response deadline\nEvidence must be sent at least one business day before the response deadline of the dispute. The response deadline is the deadline of Acme for the response of the merchant: it shows up in the dispute's deadline field, ten to fourteen days after the dispute is opened, and it is a house rule of Acme and not the deadline of the card network. The window of the card network itself is longer, thirty calendar days for the categories of Visa and the frames of Mastercard (source: the Visa Core Rules and the Mastercard Chargeback Guide, read on 2026-11-25), and it is written down in `docs/policies-of-acme.md`. The Acme Payments internal cutoff is one business day before the response deadline. A response sent after the response deadline loses the dispute automatically, with no review of the merits."
+        }
+      ],
+      "judgment": "pending",
+      "usage": {
+        "model_calls": 4,
+        "tool_calls": 2,
+        "input_tokens": 8877,
+        "output_tokens": 142,
+        "elapsed_seconds": 5.479,
+        "observed_cost_usd": null,
+        "estimated_cost_usd": null,
+        "price_known": false,
+        "cut_by": null
+      },
+      "recommended_action": "escalate_to_human",
+      "review_reasons": [
+        "Missing evidence for: For a response deadline of Monday, July 7, 2025, and a settlement currency of EUR, the previous business day is Friday, July 4, 2025."
+      ],
+      "claims": [
+        {
+          "id": "CL1",
+          "text": "Evidence must be submitted at least one business day before the response deadline of the dispute.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline"
+          ],
+          "numeric": null
+        },
+        {
+          "id": "CL2",
+          "text": "For a response deadline of Monday, July 7, 2025, and a settlement currency of EUR, the previous business day is Friday, July 4, 2025.",
+          "kind": "fact",
+          "evidence_ids": [
+            "calc:1"
+          ],
+          "numeric": null
+        }
+      ],
+      "verdicts": [
+        {
+          "claim_id": "CL1",
+          "label": "supported",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.9709,
+            "contradiction": 0.02,
+            "neutral": 0.0091
+          },
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline"
+          ],
+          "note": null
+        },
+        {
+          "claim_id": "CL2",
+          "label": "not_enough_evidence",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.0562,
+            "contradiction": 0.05,
+            "neutral": 0.8938
+          },
+          "evidence_ids": [
+            "calc:1"
+          ],
+          "note": null
+        }
+      ],
+      "missing_information": [
+        "Missing evidence for: For a response deadline of Monday, July 7, 2025, and a settlement currency of EUR, the previous business day is Friday, July 4, 2025."
+      ],
+      "requires_human_review": true,
+      "plan_deviations": [
+        "calculate: called outside the plan"
+      ],
+      "review_conditions": [
+        {
+          "stage": "verify",
+          "condition": "unsupported_share_review",
+          "claim_ids": [
+            "CL2"
+          ],
+          "total_claims": 2,
+          "share": 0.5,
+          "threshold": 0.34
+        }
+      ],
+      "repetition": 1,
+      "provider_tokens": {
+        "cached": 8320,
+        "input": 1997,
+        "output": 313,
+        "embedding": 23
+      },
+      "estimated_online_usd": "0.01065846"
+    },
+    {
+      "case_id": "unseen-usd",
+      "question": "USD settlement. Our dispute response deadline is Monday, June 1, 2026. What date is the evidence due?",
+      "status": "answered",
+      "error": null,
+      "answer": "For a dispute with a response deadline of Monday, June 1, 2026 and settlement in USD, the evidence is due by the previous business day, which is Friday, May 29, 2026 [policy:chargeback-handling#response-deadline, calc:1].",
+      "search_observed": true,
+      "searches": [
+        {
+          "input": {
+            "query": "dispute response deadline and evidence due date for USD settlements"
+          },
+          "candidate_ids": [
+            "policy:chargeback-handling#response-deadline-2",
+            "policy:chargeback-handling#response-deadline",
+            "policy:escalation-and-review#deadline-within-2-days",
+            "policy:chargeback-handling#escalation"
+          ],
+          "queries_used": [
+            "dispute response deadline and evidence due date for USD settlements",
+            "What is the submission deadline for dispute responses and supporting evidence for settlements in USD?"
+          ],
+          "transform_used": "rewrite",
+          "status": "ok",
+          "error": null
+        }
+      ],
+      "calculations": [
+        {
+          "inputs": {
+            "operation": "previous_business_day",
+            "values": {
+              "date": "2026-06-01",
+              "currency": "USD"
+            }
+          },
+          "outputs": {
+            "ok": true,
+            "evidence_ids": [
+              "calc:1"
+            ],
+            "data": {
+              "operation": "previous_business_day",
+              "result": "2026-05-29",
+              "formula": "One business day before 2026-06-01 on the USD calendar (US)"
+            }
+          }
+        }
+      ],
+      "policy_citations": [
+        {
+          "id": "policy:chargeback-handling#response-deadline",
+          "passage": "Response deadline\nEvidence must be sent at least one business day before the response deadline of the dispute. The response deadline is the deadline of Acme for the response of the merchant: it shows up in the dispute's deadline field, ten to fourteen days after the dispute is opened, and it is a house rule of Acme and not the deadline of the card network. The window of the card network itself is longer, thirty calendar days for the categories of Visa and the frames of Mastercard (source: the Visa Core Rules and the Mastercard Chargeback Guide, read on 2026-11-25), and it is written down in `docs/policies-of-acme.md`. The Acme Payments internal cutoff is one business day before the response deadline. A response sent after the response deadline loses the dispute automatically, with no review of the merits."
+        }
+      ],
+      "judgment": "pending",
+      "usage": {
+        "model_calls": 4,
+        "tool_calls": 2,
+        "input_tokens": 8995,
+        "output_tokens": 116,
+        "elapsed_seconds": 6.427,
+        "observed_cost_usd": null,
+        "estimated_cost_usd": null,
+        "price_known": false,
+        "cut_by": null
+      },
+      "recommended_action": "escalate_to_human",
+      "review_reasons": [
+        "Missing evidence for: For a dispute with a response deadline of Monday, June 1, 2026 and settlement in USD, the evidence is due by the previous business day, which is Friday, May 29, 2026."
+      ],
+      "claims": [
+        {
+          "id": "CL1",
+          "text": "For a dispute with a response deadline of Monday, June 1, 2026 and settlement in USD, the evidence is due by the previous business day, which is Friday, May 29, 2026.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline",
+            "calc:1"
+          ],
+          "numeric": null
+        }
+      ],
+      "verdicts": [
+        {
+          "claim_id": "CL1",
+          "label": "not_enough_evidence",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.1167,
+            "contradiction": 0.05,
+            "neutral": 0.8333
+          },
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline",
+            "calc:1"
+          ],
+          "note": null
+        }
+      ],
+      "missing_information": [
+        "Missing evidence for: For a dispute with a response deadline of Monday, June 1, 2026 and settlement in USD, the evidence is due by the previous business day, which is Friday, May 29, 2026."
+      ],
+      "requires_human_review": true,
+      "plan_deviations": [
+        "calculate: called outside the plan"
+      ],
+      "review_conditions": [
+        {
+          "stage": "verify",
+          "condition": "unsupported_share_review",
+          "claim_ids": [
+            "CL1"
+          ],
+          "total_claims": 1,
+          "share": 1.0,
+          "threshold": 0.34
+        }
+      ],
+      "repetition": 1,
+      "provider_tokens": {
+        "cached": 8448,
+        "input": 1986,
+        "output": 292,
+        "embedding": 27
+      },
+      "estimated_online_usd": "0.01053254"
+    },
+    {
+      "case_id": "unknown-currency",
+      "question": "Our dispute response deadline is Monday, July 7, 2025. What is our exact cutoff date?",
+      "status": "answered",
+      "error": null,
+      "answer": "The internal cutoff for submitting merchant evidence is one business day before the response deadline [policy:chargeback-handling#response-deadline, policy:escalation-and-review#deadline-within-2-days]. For a Monday deadline, the cutoff is the preceding Friday if that Friday is a business day on the settlement currency's calendar. If not, continue backwards to the previous business day [policy:chargeback-handling#response-deadline-2]. For example, for a Monday, July 7, 2025 response deadline, the cutoff in USD is Thursday, July 3, 2025, because July 4 is a US federal holiday, while the cutoff in EUR is Friday, July 4, 2025, because the TARGET calendar is open [policy:chargeback-handling#response-deadline-2]. \n\nTo give your exact cutoff date, I need to know your settlement currency. Please provide the settlement currency.",
+      "search_observed": true,
+      "searches": [
+        {
+          "input": {
+            "query": "How to calculate the merchant evidence cutoff date for a dispute response deadline"
+          },
+          "candidate_ids": [
+            "policy:chargeback-handling#response-deadline",
+            "policy:chargeback-handling#who-submits",
+            "policy:escalation-and-review#deadline-within-2-days",
+            "policy:chargeback-handling#response-deadline-2"
+          ],
+          "queries_used": [
+            "How to calculate the merchant evidence cutoff date for a dispute response deadline",
+            "What is the submission deadline for merchant evidence in relation to the dispute response timeframe?"
+          ],
+          "transform_used": "rewrite",
+          "status": "ok",
+          "error": null
+        }
+      ],
+      "calculations": [],
+      "policy_citations": [
+        {
+          "id": "policy:chargeback-handling#response-deadline",
+          "passage": "Response deadline\nEvidence must be sent at least one business day before the response deadline of the dispute. The response deadline is the deadline of Acme for the response of the merchant: it shows up in the dispute's deadline field, ten to fourteen days after the dispute is opened, and it is a house rule of Acme and not the deadline of the card network. The window of the card network itself is longer, thirty calendar days for the categories of Visa and the frames of Mastercard (source: the Visa Core Rules and the Mastercard Chargeback Guide, read on 2026-11-25), and it is written down in `docs/policies-of-acme.md`. The Acme Payments internal cutoff is one business day before the response deadline. A response sent after the response deadline loses the dispute automatically, with no review of the merits."
+        },
+        {
+          "id": "policy:escalation-and-review#deadline-within-2-days",
+          "passage": "Deadline close\nA dispute with the response deadline 2 days away or less has critical urgency. If the internal cutoff, which is one business day before the response deadline, has already passed, the case needs a human decision on the same day. The system reports the days left, the internal cutoff and the evidence still missing."
+        },
+        {
+          "id": "policy:chargeback-handling#response-deadline-2",
+          "passage": "Response deadline\nsent after the response deadline loses the dispute automatically, with no review of the merits. For a Monday deadline, the cutoff is the preceding Friday if that Friday is a business day on the settlement currency's calendar. Otherwise, continue backwards to the preceding business day. For example, for a Monday, July 7, 2025 response deadline, the USD cutoff is Thursday, July 3 because July 4 is a US federal holiday. The EUR cutoff is Friday, July 4 because the TARGET calendar is open."
+        }
+      ],
+      "judgment": "pending",
+      "usage": {
+        "model_calls": 3,
+        "tool_calls": 1,
+        "input_tokens": 5634,
+        "output_tokens": 222,
+        "elapsed_seconds": 5.366,
+        "observed_cost_usd": null,
+        "estimated_cost_usd": null,
+        "price_known": false,
+        "cut_by": null
+      },
+      "recommended_action": "escalate_to_human",
+      "review_reasons": [
+        "Missing evidence for: To give your exact cutoff date, I need to know your settlement currency.",
+        "Missing evidence for: Please provide the settlement currency."
+      ],
+      "claims": [
+        {
+          "id": "CL1",
+          "text": "The internal cutoff for submitting merchant evidence is one business day before the response deadline.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline",
+            "policy:escalation-and-review#deadline-within-2-days"
+          ],
+          "numeric": null
+        },
+        {
+          "id": "CL2",
+          "text": "For a Monday deadline, the cutoff is the preceding Friday if that Friday is a business day on the settlement currency's calendar.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline-2"
+          ],
+          "numeric": null
+        },
+        {
+          "id": "CL3",
+          "text": "If not, continue backwards to the previous business day.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline-2"
+          ],
+          "numeric": null
+        },
+        {
+          "id": "CL4",
+          "text": "For example, for a Monday, July 7, 2025 response deadline, the cutoff in USD is Thursday, July 3, 2025, because July 4 is a US federal holiday, while the cutoff in EUR is Friday, July 4, 2025, because the TARGET calendar is open.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline-2"
+          ],
+          "numeric": null
+        },
+        {
+          "id": "CL5",
+          "text": "To give your exact cutoff date, I need to know your settlement currency.",
+          "kind": "inference",
+          "evidence_ids": [],
+          "numeric": null
+        },
+        {
+          "id": "CL6",
+          "text": "Please provide the settlement currency.",
+          "kind": "inference",
+          "evidence_ids": [],
+          "numeric": null
+        }
+      ],
+      "verdicts": [
+        {
+          "claim_id": "CL1",
+          "label": "supported",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.9709,
+            "contradiction": 0.02,
+            "neutral": 0.0091
+          },
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline",
+            "policy:escalation-and-review#deadline-within-2-days"
+          ],
+          "note": null
+        },
+        {
+          "claim_id": "CL2",
+          "label": "supported",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.98,
+            "contradiction": 0.02,
+            "neutral": 0.0
+          },
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline-2"
+          ],
+          "note": null
+        },
+        {
+          "claim_id": "CL3",
+          "label": "contradicted",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.02,
+            "contradiction": 0.93,
+            "neutral": 0.05
+          },
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline-2"
+          ],
+          "note": null
+        },
+        {
+          "claim_id": "CL4",
+          "label": "supported",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.9764,
+            "contradiction": 0.02,
+            "neutral": 0.0036
+          },
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline-2"
+          ],
+          "note": null
+        },
+        {
+          "claim_id": "CL5",
+          "label": "not_enough_evidence",
+          "method": "none",
+          "scores": null,
+          "evidence_ids": [],
+          "note": "No cited evidence is in the result."
+        },
+        {
+          "claim_id": "CL6",
+          "label": "not_enough_evidence",
+          "method": "none",
+          "scores": null,
+          "evidence_ids": [],
+          "note": "No cited evidence is in the result."
+        }
+      ],
+      "missing_information": [
+        "Missing evidence for: To give your exact cutoff date, I need to know your settlement currency.",
+        "Missing evidence for: Please provide the settlement currency."
+      ],
+      "requires_human_review": true,
+      "plan_deviations": [],
+      "review_conditions": [
+        {
+          "stage": "verify",
+          "condition": "contradicted",
+          "claim_ids": [
+            "CL3"
+          ]
+        }
+      ],
+      "repetition": 1,
+      "provider_tokens": {
+        "cached": 4736,
+        "input": 2336,
+        "output": 394,
+        "embedding": 29
+      },
+      "estimated_online_usd": "0.01019258"
+    },
+    {
+      "case_id": "verify-status",
+      "question": "Has my specific dispute already been marked lost? Please verify its actual recorded status.",
+      "status": "clarification",
+      "error": null,
+      "answer": "Could you please provide the dispute or chargeback ID so we can verify its recorded status?",
+      "search_observed": false,
+      "searches": [],
+      "calculations": [],
+      "policy_citations": [],
+      "judgment": null,
+      "usage": {
+        "model_calls": 1,
+        "tool_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "elapsed_seconds": 1.379,
+        "observed_cost_usd": null,
+        "estimated_cost_usd": null,
+        "price_known": false,
+        "cut_by": null
+      },
+      "recommended_action": "ask_for_clarification",
+      "review_reasons": [],
+      "claims": [],
+      "verdicts": [],
+      "missing_information": [],
+      "requires_human_review": false,
+      "plan_deviations": [],
+      "review_conditions": [],
+      "repetition": 1,
+      "provider_tokens": {
+        "cached": 1152,
+        "input": 157,
+        "output": 168
+      },
+      "estimated_online_usd": "0.002234"
+    },
+    {
+      "case_id": "policy-status",
+      "question": "As a general policy, does passing the evidence cutoff automatically lose the dispute?",
+      "status": "answered",
+      "error": null,
+      "answer": "A response sent after the response deadline loses the dispute automatically, with no review of the merits [policy:chargeback-handling#response-deadline]. The internal cutoff is one business day before the response deadline, and if this internal cutoff has passed, the case needs a human decision on the same day, but missing the final response deadline itself results in an automatic loss [policy:escalation-and-review#deadline-within-2-days, policy:chargeback-handling#response-deadline].",
+      "search_observed": true,
+      "searches": [
+        {
+          "input": {
+            "query": "consequence of missing the evidence cutoff for disputes"
+          },
+          "candidate_ids": [
+            "policy:escalation-and-review#deadline-within-2-days",
+            "policy:chargeback-handling#response-deadline",
+            "policy:chargeback-handling#who-submits",
+            "policy:chargeback-handling#stages"
+          ],
+          "queries_used": [
+            "consequence of missing the evidence cutoff for disputes",
+            "What are the implications of failing to submit dispute evidence by the specified evidence submission deadline?"
+          ],
+          "transform_used": "rewrite",
+          "status": "ok",
+          "error": null
+        }
+      ],
+      "calculations": [],
+      "policy_citations": [
+        {
+          "id": "policy:chargeback-handling#response-deadline",
+          "passage": "Response deadline\nEvidence must be sent at least one business day before the response deadline of the dispute. The response deadline is the deadline of Acme for the response of the merchant: it shows up in the dispute's deadline field, ten to fourteen days after the dispute is opened, and it is a house rule of Acme and not the deadline of the card network. The window of the card network itself is longer, thirty calendar days for the categories of Visa and the frames of Mastercard (source: the Visa Core Rules and the Mastercard Chargeback Guide, read on 2026-11-25), and it is written down in `docs/policies-of-acme.md`. The Acme Payments internal cutoff is one business day before the response deadline. A response sent after the response deadline loses the dispute automatically, with no review of the merits."
+        },
+        {
+          "id": "policy:escalation-and-review#deadline-within-2-days",
+          "passage": "Deadline close\nA dispute with the response deadline 2 days away or less has critical urgency. If the internal cutoff, which is one business day before the response deadline, has already passed, the case needs a human decision on the same day. The system reports the days left, the internal cutoff and the evidence still missing."
+        }
+      ],
+      "judgment": "pending",
+      "usage": {
+        "model_calls": 3,
+        "tool_calls": 1,
+        "input_tokens": 5621,
+        "output_tokens": 126,
+        "elapsed_seconds": 4.75,
+        "observed_cost_usd": null,
+        "estimated_cost_usd": null,
+        "price_known": false,
+        "cut_by": null
+      },
+      "recommended_action": "none",
+      "review_reasons": [],
+      "claims": [
+        {
+          "id": "CL1",
+          "text": "A response sent after the response deadline loses the dispute automatically, with no review of the merits.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline"
+          ],
+          "numeric": null
+        },
+        {
+          "id": "CL2",
+          "text": "The internal cutoff is one business day before the response deadline, and if this internal cutoff has passed, the case needs a human decision on the same day, but missing the final response deadline itself results in an automatic loss.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:escalation-and-review#deadline-within-2-days",
+            "policy:chargeback-handling#response-deadline"
+          ],
+          "numeric": null
+        }
+      ],
+      "verdicts": [
+        {
+          "claim_id": "CL1",
+          "label": "supported",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.98,
+            "contradiction": 0.02,
+            "neutral": 0.0
+          },
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline"
+          ],
+          "note": null
+        },
+        {
+          "claim_id": "CL2",
+          "label": "supported",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.9615,
+            "contradiction": 0.02,
+            "neutral": 0.0185
+          },
+          "evidence_ids": [
+            "policy:escalation-and-review#deadline-within-2-days",
+            "policy:chargeback-handling#response-deadline"
+          ],
+          "note": null
+        }
+      ],
+      "missing_information": [],
+      "requires_human_review": false,
+      "plan_deviations": [],
+      "review_conditions": [],
+      "repetition": 1,
+      "provider_tokens": {
+        "cached": 5248,
+        "input": 1800,
+        "output": 333,
+        "embedding": 26
+      },
+      "estimated_online_usd": "0.00888852"
+    },
+    {
+      "case_id": "deadline-paraphrase",
+      "question": "We missed the evidence handoff but still have time to respond. What happens now?",
+      "status": "answered",
+      "error": null,
+      "answer": "If you missed the evidence handoff but the final response deadline has not yet passed, the case requires a human decision on the same day, as it is now critically urgent [policy:escalation-and-review#deadline-within-2-days]. The internal cutoff for submitting evidence is one business day before the response deadline, which is the deadline Acme sets for the merchant's response\u2014not the card network's deadline [policy:chargeback-handling#response-deadline]. If you submit evidence after the response deadline, the dispute is lost automatically with no review of the merits [policy:chargeback-handling#response-deadline]. The system will report the days left, the internal cutoff, and any evidence still missing [policy:escalation-and-review#deadline-within-2-days].",
+      "search_observed": true,
+      "searches": [
+        {
+          "input": {
+            "query": "missed evidence handoff but before final response deadline"
+          },
+          "candidate_ids": [
+            "policy:chargeback-handling#response-deadline",
+            "policy:escalation-and-review#deadline-within-2-days",
+            "policy:chargeback-handling#who-submits",
+            "policy:chargeback-handling#overview"
+          ],
+          "queries_used": [
+            "missed evidence handoff but before final response deadline",
+            "What is the submission deadline for providing additional chargeback evidence if the initial evidence handoff was missed but the final response deadline has not yet passed?"
+          ],
+          "transform_used": "rewrite",
+          "status": "ok",
+          "error": null
+        }
+      ],
+      "calculations": [],
+      "policy_citations": [
+        {
+          "id": "policy:escalation-and-review#deadline-within-2-days",
+          "passage": "Deadline close\nA dispute with the response deadline 2 days away or less has critical urgency. If the internal cutoff, which is one business day before the response deadline, has already passed, the case needs a human decision on the same day. The system reports the days left, the internal cutoff and the evidence still missing."
+        },
+        {
+          "id": "policy:chargeback-handling#response-deadline",
+          "passage": "Response deadline\nEvidence must be sent at least one business day before the response deadline of the dispute. The response deadline is the deadline of Acme for the response of the merchant: it shows up in the dispute's deadline field, ten to fourteen days after the dispute is opened, and it is a house rule of Acme and not the deadline of the card network. The window of the card network itself is longer, thirty calendar days for the categories of Visa and the frames of Mastercard (source: the Visa Core Rules and the Mastercard Chargeback Guide, read on 2026-11-25), and it is written down in `docs/policies-of-acme.md`. The Acme Payments internal cutoff is one business day before the response deadline. A response sent after the response deadline loses the dispute automatically, with no review of the merits."
+        }
+      ],
+      "judgment": "pending",
+      "usage": {
+        "model_calls": 3,
+        "tool_calls": 1,
+        "input_tokens": 5580,
+        "output_tokens": 187,
+        "elapsed_seconds": 5.005,
+        "observed_cost_usd": null,
+        "estimated_cost_usd": null,
+        "price_known": false,
+        "cut_by": null
+      },
+      "recommended_action": "escalate_to_human",
+      "review_reasons": [
+        "Missing evidence for: If you missed the evidence handoff but the final response deadline has not yet passed, the case requires a human decision on the same day, as it is now critically urgent.",
+        "Missing evidence for: If you submit evidence after the response deadline, the dispute is lost automatically with no review of the merits."
+      ],
+      "claims": [
+        {
+          "id": "CL1",
+          "text": "If you missed the evidence handoff but the final response deadline has not yet passed, the case requires a human decision on the same day, as it is now critically urgent.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:escalation-and-review#deadline-within-2-days"
+          ],
+          "numeric": null
+        },
+        {
+          "id": "CL2",
+          "text": "The internal cutoff for submitting evidence is one business day before the response deadline, which is the deadline Acme sets for the merchant's response\u2014not the card network's deadline.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline"
+          ],
+          "numeric": null
+        },
+        {
+          "id": "CL3",
+          "text": "If you submit evidence after the response deadline, the dispute is lost automatically with no review of the merits.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline"
+          ],
+          "numeric": null
+        },
+        {
+          "id": "CL4",
+          "text": "The system will report the days left, the internal cutoff, and any evidence still missing.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:escalation-and-review#deadline-within-2-days"
+          ],
+          "numeric": null
+        }
+      ],
+      "verdicts": [
+        {
+          "claim_id": "CL1",
+          "label": "not_enough_evidence",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.15,
+            "contradiction": 0.05,
+            "neutral": 0.8
+          },
+          "evidence_ids": [
+            "policy:escalation-and-review#deadline-within-2-days"
+          ],
+          "note": null
+        },
+        {
+          "claim_id": "CL2",
+          "label": "contradicted",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.02,
+            "contradiction": 0.93,
+            "neutral": 0.05
+          },
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline"
+          ],
+          "note": null
+        },
+        {
+          "claim_id": "CL3",
+          "label": "not_enough_evidence",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.1909,
+            "contradiction": 0.05,
+            "neutral": 0.7591
+          },
+          "evidence_ids": [
+            "policy:chargeback-handling#response-deadline"
+          ],
+          "note": null
+        },
+        {
+          "claim_id": "CL4",
+          "label": "supported",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.9618,
+            "contradiction": 0.02,
+            "neutral": 0.0182
+          },
+          "evidence_ids": [
+            "policy:escalation-and-review#deadline-within-2-days"
+          ],
+          "note": null
+        }
+      ],
+      "missing_information": [
+        "Missing evidence for: If you missed the evidence handoff but the final response deadline has not yet passed, the case requires a human decision on the same day, as it is now critically urgent.",
+        "Missing evidence for: If you submit evidence after the response deadline, the dispute is lost automatically with no review of the merits."
+      ],
+      "requires_human_review": true,
+      "plan_deviations": [],
+      "review_conditions": [
+        {
+          "stage": "verify",
+          "condition": "contradicted",
+          "claim_ids": [
+            "CL2"
+          ]
+        },
+        {
+          "stage": "verify",
+          "condition": "unsupported_share_review",
+          "claim_ids": [
+            "CL1",
+            "CL3"
+          ],
+          "total_claims": 4,
+          "share": 0.5,
+          "threshold": 0.34
+        }
+      ],
+      "repetition": 1,
+      "provider_tokens": {
+        "cached": 3456,
+        "input": 3554,
+        "output": 371,
+        "embedding": 39
+      },
+      "estimated_online_usd": "0.01180478"
+    },
+    {
+      "case_id": "refund-trigger",
+      "question": "When does a refund need human review because of its amount?",
+      "status": "answered",
+      "error": null,
+      "answer": "A refund requires human review if its amount is above 5,000 in the record's currency. This threshold applies to each individual payment, refund, or dispute, not to the sum of several records. Amounts close to the limit must be checked carefully, as rounding can push the total over the threshold [policy:escalation-and-review#high-amount].",
+      "search_observed": true,
+      "searches": [
+        {
+          "input": {
+            "query": "When does a refund require human review due to its amount?"
+          },
+          "candidate_ids": [
+            "policy:escalation-and-review#high-amount",
+            "policy:refund-policy#refund-statuses",
+            "policy:duplicate-charges#checks-before-recommending",
+            "policy:refund-policy#rejection-reasons"
+          ],
+          "queries_used": [
+            "When does a refund require human review due to its amount?",
+            "What is the transaction amount threshold that triggers manual review for a refund?"
+          ],
+          "transform_used": "rewrite",
+          "status": "ok",
+          "error": null
+        }
+      ],
+      "calculations": [],
+      "policy_citations": [
+        {
+          "id": "policy:escalation-and-review#high-amount",
+          "passage": "High amounts\nAny payment, refund or dispute above 5,000, in the record's currency, requires human review, even if all the evidence is complete. The limit applies to the amount of each record and not to the sum of several. Amounts close to the limit must be checked carefully, because rounding can push the total over."
+        }
+      ],
+      "judgment": "pending",
+      "usage": {
+        "model_calls": 3,
+        "tool_calls": 1,
+        "input_tokens": 5538,
+        "output_tokens": 101,
+        "elapsed_seconds": 4.851,
+        "observed_cost_usd": null,
+        "estimated_cost_usd": null,
+        "price_known": false,
+        "cut_by": null
+      },
+      "recommended_action": "none",
+      "review_reasons": [],
+      "claims": [
+        {
+          "id": "CL1",
+          "text": "A refund requires human review if its amount is above 5,000 in the record's currency.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:escalation-and-review#high-amount"
+          ],
+          "numeric": null
+        },
+        {
+          "id": "CL2",
+          "text": "This threshold applies to each individual payment, refund, or dispute, not to the sum of several records.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:escalation-and-review#high-amount"
+          ],
+          "numeric": null
+        },
+        {
+          "id": "CL3",
+          "text": "Amounts close to the limit must be checked carefully, as rounding can push the total over the threshold.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:escalation-and-review#high-amount"
+          ],
+          "numeric": null
+        }
+      ],
+      "verdicts": [
+        {
+          "claim_id": "CL1",
+          "label": "supported",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.98,
+            "contradiction": 0.02,
+            "neutral": 0.0
+          },
+          "evidence_ids": [
+            "policy:escalation-and-review#high-amount"
+          ],
+          "note": null
+        },
+        {
+          "claim_id": "CL2",
+          "label": "supported",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.96,
+            "contradiction": 0.02,
+            "neutral": 0.02
+          },
+          "evidence_ids": [
+            "policy:escalation-and-review#high-amount"
+          ],
+          "note": null
+        },
+        {
+          "claim_id": "CL3",
+          "label": "supported",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.9717,
+            "contradiction": 0.02,
+            "neutral": 0.0083
+          },
+          "evidence_ids": [
+            "policy:escalation-and-review#high-amount"
+          ],
+          "note": null
+        }
+      ],
+      "missing_information": [],
+      "requires_human_review": false,
+      "plan_deviations": [],
+      "review_conditions": [],
+      "repetition": 1,
+      "provider_tokens": {
+        "cached": 5248,
+        "input": 1717,
+        "output": 278,
+        "embedding": 26
+      },
+      "estimated_online_usd": "0.00828252"
+    },
+    {
+      "case_id": "settlement-trigger",
+      "question": "When is a payout considered delayed?",
+      "status": "answered",
+      "error": null,
+      "answer": "A payout is considered delayed when the expected payout date has passed and the settlement is still in the status \"scheduled\" [policy:settlement-schedule#late-payout]. If a settlement remains \"scheduled\" after its expected date, this means a delay and must be taken to human review [policy:settlement-schedule#status].",
+      "search_observed": true,
+      "searches": [
+        {
+          "input": {
+            "query": "When is a payout considered delayed?"
+          },
+          "candidate_ids": [
+            "policy:settlement-schedule#late-payout",
+            "policy:settlement-schedule#overview",
+            "policy:settlement-schedule#status",
+            "policy:settlement-schedule#payout-timing"
+          ],
+          "queries_used": [
+            "When is a payout considered delayed?",
+            "What is the policy definition of a delayed settlement?"
+          ],
+          "transform_used": "rewrite",
+          "status": "ok",
+          "error": null
+        }
+      ],
+      "calculations": [],
+      "policy_citations": [
+        {
+          "id": "policy:settlement-schedule#late-payout",
+          "passage": "Late payout\nA payout counts as late when the expected date has passed and the settlement is still `scheduled`. The common causes are invalid bank details, a hold for risk review and bank failures. The analyst does not fix the delay: they describe what the record shows and escalate the case to the operations team."
+        },
+        {
+          "id": "policy:settlement-schedule#status",
+          "passage": "Settlement status\nA settlement is `scheduled` when it has been computed and the expected date has not come yet. It moves to `paid` when the payout was made, and the actual payment date is recorded. A settlement still `scheduled` after the expected date means a delay and must be taken to human review. A paid settlement is never recomputed."
+        }
+      ],
+      "judgment": "pending",
+      "usage": {
+        "model_calls": 3,
+        "tool_calls": 1,
+        "input_tokens": 5395,
+        "output_tokens": 88,
+        "elapsed_seconds": 4.602,
+        "observed_cost_usd": null,
+        "estimated_cost_usd": null,
+        "price_known": false,
+        "cut_by": null
+      },
+      "recommended_action": "none",
+      "review_reasons": [],
+      "claims": [
+        {
+          "id": "CL1",
+          "text": "A payout is considered delayed when the expected payout date has passed and the settlement is still in the status \"scheduled\".",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:settlement-schedule#late-payout"
+          ],
+          "numeric": null
+        },
+        {
+          "id": "CL2",
+          "text": "If a settlement remains \"scheduled\" after its expected date, this means a delay and must be taken to human review.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:settlement-schedule#status"
+          ],
+          "numeric": null
+        }
+      ],
+      "verdicts": [
+        {
+          "claim_id": "CL1",
+          "label": "supported",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.955,
+            "contradiction": 0.02,
+            "neutral": 0.025
+          },
+          "evidence_ids": [
+            "policy:settlement-schedule#late-payout"
+          ],
+          "note": null
+        },
+        {
+          "claim_id": "CL2",
+          "label": "supported",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.9633,
+            "contradiction": 0.02,
+            "neutral": 0.0167
+          },
+          "evidence_ids": [
+            "policy:settlement-schedule#status"
+          ],
+          "note": null
+        }
+      ],
+      "missing_information": [],
+      "requires_human_review": false,
+      "plan_deviations": [],
+      "review_conditions": [],
+      "repetition": 1,
+      "provider_tokens": {
+        "cached": 4736,
+        "input": 2076,
+        "output": 217,
+        "embedding": 17
+      },
+      "estimated_online_usd": "0.00825634"
+    },
+    {
+      "case_id": "fee-trigger",
+      "question": "When is the chargeback fee charged?",
+      "status": "answered",
+      "error": null,
+      "answer": "The chargeback fee is charged to the merchant for each dispute opened, regardless of whether the merchant wins or loses the dispute [policy:chargeback-handling#fee-reference, policy:fees-and-pricing#chargeback-fee]. The fee is deducted in the settlement of the period in which the dispute was opened, and what counts is the date the dispute was opened, not the date of the original payment [policy:chargeback-handling#fee-reference, policy:fees-and-pricing#chargeback-fee].",
+      "search_observed": true,
+      "searches": [
+        {
+          "input": {
+            "query": "When is the chargeback fee charged?"
+          },
+          "candidate_ids": [
+            "policy:chargeback-handling#fee-reference",
+            "policy:fees-and-pricing#chargeback-fee",
+            "policy:chargeback-handling#overview",
+            "policy:refund-policy#refunds-and-chargebacks"
+          ],
+          "queries_used": [
+            "When is the chargeback fee charged?",
+            "What is the timing of the assessment of the chargeback fee?"
+          ],
+          "transform_used": "rewrite",
+          "status": "ok",
+          "error": null
+        }
+      ],
+      "calculations": [],
+      "policy_citations": [
+        {
+          "id": "policy:chargeback-handling#fee-reference",
+          "passage": "Chargeback fee\nEach dispute opened creates a fixed fee charged to the merchant, even if the merchant wins the defense. The fee amount and the rule for charging it per period are in the fees and pricing policy. The fee is deducted in the settlement of the period in which the dispute was opened."
+        },
+        {
+          "id": "policy:fees-and-pricing#chargeback-fee",
+          "passage": "Chargeback fee\nFor each chargeback opened in the period, Acme charges a fixed fee of 15.00 in the merchant's settlement currency. The fee applies to each chargeback opened in the period, whether the merchant later wins or loses the dispute. What counts is the date the dispute was opened, not the date of the original payment."
+        }
+      ],
+      "judgment": "pending",
+      "usage": {
+        "model_calls": 3,
+        "tool_calls": 1,
+        "input_tokens": 5410,
+        "output_tokens": 128,
+        "elapsed_seconds": 4.694,
+        "observed_cost_usd": null,
+        "estimated_cost_usd": null,
+        "price_known": false,
+        "cut_by": null
+      },
+      "recommended_action": "none",
+      "review_reasons": [],
+      "claims": [
+        {
+          "id": "CL1",
+          "text": "The chargeback fee is charged to the merchant for each dispute opened, regardless of whether the merchant wins or loses the dispute.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:chargeback-handling#fee-reference",
+            "policy:fees-and-pricing#chargeback-fee"
+          ],
+          "numeric": null
+        },
+        {
+          "id": "CL2",
+          "text": "The fee is deducted in the settlement of the period in which the dispute was opened, and what counts is the date the dispute was opened, not the date of the original payment.",
+          "kind": "policy",
+          "evidence_ids": [
+            "policy:chargeback-handling#fee-reference",
+            "policy:fees-and-pricing#chargeback-fee"
+          ],
+          "numeric": null
+        }
+      ],
+      "verdicts": [
+        {
+          "claim_id": "CL1",
+          "label": "supported",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.9723,
+            "contradiction": 0.02,
+            "neutral": 0.0077
+          },
+          "evidence_ids": [
+            "policy:chargeback-handling#fee-reference",
+            "policy:fees-and-pricing#chargeback-fee"
+          ],
+          "note": null
+        },
+        {
+          "claim_id": "CL2",
+          "label": "supported",
+          "method": "nli",
+          "scores": {
+            "entailment": 0.98,
+            "contradiction": 0.02,
+            "neutral": 0.0
+          },
+          "evidence_ids": [
+            "policy:chargeback-handling#fee-reference",
+            "policy:fees-and-pricing#chargeback-fee"
+          ],
+          "note": null
+        }
+      ],
+      "missing_information": [],
+      "requires_human_review": false,
+      "plan_deviations": [],
+      "review_conditions": [],
+      "repetition": 1,
+      "provider_tokens": {
+        "cached": 5120,
+        "input": 1709,
+        "output": 289,
+        "embedding": 21
+      },
+      "estimated_online_usd": "0.00829042"
+    }
+  ]
+}

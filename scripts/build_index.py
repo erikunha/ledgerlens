@@ -8,8 +8,8 @@ once, here. The agent only loads the result (`ledgerlens/tools/policies.py`) and
 
 What it does, in order:
   1. reads the documents in data/policies/*.md and splits them into excerpts (`ledgerlens.retrieval`);
-  2. generates the vectors with the active embedding: the local fastembed model offline (`LEDGERLENS_OFFLINE=1`
-     or default) or OpenAI (`LEDGERLENS_EMBEDDINGS=openai`, needs a key);
+  2. generates the vectors with the active embedding: deterministic word counts offline (`LEDGERLENS_OFFLINE=1`),
+     or the configured FastEmbed or OpenAI provider online;
   3. writes index.faiss, index.pkl and index_meta.json in the embedding's folder. The meta carries the digest
      of the corpus it was built from, so the gate can tell a stale index from the index of the disk.
 

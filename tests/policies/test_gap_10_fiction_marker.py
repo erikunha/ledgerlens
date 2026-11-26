@@ -11,11 +11,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ledgerlens.embeddings import FastEmbedEmbeddings
+from ledgerlens.embeddings import OfflineEmbeddings
 from ledgerlens.retrieval import load_policy_documents, load_policy_index, search_policy_index
 
 ROOT = Path(__file__).resolve().parents[2]
-COMMITTED_INDEX = ROOT / "data" / "index" / "policies_fastembed"
+COMMITTED_INDEX = ROOT / "data" / "index" / "policies_offline"
 MARKER = "fictional company"
 
 
@@ -31,7 +31,7 @@ def test_every_chunk_of_the_corpus_carries_the_marker_of_the_fiction() -> None:
 
 def test_every_chunk_of_the_committed_index_carries_the_marker_of_the_fiction() -> None:
     """Every chunk of the committed index carries the marker, so a served excerpt says the company is fictional."""
-    index = load_policy_index(COMMITTED_INDEX, FastEmbedEmbeddings())
+    index = load_policy_index(COMMITTED_INDEX, OfflineEmbeddings())
     hits = search_policy_index(index, "refund", k=200)
     assert hits
     for hit in hits:

@@ -47,7 +47,7 @@ and one line that says what the file holds.
 - [ADR-003: Legacy and modern LangChain side by side](decisions/ADR-003-legacy-and-modern-langchain.md): Status: accepted. Date: 2026-11-07.
 - [ADR-004: Offline mode](decisions/ADR-004-offline-mode.md): Status: accepted. Date: 2026-11-07.
 - [ADR-005: Text-to-SQL with a guard and a read-only connection](decisions/ADR-005-guarded-text-to-sql.md): Status: accepted. Date: 2026-11-07.
-- [ADR-006: Embeddings, FAISS index and metadata](decisions/ADR-006-embeddings-and-index.md): Status: accepted. Date: 2026-11-07.
+- [ADR-006: Embeddings, FAISS index and metadata](decisions/ADR-006-embeddings-and-index.md): Status: accepted. The offline default is deterministic word counting. The FastEmbed measurements below describe the optional learned provider.
 - [ADR-007: Answer verification with an NLI model](decisions/ADR-007-nli-verification.md): Status: accepted. Date: 2026-11-07.
 - [ADR-008: Evaluation design in LangSmith](decisions/ADR-008-evaluation-design.md): Status: accepted. Date: 2026-11-07.
 - [ADR-009: Public data first, simulation only for the gaps](decisions/ADR-009-public-data-first-simulation-for-gaps.md): Status: accepted. Date: 2026-11-07.

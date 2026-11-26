@@ -17,7 +17,7 @@ from langchain_core.messages import HumanMessage
 from ledgerlens import embeddings as emb
 from ledgerlens import retrieval
 from ledgerlens.agents.retrieval_agent import build_retrieval_agent, build_retrieval_tool, retrieve
-from ledgerlens.embeddings import FastEmbedEmbeddings
+from ledgerlens.embeddings import OfflineEmbeddings
 from ledgerlens.offline import ScriptedChatModel, text_message, tool_call_message
 from ledgerlens.retrieval import build_policy_index, index_dir_for, load_policy_documents
 from tests.tools import test_policies as base
@@ -28,7 +28,7 @@ def built_index(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """A full policy index with the fake vector model from `test_policies.py`."""
     monkeypatch.setattr(emb, "_text_embedding_class", lambda: base.WordCountModel)
     root = tmp_path / "index"
-    embeddings = FastEmbedEmbeddings()
+    embeddings = OfflineEmbeddings()
     build_policy_index(load_policy_documents(base.POLICIES), embeddings, index_dir_for(root, embeddings))
     return root
 
@@ -69,7 +69,7 @@ def test_retrieve_returns_the_answer_and_the_evidence_ids(built_index: Path) -> 
 
 
 def test_the_index_files_are_byte_identical_after_a_run(built_index: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    folder = built_index / "policies_fastembed"
+    folder = index_dir_for(built_index, OfflineEmbeddings())
     before = digests(folder)
 
     def forbidden(*args: object, **kwargs: object) -> None:

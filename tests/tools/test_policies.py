@@ -17,7 +17,7 @@ import pytest
 
 from ledgerlens import embeddings as emb
 from ledgerlens import retrieval
-from ledgerlens.embeddings import DEFAULT_FASTEMBED_MODEL, FastEmbedEmbeddings
+from ledgerlens.embeddings import OFFLINE_EMBEDDING_ID, FastEmbedEmbeddings, OfflineEmbeddings
 from ledgerlens.retrieval import (
     IndexMismatch,
     IndexUnavailable,
@@ -150,7 +150,7 @@ def test_build_writes_the_faiss_files_and_the_meta(built_index: Path) -> None:
     folder = built_index / "policies_fastembed"
     assert {p.name for p in folder.iterdir()} == {"index.faiss", "index.pkl", "index_meta.json"}
     meta = json.loads((folder / "index_meta.json").read_text())
-    assert meta["embedding"] == f"fastembed:{DEFAULT_FASTEMBED_MODEL}"
+    assert meta["embedding"] == f"fastembed:{emb.DEFAULT_FASTEMBED_MODEL}"
     assert meta["dimension"] == DIM
     assert meta["chunks"] == len(load_policy_documents(POLICIES))
     assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", meta["built_on"])
@@ -208,7 +208,7 @@ def test_building_twice_gives_the_same_faiss_file(tmp_path: Path, fake_model: No
 
 
 def make_tool(index_root: Path):
-    return build_search_policies_tool(index_root=index_root)
+    return build_search_policies_tool(index_root=index_root, embeddings=FastEmbedEmbeddings())
 
 
 def test_the_baseline_search_returns_ids_scores_and_evidence(built_index: Path) -> None:
@@ -346,12 +346,12 @@ def test_the_tool_is_described_for_the_model(built_index: Path) -> None:
 needs_committed_index = pytest.mark.skipif(not COMMITTED.is_dir(), reason="data/index/ not built yet")
 
 
-@needs_committed_index
-def test_the_committed_index_matches_the_documents_and_the_default_model() -> None:
-    meta = json.loads((COMMITTED / "index_meta.json").read_text())
-    assert meta["embedding"] == f"fastembed:{DEFAULT_FASTEMBED_MODEL}"
-    assert meta["chunks"] == len(load_policy_documents(POLICIES)), "rebuild with scripts/build_index.py"
-    store = load_policy_index(COMMITTED, FastEmbedEmbeddings())  # does not load the model: it only reads the files
+def test_the_committed_offline_index_matches_the_documents_and_default_provider() -> None:
+    folder = index_dir_for(COMMITTED.parent, OfflineEmbeddings())
+    meta = json.loads((folder / "index_meta.json").read_text())
+    assert meta["embedding"] == OFFLINE_EMBEDDING_ID
+    assert meta["chunks"] == len(load_policy_documents(POLICIES))
+    store = load_policy_index(folder, OfflineEmbeddings())
     assert store.count == meta["chunks"] and store.dimension == meta["dimension"]
 
 

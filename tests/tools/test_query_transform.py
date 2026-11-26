@@ -163,7 +163,9 @@ def lookup_model(*, fail: bool = False) -> LookupChatModel:
 
 
 def make_tool(index_root: Path, llm: BaseChatModel | None = None):
-    return build_search_policies_tool(index_root=index_root, llm=llm or lookup_model())
+    return build_search_policies_tool(
+        index_root=index_root, llm=llm or lookup_model(), embeddings=FastEmbedEmbeddings()
+    )
 
 
 HARD = {q["id"]: q for q in questions() if q["difficulty"] == "hard"}
@@ -275,7 +277,7 @@ def test_recall_at_3_on_the_hard_set_is_higher_after_transformation(
     returned: dict[str, list[str]] = {}
     with caplog.at_level(logging.INFO, logger=policies.log.name):
         for transform in hits:
-            tool = build_search_policies_tool(index_root=root, llm=lookup)
+            tool = build_search_policies_tool(index_root=root, llm=lookup, embeddings=FastEmbedEmbeddings())
             for question in questions():
                 found = tool.invoke({"query": question["question"], "k": 3, "transform": transform})["data"]
                 ids = [r["chunk_id"] for r in found["results"]]

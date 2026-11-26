@@ -58,6 +58,8 @@ REWRITE_PROMPT = (
     "You rewrite customer questions to search the policy manual of a payments company "
     "(refund, FX, chargeback, duplicate charge, settlement, fees, escalation). Swap "
     "everyday language for the terms the manual would use, keep the meaning and do not make up facts. "
+    "If a question about when something is required leaves the timing ambiguous, the original question already "
+    "covers the triggering event. Use the rewrite to ask for the submission deadline or cutoff. "
     "Answer only with the rewritten question, in English, on one line."
 )
 MULTI_QUERY_PROMPT = (

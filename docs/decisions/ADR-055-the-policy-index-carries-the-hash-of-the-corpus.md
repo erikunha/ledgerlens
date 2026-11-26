@@ -103,12 +103,12 @@ sentence: one says the vector space changed, the other says the corpus changed.
 
 ### 4. The gate refuses a repository whose index does not match its policies
 
-A new read-only script, `scripts/check_policy_index.py`, is wired into `scripts/gate.sh` after the check of the
-datasets (`:16-21`), because the gate of the Python side is the one that runs everywhere, in the local machine and in
-the continuous integration. The script reads the meta of the committed index and the corpus of the disk, prints one
-line per problem and exits with a non zero code, and it writes nothing. It never downloads the model
-and never loads FAISS: the digest of the corpus needs no embedding, which is what makes the check possible in the
-offline gate (`scripts/gate.sh:6`). A check that is not a step of the gate is a note for the next person.
+The Python gate runs `scripts/check_policy_index.py` against `data/index/policies_openai/` and
+`data/index/policies_offline/` by default.
+The checker compares the policy corpus with `corpus_sha256` in `index_meta.json`. It then reads
+`index.faiss` and `index.pkl` as bytes and checks both against `artifact_sha256` in the same manifest.
+A missing or modified file fails the gate. The check runs offline without deserializing the index.
+Use `--index PATH` to verify another index built with artifact digests.
 
 ### 5. The tasks
 

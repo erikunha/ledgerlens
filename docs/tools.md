@@ -39,7 +39,7 @@ These are the descriptions exactly as the agent reads them.
 
 **`calculate`**
 
-> Do exact arithmetic for money, rates and fees. Never do arithmetic yourself: call this tool. Choose an operation and pass the named values as decimal strings. Operations: convert (amount, rate), difference (a, b), percent_diff (base, other), implied_markup_pct (reference_rate, applied_rate), fee (gross, percent, fixed_per_item, items), net_settlement (gross, refunds, fees), fx_gap_breakdown (units, charge_rate, refund_reference_rate, refund_applied_rate), fx_markup_check (units, charge_rate, refund_reference_rate, refund_applied_rate; states the plan of the merchant). All results use exact decimal math and round half to even.
+> Do exact arithmetic for money, rates and fees. Never do arithmetic yourself: call this tool. Choose an operation and pass the named values as decimal strings. Operations: convert (amount, rate), difference (a, b), percent_diff (base, other), implied_markup_pct (reference_rate, applied_rate), fee (gross, percent, fixed_per_item, items), net_settlement (gross, refunds, fees), fx_gap_breakdown (units, charge_rate, refund_reference_rate, refund_applied_rate), fx_markup_check (units, charge_rate, refund_reference_rate, refund_applied_rate; states the plan of the merchant). Money results use exact decimal math and round half to even. For the dispute cutoff, use previous_business_day with values date (response deadline, YYYY-MM-DD) and currency (settlement currency). Ask for the settlement currency if it is unknown.
 
 **`recall_cases`**
 
@@ -85,7 +85,7 @@ flowchart LR
 
 `build_search_policies_tool(llm=...)` accepts an optional model that runs the query transformations `rewrite`, `multi_query` and `hyde`. Without `llm`, the model comes from the configuration (`get_chat_model()`) on the first transformation; with `transform` set to `none`, no model is used.
 
-With `transform` set to `rewrite`, the search uses the original question and the rewrite, and the results merge by the best score of each passage; `query_used` lists both queries. The `query` argument tells the model that the tool is the only source of policy facts (fees, deadlines, rules, the source of the reference rate) and that it must be called before answering a rule question.
+With `transform` set to `rewrite`, the search uses the original question and the rewrite, and the results merge by the best score of each passage; `query_used` lists both queries. For an ambiguous question about when evidence is required, the rewrite asks about the submission deadline while the original query preserves the triggering event. The `query` argument tells the model that the tool is the only source of policy facts (fees, deadlines, rules, the source of the reference rate) and that it must be called before answering a rule question.
 
 `calculate` refuses two incoherent inputs before calculating, with an error whose `retryable` is true and whose message says what to fix. `SUSPECTED_MINOR_UNITS`: a money value (`amount`, `gross`, `refunds`, `fees`, `units`) with four or more digits and no decimal point, such as `10000`, which looks like it came from `amount_minor`; the message gives the value in major units (`100.00`), and writing `10000.00` is accepted. `SWAPPED_RATES`: in `fx_gap_breakdown` and in `fx_markup_check`, `refund_applied_rate` above `refund_reference_rate`. The description of the `values` argument defines the major units and the role of each rate.
 
