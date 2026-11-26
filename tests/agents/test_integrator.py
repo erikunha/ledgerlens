@@ -409,6 +409,58 @@ def seen_by(model: ScriptedChatModel, call: int = 0) -> str:
     return "\n".join(str(m.content) for m in model.calls[call])
 
 
+def test_the_policy_answer_prompt_requires_a_next_step_without_assuming_late_evidence_eligibility(
+    ledger_db: Path, index_root: Path, cases: CaseMemory
+) -> None:
+    model = ScriptedChatModel(
+        script=[
+            tool_call_message(
+                "search_policies", {"query": "missed internal cutoff same-day review", "transform": "none"}
+            ),
+            text_message("Escalate for same-day human review."),
+        ]
+    )
+    triage = triage_script(("search for the missed cutoff policy", "search_policies"))
+    investigate(
+        triaged(ledger_db, index_root, cases, model, triage),
+        "Our evidence cutoff passed and the response deadline is tomorrow. What can we do now?",
+        thread_id="t-missed-cutoff",
+    )
+
+    answer_prompt = seen_by(model, call=1)
+    assert (
+        "When only policy passages are available, frame the action conditionally on the facts supplied "
+        "and do not infer a case status." in answer_prompt
+    )
+    assert "For a missed internal cutoff, state the next step the cited policy prescribes." in answer_prompt
+    assert (
+        "If asked whether late evidence can still be submitted and the policy only prescribes review, "
+        "say the cited policy does not establish whether late evidence can be accepted." in answer_prompt
+    )
+    assert "Do not infer acceptance, rejection, or an exception from the cutoff alone" in answer_prompt
+    assert (
+        "Keep the subject of each consequence. Attribute automatic loss to a merchant response sent after the "
+        "response deadline, and review to missing the internal evidence cutoff, when the cited policy says so."
+        in answer_prompt
+    )
+    assert "State what follows if the policy condition is met without claiming it is the only cause" in answer_prompt
+    assert "Example for a missed evidence cutoff when asked about next steps and automatic loss" in answer_prompt
+    assert (
+        "Use only parts supported by the current search and cite the actual retrieved passage IDs "
+        "in place of the placeholders" in answer_prompt
+    )
+    assert (
+        "If your internal cutoff has passed and the response deadline is within two days, escalate the case to a "
+        "human analyst for a same-day decision" in answer_prompt
+    )
+    assert "The retrieved passages do not establish whether late evidence can still be accepted" in answer_prompt
+    assert (
+        "If the merchant response is sent after the response deadline, the dispute is lost automatically"
+        in answer_prompt
+    )
+    assert "I need the dispute record to verify the case status" in answer_prompt
+
+
 def test_the_triage_plan_is_given_to_the_agent_and_kept_in_the_result(
     ledger_db: Path, index_root: Path, cases: CaseMemory
 ) -> None:
