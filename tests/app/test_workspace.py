@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import pytest
 from streamlit.testing.v1 import AppTest
 
 APP = Path(__file__).resolve().parents[2] / "app" / "streamlit_app.py"
@@ -148,3 +149,41 @@ def test_paid_secondary_account_disables_send_for_featured_case(monkeypatch):
     assert not page.button(key="send").disabled
     assert page.text_input(key="draft").value == original
     assert not page.session_state["turns"]
+
+
+def test_test_message_gets_a_visible_reply_without_starting_an_investigation(monkeypatch):
+    monkeypatch.setenv("LEDGERLENS_OFFLINE", "1")
+    page = AppTest.from_file(str(APP), default_timeout=30).run()
+    page.text_input(key="draft").set_value("teste")
+    page.button(key="send").click().run()
+    assert "Ask about a payment" in page.chat_message[-1].markdown[0].value
+    assert "result" not in page.session_state["turns"][-1]
+
+
+def test_featured_explorer_starts_at_payment_and_resets_on_account_switch(monkeypatch):
+    monkeypatch.setenv("LEDGERLENS_OFFLINE", "1")
+    page = AppTest.from_file(str(APP), default_timeout=30).run()
+    page.button(key="explore-featured").click().run()
+    assert page.query_params["view"] == "Data"
+    assert "draft" not in [widget.key for widget in page.text_input]
+    assert page.session_state["explore_payment"] == "TX-2048"
+    page.selectbox(key="account").set_value("M-03").run()
+    assert "explore_payment" not in page.session_state
+    assert not page.exception
+
+
+def test_test_message_does_not_require_a_paid_snapshot_or_provider(monkeypatch):
+    from app import interactive_views
+
+    monkeypatch.setattr(interactive_views, "render_live_settings", lambda **_: True)
+    monkeypatch.setattr(interactive_views, "submit_live_question", lambda *_: pytest.fail("unexpected provider call"))
+    page = AppTest.from_file(str(APP), default_timeout=30).run()
+    page.selectbox(key="account").set_value("M-09").run()
+    page.session_state["credential"] = {"handle": "test"}
+    page.session_state["live_settings"] = {"model_profile_id": "test"}
+    page.button(key="use-openai").click().run()
+    page.text_input(key="draft").set_value("teste").run()
+    assert not page.button(key="send").disabled
+    page.button(key="send").click().run()
+    assert not page.exception
+    assert "Ask about a payment" in page.chat_message[-1].markdown[0].value

@@ -135,7 +135,7 @@ uv run uvicorn app.server:portal --host 127.0.0.1 --port 8501
 
 ### Portal Streamlit
 
-Abra http://localhost:8501. Clique em **Investigate this payment**, revise a pergunta e pressione **Send**. Abra o cálculo gravado para conferir as evidências. **Recordings** funciona sem chave. O indicador mostra se as respostas são simuladas ou usam sua chave. **Use my OpenAI key** abre o painel de configuração. Simulador, comprovantes, avaliações e documentação técnica ficam em **Tools and technical reference**. Para usar Sandbox e Live, inicie a API em outro terminal.
+Abra http://localhost:8501. Clique em **Investigate this payment**, revise a pergunta e pressione **Send**. Use **Explore data** para filtrar os registros e eventos da conta por pagamento. Abra o cálculo gravado para conferir as evidências. **Recordings** funciona sem chave. O indicador mostra se as respostas são simuladas ou usam sua chave. **Use my OpenAI key** abre o painel de configuração. Simulador, comprovantes, avaliações e documentação técnica ficam em **Tools and technical reference**. Para usar Sandbox e Live, inicie a API em outro terminal.
 
 ```bash
 uv run ledgerlens-demo --port 8010
