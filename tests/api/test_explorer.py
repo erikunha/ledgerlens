@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 import pytest
@@ -113,3 +114,25 @@ def test_a_missing_ledger_is_not_created(tmp_path: Path) -> None:
     with pytest.raises(sqlite3.OperationalError):
         explore_rows(missing_path, "transactions")
     assert not missing_path.exists()
+
+
+def test_full_sample_rows_match_each_native_table(ledger_db: Path) -> None:
+    with closing(sqlite3.connect(ledger_db)) as conn:
+        conn.row_factory = sqlite3.Row
+        tables = conn.execute(
+            "SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
+        ).fetchall()
+        assert len(tables) == 9
+        for (table,) in tables:
+            expected = [dict(row) for row in conn.execute(f'SELECT * FROM "{table}"')]
+            actual = explore_rows(ledger_db, table, full_sample=True)
+            for row in actual:
+                assert list(row) == list(expected[0])
+            identifier = next(iter(expected[0]))
+            assert sorted(actual, key=lambda row: row[identifier]) == sorted(expected, key=lambda row: row[identifier])
+
+
+def test_full_sample_payment_scope_keeps_only_related_customer_and_merchant(ledger_db: Path) -> None:
+    assert [row["id"] for row in explore_rows(ledger_db, "customers", "TX-2048", full_sample=True)] == ["C-0412"]
+    assert [row["id"] for row in explore_rows(ledger_db, "merchants", "TX-2048", full_sample=True)] == ["M-17"]
+    assert explore_rows(ledger_db, "projector_state", "TX-2048", full_sample=True) == []

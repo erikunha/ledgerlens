@@ -12,7 +12,7 @@ def test_returning_to_payments_preserves_the_selected_account(monkeypatch):
     monkeypatch.setenv("LEDGERLENS_OFFLINE", "1")
     page = AppTest.from_file(str(APP), default_timeout=30).run()
     page.selectbox(key="account").set_value("M-03").run()
-    for view in ("Replay", "Evaluation", "Proof", "Engineering", "Payments"):
+    for view in ("Replay", "Project", "Data", "Payments"):
         page.button(key=f"nav-{view}").click().run()
         assert not page.exception
     assert page.selectbox(key="account").value == "M-03"
@@ -187,3 +187,17 @@ def test_test_message_does_not_require_a_paid_snapshot_or_provider(monkeypatch):
     page.button(key="send").click().run()
     assert not page.exception
     assert "Ask about a payment" in page.chat_message[-1].markdown[0].value
+
+
+def test_data_navigation_defaults_to_the_complete_sample(monkeypatch):
+    monkeypatch.setenv("LEDGERLENS_OFFLINE", "1")
+    page = AppTest.from_file(str(APP), default_timeout=30).run()
+    page.button(key="nav-Data").click().run()
+    assert not page.exception
+    assert page.session_state["data_scope"] == "Full sample database"
+    payment = next(widget for widget in page.selectbox if widget.label == "Payment scope")
+    assert len(payment.options) == 2117
+    assert "nav-Evaluation" not in [item.key for item in page.button]
+    page.button(key="nav-Project").click().run()
+    assert page.query_params["view"] == "Project"
+    assert not page.exception

@@ -91,7 +91,7 @@ def at(ledger_db: Path, index_root: Path, cases) -> AppTest:  # noqa: F811
 def test_the_page_starts_empty_with_the_mode_and_examples(at: AppTest) -> None:
     assert not at.exception
     text = page_text(at)
-    assert "offline" in text.lower()
+    assert "scripted demo · no api charges" in text.lower()
     assert any(QUESTION == b.label for b in at.button)
     assert len(at.chat_message) == 0
 
@@ -203,7 +203,7 @@ def test_payments_stays_scripted_when_live_is_enabled(monkeypatch: pytest.Monkey
         monkeypatch.setattr(target, unexpected)
     page = AppTest.from_file(str(APP), default_timeout=60).run()
     assert not page.exception
-    assert "Learned verification is unavailable" in page_text(page)
+    assert "Try a suggested question for a scripted answer" in page_text(page)
     send(page, QUESTION)
     assert not page.exception
     assert S01["truth"]["refund_brl"] in page_text(page)

@@ -133,7 +133,7 @@ uv run uvicorn app.server:portal --host 127.0.0.1 --port 8501
 
 ### Streamlit workspace
 
-Open http://localhost:8501. Choose **Investigate this payment**, review the question and press **Send**. Use **Explore data** to filter the account’s records and events for a payment. Open the recorded calculation to inspect the evidence. **Recordings** works without a key. The mode indicator shows whether answers are scripted or use your key. **Use my OpenAI key** opens the settings panel. The simulator, proofs, evaluation and engineering pages are under **Tools and technical reference**. Start the API in a second terminal for Sandbox and Live.
+Open http://localhost:8501. Choose **Investigate this payment**, review the question and press **Send**. Open **Explore data** to check the full sample database. A payment shortcut opens the corresponding account records and events. Open the recorded calculation to inspect the evidence. **Recordings** works without a key. The mode indicator shows whether answers are scripted or use your key. **Use my OpenAI key** opens the settings panel. **Project details** explains how the agent works and shows published scores, evaluation data and proofs. Start the API in a second terminal for Sandbox and Live.
 
 ```bash
 uv run ledgerlens-demo --port 8010

@@ -1,7 +1,10 @@
 """Exercise filtering and record inspection against the same scoped ledger the portal uses."""
 
 import json
+import sqlite3
+from contextlib import closing
 from datetime import date
+from pathlib import Path
 
 import pytest
 from streamlit.testing.v1 import AppTest
@@ -12,10 +15,16 @@ from ledgerlens.sim.pipeline import build_ledger
 
 
 @pytest.fixture(scope="module")
-def explorer_page(tmp_path_factory: pytest.TempPathFactory) -> str:
-    folder = tmp_path_factory.mktemp("explorer")
-    base = folder / "sample.db"
+def sample_db(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    base = tmp_path_factory.mktemp("explorer") / "sample.db"
     build_ledger(SimConfig(source="sample"), base).conn.close()
+    return base
+
+
+@pytest.fixture(scope="module")
+def explorer_page(sample_db: Path) -> str:
+    folder = sample_db.parent
+    base = sample_db
     ledgers = {account: scoped_ledger(base, account, folder / f"{account}.db") for account in ("M-09", "C-0412")}
     paths = {account: str(path) for account, path in ledgers.items()}
     return f"""
@@ -114,3 +123,53 @@ def test_refund_event_opens_its_record_without_leaving_the_payment(explorer_page
     assert _element(page.selectbox, "Record to inspect").value == "R-0731"
     _element(page.button, "Ask about this record").click().run()
     assert page.session_state["prepared"][1] == ["R-0731", "TX-2048"]
+
+
+def test_full_sample_pages_native_rows_and_filters_tables_without_dates(sample_db: Path) -> None:
+    page = AppTest.from_string(f"""
+from pathlib import Path
+from app.data_explorer import render_explorer
+
+render_explorer(Path({str(sample_db)!r}), "sample", None, None, full_sample=True)
+""").run()
+    assert not page.exception
+    dataset = _element(page.selectbox, "Record type")
+    with closing(sqlite3.connect(sample_db)) as conn:
+        table_names = {name for (name,) in conn.execute("SELECT name FROM sqlite_schema WHERE type='table'")}
+        identifiers = [row[0] for row in conn.execute("SELECT id FROM transactions ORDER BY created_at DESC, id")]
+    assert set(dataset.options) == table_names - {"sqlite_sequence", "events"}
+    assert any(f"{len(identifiers):,} matching rows" in item.value for item in page.caption)
+    assert not any(element.label == "Ask about this record" for element in page.button)
+    assert "card_fingerprint" in page.dataframe[0].value.columns
+    assert "source_ref" in page.dataframe[0].value.columns
+
+    seen = list(page.dataframe[0].value["id"])
+    pagination = _element(page.number_input, "Page")
+    page_count = int(pagination.max)
+    for number in range(2, page_count + 1):
+        _element(page.number_input, "Page").set_value(number).run()
+        seen.extend(page.dataframe[0].value["id"])
+    assert seen == identifiers
+
+    _element(page.text_input, "Search by ID").set_value(identifiers[0]).run()
+    assert list(page.dataframe[0].value["id"]) == [identifiers[0]]
+    _element(page.selectbox, "Record type").select("projector_state").run()
+    assert not page.date_input and not page.multiselect
+    assert "last_event_id" in page.dataframe[0].value.columns
+    assert any("CREATE TABLE projector_state" in item.value for item in page.code)
+    _element(page.text_input, "Search by name").set_value("missing-projector").run()
+    assert not page.dataframe
+    assert "0 matching rows" in [item.value for item in page.caption]
+
+    _element(page.selectbox, "Payment scope").set_value("TX-2048").run()
+    page.session_state["explorer-tabs-sample"] = "Events"
+    page.run()
+    frame = page.dataframe[0].value
+    assert {"event_uid", "origin", "ingested_at", "payload"} <= set(frame.columns)
+    assert set(frame["aggregate_id"]) == {"TX-2048", "R-0731"}
+    authorization = frame[frame["type"] == "payment.authorized"].iloc[0]
+    _element(page.text_input, "Search by ID").set_value(authorization["event_uid"]).run()
+    assert list(page.dataframe[0].value["event_uid"]) == [authorization["event_uid"]]
+    _element(page.selectbox, "Event to inspect").set_value(int(authorization["event_id"])).run()
+    payload = json.loads(page.get("json")[0].value)
+    assert "card_fingerprint" in payload and "source_ref" in payload
