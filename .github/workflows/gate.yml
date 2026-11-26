@@ -63,23 +63,19 @@ jobs:
       - name: Fault injection (the recovery of a run)
         run: uv run pytest tests/durability/test_fault_injection.py -q
 
-  # The gate of the frontend. It is a second job and not a step of the job above, because the two gates have two
-  # toolchains and two caches, and because scripts/gate.sh must keep running where Node is absent.
-  # The job does not install the dependencies of the frontend: the install belongs to scripts/gate_web.sh, so that the
-  # gate is runnable alone on a machine that has nothing. The cache of npm stays here, because the cache is what
-  # makes the install of the gate fast.
   web:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
-          # The version of Node is pinned exactly, because a major alone lets the runner resolve whatever it has.
-          # The frontend declares the floor of the major in its engines (24.0.0) and the install of the gate is strict
-          # about it, so a machine with another major fails loudly at the install and not in the middle of the build.
-          node-version: 24.22.3
-          cache: npm
-          cache-dependency-path: apps/web/package-lock.json
-      - name: Gate (typecheck, lint, vitest, next build)
+          # The frozen replay hashes SQLite file bytes, including the writer version.
+          # This uv release selects the 20260610 Python build with SQLite 3.53.1.
+          version: "0.11.21"
+          python-version: "3.12.13"
+          enable-cache: true
+      - name: Install locked dependencies
+        run: uv sync --frozen --extra dev --extra app --extra api
+      - name: Streamlit frontend
         run: bash scripts/gate_web.sh

@@ -111,14 +111,6 @@ Os eventos entram em uma tabela `events` append-only, e um projetor constrói as
 
 ## Início rápido
 
-O site da demonstração mostra o produto, e ele responde em http://localhost:3000. Os dois pré-requisitos são Python 3.12, para o agente, e Node 24, para o site:
-
-```bash
-cd apps/web
-npm ci
-npm run dev
-```
-
 ### Offline, sem chaves
 
 Precisa de Python 3.12 e do [uv](https://docs.astral.sh/uv/).
@@ -135,36 +127,21 @@ No modo offline, o chat segue um roteiro, o HTTP lê respostas gravadas e os dad
 
 A demonstração é um pequeno portal de pagamentos, o LedgerLens Pay, com contas fictícias vindas dos dados gerados. Ele abre já autenticado como o cliente C-0412; o **Switch demo account**, no topo, escolhe outro cliente ou merchant de um caso plantado (por exemplo o merchant M-03 ou o merchant M-09). O lado esquerdo mostra a atividade da conta em abas (Activity, Refunds, Disputes e, para um merchant, Payouts): primeiro o valor, depois o que é a linha, sua data e um selo de status, com filtros. Abra uma linha para ver os detalhes (id da transação, cartão, taxa de câmbio aplicada, fees, prazos) e pressione **Ask about this**: a pergunta sobre aquela linha cai na caixa Help, à direita, pronta para editar antes de enviar. O agente responde como o assistente de suporte. Ele recebe como contexto a conta autenticada e a linha escolhida, e suas ferramentas leem uma cópia do ledger que contém apenas os registros dessa conta.
 
-Cada resposta carrega o trace do agente, uma árvore de execução como a do LangSmith, desenhada ao vivo enquanto o agente trabalha: a triagem, cada chamada de modelo (com tokens) e cada chamada de ferramenta (argumentos, o envelope de resposta e o SQL gerado), o veredito sobre cada afirmação e o escalonamento. Quando a investigação termina, o trace recolhe em um resumo de uma linha e a resposta aparece abaixo dele, com suas citações e os registros do ledger que o assistente leu marcados no extrato. A opção **Show the agent trace** (ativada por padrão) oculta o trace e as citações, e a resposta passa a ler como uma resposta de suporte. Offline, as perguntas plantadas têm respostas scriptadas: a diferença no reembolso por câmbio (TX-2048), a cobrança duplicada (TX-2051 e TX-2052), a disputa perto do prazo (CB-0310), o cálculo do payout (ST-0044) e um id que não existe (TX-9999). O **Ask about this** aparece apenas nessas linhas; outras perguntas precisam de um modelo configurado.
+Cada resposta carrega o trace do agente, uma árvore de execução como a do LangSmith, desenhada ao vivo enquanto o agente trabalha: a triagem, cada chamada de modelo (com tokens) e cada chamada de ferramenta (argumentos, o envelope de resposta e o SQL gerado), o veredito sobre cada afirmação e o escalonamento. Quando a investigação termina, o trace recolhe em um resumo de uma linha e a resposta aparece abaixo dele, com suas citações e os registros do ledger que o assistente leu marcados no extrato. A opção **Show the agent trace** (ativada por padrão) oculta o trace e as citações, e a resposta passa a ler como uma resposta de suporte. Offline, as perguntas plantadas têm respostas scriptadas: a diferença no reembolso por câmbio (TX-2048), a cobrança duplicada (TX-2051 e TX-2052), a disputa perto do prazo (CB-0310), o cálculo do payout (ST-0044) e um id que não existe (TX-9999). O **Ask about this** aparece apenas nessas linhas; use Live para investigar com a OpenAI.
 
 ```bash
-uv run streamlit run app/streamlit_app.py
+uv run uvicorn app.server:portal --host 127.0.0.1 --port 8501
 ```
 
-### O site público (Next.js)
+### Portal Streamlit
 
-O site público da demonstração é uma exportação estática do Next.js que reproduz as investigações gravadas do pacote de design.
+Abra http://localhost:8501. O menu reúne Payments, Replay, Sandbox, Live, Evaluation, Proof e Engineering. Replay permite consultar as gravações sem chave. Para usar Sandbox e Live, inicie a API em outro terminal.
 
 ```bash
-cd apps/web
-npm ci              # a instalação travada, uma vez
-npm run build       # produz a exportação estática em out/
-npm run preview     # serve a exportação como arquivos simples, em http://localhost:3000
+uv run ledgerlens-demo --port 8010
 ```
 
-Os dois comandos que produzem o site e o servem são `npm run build` e `npm run preview`. O site precisa do Node 24 e de mais nada.
-
-As duas rotas que chegam ao backend, o sandbox e o modo ao vivo, precisam do backend da demonstração rodando em outro terminal, com a origem deste site declarada para que o navegador possa chamá-lo:
-
-```bash
-LEDGERLENS_CORS_ORIGINS=http://localhost:3000 uv run ledgerlens-demo --port 8010
-```
-
-`LEDGERLENS_CORS_ORIGINS` recebe uma lista separada por vírgulas das origens exatas do navegador, e o backend só envia os cabeçalhos de CORS para as origens dessa lista. Este site é servido em `http://localhost:3000`, então é essa a origem a declarar. Sem ela o navegador bloqueia as chamadas e a página mostra `NETWORK_ERROR` em vez do catálogo dos modelos.
-
-A metade gravada do site serve os artefatos gravados do repositório e não chama ninguém, então funciona sem chave, sem conta e sem rede. Ele publica dois catálogos dos mesmos dez cenários. `/replay` é o catálogo das gravações feitas com o modelo roteirizado, e `/replay/scenario/<id>`, por exemplo `/replay/scenario/S01`, é uma delas: a gravação é uma fórmula, e qualquer pessoa pode rodar a captura de novo e obter os mesmos bytes. `/replay-real` é o catálogo das gravações feitas com um modelo real, e `/replay-real/scenario/<id>` é uma dessas: a gravação é uma execução, e ela não é reproduzível byte a byte. O visitante abre também `/sandbox`, o sandbox do visitante, onde um caso publicado é bifurcado em um branch privado da sessão. O sandbox é a única rota que chega ao backend da demonstração, e ela não precisa de chave. Uma quarta rota, `/live`, é o modo ao vivo e precisa de uma chave do próprio visitante. O tour da arquitetura está em `/engineering`.
-
-[`apps/web/README.md`](apps/web/README.md) traz os comandos, os testes e as regras da pasta. [`docs/frontend.md`](docs/frontend.md) traz as três salas do site e o contrato da URL dele.
+[Streamlit](docs/frontend.md)
 
 ### Veja a execução
 
@@ -174,32 +151,20 @@ O vídeo abaixo é o app de demonstração rodando online com um modelo real, gr
 
 [docs/demo.md](docs/demo.md) tem as notas da gravação: o modo, o que o vídeo mostra, os números na tela e como ele foi gravado.
 
-### Online, com um modelo real
+### Usar a OpenAI no modo Live
 
-Copie `.env.example` para `.env`, preencha as chaves (`OPENAI_API_KEY` e, para traces e experimentos, `LANGSMITH_API_KEY`) e execute sem `LEDGERLENS_OFFLINE`. O modelo padrão é `gpt-4.1-mini`, com taxas de câmbio ao vivo.
+Inicie o Streamlit e a API com `LEDGERLENS_OFFLINE=0`. Abra **Live**, escolha o modelo e os limites e conecte sua chave OpenAI. O portal Payments usa dados de demonstração.
 
-## Modo ao vivo: traga a sua própria chave
+## Execução com chave própria
 
-A demonstração funciona sem nenhuma chave. O modo ao vivo é o ramo que você escolhe ativar: o visitante roda um caso real com uma chave do próprio provedor, dentro de um orçamento rígido, e todo o resto continua funcionando exatamente como antes. Neste marco o ramo é do lado do servidor e está completo: as rotas e as páginas que as consomem foram entregues no R3 ([ADR-035](docs/decisions/ADR-035-the-facade-of-the-live-mode.md), [ADR-066](docs/decisions/ADR-066-the-pages-of-the-live-mode-exist-and-the-readme-was-the-one-that-was-wrong.md)).
+O modo Live usa a API iniciada no guia acima. O servidor Streamlit compartilha uma sessão de API entre Sandbox e Live para cada visitante.
 
-A demonstração do visitante é servida por um comando, com a origem do site declarada para que o navegador do visitante possa chamá-lo:
-
-```bash
-LEDGERLENS_CORS_ORIGINS=http://localhost:3000 uv run ledgerlens-demo --port 8010
-```
-
-A origem do site é `http://localhost:3000`, a origem deste README, e o backend só envia os cabeçalhos de CORS para as origens que a implantação declara em `LEDGERLENS_CORS_ORIGINS`. O nome da variável, a lista das origens exatas e a recusa do wildcard estão em [docs/frontend.md](docs/frontend.md).
-
-Esse comando serve a aplicação ligada da demonstração: o modo ao vivo e o sandbox do visitante em uma só aplicação, sobre um único emissor de sessão, um único repositório de branches, uma única camada de branches e um único cofre de credenciais, de modo que o branch que o sandbox bifurca é o branch que a execução ao vivo lê ([ADR-039](docs/decisions/ADR-039-the-wired-application-of-the-demo.md)). O visitante vê um cookie e uma sessão nas duas fachadas. As duas fachadas sozinhas são dois visitantes com um emissor cada, e a fábrica simples do `uvicorn` ainda serve um modo ao vivo sem camada de branches, que recusa toda execução com `503 BRANCH_LAYER_MISSING`. [O início rápido do modo ao vivo](specs/003-r3-bring-your-own-key/quickstart.md) mostra o fluxo inteiro, com as respostas reais.
-
-O que ele faz:
-
-- a chave chega uma vez, em `POST /v1/credentials`, e vive na memória do processo do servidor e em nenhum outro lugar: nem arquivo, nem banco de dados, nem log, nem trace, nem URL. A resposta carrega um handle opaco, o provedor e o prazo de validade, e nunca a chave em si;
+- o Streamlit encaminha a chave para a API com `POST /v1/credentials`. O cofre a mantém em memória: nem arquivo, nem banco de dados, nem log, nem trace, nem URL. A resposta carrega um handle opaco, o provedor e o prazo de validade, e nunca a chave em si;
 - o handle fica preso à sessão do visitante. Um handle de outra sessão é recusado com a mesma mensagem de um handle que nunca existiu;
 - a credencial morre quando o visitante a esquece, quando a sessão termina, quando passa o tempo de vida, quando o cofre enche, quando o servidor reinicia ou quando o provedor recusa a chave vezes demais. Uma credencial nunca sobrevive à sessão que a segura;
 - o modelo vem do catálogo do servidor, que lista apenas os modelos cujo uso de ferramentas foi mesmo testado. Um modelo fora da lista é recusado pelo servidor, e um modelo sem a capacidade de que a arquitetura precisa é recusado com a capacidade que falta nomeada, nunca trocado por outro;
 - a execução é limitada pelos tetos que o visitante define: as chamadas do modelo, as chamadas das ferramentas, os tokens de saída, o relógio de parede e o dinheiro. O contrato também aceita o teto opcional dos tokens de entrada, verificado no plano da execução, antes da chamada, porque o tamanho do pedido é conhecido antes da chamada. O relatório de custo mostra o custo observado e o custo estimado separados, e um modelo cujo preço nunca foi verificado não mostra valor nenhum;
-- "esquecer a chave" está sempre lá e vale na hora, e cancelar uma execução interrompe as chamadas que ainda não começaram. Uma chamada que já estava no provedor é um esforço máximo, e a resposta diz isso.
+- esquecer a chave tem efeito imediato, e cancelar uma execução interrompe as chamadas que ainda não começaram. Uma chamada que já estava no provedor é um esforço máximo, e a resposta diz isso.
 
 **A divulgação.** Ela viaja em cabeçalhos, porque o contrato do handle não aceita nenhum outro campo:
 

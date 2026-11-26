@@ -38,3 +38,4 @@ docs/handoff-v3.md
 !/specs/**
 !/docs/design/specs/
 !/docs/design/specs/**
+.streamlit/secrets.toml

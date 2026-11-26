@@ -1,17 +1,7 @@
 """Turns a recorded replay bundle into the static artifacts the public web site reads.
 
-Why it exists: the site is a static export, so the browser cannot ask a backend for a trace. It needs the recorded
-events, a manifest that says what they are, and a provenance file that proves what is being shown. This module
-produces those three things per scenario, plus the ledger of the account of the recording and one index that tells the
-catalog which scenarios exist. It runs offline, with no key and with no network, and it never changes the recorded
-content: it copies, it hashes and it labels.
-
-The shapes are the ones the interface already reads, transcribed field by field from `apps/web/lib/api/schemas.ts` and
-`apps/web/lib/replay/validate.ts`: the exported manifest is the manifest of the core, the provenance carries the
-fields of the provenance panel, and the index holds one card per scenario with the identifier, the name, the
-question, the concepts, the origin of the data as a string, the status, the kind of the capture and the path of the
-bundle. The export adds its own names under names of their own (`bundle_digest`, `artifacts`, `dataset_sha256`), so
-that nothing the interface reads is renamed and nothing of the export invents a field of the contract.
+Streamlit reads a scenario index and per-scenario event, manifest, ledger and provenance files.
+The exporter copies the recorded content and computes the digests without calling a model.
 
 The export is a pure function of three inputs: the bundle, the public dataset and the frozen artifact of the ledger
 of the scenario. Every timestamp comes from the manifest of the bundle, never from the clock, and the state of the

@@ -30,9 +30,8 @@ The switch "Show the agent trace" (on by default) shows the trace on each answer
 and the ledger records the agent read, and marks the lines read on the statement. With it off, the answer shows with
 no trace and no citations, as a support reply would, and the trace stays stored with the message.
 
-Offline (`LEDGERLENS_OFFLINE=1`) the model is scripted and only the planted questions have a script, as written:
-"Ask about this" is offered only on the lines that have one. Online the page uses the configured model.
-Run: `uv run streamlit run app/streamlit_app.py`.
+Payments uses the synthetic ledger and scripts for the planted questions. The Live workspace configures its own runs.
+Run: `uv run uvicorn app.server:portal --port 8501`.
 """
 
 from __future__ import annotations
@@ -43,6 +42,7 @@ import re
 import tempfile
 import threading
 import uuid
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -51,7 +51,9 @@ import streamlit as st
 from ledgerlens import demo
 from ledgerlens.agents.integrator import Integrator, build_integrator, investigate
 from ledgerlens.api.accounts import Account, account_statement, load_account_profile, load_accounts, scoped_ledger
-from ledgerlens.config import ConfigError, get_chat_model, get_settings, offline
+from ledgerlens.config import ConfigError
+from ledgerlens.embeddings import OfflineEmbeddings
+from ledgerlens.memory.long_term import CaseMemory
 from ledgerlens.observability.trace import Span
 from ledgerlens.offline import ScriptedChatModel, text_message
 from ledgerlens.prompts.ai_disclosure import AI_DISCLOSURE
@@ -59,6 +61,8 @@ from ledgerlens.schemas import InvestigationResult
 from ledgerlens.sim.config import SimConfig
 from ledgerlens.sim.pipeline import build_ledger
 from ledgerlens.tools.fx import FxClient
+from ledgerlens.verify import verify_result
+from ledgerlens.verify.nli import StubNli
 
 log = logging.getLogger(__name__)
 
@@ -78,9 +82,10 @@ SPAN_ICONS = {
 VERDICT_COLORS = {"supported": "green", "contradicted": "red", "not_enough_evidence": "orange"}
 # what Streamlit's Markdown would read as formatting: emphasis, code, link and quote, math, HTML, table
 MARKDOWN_SPECIAL = re.compile(r"([\\`*_\[\]$<>~|])")
-OFFLINE_REFUSAL = (
-    "I can only answer the suggested questions in this offline demo. "
-    "With a configured model I can answer any question about your account."
+OFFLINE_REFUSAL = "I can only answer the suggested questions in this offline payments demo."
+PAYMENTS_MODE = (
+    "Offline demo: scripted answers, recorded FX rates and synthetic account data. "
+    "Learned verification is unavailable. This workspace uses deterministic checks."
 )
 OFFLINE_ASK_HELP = "This offline demo has scripted answers for some lines only. Try a suggested question in Help."
 TABS = {"activity": None, "refunds": "Refund", "disputes": "Chargeback", "payouts": "Payout"}
@@ -143,25 +148,18 @@ def sample_ledger() -> Path:
     return path
 
 
-def base_ledger(is_offline: bool) -> Path:
-    """Offline, the sample ledger. Online, the configured one (`LEDGERLENS_LEDGER_DB`), or the sample when that
-    file was never built (`ledgerlens-sim` builds it)."""
-    configured = Path(get_settings().ledger_db)
-    return configured if not is_offline and configured.exists() else sample_ledger()
-
-
 @st.cache_resource
-def account_ledger(account_id: str, is_offline: bool) -> Path:
+def account_ledger(account_id: str) -> Path:
     """The copy of the ledger that holds only the account's records: what the agent's tools read."""
     folder = Path(tempfile.mkdtemp(prefix=f"ledgerlens_{account_id}_"))
-    return scoped_ledger(base_ledger(is_offline), account_id, folder / "ledger.db")
+    return scoped_ledger(sample_ledger(), account_id, folder / "ledger.db")
 
 
 @st.cache_resource
-def portal_accounts(is_offline: bool) -> list[Account]:
+def portal_accounts() -> list[Account]:
     """The accounts offered at sign-in: the customers and merchants of the planted cases."""
     reserved = demo.load_manifest()["reserved_ids"]
-    return load_accounts(base_ledger(is_offline), [*reserved["customers"], *reserved["merchants"]])
+    return load_accounts(sample_ledger(), [*reserved["customers"], *reserved["merchants"]])
 
 
 # ---- the agent -----------------------------------------------------------------------------------------
@@ -170,14 +168,29 @@ def portal_accounts(is_offline: bool) -> list[Account]:
 def offline_session(account_id: str) -> dict[str, Any]:
     """The account's offline agent with its scripted models (agent, SQL and triage), which start with no script."""
     model, query_model, triage_model = (ScriptedChatModel(script=[]) for _ in range(3))
+    ledger = account_ledger(account_id)
+    embeddings = OfflineEmbeddings()
+    memory_dir = tempfile.TemporaryDirectory(prefix="ledgerlens_payments_memory_")
+    memory = CaseMemory(memory_dir.name, embeddings=embeddings)
     agent = build_integrator(
         model,
-        db_path=account_ledger(account_id, True),
+        db_path=ledger,
+        embeddings=embeddings,
+        case_memory=memory,
+        verifier=partial(verify_result, nli=StubNli(), ledger_db=ledger),
+        policy_model=ScriptedChatModel(script=[]),
         query_model=query_model,
         triage_model=triage_model,
         fx_client=FxClient(mode="fixtures", sleep=lambda _: None),
     )
-    return {"agent": agent, "model": model, "query_model": query_model, "triage_model": triage_model}
+    # The session owns the temporary directory for as long as its agent can recall cases.
+    return {
+        "agent": agent,
+        "model": model,
+        "query_model": query_model,
+        "triage_model": triage_model,
+        "memory_dir": memory_dir,
+    }
 
 
 def prepare_offline_turn(session: dict[str, Any], question: str) -> None:
@@ -195,26 +208,15 @@ def prepare_offline_turn(session: dict[str, Any], question: str) -> None:
     session["query_model"].script.extend(sqls)
 
 
-def ask_agent(question: str, account_id: str, is_offline: bool) -> Integrator:
-    """The agent for the account: the one injected (tests), the scripted offline one or the configured one."""
+def ask_agent(question: str, account_id: str) -> Integrator:
+    """Prepare the scripted investigation for this account, preserving an explicitly injected agent."""
     if "agent" in st.session_state:
         return st.session_state["agent"]
     agents = st.session_state.setdefault("agents", {})
     if account_id not in agents:
-        if is_offline:
-            agents[account_id] = offline_session(account_id)
-        else:
-            agents[account_id] = {
-                "agent": build_integrator(
-                    db_path=account_ledger(account_id, False),
-                    # The model of a retry is built by the deployment that holds the provider, and the demo holds
-                    # the provider of the deployment (ADR-084).
-                    fallback_factory=lambda name: get_chat_model(model=name),
-                )
-            }
+        agents[account_id] = offline_session(account_id)
     session = agents[account_id]
-    if is_offline:
-        prepare_offline_turn(session, question)
+    prepare_offline_turn(session, question)
     return session["agent"]
 
 
@@ -479,9 +481,7 @@ def line_label(line: dict[str, Any], kind: str, marks: dict[str, set[str]]) -> s
     return " ".join(parts)
 
 
-def render_lines(
-    tab: str, lines: list[dict[str, Any]], account: Account, marks: dict[str, set[str]], is_offline: bool
-) -> None:
+def render_lines(tab: str, lines: list[dict[str, Any]], account: Account, marks: dict[str, set[str]]) -> None:
     """One tab of activity: a line per record, opened for its details and "Ask about this"."""
     if not lines:
         st.caption("Nothing here for these filters.")
@@ -501,11 +501,11 @@ def render_lines(
             st.button(
                 "Ask about this",
                 key=f"ask-{tab}-{line['id']}",
-                help=OFFLINE_ASK_HELP if is_offline and not scripted else f"Puts this question in Help: {question}",
+                help=OFFLINE_ASK_HELP if not scripted else f"Puts this question in Help: {question}",
                 on_click=fill_draft,
                 args=(question, [line["id"]]),
                 type="primary",
-                disabled=is_offline and not scripted,
+                disabled=not scripted,
             )
             if line["id"] in st.session_state["selected"]:
                 st.caption("Question ready in Help: review it and press Send.")
@@ -513,8 +513,8 @@ def render_lines(
         st.button(f"Show all {len(lines)}", key=f"show-all-{tab}", type="tertiary", on_click=show_all, args=(tab,))
 
 
-def render_portal(account: Account, lines: list[dict[str, Any]], marks: dict[str, set[str]], is_offline: bool) -> None:
-    account_card(account, lines, load_account_profile(account_ledger(account.id, is_offline), account.id))
+def render_portal(account: Account, lines: list[dict[str, Any]], marks: dict[str, set[str]]) -> None:
+    account_card(account, lines, load_account_profile(account_ledger(account.id), account.id))
     st.markdown("#### Your activity")
     with st.expander("Filters", icon=":material/filter_list:"):
         period, status, search = st.columns([1, 1.4, 1])
@@ -540,25 +540,16 @@ def render_portal(account: Account, lines: list[dict[str, Any]], marks: dict[str
     st.caption(f"Newest first. {len(shown)} of {len(lines)} records match the filters.")
     for tab, name in zip(st.tabs([f"{n.capitalize()} ({len(groups[n])})" for n in names]), names, strict=True):
         with tab:
-            render_lines(name, groups[name], account, marks, is_offline)
+            render_lines(name, groups[name], account, marks)
     marked = sorted(marks["asked"] | marks["read"])
     if marked:  # a soft background on the lines asked about or read, for the demo viewer
         selectors = ", ".join(f".st-key-line-{name}-{i}" for name in names for i in marked)
         st.html(f"<style>{selectors} {{ background: rgba(250, 170, 40, 0.12); border-radius: 0.5rem; }}</style>")
 
 
-def mode_line(is_offline: bool) -> str:
-    if is_offline:
-        return "Offline demo: scripted answers, recorded FX rates and sample data."
-    return f"Online: model {get_settings().model or 'not configured'}."
-
-
-def main() -> None:
-    st.set_page_config(page_title=BRAND, page_icon=":material/payments:", layout="wide")
-    st.html(STYLE)
-    is_offline = offline()
+def render_payments() -> None:
     manifest = demo.load_manifest()
-    accounts = {a.id: a for a in portal_accounts(is_offline)}
+    accounts = {a.id: a for a in portal_accounts()}
     st.session_state.setdefault("account", DEFAULT_ACCOUNT if DEFAULT_ACCOUNT in accounts else next(iter(accounts)))
     st.session_state.setdefault("turns", [])
     st.session_state.setdefault("selected", [])
@@ -573,13 +564,14 @@ def main() -> None:
             "Signed in as",
             list(accounts),
             key="account",
+            persist_state="session",
             format_func=lambda i: accounts[i].label,
             on_change=switch_account,
         )
         st.caption(f"Conversation `{st.session_state['thread_id']}`")
     account = accounts[st.session_state["account"]]
 
-    lines = account_statement(account_ledger(account.id, is_offline), account.id)
+    lines = account_statement(account_ledger(account.id), account.id)
     statement_ids = {i for line in lines for i in [line["id"], *line["ids"]]}
     turns = st.session_state["turns"]
     st.session_state.setdefault("observer", True)  # the trace shows by default; the switch hides it
@@ -592,13 +584,11 @@ def main() -> None:
 
     left, right = st.columns([7, 4], gap="large")
     with left:
-        render_portal(account, lines, marks, is_offline)
+        render_portal(account, lines, marks)
 
     with right, st.container(border=True, key="help"):
         st.subheader("Help", anchor="help")
-        st.caption(
-            "Ask the support assistant about your payments, refunds, disputes or payouts. " + mode_line(is_offline)
-        )
+        st.caption("Ask the support assistant about your payments, refunds, disputes or payouts. " + PAYMENTS_MODE)
         # The sentence of the disclosure of the AI agent sits under the question box, where the person
         # reads it before the first answer. It comes from the domain, so the demo and the public site
         # say the same thing (Article 50 of the EU AI Act, applied since 2 August 2026).
@@ -615,8 +605,7 @@ def main() -> None:
         with chat:
             if not talking:
                 hint = "Open a payment and press **Ask about this**, or pick a question below."
-                if is_offline:
-                    hint += " In this offline demo only the suggested questions have scripted answers."
+                hint += " Suggested questions have scripted answers."
                 st.caption(hint)
             for turn in turns:
                 show_turn(turn, observer, statement_ids)
@@ -643,13 +632,13 @@ def main() -> None:
             st.html(FOCUS_DRAFT, unsafe_allow_javascript=True)
         question = st.session_state.pop("question", "")
 
-        if question:  # the question shows up right away: the online investigation takes tens of seconds
+        if question:
             selected = list(st.session_state["selected"])
             with chat:
                 with st.chat_message("user", avatar=USER_AVATAR):
                     st.markdown(question)
                 try:
-                    agent = ask_agent(question, account.id, is_offline)
+                    agent = ask_agent(question, account.id)
                 except ConfigError as error:
                     st.error(f"Could not build the agent: {error}")
                     return
@@ -666,6 +655,27 @@ def main() -> None:
             )
             st.session_state["selected"] = []  # the line picked belongs to the question just sent
             st.rerun()  # draws the activity again with the lines the assistant read
+
+
+def main() -> None:
+    from app.artifact_views import render_engineering, render_evaluation, render_proof, render_replay
+    from app.interactive_views import render_live, render_sandbox
+
+    st.set_page_config(page_title=BRAND, page_icon=":material/payments:", layout="wide")
+    st.html(STYLE)
+    pages = {
+        "Payments": render_payments,
+        "Replay": render_replay,
+        "Sandbox": render_sandbox,
+        "Live": render_live,
+        "Evaluation": render_evaluation,
+        "Proof": render_proof,
+        "Engineering": render_engineering,
+    }
+    page = st.radio("Workspace", list(pages), horizontal=True, key="view", bind="query-params")
+    if page in {"Replay", "Live"}:
+        st.caption(AI_DISCLOSURE)
+    pages[page]()
 
 
 main()

@@ -13,11 +13,6 @@
 **/__pycache__
 **/*.pyc
 
-# The tree of the frontend is not part of the image of the Python: the export of the site is served from
-# the host by the compose file, and the tree of the frontend has its own toolchain.
-apps/web/node_modules
-apps/web/.next
-apps/web/out
-
 # The runtime material of the repository is written by the process at run time, never baked in it.
 data/runtime
+.streamlit/secrets.toml

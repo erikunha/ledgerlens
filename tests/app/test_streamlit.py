@@ -4,8 +4,8 @@ What they guarantee, and why: (a) a question typed in the chat becomes an answer
 investigation (the run tree: triage, each model and tool call, the verdict per claim and escalation), which
 collapses into a one-line summary and stays stored with the message; (b) the second question of the same session
 continues the first (the history stays on screen and the conversation uses the same `thread_id`); (c) the Help panel
-says whether the mode is offline or online; (d) a suggestion only fills the field, and the edited or freely typed
-text is what goes to the agent; (e) the page reads like a portal: the signed-in account's statement, an "Ask" per
+identifies the scripted demo when Live is enabled; (d) a suggestion fills the field, and the submitted text
+goes to the agent; (e) the page reads like a portal: the signed-in account's statement, an "Ask" per
 line that only fills the box, the account and the line picked reaching the agent as context, and, after an answer,
 the trace with the generated SQL and a mark on the lines the agent read. The agent comes in through
 `session_state`, with the scripted model, so the test depends on no model and no network.
@@ -183,11 +183,32 @@ def test_suggested_ids_exist_in_the_sample_manifest(at: AppTest) -> None:
             assert ident in known, (ident, label)
 
 
-def test_online_mode_is_named_in_the_help_panel(at: AppTest, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_payments_stays_scripted_when_live_is_enabled(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    import sqlite3
+
+    def unexpected(*args, **kwargs):
+        pytest.fail("Payments must never request configured inference.")
+
+    configured_db = tmp_path / "operator.db"
+    sqlite3.connect(configured_db).close()
     monkeypatch.setenv("LEDGERLENS_OFFLINE", "0")
-    at.run()
-    text = page_text(at)
-    assert "Online: model" in text and "offline" not in text.lower()
+    monkeypatch.setenv("LEDGERLENS_LEDGER_DB", str(configured_db))
+    for target in (
+        "ledgerlens.agents.integrator.get_chat_model",
+        "ledgerlens.tools.policies.get_chat_model",
+        "ledgerlens.tools.policies.get_embeddings",
+        "ledgerlens.memory.long_term.get_embeddings",
+        "ledgerlens.verify.nli.get_nli",
+    ):
+        monkeypatch.setattr(target, unexpected)
+    page = AppTest.from_file(str(APP), default_timeout=60).run()
+    assert not page.exception
+    assert "Learned verification is unavailable" in page_text(page)
+    send(page, QUESTION)
+    assert not page.exception
+    assert S01["truth"]["refund_brl"] in page_text(page)
+    send(page, "Unscripted question")
+    assert "only answer the suggested questions" in page_text(page)
 
 
 def test_without_an_injected_agent_the_offline_page_answers_the_example_and_refuses_the_rest() -> None:

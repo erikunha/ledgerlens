@@ -64,15 +64,11 @@ services:
       # files of a commit, not a scanner of the repository. It refuses a staged file that holds a connection string
       # of the shape `scheme://user:password@host`, and the connection of this compose is not of that shape.
       LEDGERLENS_SANDBOX_DATABASE_URL: ${LEDGERLENS_SANDBOX_DATABASE_URL:-postgresql://${LEDGERLENS_SANDBOX_DB_USER-ledgerlens}@postgres:5432/${LEDGERLENS_SANDBOX_DB_NAME-ledgerlens_sandbox}}
-      # The local run declares the origin of the site of the demo, because the site of the demo is served
-      # on the port 3000 (ADR-040). The list is exact and never a wildcard: a wildcard with credentials is
-      # illegal and would let any site drive the api with the session of the visitor.
-      LEDGERLENS_CORS_ORIGINS: http://localhost:3000
     depends_on:
       # The api waits for the healthcheck of the database, so it never reads a store that is still starting.
       postgres:
         condition: service_healthy
-    command: ["ledgerlens-demo", "--host", "0.0.0.0", "--port", "8010"]
+    command: ["sh", "-ec", "python scripts/apply_sandbox_schema.py && exec ledgerlens-demo --host 0.0.0.0 --port 8010"]
     ports:
       # The port is published on the loopback only: the demo is not a public service of the machine.
       - "127.0.0.1:8010:8010"
@@ -83,23 +79,16 @@ services:
     restart: unless-stopped
 
   demo:
-    # The demo server of the site: the published export served as plain files, the way a content delivery
-    # network serves it (ADR-040). The export is written by the build of the frontend in `apps/web`, and
-    # this service only reads it: it never rebuilds the site and it never writes in it. The image is the
-    # one of the `Dockerfile`, because the site is a folder of files and a static file server is all it
-    # takes to serve them.
-    build:
-      context: .
-      dockerfile: Dockerfile
+    build: .
     image: ledgerlens-demo:local
-    container_name: ledgerlens-demo
-    command: ["python", "-m", "http.server", "3000", "--directory", "/srv/site"]
-    volumes:
-      # The export of the site, read only: the service reads the files the build wrote and writes nothing.
-      - ./apps/web/out:/srv/site:ro
+    command: ["uvicorn", "app.server:portal", "--host", "0.0.0.0", "--port", "8501"]
+    environment:
+      LEDGERLENS_OFFLINE: "1"
+      LEDGERLENS_API_BASE_URL: http://api:8010
     ports:
-      # The port is published on the loopback only, and it is the port of the site of the repository.
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:8501:8501"
+    depends_on:
+      - api
     restart: unless-stopped
 
 volumes:
@@ -112,4 +101,4 @@ volumes:
 # twice. Inside the compose the api reads the same database by the name of the service, so the schema is applied
 # with `docker compose run --rm api python scripts/apply_sandbox_schema.py`.
 # The local run of the whole thing is `docker compose up -d`: the database, the api on the port 8010 and the site
-# of the demo on the port 3000.
+# of the demo on the port 8501.

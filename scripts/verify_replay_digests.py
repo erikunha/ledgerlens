@@ -1,13 +1,7 @@
 #!/usr/bin/env python3
 """Cross checks the digests the site publishes against the canonical bundle of the repository.
 
-Why it exists: the browser checks the digests of the bundle it downloads (`verifyBundleDigests` in
-`apps/web/lib/api/replay.ts`) and the Python core checks them when it opens a bundle (`load_bundle` in
-`ledgerlens/replay/bundle.py`), but nobody compares the artifacts that the SITE publishes in
-`site/replay/` with the canonical bundle in `data/eval/replay/`. The site can therefore publish a
-recording that the repository does not hold, and both of the existing checks still pass, because each
-of them looks at only one of the two copies. This script is the third side of the triangle: it reads
-the two copies and says whether they are the same recording.
+Compare the files that Streamlit reads with the frozen recordings and their declared hashes.
 
 What it proves, for the scenario it is given:
 

@@ -88,8 +88,6 @@ SECRET_FAKES = frozenset(
         "sk-" + "coverage",
         "sk-" + "fakefake1234",
         "sk-" + "first-not-real",
-        "sk-" + "from-the-environment",
-        "sk-" + "secret-value",
         "sk-" + "second-not-real",
         "sk-" + "sensitive",
         "sk-" + "test-key",

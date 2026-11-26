@@ -1,19 +1,17 @@
 # Demo recording
 
-The site of the demo and the local run of its two modes are in [docs/frontend.md](frontend.md). The recorded run is
-below.
+The [workspace guide](frontend.md) describes the seven views and their data sources.
 
 ## The local run
 
-The two modes of the site, in two terminals:
+Start the API and the Streamlit portal in separate terminals:
 
 ```bash
-LEDGERLENS_CORS_ORIGINS=http://localhost:3000 uv run ledgerlens-demo --port 8010
-cd apps/web && npm run dev
+uv run ledgerlens-demo --port 8010
+LEDGERLENS_OFFLINE=1 uv run uvicorn app.server:portal --host 127.0.0.1 --port 8501
 ```
 
-The recorded demo is the first half of the site and it calls nobody. The live mode is the second half and it calls the
-backend above.
+Replay reads the published recordings. Sandbox and Live use the API.
 
 - Date of the run: 2026-11-11.
 - Mode: online (`LEDGERLENS_OFFLINE=0`). Model `gpt-4.1-mini` (`LEDGERLENS_MODEL`), live exchange rates from Frankfurter, real NLI in the verifier.

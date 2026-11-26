@@ -91,7 +91,7 @@ corrected.
 
 - [ADR-035, the facade of the live mode](ADR-035-the-facade-of-the-live-mode.md)
 - [ADR-039, the wired application of the demo](ADR-039-the-wired-application-of-the-demo.md)
-- [the folder of the site](../../apps/web/README.md), and the page of the live mode in it,
+- [the folder of the site](https://github.com/erikunha/ledgerlens/blob/870b2f9/apps/web/README.md), and the page of the live mode in it,
   `apps/web/app/(public)/live/page.tsx`
 - [the specification of R3](../../specs/003-r3-bring-your-own-key/spec.md)
 - [the roadmap of the releases](../roadmap-v3.md)
