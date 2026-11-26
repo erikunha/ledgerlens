@@ -41,7 +41,7 @@ from ledgerlens.replay.bundle import (
 
 ROOT = Path(__file__).resolve().parents[2]
 CANONICAL = ROOT / "data" / "eval" / "replay" / "s01"
-SCHEMA = ROOT / "docs" / "v3" / "contracts" / "schemas" / "trace-event.schema.json"
+SCHEMA = ROOT / "docs" / "design" / "contracts" / "schemas" / "trace-event.schema.json"
 FAKE_KEY = "sk-fakefake1234"
 # The optional fields of the bundle contract, written down here so the test does not depend on the writer to know
 # which fields are the provenance.

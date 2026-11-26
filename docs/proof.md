@@ -23,7 +23,7 @@ hiring decision. The repository does not issue proof of employment and publishes
 | the transcript | the text of every media | be dropped when the media is dropped for the budget |
 
 The artifact validates against the schema of the package,
-`docs/v3/contracts/schemas/v3-portfolio-proof.schema.json`, which is frozen and is read, never edited. The
+`docs/design/contracts/schemas/v3-portfolio-proof.schema.json`, which is frozen and is read, never edited. The
 schema pins the source commit to sixty four hexadecimal characters, so the artifact carries the sha256 of the
 git commit of the bundle, and the page of the proof names the commit itself.
 

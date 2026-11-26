@@ -54,7 +54,7 @@ it never imports the API layer; the flag is read from the configuration of the c
 version, and the durable store is a later decision
 **Testing**: pytest offline with `LEDGERLENS_OFFLINE=1` and the scripted model for every step of the studio
 **Constraints**: ADR-P007, ADR-037 and FR-013, the budget of the run, money as `Decimal`, no change in
-`docs/v3/`, and no branch, no commit and no push
+`docs/design/`, and no branch, no commit and no push
 
 ## What the package proposes, and what the repository has
 

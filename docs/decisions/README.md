@@ -19,7 +19,7 @@ by hand: run `uv run python scripts/build_docs_index.py` and commit the result.
 | 009 | [ADR-009: Public data first, simulation only for the gaps](ADR-009-public-data-first-simulation-for-gaps.md) | accepted | 2026-11-07 |
 | 010 | [ADR-010: Modern integrator, legacy methods only as a demonstration](ADR-010-modern-integrator-legacy-as-demonstration.md) | accepted | 2026-11-08 |
 | 011 | [ADR-011: The v3 roadmap in verifiable slices](ADR-011-v3-roadmap-in-verifiable-slices.md) | accepted | 2026-11-11 |
-| 012 | [ADR-012: The v3 package versioned in `docs/v3/`](ADR-012-v3-package-versioned-in-docs-v3.md) | accepted | 2026-11-11 |
+| 012 | [ADR-012: The v3 package versioned in `docs/design/`](ADR-012-v3-package-versioned-in-docs-v3.md) | accepted | 2026-11-11 |
 | 013 | [ADR-013: The public trace is a versioned contract](ADR-013-public-trace-as-a-versioned-contract.md) | accepted | 2026-11-11 |
 | 014 | [ADR-014: The replay bundle has a manifest and a hash](ADR-014-replay-bundle-with-manifest-and-hash.md) | accepted | 2026-11-11 |
 | 015 | [ADR-015: The run context enters the core, and the case memory is no longer global](ADR-015-run-context-in-the-core.md) | accepted | 2026-11-11 |

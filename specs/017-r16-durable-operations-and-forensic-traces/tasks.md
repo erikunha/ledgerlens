@@ -7,7 +7,7 @@ description: "Task list for the durable operations and the forensic traces"
 **Input**: Design documents from `specs/017-r16-durable-operations-and-forensic-traces/`
 
 **Prerequisites**: plan.md (required), spec.md (required), the design package
-(`docs/v3/advanced-specs/R16-02-idempotent-durable-operations-and-forensic-traces.md`) and the decisions that
+(`docs/design/advanced-specs/R16-02-idempotent-durable-operations-and-forensic-traces.md`) and the decisions that
 already bind: `docs/decisions/ADR-021-typed-mutation-and-atomic-commit.md`,
 `docs/decisions/ADR-025-a-failed-write-loses-nothing.md`,
 `docs/decisions/ADR-032-the-state-of-the-branch-and-the-hash.md` and

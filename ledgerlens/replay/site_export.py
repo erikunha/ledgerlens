@@ -73,7 +73,7 @@ from ledgerlens.replay.ledger_artifact import (
 )
 
 ROOT = Path(__file__).resolve().parents[2]
-TRACE_EVENT_SCHEMA = ROOT / "docs" / "v3" / "contracts" / "schemas" / "trace-event.schema.json"
+TRACE_EVENT_SCHEMA = ROOT / "docs" / "design" / "contracts" / "schemas" / "trace-event.schema.json"
 DATASET_FILE = ROOT / "data" / "scenarios.json"
 
 # The two catalogs the site publishes, and the kind of capture each one holds. A catalog is one mode: the sandbox

@@ -13,7 +13,7 @@
 [ADR-074](../../docs/decisions/ADR-074-a-case-ends-in-a-decision-and-the-decision-belongs-to-the-code.md),
 [ADR-076](../../docs/decisions/ADR-076-the-answer-of-the-run-is-published-whole-because-the-claims-are-extracted-from-it.md),
 [ADR-077](../../docs/decisions/ADR-077-the-published-bundle-is-verified-against-the-answer-the-run-verified.md) and the
-design package [LL-V3-R8-02, evidence graph and provenance](../../docs/v3/advanced-specs/R8-02-evidence-graph-and-provenance.md).
+design package [LL-V3-R8-02, evidence graph and provenance](../../docs/design/advanced-specs/R8-02-evidence-graph-and-provenance.md).
 The milestone that published the evidence of the verdict is
 [specs/001](../001-r1-public-replay/spec.md).
 
@@ -235,7 +235,7 @@ hypotheses.
 | [ADR-074](../../docs/decisions/ADR-074-a-case-ends-in-a-decision-and-the-decision-belongs-to-the-code.md) | The decision belongs to the code, so the graph shows the code and never a second verdict. |
 | [ADR-076](../../docs/decisions/ADR-076-the-answer-of-the-run-is-published-whole-because-the-claims-are-extracted-from-it.md) | The answer of the run is published whole, so the claims of the graph are the claims of the answer. |
 | [ADR-077](../../docs/decisions/ADR-077-the-published-bundle-is-verified-against-the-answer-the-run-verified.md) | The published bundle is verified against the answer the run verified, so the graph never contradicts the verdict. |
-| [LL-V3-R8-02](../../docs/v3/advanced-specs/R8-02-evidence-graph-and-provenance.md) | The design package this specification ports. |
+| [LL-V3-R8-02](../../docs/design/advanced-specs/R8-02-evidence-graph-and-provenance.md) | The design package this specification ports. |
 | [specs/001](../001-r1-public-replay/spec.md) | The milestone that published the bundle with its evidence and its provenance. |
 
 ## Status

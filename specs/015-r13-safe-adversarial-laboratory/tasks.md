@@ -7,7 +7,7 @@ description: "Task list for the safe adversarial laboratory"
 **Input**: Design documents from `specs/015-r13-safe-adversarial-laboratory/`
 
 **Prerequisites**: plan.md (required), spec.md (required), the design package
-(`docs/v3/advanced-specs/R13-02-safe-adversarial-laboratory.md`) and the decisions that already bind:
+(`docs/design/advanced-specs/R13-02-safe-adversarial-laboratory.md`) and the decisions that already bind:
 `docs/decisions/ADR-005-guarded-text-to-sql.md` and
 `docs/decisions/ADR-013-public-trace-as-a-versioned-contract.md`
 

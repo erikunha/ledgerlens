@@ -1,6 +1,6 @@
 """The guard of the import is never weaker than the guard of the repository.
 
-Why this file exists: the import script writes the design package into `docs/v3/`, and the repository guard scans
+Why this file exists: the import script writes the design package into `docs/design/`, and the repository guard scans
 that folder afterwards. When the import guard misses a rule the repository guard has, the import lands material the
 gate then refuses, and the failure appears one step too late. Here the import reuses the repository patterns
 themselves, and these tests pin that: every category the repository refuses, the import refuses first.
@@ -26,7 +26,7 @@ def _hits(name: str, text: str) -> list[str]:
 
 
 def test_the_import_refuses_what_the_repository_guard_refuses():
-    """Course words, the course acronym, machine paths, secrets and Portuguese never land in docs/v3/."""
+    """Course words, the course acronym, machine paths, secrets and Portuguese never land in docs/design/."""
     cases = [
         "kept a " + "note" + "book of the " + "al" + "uno",
         "the M" + "BA material",

@@ -21,9 +21,9 @@ answer is made of tool calls, and it needs a model that really calls a tool and 
 as text. Paying the price of the hardest task on the easiest ones is money spent in the wrong place, and the price of
 the answer is the price of the whole run.
 
-The design package of the repository (the frozen import in `docs/v3/`) asks for exactly this, and it asks for it in a
+The design package of the repository (the frozen import in `docs/design/`) asks for exactly this, and it asks for it in a
 specific way: `ai/03-MODEL-GATEWAY-ROUTING.md` describes a fixed cascade, and
-`docs/v3/advanced-specs/R15-02-model-router-with-budgeted-fallback.md` asks for a router that decides on pre-verified
+`docs/design/advanced-specs/R15-02-model-router-with-budgeted-fallback.md` asks for a router that decides on pre-verified
 intent and risk and on the capability the provider really has, that writes an immutable decision naming the models
 that were allowed, the model that was chosen and the reason, that never replaces a model a human chose, and that
 never turns an unverified price into a price of zero.

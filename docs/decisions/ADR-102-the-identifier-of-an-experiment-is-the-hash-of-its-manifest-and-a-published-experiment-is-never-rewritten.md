@@ -76,4 +76,4 @@ arms resolved 22 of 31, the difference is 0, and the flag stays off.
 - [the specification of the milestone](../../specs/009-r4-paired-evaluation-arena/spec.md)
 - [ADR-037, the live mode and the one model](ADR-037-the-case-of-the-demo-runs-on-a-bridge-over-the-caller.md)
 - [ADR-069, the key of the set is not published](ADR-069-the-reservation-follows-the-content-of-the-case-and-the-key-of-the-set-is-not-published.md)
-- [ADR-P007, no multiagent by default](../v3/adrs/ADR-P007-no-multiagent-by-default.md)
+- [ADR-P007, no multiagent by default](../design/adrs/ADR-P007-no-multiagent-by-default.md)

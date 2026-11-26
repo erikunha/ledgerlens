@@ -6,14 +6,14 @@
 
 **Status**: Draft
 
-**Input**: Design documents: [R19-02, causal counterfactual interventions](../../docs/v3/advanced-specs/R19-02-causal-counterfactual-interventions.md),
+**Input**: Design documents: [R19-02, causal counterfactual interventions](../../docs/design/advanced-specs/R19-02-causal-counterfactual-interventions.md),
 [ADR-013, the public trace is a versioned contract](../../docs/decisions/ADR-013-public-trace-as-a-versioned-contract.md),
 [ADR-028, the diff and the history are reads of the branch](../../docs/decisions/ADR-028-the-diff-and-the-history-are-reads.md),
 [ADR-032, the state of the branch and the hash](../../docs/decisions/ADR-032-the-state-of-the-branch-and-the-hash.md),
 [ADR-074, a case ends in a decision and the decision belongs to the code](../../docs/decisions/ADR-074-a-case-ends-in-a-decision-and-the-decision-belongs-to-the-code.md),
-ADR-P007 ([one evidence-first agent by default](../../docs/v3/adrs/ADR-P007-no-multiagent-by-default.md)), ADR-P009
-([the privacy scope of the public project](../../docs/v3/adrs/ADR-P009-privacy-scope.md)) and
-[the release train, the R19 contract](../../docs/v3/roadmap/RELEASE-TRAIN-2027-2030.md). User description: "The
+ADR-P007 ([one evidence-first agent by default](../../docs/design/adrs/ADR-P007-no-multiagent-by-default.md)), ADR-P009
+([the privacy scope of the public project](../../docs/design/adrs/ADR-P009-privacy-scope.md)) and
+[the release train, the R19 contract](../../docs/design/roadmap/RELEASE-TRAIN-2027-2030.md). User description: "The
 repository can change one field of a branch and read the diff. It cannot say whether a difference was caused by
 the change or by something that moves with it, and it never says what would have happened if the reference rate
 had been different. This specification adds declared interventions over a registry of structural functions, so
@@ -263,14 +263,14 @@ to a real merchant, and assert that every sentence of cause names the simulation
 
 ## Design documents
 
-- [R19-02, causal counterfactual interventions](../../docs/v3/advanced-specs/R19-02-causal-counterfactual-interventions.md)
+- [R19-02, causal counterfactual interventions](../../docs/design/advanced-specs/R19-02-causal-counterfactual-interventions.md)
 - [ADR-013, the public trace is a versioned contract](../../docs/decisions/ADR-013-public-trace-as-a-versioned-contract.md)
 - [ADR-028, the diff and the history are reads of the branch](../../docs/decisions/ADR-028-the-diff-and-the-history-are-reads.md)
 - [ADR-032, the state of the branch and the hash](../../docs/decisions/ADR-032-the-state-of-the-branch-and-the-hash.md)
 - [ADR-074, a case ends in a decision and the decision belongs to the code](../../docs/decisions/ADR-074-a-case-ends-in-a-decision-and-the-decision-belongs-to-the-code.md)
-- [ADR-P007, one evidence-first agent by default](../../docs/v3/adrs/ADR-P007-no-multiagent-by-default.md)
-- [ADR-P009, the privacy scope of the public project](../../docs/v3/adrs/ADR-P009-privacy-scope.md)
-- [the release train, the R19 contract](../../docs/v3/roadmap/RELEASE-TRAIN-2027-2030.md)
+- [ADR-P007, one evidence-first agent by default](../../docs/design/adrs/ADR-P007-no-multiagent-by-default.md)
+- [ADR-P009, the privacy scope of the public project](../../docs/design/adrs/ADR-P009-privacy-scope.md)
+- [the release train, the R19 contract](../../docs/design/roadmap/RELEASE-TRAIN-2027-2030.md)
 - [the implementation plan of this specification](plan.md) and [its tasks](tasks.md)
 
 ## Status

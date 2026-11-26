@@ -45,9 +45,9 @@ never calculates a value, the outline of the headings never skips a level, the c
 carry `aria-disabled` with a reason a screen reader reads, and the state is never only a colour. The front of
 the sandbox obeys the same rules, because the sandbox is the third room of the same house.
 
-The third is the contract of the versioned package. `docs/v3/contracts/openapi.yaml` declares eight of the
+The third is the contract of the versioned package. `docs/design/contracts/openapi.yaml` declares eight of the
 eleven paths of the facade. It does not declare the diff, the history and the undo, because ADR-023 declared
-that the contract of the package cannot be edited: `docs/v3/` is a converted copy of a package that lives outside
+that the contract of the package cannot be edited: `docs/design/` is a converted copy of a package that lives outside
 the repository and the check of the import refuses any difference. The front therefore writes against the routes
 of the code, and this ADR writes the three paths down so that no worker has to guess them.
 
@@ -203,7 +203,7 @@ flowchart LR
 ### The contract of every call
 
 The eleven paths of `ledgerlens/api/sandbox.py` are the contract of the front. Eight of them are paths of the
-versioned contract (`docs/v3/contracts/openapi.yaml`) and three of them are the paths that ADR-023 declared
+versioned contract (`docs/design/contracts/openapi.yaml`) and three of them are the paths that ADR-023 declared
 beyond it. The front calls TEN of the eleven: the ledger is not called in this milestone.
 
 Every answer of the facade carries the header `X-LedgerLens-Schema-Version: 1`, and the answers of the branch

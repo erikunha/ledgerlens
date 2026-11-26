@@ -7,9 +7,9 @@ description: "Task list for portable proof of work"
 **Input**: Design documents from `specs/022-r22-portable-proof-of-work-export/`
 
 **Prerequisites**: plan.md (required), spec.md (required), the design package of the release
-(`docs/v3/advanced-specs/R22-01-portable-proof-of-work-artifact-export.md`), ADR-013, ADR-014, ADR-017, ADR-036,
+(`docs/design/advanced-specs/R22-01-portable-proof-of-work-artifact-export.md`), ADR-013, ADR-014, ADR-017, ADR-036,
 ADR-040, ADR-042, ADR-073, ADR-075, ADR-076 and ADR-077 of `docs/decisions/`, ADR-P007 and ADR-P009 of
-`docs/v3/adrs/`, and the code the artifact builds on: `ledgerlens/replay/bundle.py`, `ledgerlens/replay/site_export.py`,
+`docs/design/adrs/`, and the code the artifact builds on: `ledgerlens/replay/bundle.py`, `ledgerlens/replay/site_export.py`,
 `ledgerlens/observability/callbacks.py` for the redaction, `scripts/export_replay_site.py`,
 `scripts/verify_replay_digests.py`, `scripts/check_export_pages.mjs`, `scripts/measure_replay_budget.py`, the
 published catalogs `data/eval/replay/` and `data/eval/replay-real/`, the reports under `data/eval/` and the
@@ -108,7 +108,7 @@ static export and not a runtime route, and it attests to a claim about the code 
   what an artifact is and why every section of it has a source
   - **DELIVERED**: `tests/proof/test_links.py` and `ledgerlens/proof/artifact.py`: every link resolves inside the commit the artifact names, and the recipe carries the command that reproduces the run.
 - [x] T1109 Write `tests/proof/test_schema.py` first, expecting the validation of the artifact against
-  `docs/v3/contracts/schemas/v3-portfolio-proof.schema.json` with `jsonschema` and expecting the refusal of an
+  `docs/design/contracts/schemas/v3-portfolio-proof.schema.json` with `jsonschema` and expecting the refusal of an
   artifact that breaks it. The schema is versioned in the frozen package and it is read, never edited
   - **DELIVERED**: `tests/proof/test_schema.py`: the artifact of each catalog validates against the schema of the package with jsonschema, and an artifact that breaks it is refused.
 - [x] T1110 Write `tests/proof/test_claim_scope.py` first, expecting that the artifact names the code, the commit

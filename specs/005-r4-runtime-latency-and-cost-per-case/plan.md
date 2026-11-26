@@ -29,7 +29,7 @@ the vector store, `fastembed` for the embedding of the policies
 vector library is imported by one module, and the measurement writes documents that name what they were measured over
 **Storage**: the committed index of the policies under `data/index/policies_fastembed/`, the reports under `data/eval/`
 **Testing**: pytest offline with `LEDGERLENS_OFFLINE=1`, and the scripted model for the agent
-**Constraints**: no key and no network in the gate, money as `Decimal`, no change in `docs/v3/`
+**Constraints**: no key and no network in the gate, money as `Decimal`, no change in `docs/design/`
 
 ## The milestones of the release
 

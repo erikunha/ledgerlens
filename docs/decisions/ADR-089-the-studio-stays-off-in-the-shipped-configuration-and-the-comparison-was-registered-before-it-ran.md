@@ -10,7 +10,7 @@ Status: accepted. Date: 2026-11-24.
 
 ## Context
 
-[ADR-P007](../v3/adrs/ADR-P007-no-multiagent-by-default.md) is a red line: the runtime of the repository stays a
+[ADR-P007](../design/adrs/ADR-P007-no-multiagent-by-default.md) is a red line: the runtime of the repository stays a
 single agent with a deterministic verifier until a paired comparison measures a gain, and the studio of
 [specs/013](../../specs/013-r11-multiagent-orchestration-studio/spec.md) is the experimental variant that the
 comparison measures. The parts A, B and C of the milestone built the baseline that is frozen
@@ -86,7 +86,7 @@ published with the decision that follows it, and the verifier stayed determinist
 
 ## Links
 
-- [ADR-P007, no multi-agent by default](../v3/adrs/ADR-P007-no-multiagent-by-default.md)
+- [ADR-P007, no multi-agent by default](../design/adrs/ADR-P007-no-multiagent-by-default.md)
 - [ADR-068, the published catalogue holds the failures](ADR-068-the-published-catalogue-holds-the-failures-and-not-only-the-cases-the-agent-resolves.md)
 - [ADR-078, the model of each slot is chosen by the work it does](ADR-078-the-model-of-each-slot-is-chosen-by-the-work-it-does.md)
 - [the page of the comparison](../orchestration/comparison.md)

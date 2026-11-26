@@ -14,7 +14,7 @@ approval applies to (`ledgerlens/sandbox/branch.py`), the economics package that
 [ADR-021](../../docs/decisions/ADR-021-typed-mutation-and-atomic-commit.md),
 [ADR-047](../../docs/decisions/ADR-047-the-lifecycle-and-the-limits-of-the-branch.md),
 [ADR-074](../../docs/decisions/ADR-074-a-case-ends-in-a-decision-and-the-decision-belongs-to-the-code.md) and
-[ADR-P007](../../docs/v3/adrs/ADR-P007-no-multiagent-by-default.md)
+[ADR-P007](../../docs/design/adrs/ADR-P007-no-multiagent-by-default.md)
 
 **Tests**: Every task that changes the behaviour of the repository ships its test before its code, and the gate of
 the Python side `scripts/gate.sh` is green before the commit. A test that must fail before the change names the

@@ -44,7 +44,7 @@ written by the caller
 **Testing**: pytest offline with `LEDGERLENS_OFFLINE=1`, the seed 42 of the repository, and the invariants of
 `ledgerlens/sandbox/invariants.py`
 **Constraints**: no key and no network, money as `Decimal`, the domain never speaks SQL and never imports the
-API, no change in `docs/v3/`, and no change in an accepted decision record
+API, no change in `docs/design/`, and no change in an accepted decision record
 
 ## The shape of the intervention
 

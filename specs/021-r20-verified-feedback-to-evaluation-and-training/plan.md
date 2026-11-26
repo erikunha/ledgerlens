@@ -42,7 +42,7 @@ sets under `data/eval/datasets/`
 datasets, and the archive of an experiment under `data/eval/experiments/`
 **Testing**: pytest offline with `LEDGERLENS_OFFLINE=1`, and the verifier of the repository with no model
 **Constraints**: no key and no network, money as `Decimal`, the domain never speaks SQL and never imports the
-API, the held out set stays reserved, no change in `docs/v3/`, and no change in an accepted decision record
+API, the held out set stays reserved, no change in `docs/design/`, and no change in an accepted decision record
 
 ## The loop
 

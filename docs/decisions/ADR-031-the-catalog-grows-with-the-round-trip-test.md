@@ -14,7 +14,7 @@ The catalog of the sandbox holds the kinds of command a visitor may send, and
 [ADR-021](ADR-021-typed-mutation-and-atomic-commit.md) says that a kind is enabled only when it has a round trip
 test and a coherent domain event. One kind was enabled: the adjustment of the rate of a refund. The published
 command schema
-([`scenario-mutation.schema.json`](../v3/contracts/schemas/scenario-mutation.schema.json)) declares four more
+([`scenario-mutation.schema.json`](../design/contracts/schemas/scenario-mutation.schema.json)) declares four more
 kinds, and the sandbox refused all of them with the code `UNKNOWN_MUTATION_TYPE`, exactly like a kind that does not
 exist.
 

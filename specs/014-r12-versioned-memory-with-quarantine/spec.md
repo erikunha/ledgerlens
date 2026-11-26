@@ -6,8 +6,8 @@
 
 **Status**: Draft
 
-**Input**: Design documents: `docs/v3/advanced-specs/R12-04-versioned-memory-with-poisoning-quarantine.md`,
-`docs/v3/ai/04-MEMORY-RETRIEVAL-AND-KNOWLEDGE.md`, `docs/v3/ai/02-SPECIALIST-ROSTER.md`, and the decisions
+**Input**: Design documents: `docs/design/advanced-specs/R12-04-versioned-memory-with-poisoning-quarantine.md`,
+`docs/design/ai/04-MEMORY-RETRIEVAL-AND-KNOWLEDGE.md`, `docs/design/ai/02-SPECIALIST-ROSTER.md`, and the decisions
 already in force: `docs/decisions/ADR-015-run-context-in-the-core.md`,
 `docs/decisions/ADR-030-case-memory-scoped-to-the-session.md`,
 `docs/decisions/ADR-029-the-expiry-and-the-cleanup-job.md`,
@@ -210,9 +210,9 @@ to be present and to match the record of the approval.
 
 ## Design documents
 
-- [R12-04 Versioned memory with poisoning quarantine](../../docs/v3/advanced-specs/R12-04-versioned-memory-with-poisoning-quarantine.md)
-- [Memory, RAG, Knowledge and Data Provenance Research Program](../../docs/v3/ai/04-MEMORY-RETRIEVAL-AND-KNOWLEDGE.md)
-- [Agent Roles and Boundaries](../../docs/v3/ai/02-SPECIALIST-ROSTER.md)
+- [R12-04 Versioned memory with poisoning quarantine](../../docs/design/advanced-specs/R12-04-versioned-memory-with-poisoning-quarantine.md)
+- [Memory, RAG, Knowledge and Data Provenance Research Program](../../docs/design/ai/04-MEMORY-RETRIEVAL-AND-KNOWLEDGE.md)
+- [Agent Roles and Boundaries](../../docs/design/ai/02-SPECIALIST-ROSTER.md)
 - [ADR-015: The run context enters the core, and the case memory is no longer global](../../docs/decisions/ADR-015-run-context-in-the-core.md)
 - [ADR-030: The case memory of a sandbox session lives in the folder of the session](../../docs/decisions/ADR-030-case-memory-scoped-to-the-session.md)
 - [ADR-029: The expiry has one home, and the cleanup is a job of the process](../../docs/decisions/ADR-029-the-expiry-and-the-cleanup-job.md)

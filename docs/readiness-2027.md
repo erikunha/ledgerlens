@@ -100,7 +100,7 @@ flowchart TB
 
 1. **The agent loop has no ceiling in the paths that actually ship.** A model that loops costs unbounded provider
    calls and wall clock, and the design already asks for hard limits
-   (`docs/v3/docs/06-AGENT-RUNTIME-AND-TOOLING.md:126`).
+   (`docs/design/docs/06-AGENT-RUNTIME-AND-TOOLING.md:126`).
 2. **The follow-up multiplies the cost of a turn.** The cost of a prompt is not the cost of a turn.
 3. **An unexpected exception inside a tool kills the investigation.** The contract says every tool returns an object
    and never raises to the model (`docs/contracts/tools.md`), and the call that embeds the query sits outside any try
@@ -168,7 +168,7 @@ flowchart LR
 [ADR-056](decisions/ADR-056-two-vector-sites-and-one-protocol.md), both proposed on 22 November 2026. The code is
 `ledgerlens/retrieval.py:151` and `ledgerlens/tools/policies.py:159`; the held out set of the retrieval is task T113
 of `specs/004-r4-verifier-calibration/tasks.md:99` and the measurement over it task T114 at `:104`; the dense against
-hybrid comparison is `LL-V3-R12-03` in `docs/v3/roadmap/IMPLEMENTATION-BACKLOG-V3.md:89`.
+hybrid comparison is `LL-V3-R12-03` in `docs/design/roadmap/IMPLEMENTATION-BACKLOG-V3.md:89`.
 ## 3. The verification
 
 **The question the audit asked.** NLI thresholds against rule based checks. Is the verifier independent of the thing
@@ -360,7 +360,7 @@ The boundary against an injected instruction is the prompt and not the code. The
 (`ledgerlens/tools/sql.py:23`), and the only code reaction is a rule that reads the cited rows again and escalates
 (`ledgerlens/verify/escalation.py:244`). The scenario that plants the hostile text exists
 (`ledgerlens/sim/scenarios.py:518`) and is not published. The design package says in words that prompt injection is
-not solved by prompts (`docs/v3/docs/10-SECURITY-AND-THREAT-MODEL.md:44`).
+not solved by prompts (`docs/design/docs/10-SECURITY-AND-THREAT-MODEL.md:44`).
 
 The second wave measured how much of that defence actually ships, and the answer is one sentence. The prompt that
 runs is `DEFAULT_SYSTEM_PROMPT` (`ledgerlens/agents/modern.py:49` to `:55`), five sentences, and the whole of its
@@ -400,13 +400,13 @@ flowchart TB
 4. **The rate limit is per process and per session.** In front of a public deployment the limit is not a limit.
 5. **The safety posture is invisible to anybody who does not read the source.** There is no `SECURITY.md` and no
    published threat model, although the design package lists both
-   (`docs/v3/docs/13-CI-CD-DEPLOYMENT-AND-RUNBOOKS.md:70`).
+   (`docs/design/docs/13-CI-CD-DEPLOYMENT-AND-RUNBOOKS.md:70`).
 
 **Where the work lands.** The threat model of the design package is published as `SECURITY.md` at the root, built from
-`docs/v3/docs/10-SECURITY-AND-THREAT-MODEL.md:11`, with the verification column filled with the tests that exist. The
+`docs/design/docs/10-SECURITY-AND-THREAT-MODEL.md:11`, with the verification column filled with the tests that exist. The
 Origin check is in `ledgerlens/api/sandbox.py`, the trust tier and the quarantine in
-`docs/v3/advanced-specs/R12-04-versioned-memory-with-poisoning-quarantine.md:15`, and the adversarial laboratory in
-`docs/v3/advanced-specs/R13-02-safe-adversarial-laboratory.md:3`.
+`docs/design/advanced-specs/R12-04-versioned-memory-with-poisoning-quarantine.md:15`, and the adversarial laboratory in
+`docs/design/advanced-specs/R13-02-safe-adversarial-laboratory.md:3`.
 
 ## 6. The observability and the provenance
 
@@ -427,13 +427,13 @@ Two holes in the provenance chain. The prompt that produced the answer is not in
 at six hundred characters and a list at eight items (`ledgerlens/observability/trace.py:62`), and the published
 manifest declares no `prompt_hash`, although the contract has the field (`ledgerlens/replay/bundle.py:67`). And
 nothing declares the freshness of a bundle: the bundle proves that it was not changed since it was made, and not that
-it corresponds to the code of today (`docs/v3/docs/08-EVIDENCE-TRACING-AND-PROVENANCE.md:35`).
+it corresponds to the code of today (`docs/design/docs/08-EVIDENCE-TRACING-AND-PROVENANCE.md:35`).
 
 The second wave asked what the law requires of that log, and the answer is not in the repository. The file sink that
 would outlive the process exists, is written and is tested
 (`ledgerlens/observability/trace_event.py:301`), and no production path uses it. The only thing the repository says
 about the retention of a run is the opposite of what a deployer is asked to keep: "run traces only within session"
-(`docs/v3/docs/10-SECURITY-AND-THREAT-MODEL.md:50`). That is section 9.
+(`docs/design/docs/10-SECURITY-AND-THREAT-MODEL.md:50`). That is section 9.
 
 ```mermaid
 flowchart LR
@@ -460,14 +460,14 @@ flowchart LR
    against the current prompt or policy version.
 4. **The published evidence was five scenarios deep, and the injection scenario was not one of them.** This one is
    closed: `site/replay/` holds ten scenarios, and the failures the design package asks for are among them
-   (`docs/v3/docs/08-EVIDENCE-TRACING-AND-PROVENANCE.md:58` asks for a published failure). The injection, the currency
+   (`docs/design/docs/08-EVIDENCE-TRACING-AND-PROVENANCE.md:58` asks for a published failure). The injection, the currency
    the reference source does not publish and the reference rate that could not be read are published as the
    deterministic recordings S09, S10 and S11, with the control of a refund that paid exactly what was charged
    published as S07 (ADR-068).
 
 **Where the work lands.** A new ADR in `docs/decisions/` for the live trace, which folds the hash of the prompt into
 it. The code is `ledgerlens/observability/trace_event.py:63`, the tool layer and the verifier, and the sink
-`ledgerlens/api/live_run.py:696`. The protocol is `docs/v3/docs/08-EVIDENCE-TRACING-AND-PROVENANCE.md`, the freshness
+`ledgerlens/api/live_run.py:696`. The protocol is `docs/design/docs/08-EVIDENCE-TRACING-AND-PROVENANCE.md`, the freshness
 check one step of `scripts/gate.sh`, the published failures `scripts/capture_replay.py`.
 
 ## 7. The operations and the economics
@@ -478,19 +478,19 @@ check one step of `scripts/gate.sh`, the published failures `scripts/capture_rep
 aggregation sums the usage per variant and the cost of the report (`ledgerlens/eval/run.py:604`), and the per case
 entries carry the scores and the answers and no usage. The published table gives the total of the run
 (`data/eval/report_online.md:53` and `:54`) and no latency column at all. The design package asks for the cost per
-resolved case (`docs/v3/docs/09-EVALUATION-AND-EXPERIMENTS.md:44`) and for the latency at p50 and p95
-(`docs/v3/docs/09-EVALUATION-AND-EXPERIMENTS.md:45`), and neither exists.
+resolved case (`docs/design/docs/09-EVALUATION-AND-EXPERIMENTS.md:44`) and for the latency at p50 and p95
+(`docs/design/docs/09-EVALUATION-AND-EXPERIMENTS.md:45`), and neither exists.
 
 The live run computes the two costs and keeps them in memory. The `CostReport` refuses to print a dollar amount it
 cannot compute (`ledgerlens/byok/budget.py:328`), which is right, and it dies with the process
 (`ledgerlens/api/live_run.py:977`). The planned artifact of the cost per correctly resolved case has no numerator and
-no denominator (`docs/v3/advanced-specs/R9-03-cost-per-correctly-resolved-case.md:3`).
+no denominator (`docs/design/advanced-specs/R9-03-cost-per-correctly-resolved-case.md:3`).
 
 The failure surface degrades well in the tools and badly in the facade. The refusal handlers cover the contract error
 and the validation error (`ledgerlens/api/sandbox.py:316`), the connection of the Postgres store raises when the
 database is down (`ledgerlens/sandbox/postgres_store.py:568`) and nothing above it catches that. The wired application
 registers no health route (`ledgerlens/api/wiring.py:212`), while the contract declares one
-(`docs/v3/contracts/openapi.yaml:375`).
+(`docs/design/contracts/openapi.yaml:375`).
 
 The second wave priced the envelope and found that it does not exist. What a reader can check today is a set of per
 variant aggregates over an evaluation run: for the full agent, 724370 tokens and 0.3304 US dollars over ninety runs,
@@ -558,7 +558,7 @@ site is described under the quickstart (`README.md:98`), so a visitor that reads
 The documentation set had no index when the first edition was written: `docs/` held seven top level Markdown files and
 no `README.md`, and `docs/decisions/` held no index either. A reachability traversal from the README reached 45 of the
 169 Markdown files, and the 124 it did not reach include the whole design pack and 44 of the records. The link check,
-over 245 local links, found two broken targets, one of them a real defect (`docs/v3/README.md:64`).
+over 245 local links, found two broken targets, one of them a real defect (`docs/design/README.md:64`).
 
 **What the programme did about it.** The index exists and it is generated, not written by hand:
 [`docs/README.md`](README.md) lists every Markdown file under `docs/` with what it holds, and
@@ -605,7 +605,7 @@ flowchart LR
    (`site/replay/index.json`), and the proof a reader can check is a visitor nine cases deep, the failures included.
 
 **Where the work lands.** `README.md` and `README.pt-BR.md`, the new `docs/README.md` and the new
-`docs/decisions/README.md`, and the one broken link `docs/v3/README.md:64`. The redesign of the front end is not in
+`docs/decisions/README.md`, and the one broken link `docs/design/README.md:64`. The redesign of the front end is not in
 this list: the owner reserved it for the end of the cycle and the measurement that would justify it does not exist
 yet. The instrumentation comes before the redesign, never after.
 
@@ -645,7 +645,7 @@ it: the live run uses an `InMemoryTraceSink` (`ledgerlens/api/live_run.py:696`),
 (`:852`), the export route streams from that memory (`ledgerlens/api/byok.py:776` and `:789`), and the file sink that
 would satisfy the obligation exists and is tested (`ledgerlens/observability/trace_event.py:301`) and no production path
 uses it. The only retention statement in the repository is the opposite of the obligation, "run traces only within
-session" (`docs/v3/docs/10-SECURITY-AND-THREAT-MODEL.md:50`), with branch TTLs of one hour idle and four hours
+session" (`docs/design/docs/10-SECURITY-AND-THREAT-MODEL.md:50`), with branch TTLs of one hour idle and four hours
 absolute (`ledgerlens/config.py:74` to `:75`). One thing must be said to a reader of 2027, because it is easy to
 mistake: the append only `events` table of the ledger is not an audit log of the agent. It records the transactions,
 refunds, chargebacks and settlements of the simulated world, with triggers that forbid update and delete
@@ -659,9 +659,9 @@ the reporting of a serious incident is Article 73
 days from awareness, two days for a widespread infringement and ten for a death. The repository has no incident path
 for itself: no severity definition, no post mortem template, no reporting owner and no clock. The only occurrence of
 "postmortem" in the repository is an empty field of a decision journal record format
-(`docs/v3/strategy/04-RISK-OPTIONALITY-DECISION-JOURNAL.md:7`). What it does have is seven runbooks, and they are good,
+(`docs/design/strategy/04-RISK-OPTIONALITY-DECISION-JOURNAL.md:7`). What it does have is seven runbooks, and they are good,
 and they are a document of a deployment that does not exist
-(`docs/v3/docs/13-CI-CD-DEPLOYMENT-AND-RUNBOOKS.md:52` to `:66`). They say what the product should do. They do not say
+(`docs/design/docs/13-CI-CD-DEPLOYMENT-AND-RUNBOOKS.md:52` to `:66`). They say what the product should do. They do not say
 who decides that an incident is serious, who reports it and where the record goes.
 
 **The flag of the human review without an overseer.** Article 14(1) and 14(4) ask for five capabilities, and the
@@ -715,8 +715,8 @@ flowchart LR
    whether a competent human with the authority to change it is in the loop.
 6. **The repository says nothing about the Act, ISO 42001 or NIST AI RMF.** A search returns exactly three hits, all
    in the design package, and the one that matters is careful: "Threat mappings are proposed, not a compliance
-   certification" (`docs/v3/ai/06-THREAT-AND-ADVERSARIAL-LAB.md:35`). The design package declines the certification work
-   outright (`docs/v3/docs/15-RISKS-AND-OPEN-DECISIONS.md:26`).
+   certification" (`docs/design/ai/06-THREAT-AND-ADVERSARIAL-LAB.md:35`). The design package declines the certification work
+   outright (`docs/design/docs/15-RISKS-AND-OPEN-DECISIONS.md:26`).
 
 **Where the work lands.** The disclosure is done and accepted, in
 [ADR-060](decisions/ADR-060-the-surfaces-that-answer-a-person-carry-the-sentence-of-the-ai-agent.md). The incident path
@@ -738,11 +738,11 @@ denominator and a percentile.
 There is no availability ratio. The only count of failures that survives is in the evaluation report, and it names two
 cases of variant B among the runs with errors (`data/eval/report_online.md:92` to `:94`); there is no uptime, no health
 probe on the wired application (`ledgerlens/api/wiring.py:212`), and the contract declares one that does not exist
-(`docs/v3/contracts/openapi.yaml:375`). There is no latency p50 and no p95: the latency of each span is measured
+(`docs/design/contracts/openapi.yaml:375`). There is no latency p50 and no p95: the latency of each span is measured
 (`ledgerlens/observability/trace.py:144`) and never aggregated, and the markdown report has no latency column
 (`data/eval/report_online.md:47` to `:56`). There is no time to first token, because the agent is not a streaming path.
 There is no error budget: the only occurrence of the words in the repository is a leak tolerance in the runbook and not
-a burn rate (`docs/v3/docs/13-CI-CD-DEPLOYMENT-AND-RUNBOOKS.md:48`).
+a burn rate (`docs/design/docs/13-CI-CD-DEPLOYMENT-AND-RUNBOOKS.md:48`).
 
 What a reader can check today is this. For the full agent over ninety runs of thirty tuning cases: 724370 tokens,
 0.3304 US dollars at the list price, about 8049 tokens and 0.00367 US dollars per investigation, and the report says
@@ -754,7 +754,7 @@ dataset of the repository declares as `tuning`.
 The intent is already written down. The runbook carries a section called "Release health and SLO draft", with a 99.9
 percent target for the static replay, a 99 percent "useful demo" target for the live API "but no public uptime claims
 until observed", a p95 read API under 500 ms and limits that are "starter budgets, not universal targets"
-(`docs/v3/docs/13-CI-CD-DEPLOYMENT-AND-RUNBOOKS.md:44` to `:50`). None of the limits of that line is implemented: the
+(`docs/design/docs/13-CI-CD-DEPLOYMENT-AND-RUNBOOKS.md:44` to `:50`). None of the limits of that line is implemented: the
 live run route starts a run with no concurrency check (`ledgerlens/api/byok.py:676` to `:748`) and the coordinator holds
 the runs in a dictionary with a lock and no cap (`ledgerlens/api/live_run.py:701`).
 
@@ -797,7 +797,7 @@ threshold of 0.34 raises the review flag (`ledgerlens/verify/thresholds.json:4`)
 the agent's choice of columns (`ledgerlens/verify/escalation.py:121`). The price of that decision is the number nobody
 has: 31.1 percent of the runs of the full agent go to a person, 28 of 90, and the repository has no minute of review,
 no rate and no currency for it, although the specification of the economics requires the category
-(`docs/v3/advanced-specs/R9-03-cost-per-correctly-resolved-case.md:19`).
+(`docs/design/advanced-specs/R9-03-cost-per-correctly-resolved-case.md:19`).
 
 ```mermaid
 flowchart TB
@@ -1161,7 +1161,7 @@ and the cost of a human review does not exist, and a third of the work needs a h
 And the two that are cheap and that nobody would think of:
 
 - **Publish the threat model.** The table of threats, controls and verifications already exists
-  (`docs/v3/docs/10-SECURITY-AND-THREAT-MODEL.md:11`). Publishing it as `SECURITY.md` at the root, with the
+  (`docs/design/docs/10-SECURITY-AND-THREAT-MODEL.md:11`). Publishing it as `SECURITY.md` at the root, with the
   verification column filled with the tests that exist, turns an invisible posture into a checkable one.
 - **Name the role of the set in every saved report.** The reports are written by one renderer
   (`ledgerlens/eval/run.py:772`), so the dataset, the role and the restriction travel into every table from one place.
@@ -1178,9 +1178,9 @@ findings each carry their own list, and this is the union of them.
    (`apps/web/README.md:87` to `:92`).
 3. **The remote was not fetched.** Whether the default branch carries this work, whether the site is deployed anywhere
    and what the badge says are outside what was checked.
-4. **The design pack was not read in full.** The 125 files of `docs/v3/` were read by grep and in part, and the
+4. **The design pack was not read in full.** The 125 files of `docs/design/` were read by grep and in part, and the
    contradictions found are the ones that were found. The digest that the pack publishes is held by no test
-   (`docs/v3/ORIGEM.md:11`), and it was recomputed once, by the auditor of the repository as a product, and it held
+   (`docs/design/ORIGEM.md:11`), and it was recomputed once, by the auditor of the repository as a product, and it held
    that day.
 5. **The records that were not opened were not audited.** The claim about the records that are not reachable from the
    README is a navigation fact, not a judgement about their content.

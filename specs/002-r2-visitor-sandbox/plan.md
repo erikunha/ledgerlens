@@ -39,7 +39,7 @@ artifact and is only ever read. The branch store sits behind the `BranchStore` i
 Postgres one (`PostgresBranchStore`) with no change in the domain logic.
 
 **Testing**: `pytest` offline with `LEDGERLENS_OFFLINE=1`, `ruff` for linting, `jsonschema` to
-validate the payloads against `docs/v3/contracts/schemas/scenario-mutation.schema.json`
+validate the payloads against `docs/design/contracts/schemas/scenario-mutation.schema.json`
 
 **Target Platform**: Linux server for the facade, a container image for the local run and for the
 continuous integration run

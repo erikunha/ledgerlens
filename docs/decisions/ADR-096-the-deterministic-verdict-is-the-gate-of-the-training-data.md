@@ -11,7 +11,7 @@ Status: accepted. Date: 2026-11-24.
 ## Context
 
 The design package
-[LL-V3-R20-01, verified feedback to evaluation and training](../v3/advanced-specs/R20-01-verified-feedback-to-evaluation-and-training.md)
+[LL-V3-R20-01, verified feedback to evaluation and training](../design/advanced-specs/R20-01-verified-feedback-to-evaluation-and-training.md)
 proposes a loop that turns a published failure into a reviewed regression and, where warranted, into a dataset
 that a specialized model could be tuned against. The repository publishes two catalogs of recorded scenarios,
 and [ADR-068](ADR-068-the-published-catalogue-holds-the-failures-and-not-only-the-cases-the-agent-resolves.md)
@@ -78,7 +78,7 @@ milestone.**
   disk and writes nothing, next to the check of the datasets of the evaluation in the gate.
 - **The feedback of a visitor stays in the session of the visitor**, under the sandbox, and the registry
   refuses a record whose source is a session of a visitor, because
-  [ADR-P009](../v3/adrs/ADR-P009-privacy-scope.md) is a safety invariant
+  [ADR-P009](../design/adrs/ADR-P009-privacy-scope.md) is a safety invariant
   and not a preference.
 - **The page of the loop is [the page of the verified feedback](../feedback.md)**, with the four stages, the
   three tiers and the reservation of the held out set.
@@ -93,4 +93,4 @@ milestone.**
 - [ADR-075, the catalogue of a real model says what it is](ADR-075-the-site-publishes-two-catalogs-and-each-bundle-declares-the-one-it-belongs-to.md)
 - [the page of the verified feedback](../feedback.md)
 - [the specification of the milestone](../../specs/021-r20-verified-feedback-to-evaluation-and-training/spec.md)
-- [the design package](../v3/advanced-specs/R20-01-verified-feedback-to-evaluation-and-training.md)
+- [the design package](../design/advanced-specs/R20-01-verified-feedback-to-evaluation-and-training.md)

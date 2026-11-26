@@ -225,7 +225,7 @@ export type SandboxCommand =
 /**
  * The branch of the visitor, the resource `Sandbox` of the contract.
  *
- * From the resource `Sandbox` of `docs/v3/contracts/openapi.yaml` and from the answer of the
+ * From the resource `Sandbox` of `docs/design/contracts/openapi.yaml` and from the answer of the
  * facade in `ledgerlens/api/sandbox.py`. The resource has no field for the canonical hash of the
  * branch and none for its state, and those two travel in the headers of the answer.
  */
@@ -512,7 +512,7 @@ export interface BranchHistoryBody {
 /**
  * The refusal of the server, the resource `Error` of the contract.
  *
- * From the resource `Error` of `docs/v3/contracts/openapi.yaml` and from the body that
+ * From the resource `Error` of `docs/design/contracts/openapi.yaml` and from the body that
  * `ledgerlens/api/sandbox.py` writes for every refusal. The four fields are always there, and the
  * interface shows the code and the message of the server and never a sentence of its own.
  */

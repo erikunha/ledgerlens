@@ -9,8 +9,8 @@
 **Input**: Design documents: `docs/decisions/ADR-054-the-agent-loop-has-a-ceiling-in-every-path.md`,
 `docs/decisions/ADR-055-the-policy-index-carries-the-hash-of-the-corpus.md`,
 `docs/decisions/ADR-056-two-vector-sites-and-one-protocol.md`,
-`docs/v3/advanced-specs/R9-03-cost-per-correctly-resolved-case.md` and the metric table of
-`docs/v3/docs/09-EVALUATION-AND-EXPERIMENTS.md:45`. User description: "The repository can say what its agent
+`docs/design/advanced-specs/R9-03-cost-per-correctly-resolved-case.md` and the metric table of
+`docs/design/docs/09-EVALUATION-AND-EXPERIMENTS.md:45`. User description: "The repository can say what its agent
 answers and it can say whether its verifier is right, and it cannot say what a turn costs, how long a turn takes or
 what a human review costs. The agent loop of the paths that ship has no ceiling, the index of the policies answers
 from a corpus that may have moved, the promise that one file talks to FAISS is false, and the number of the latency

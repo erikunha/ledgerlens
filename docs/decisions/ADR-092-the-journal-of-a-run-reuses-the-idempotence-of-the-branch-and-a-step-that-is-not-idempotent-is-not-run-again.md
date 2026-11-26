@@ -11,7 +11,7 @@ Status: accepted. Date: 2026-11-24.
 ## Context
 
 The design package
-[LL-V3-R16-02, idempotent durable operations and forensic traces](../v3/advanced-specs/R16-02-idempotent-durable-operations-and-forensic-traces.md)
+[LL-V3-R16-02, idempotent durable operations and forensic traces](../design/advanced-specs/R16-02-idempotent-durable-operations-and-forensic-traces.md)
 proposes a run that restarts without losing evidence and without doing the same work twice, and a trace that a
 reader can read as a forensic record. The repository already held half of this: the branch of a visitor is
 durable (the idempotent commit of [ADR-021](ADR-021-typed-mutation-and-atomic-commit.md), the atomic write of
@@ -98,4 +98,4 @@ span, and the store of a deployment is a later decision.**
 - [ADR-032, the state of the branch and the hash](ADR-032-the-state-of-the-branch-and-the-hash.md)
 - [the runbook of the durability](../runbook/durability.md)
 - [the specification of the milestone](../../specs/017-r16-durable-operations-and-forensic-traces/spec.md)
-- [the design package](../v3/advanced-specs/R16-02-idempotent-durable-operations-and-forensic-traces.md)
+- [the design package](../design/advanced-specs/R16-02-idempotent-durable-operations-and-forensic-traces.md)

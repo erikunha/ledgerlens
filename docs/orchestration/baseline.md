@@ -4,7 +4,7 @@ The studio of the multi-agent orchestration is experimental and it is measured a
 ships today. A reference that moves is not a reference, so this page freezes the behaviour of the shipped path at a
 named commit and says what a reader of a comparison of the studio has to compare against.
 
-The red line is [ADR-P007](../../docs/v3/adrs/ADR-P007-no-multiagent-by-default.md): the runtime stays a single agent
+The red line is [ADR-P007](../../docs/design/adrs/ADR-P007-no-multiagent-by-default.md): the runtime stays a single agent
 with a deterministic verifier until a paired comparison measures a gain. This page is the arm that the studio has to
 beat.
 

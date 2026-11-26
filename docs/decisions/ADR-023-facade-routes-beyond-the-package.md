@@ -11,7 +11,7 @@ Status: accepted. Date: 2026-11-14.
 ## Context
 
 The facade of the sandbox follows the versioned contract of the design package,
-`docs/v3/contracts/openapi.yaml`, and the test that guards it says that every path of the facade is a path of the
+`docs/design/contracts/openapi.yaml`, and the test that guards it says that every path of the facade is a path of the
 contract (ADR-019).
 
 The contract declares seven paths of the sandbox: the session, the fork, the status, the ledger, the preview, the commit
@@ -25,7 +25,7 @@ and the reset. The specification of the feature of this repository asks for thre
   to be marked and not presented as the current result (FR-022, FR-034);
 * the undo of the last mutation, which is an action of the visitor and not a mutation of the catalog (FR-037).
 
-The contract of the design package cannot be edited: `docs/v3/` is a converted copy of a package that lives outside the
+The contract of the design package cannot be edited: `docs/design/` is a converted copy of a package that lives outside the
 repository, and the check of the import refuses any difference between the two. So the four routes cannot be declared
 there.
 
@@ -59,7 +59,7 @@ changes: the body of the answer is the resource `Sandbox` and nothing else.
 
 ## Alternatives considered
 
-- **Edit the contract of the package.** The folder `docs/v3/` is a converted copy of material that lives outside the
+- **Edit the contract of the package.** The folder `docs/design/` is a converted copy of material that lives outside the
   repository, and the check of the import refuses any difference. An edit would be undone by the next import and would
   make the gate red in the meantime.
 - **Refuse the diff, the history and the undo until the frontend is opened.** The specification of the feature asks for

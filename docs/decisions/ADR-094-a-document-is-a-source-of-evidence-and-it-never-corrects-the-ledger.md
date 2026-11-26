@@ -11,7 +11,7 @@ Status: accepted. Date: 2026-11-24.
 ## Context
 
 The design package
-[LL-V3-R18-02, source-grounded document extraction](../v3/advanced-specs/R18-02-source-grounded-document-extraction.md)
+[LL-V3-R18-02, source-grounded document extraction](../design/advanced-specs/R18-02-source-grounded-document-extraction.md)
 proposes a document pipeline that reads the fields of a document, says where on the page it read each one, and
 hands the result to the verifier as evidence. The repository reads three things: the ledger, the corpus of the
 policies and a reference rate. It cannot read a picture of a receipt, and it has no way to hold two accounts of
@@ -38,7 +38,7 @@ publishes a value the deterministic parser did not confirm.**
    disagreement in the repository. The pipeline never writes to the ledger, and no task of the milestone adds
    such a write.
 3. **The pipeline reads only the fixtures of `data/fixtures/documents/` and refuses every other path before
-   opening it.** [ADR-P009](../v3/adrs/ADR-P009-privacy-scope.md) forbids the collection of real
+   opening it.** [ADR-P009](../design/adrs/ADR-P009-privacy-scope.md) forbids the collection of real
    financial documents, and the refusal happens before the file is opened, so a document that was never allowed
    to be read is never read.
 4. **The deterministic path ships first.** The offline gate runs with no key and no network, so a pipeline
@@ -87,4 +87,4 @@ publishes a value the deterministic parser did not confirm.**
 - [ADR-074, a case ends in a decision and the decision belongs to the code](ADR-074-a-case-ends-in-a-decision-and-the-decision-belongs-to-the-code.md)
 - [the page of the documents](../documents.md)
 - [the specification of the milestone](../../specs/019-r18-source-grounded-document-extraction/spec.md)
-- [the design package](../v3/advanced-specs/R18-02-source-grounded-document-extraction.md)
+- [the design package](../design/advanced-specs/R18-02-source-grounded-document-extraction.md)

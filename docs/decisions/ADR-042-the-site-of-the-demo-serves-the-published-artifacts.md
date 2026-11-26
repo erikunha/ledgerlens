@@ -102,7 +102,7 @@ stays as it is.
 - No mapping of the keys of the artifacts by hand, in the loader or in the page.
 - No new route, no new page, no new component and no new dependency of the frontend.
 - No change of the Python of the domain: the export keeps writing `site/replay` and nothing else.
-- No change of the live mode, of the API and of `docs/v3/`.
+- No change of the live mode, of the API and of `docs/design/`.
 
 ## What it costs
 

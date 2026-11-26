@@ -12,7 +12,7 @@ Status: accepted. Date: 2026-11-23.
 
 The design package asks for it in one sentence: "Include *at least one published failure*: e.g., a run with
 insufficient FX source or unsupported ARS currency; show escalation rather than concealing"
-(`docs/v3/docs/08-EVIDENCE-TRACING-AND-PROVENANCE.md:58`). The readiness audit named the same debt as the fourth
+(`docs/design/docs/08-EVIDENCE-TRACING-AND-PROVENANCE.md:58`). The readiness audit named the same debt as the fourth
 gap of the evidence: "the injection scenario is still not one of them"
 (`docs/readiness-2027.md:449`).
 
@@ -127,7 +127,7 @@ the page has no fault to inject.
 
 ## Links
 
-- [the design package, the evidence tracing and provenance](../v3/docs/08-EVIDENCE-TRACING-AND-PROVENANCE.md)
+- [the design package, the evidence tracing and provenance](../design/docs/08-EVIDENCE-TRACING-AND-PROVENANCE.md)
 - [the readiness audit](../readiness-2027.md)
 - [the scripts of the demo](../../ledgerlens/demo.py)
 - [the capture of the replay](../../scripts/capture_replay.py)

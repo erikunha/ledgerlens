@@ -38,7 +38,7 @@ fixture, and the results of the exercises are published as pages under `docs/`
 **Testing**: pytest offline with `LEDGERLENS_OFFLINE=1`, with the scripted model and the fixtures of the
 exercises
 **Constraints**: no key, no network, no process execution, no write to the ledger of the base, no change in
-`docs/v3/`, no new route in the public product
+`docs/design/`, no new route in the public product
 
 ## The layers and the exercises, and why the laboratory adds no defense of its own
 

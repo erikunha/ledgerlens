@@ -16,7 +16,7 @@ built the task of the review, the table of its states and the route that takes t
 reviewers, the waiting time of a case and the comparison of two policies of the escalation.
 
 The design package
-[LL-V3-R10-03, human review queue simulator](../v3/advanced-specs/R10-03-human-review-queue-simulator.md) says where
+[LL-V3-R10-03, human review queue simulator](../design/advanced-specs/R10-03-human-review-queue-simulator.md) says where
 the simulator lives and what it has to answer. It says two things that this decision repeats because they are the ones
 that decide whether the numbers can be trusted.
 
@@ -103,7 +103,7 @@ capacity is never a plan of a team.**
 
 - [ADR-037, the case of the demo runs on a bridge over the caller](ADR-037-the-case-of-the-demo-runs-on-a-bridge-over-the-caller.md)
 - [ADR-087, the review is a typed task and the agent never decides](ADR-087-the-review-is-a-typed-task-the-identity-of-the-reviewer-is-the-session-and-the-agent-never-decides.md)
-- [ADR-P007, no multi-agent by default](../v3/adrs/ADR-P007-no-multiagent-by-default.md)
+- [ADR-P007, no multi-agent by default](../design/adrs/ADR-P007-no-multiagent-by-default.md)
 - [the simulator of the queue](../../ledgerlens/economics/queue.py)
 - [the test of the simulator](../../tests/economics/test_queue.py)
 - [the page of the queue](../queue.md)

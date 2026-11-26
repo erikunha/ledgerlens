@@ -18,8 +18,8 @@ That is the cost of one run. What the repository had no answer for is the cost o
 was actually resolved, the cost of a review by a person and the loss a policy carries when it is wrong. The
 milestone of [specs/005](../../specs/005-r4-runtime-latency-and-cost-per-case/spec.md) promised an economics module and
 did not build it, and the design packages
-[LL-V3-R9-03, cost per correctly resolved case](../v3/advanced-specs/R9-03-cost-per-correctly-resolved-case.md)
-and [LL-V3-R9-06, risk weighted decision utility](../v3/advanced-specs/R9-06-risk-weighted-decision-utility.md)
+[LL-V3-R9-03, cost per correctly resolved case](../design/advanced-specs/R9-03-cost-per-correctly-resolved-case.md)
+and [LL-V3-R9-06, risk weighted decision utility](../design/advanced-specs/R9-06-risk-weighted-decision-utility.md)
 say what the module has to do.
 
 Two things were true of the numbers the repository published until now, and both were limits of what could be
@@ -120,7 +120,7 @@ number it publishes carries the assumptions that produced it.**
 - [ADR-074, a case ends in a decision and the decision belongs to the code](ADR-074-a-case-ends-in-a-decision-and-the-decision-belongs-to-the-code.md)
 - [ADR-078, the model of each slot is chosen by the work it does](ADR-078-the-model-of-each-slot-is-chosen-by-the-work-it-does.md)
 - [ADR-083, the routing is measured against one model over the same cases, and every number carries its set](ADR-083-the-routing-is-measured-against-one-model-over-the-same-cases-and-every-number-carries-its-set.md)
-- [ADR-P007, no multi-agent by default](../v3/adrs/ADR-P007-no-multiagent-by-default.md)
+- [ADR-P007, no multi-agent by default](../design/adrs/ADR-P007-no-multiagent-by-default.md)
 - [the page of the routing](../routing.md)
 - [the package of the economics](../../ledgerlens/economics/)
 - [the test of the cost](../../tests/economics/test_cost.py)

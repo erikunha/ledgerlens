@@ -12,7 +12,7 @@ Status: accepted. Date: 2026-11-25.
 
 The branch layer of the sandbox was built and tested one rule at a time, spread over the tests of the folder.
 The design package of the sandbox
-([R2-03](../../docs/v3/advanced-specs/R2-03-isolated-sandbox-mutations.md)) asks for three things the folder did
+([R2-03](../../docs/design/advanced-specs/R2-03-isolated-sandbox-mutations.md)) asks for three things the folder did
 not have: the six acceptance scenarios gathered in one conformance suite over the seeded scenarios S01, S02 and
 S03, the property tests of the invariants of the branch over sequences of commands nobody wrote by hand, and the
 diff of a branch published as data. The milestone of

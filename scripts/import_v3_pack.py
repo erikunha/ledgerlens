@@ -2,8 +2,8 @@
 
 Why it exists: the v3 package is the product, engineering and research plan that drives the next cycle of work. It lives
 outside git, in a downloads folder, and that has two costs: nobody else can read the plan next to the code, and the code
-evolves without a versioned plan. This script copies the package into `docs/v3/`, applying the writing rules of the
-repository, and writes the provenance in `docs/v3/ORIGEM.md`.
+evolves without a versioned plan. This script copies the package into `docs/design/`, applying the writing rules of the
+repository, and writes the provenance in `docs/design/ORIGEM.md`.
 
 What the script converts, and nothing else:
 
@@ -29,7 +29,7 @@ The package folder is local material, outside git, and it comes from the command
 `LEDGERLENS_V3_PACK`). The path is not written in the script because versioned code cannot depend on material that only
 exists on the author's machine: the repository has a guard that refuses that.
 
-The `--check` returns an error when what is in `docs/v3/` diverges from the package, which warns that the package
+The `--check` returns an error when what is in `docs/design/` diverges from the package, which warns that the package
 changed and that the record has to be redone.
 """
 
@@ -46,7 +46,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-TARGET = ROOT / "docs" / "v3"
+TARGET = ROOT / "docs" / "design"
 # The package folder is local and comes from outside. The path is given on the command line or in the environment
 # variable, so that this versioned file does not depend on material that only exists on the author's machine.
 SOURCE_ENV = "LEDGERLENS_V3_PACK"
@@ -55,7 +55,7 @@ PROVENANCE = TARGET / "ORIGEM.md"
 sys.path.insert(0, str(ROOT / "scripts"))
 sys.path.insert(0, str(ROOT / "tests"))
 # The guard of the repository itself, reused: the import is never weaker than the gate that runs after it, so
-# whatever the repository would refuse never lands in docs/v3/ in the first place.
+# whatever the repository would refuse never lands in docs/design/ in the first place.
 from test_public_clean import FORBIDDEN, FORBIDDEN_CASE, HOME_PATH, SECRET, is_portuguese  # noqa: E402
 from v3_translations import _TRANSLATIONS  # noqa: E402
 
@@ -267,7 +267,7 @@ def _expected_tree(base: Path) -> dict[str, bytes]:
 
 
 def _current_tree() -> dict[str, bytes]:
-    """What is in `docs/v3/` now, without the provenance file."""
+    """What is in `docs/design/` now, without the provenance file."""
     if not TARGET.is_dir():
         return {}
     current: dict[str, bytes] = {}
@@ -280,7 +280,7 @@ def _current_tree() -> dict[str, bytes]:
 
 def _ignored_files(expected: dict[str, bytes]) -> list[str]:
     """The imported files that git would ignore, which would leave them out of the versioning."""
-    targets = [f"docs/v3/{name}" for name in sorted(expected)]
+    targets = [f"docs/design/{name}" for name in sorted(expected)]
     proc = subprocess.run(
         ["git", "check-ignore", "--stdin"],
         input="\n".join(targets) + "\n",
@@ -327,9 +327,9 @@ def _guard_report(files: dict[str, bytes]) -> list[str]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Imports the v3 design package into docs/v3/.")
+    parser = argparse.ArgumentParser(description="Imports the v3 design package into docs/design/.")
     parser.add_argument(
-        "--check", action="store_true", help="checks whether docs/v3 matches the package, without writing"
+        "--check", action="store_true", help="checks whether docs/design matches the package, without writing"
     )
     parser.add_argument(
         "--source",
@@ -376,17 +376,17 @@ def main() -> int:
             print(f"  current:  {converted}")
             return 1
         if current == expected:
-            print("docs/v3 matches the package")
+            print("docs/design matches the package")
             return 0
         missing = sorted(set(expected) - set(current))
         extra = sorted(set(current) - set(expected))
         changed = sorted(name for name in set(expected) & set(current) if expected[name] != current[name])
         if missing:
-            print("missing in docs/v3:", ", ".join(missing[:10]))
+            print("missing in docs/design:", ", ".join(missing[:10]))
         if extra:
-            print("extra in docs/v3:", ", ".join(extra[:10]))
+            print("extra in docs/design:", ", ".join(extra[:10]))
         if changed:
-            print("different in docs/v3:", ", ".join(changed[:10]))
+            print("different in docs/design:", ", ".join(changed[:10]))
         print("the record does NOT match the package")
         return 1
 

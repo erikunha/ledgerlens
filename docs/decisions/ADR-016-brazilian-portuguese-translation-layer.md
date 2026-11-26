@@ -36,7 +36,7 @@ spreads through the tree fights the guard; a guard that simply stops looking fig
   changes in the same commit. A translation that lags behind its source is a defect, the same way a stale document is.
 - When a translation and its source disagree, the English text wins and the translation is fixed. The translation is
   never the authority.
-- Nothing under `docs/v3/` is translated: that tree is the imported design package, and the import check compares it
+- Nothing under `docs/design/` is translated: that tree is the imported design package, and the import check compares it
   against the package after the mechanical conversion of the import.
 - The user-facing strings of the web surfaces become bilingual when the frontend phase opens, which is a paused
   decision recorded here so that it is not rediscovered later.

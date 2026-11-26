@@ -6,8 +6,8 @@
 
 **Status**: Draft
 
-**Input**: Design documents: `docs/v3/advanced-specs/R15-02-model-router-with-budgeted-fallback.md`,
-`docs/v3/ai/03-MODEL-GATEWAY-ROUTING.md`, `docs/v3/ai/02-SPECIALIST-ROSTER.md`, and the decisions already in
+**Input**: Design documents: `docs/design/advanced-specs/R15-02-model-router-with-budgeted-fallback.md`,
+`docs/design/ai/03-MODEL-GATEWAY-ROUTING.md`, `docs/design/ai/02-SPECIALIST-ROSTER.md`, and the decisions already in
 force: `docs/decisions/ADR-034-the-registry-the-budget-and-the-endpoint.md`,
 `docs/decisions/ADR-037-the-case-of-the-demo-runs-on-a-bridge-over-the-caller.md`,
 `docs/decisions/ADR-013-public-trace-as-a-versioned-contract.md`,
@@ -231,9 +231,9 @@ the set of every number.
 
 ## Design documents
 
-- [R15-02 Model router with budgeted fallback](../../docs/v3/advanced-specs/R15-02-model-router-with-budgeted-fallback.md)
-- [Model Gateway, Provider Selection and Agent FinOps](../../docs/v3/ai/03-MODEL-GATEWAY-ROUTING.md)
-- [Agent Roles and Boundaries](../../docs/v3/ai/02-SPECIALIST-ROSTER.md)
+- [R15-02 Model router with budgeted fallback](../../docs/design/advanced-specs/R15-02-model-router-with-budgeted-fallback.md)
+- [Model Gateway, Provider Selection and Agent FinOps](../../docs/design/ai/03-MODEL-GATEWAY-ROUTING.md)
+- [Agent Roles and Boundaries](../../docs/design/ai/02-SPECIALIST-ROSTER.md)
 - [ADR-034: The registry of tested models, the two costs of a run and the endpoint](../../docs/decisions/ADR-034-the-registry-the-budget-and-the-endpoint.md)
 - [ADR-037: The case of the demo runs on a bridge over the caller](../../docs/decisions/ADR-037-the-case-of-the-demo-runs-on-a-bridge-over-the-caller.md)
 - [ADR-013: The public trace is a versioned contract](../../docs/decisions/ADR-013-public-trace-as-a-versioned-contract.md)

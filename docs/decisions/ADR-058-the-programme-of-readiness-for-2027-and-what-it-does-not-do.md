@@ -78,7 +78,7 @@ internal audit and the management review belong to a deployer, and the classific
 whose answer flips on a fact the repository does not state, namely whether a deploying organisation uses the answer to
 decide a refund forgiveness or a chargeback waiver. The design package already refuses the first of these in its own
 words: "Do not build multi-user billing, bank-grade compliance certification, real payment operations"
-(`docs/v3/docs/15-RISKS-AND-OPEN-DECISIONS.md:26`). And the envelope D3 asks for has a shelf life shorter than the
+(`docs/design/docs/15-RISKS-AND-OPEN-DECISIONS.md:26`). And the envelope D3 asks for has a shelf life shorter than the
 cycle, because the model it would measure is the one being retired. Two of its items are taken and land inside the
 programme as the honesty of the repository and not as compliance: the one line disclosure of the AI on every surface
 that answers a person, and the incident path with a severity, an owner and a clock. The classification page becomes a
@@ -193,13 +193,13 @@ These are refusals, and the repository already refuses most of them in its own w
 
 - **No certification, no conformity assessment, no registration, no marking, no internal audit and no management
   review.** The design package refuses the first in its own words
-  (`docs/v3/docs/15-RISKS-AND-OPEN-DECISIONS.md:26`).
+  (`docs/design/docs/15-RISKS-AND-OPEN-DECISIONS.md:26`).
 - **No claim of alignment with any framework**, and no management system of any kind. The frameworks of this decade
   delegate the criteria to the organisation, and this repository is not going to be an organisation that certifies.
 - **No deployment of anything public.** It needs the decision of the security and the legal audits, and the owner did
   not ask for it.
 - **No rewrite of the runtime.** The shape was decided in ADR-010 and in the proposed ADR-P007 of the v3 package
-  (`docs/v3/adrs/ADR-P007-no-multiagent-by-default.md:5`).
+  (`docs/design/adrs/ADR-P007-no-multiagent-by-default.md:5`).
 - **No redesign of the interface.** The owner reserved it for the end of the cycle, and the measurement of the surface
   comes before the redesign.
 - **No number over a set that nobody labelled.** The role is declared over the complete labelled file and never over an

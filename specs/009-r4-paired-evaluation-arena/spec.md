@@ -14,7 +14,7 @@
 [ADR-067](../../docs/decisions/ADR-067-the-measurement-of-the-held-out-set-is-published-without-its-answer-key.md),
 [ADR-069](../../docs/decisions/ADR-069-the-reservation-follows-the-content-of-the-case-and-the-key-of-the-set-is-not-published.md),
 [ADR-074](../../docs/decisions/ADR-074-a-case-ends-in-a-decision-and-the-decision-belongs-to-the-code.md) and the
-design package [LL-V3-R4-04, paired evaluation arena](../../docs/v3/advanced-specs/R4-04-paired-evaluation-arena.md).
+design package [LL-V3-R4-04, paired evaluation arena](../../docs/design/advanced-specs/R4-04-paired-evaluation-arena.md).
 The milestones of the same area are [specs/004](../004-r4-verifier-calibration/spec.md) and
 [specs/005](../005-r4-runtime-latency-and-cost-per-case/spec.md).
 
@@ -250,7 +250,7 @@ digest of the dataset.
 | [ADR-067](../../docs/decisions/ADR-067-the-measurement-of-the-held-out-set-is-published-without-its-answer-key.md) | The measurement of the held out set is published without its answer key. |
 | [ADR-069](../../docs/decisions/ADR-069-the-reservation-follows-the-content-of-the-case-and-the-key-of-the-set-is-not-published.md) | The key of the held out set is not published. |
 | [ADR-074](../../docs/decisions/ADR-074-a-case-ends-in-a-decision-and-the-decision-belongs-to-the-code.md) | The decision of a case belongs to the code, so the gallery shows the code and not the prose of a model. |
-| [LL-V3-R4-04](../../docs/v3/advanced-specs/R4-04-paired-evaluation-arena.md) | The design package this specification ports. |
+| [LL-V3-R4-04](../../docs/design/advanced-specs/R4-04-paired-evaluation-arena.md) | The design package this specification ports. |
 | [specs/004](../004-r4-verifier-calibration/spec.md) | The calibration of the verifier and the thresholds of the metrics. |
 | [specs/005](../005-r4-runtime-latency-and-cost-per-case/spec.md) | The latency and the cost of a turn, measured with its hardware and its denominator. |
 

@@ -49,7 +49,7 @@ from tests.agents.test_integrator import (  # noqa: F401  (fixtures reused)
 )
 
 ROOT = Path(__file__).resolve().parents[2]
-SCHEMA = ROOT / "docs" / "v3" / "contracts" / "schemas" / "trace-event.schema.json"
+SCHEMA = ROOT / "docs" / "design" / "contracts" / "schemas" / "trace-event.schema.json"
 FAKE_KEY = "sk-fakefake1234"
 # The marker of the credential of the test. It is broken in two pieces on purpose, so the hook that reads the
 # repository looking for credentials does not read the literal of the test as one.

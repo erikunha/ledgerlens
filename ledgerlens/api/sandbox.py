@@ -1,7 +1,7 @@
 """The sandbox facade: the routes of the versioned contract of the design package.
 
 Why it exists: the visitor works in a browser and needs two things first, a private branch of a published case and the
-status of that branch. The facade follows `docs/v3/contracts/openapi.yaml`, so the interface that is paused can be
+status of that branch. The facade follows `docs/design/contracts/openapi.yaml`, so the interface that is paused can be
 written against the contract without a translation layer.
 
 What the contract fixes:

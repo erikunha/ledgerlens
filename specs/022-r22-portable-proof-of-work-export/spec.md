@@ -6,7 +6,7 @@
 
 **Status**: Draft
 
-**Input**: Design documents: [R22-01, portable proof of work artifact export](../../docs/v3/advanced-specs/R22-01-portable-proof-of-work-artifact-export.md),
+**Input**: Design documents: [R22-01, portable proof of work artifact export](../../docs/design/advanced-specs/R22-01-portable-proof-of-work-artifact-export.md),
 [ADR-013, the public trace is a versioned contract](../../docs/decisions/ADR-013-public-trace-as-a-versioned-contract.md),
 [ADR-014, the replay bundle has a manifest and a hash](../../docs/decisions/ADR-014-replay-bundle-with-manifest-and-hash.md),
 [ADR-017, the bundle declares its commit and the export publishes artifacts the interface accepts](../../docs/decisions/ADR-017-export-contract-and-provenance.md),
@@ -17,9 +17,9 @@
 [ADR-075, the site publishes two catalogs](../../docs/decisions/ADR-075-the-site-publishes-two-catalogs-and-each-bundle-declares-the-one-it-belongs-to.md),
 [ADR-076, the answer of the run is published whole](../../docs/decisions/ADR-076-the-answer-of-the-run-is-published-whole-because-the-claims-are-extracted-from-it.md),
 [ADR-077, the published bundle is verified against the answer the run verified](../../docs/decisions/ADR-077-the-published-bundle-is-verified-against-the-answer-the-run-verified.md),
-[ADR-P007, one evidence-first agent by default](../../docs/v3/adrs/ADR-P007-no-multiagent-by-default.md),
-[ADR-P009, the privacy scope of the public project](../../docs/v3/adrs/ADR-P009-privacy-scope.md) and
-[the release train, the R22 contract](../../docs/v3/roadmap/RELEASE-TRAIN-2027-2030.md). User description: "The
+[ADR-P007, one evidence-first agent by default](../../docs/design/adrs/ADR-P007-no-multiagent-by-default.md),
+[ADR-P009, the privacy scope of the public project](../../docs/design/adrs/ADR-P009-privacy-scope.md) and
+[the release train, the R22 contract](../../docs/design/roadmap/RELEASE-TRAIN-2027-2030.md). User description: "The
 repository publishes two catalogs of recorded scenarios with their digests, their commit and their provenance. A
 reader can check a number in this repository. A reader cannot carry the check anywhere else, because there is no
 artifact that says, in one place, what was done, which commit did it, what evidence it rests on and how to redo
@@ -36,7 +36,7 @@ What the repository has is the substance of the artifact and none of the composi
 | What the package names | What the repository has | What is missing |
 |---|---|---|
 | compose sanitized evidence from an immutable run | the bundle of `ledgerlens/replay/bundle.py` with its manifest, its digests, its commit, its snapshot digest and its provenance, and the export of `ledgerlens/replay/site_export.py` that publishes it to `site/replay/` and to `site/replay-real/` | the composition of a bundle, a report and a recipe into one artifact |
-| the `portfolio-proof` schema v3 and the route `GET /proof/{id}` | the schema of the package at `docs/v3/contracts/schemas/v3-portfolio-proof.schema.json` with its example, and a static site under `apps/web/` with the routes `/replay` and `/replay-real` | the artifact, the route and the validation of the artifact against the schema |
+| the `portfolio-proof` schema v3 and the route `GET /proof/{id}` | the schema of the package at `docs/design/contracts/schemas/v3-portfolio-proof.schema.json` with its example, and a static site under `apps/web/` with the routes `/replay` and `/replay-real` | the artifact, the route and the validation of the artifact against the schema |
 | the artifact is marked incomplete when the experiment hash is missing | the check of the export, `scripts/export_replay_site.py --check`, and the check of the digests, `scripts/verify_replay_digests.py` | the status of the artifact, `draft` or `verified`, and the rule that decides it |
 | a secret-like string in the trace blocks the export | the redaction of the trace in `ledgerlens/observability/callbacks.py`, applied at the boundary before the file is written | a scan of the finished artifact, because the artifact carries prose and a report that the trace does not |
 | the benchmark numbers come from the actual report | the reports of the evaluation under `data/eval/`, the report of the measurement of the held out set and the manifest of the datasets | the rule that a number of an artifact is read from a report and never written by hand |
@@ -174,7 +174,7 @@ session id or a path of a machine, and assert that the scan of the artifact refu
   - Test: `tests/proof/test_identifier.py` expects the identifier to be the digest of the bundle and expects two
     identifiers for two commits.
 - **FR-005**: The artifact is validated against the schema of the package,
-    `docs/v3/contracts/schemas/v3-portfolio-proof.schema.json`, and a build that does not satisfy it is refused.
+    `docs/design/contracts/schemas/v3-portfolio-proof.schema.json`, and a build that does not satisfy it is refused.
   - Test: `tests/proof/test_schema.py` expects the validation of the artifact against the schema of the package, and
     expects the refusal of an artifact that breaks it.
 - **FR-006**: The export refuses an artifact whose content carries a string that looks like a secret, and it writes
@@ -266,7 +266,7 @@ session id or a path of a machine, and assert that the scan of the artifact refu
 
 ## Design documents
 
-- [R22-01, portable proof of work artifact export](../../docs/v3/advanced-specs/R22-01-portable-proof-of-work-artifact-export.md)
+- [R22-01, portable proof of work artifact export](../../docs/design/advanced-specs/R22-01-portable-proof-of-work-artifact-export.md)
 - [ADR-013, the public trace is a versioned contract](../../docs/decisions/ADR-013-public-trace-as-a-versioned-contract.md)
 - [ADR-014, the replay bundle has a manifest and a hash](../../docs/decisions/ADR-014-replay-bundle-with-manifest-and-hash.md)
 - [ADR-017, the bundle declares its commit and the export publishes artifacts the interface accepts](../../docs/decisions/ADR-017-export-contract-and-provenance.md)
@@ -277,11 +277,11 @@ session id or a path of a machine, and assert that the scan of the artifact refu
 - [ADR-075, the site publishes two catalogs](../../docs/decisions/ADR-075-the-site-publishes-two-catalogs-and-each-bundle-declares-the-one-it-belongs-to.md)
 - [ADR-076, the answer of the run is published whole](../../docs/decisions/ADR-076-the-answer-of-the-run-is-published-whole-because-the-claims-are-extracted-from-it.md)
 - [ADR-077, the published bundle is verified against the answer the run verified](../../docs/decisions/ADR-077-the-published-bundle-is-verified-against-the-answer-the-run-verified.md)
-- [ADR-P007, one evidence-first agent by default](../../docs/v3/adrs/ADR-P007-no-multiagent-by-default.md)
-- [ADR-P009, the privacy scope of the public project](../../docs/v3/adrs/ADR-P009-privacy-scope.md)
-- [the schema of the proof artifact in the package](../../docs/v3/contracts/schemas/v3-portfolio-proof.schema.json)
-  and [its example](../../docs/v3/contracts/examples/v3-portfolio-proof.json)
-- [the release train, the R22 contract](../../docs/v3/roadmap/RELEASE-TRAIN-2027-2030.md)
+- [ADR-P007, one evidence-first agent by default](../../docs/design/adrs/ADR-P007-no-multiagent-by-default.md)
+- [ADR-P009, the privacy scope of the public project](../../docs/design/adrs/ADR-P009-privacy-scope.md)
+- [the schema of the proof artifact in the package](../../docs/design/contracts/schemas/v3-portfolio-proof.schema.json)
+  and [its example](../../docs/design/contracts/examples/v3-portfolio-proof.json)
+- [the release train, the R22 contract](../../docs/design/roadmap/RELEASE-TRAIN-2027-2030.md)
 - [the implementation plan of this specification](plan.md) and [its tasks](tasks.md)
 
 ## Status

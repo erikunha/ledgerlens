@@ -36,5 +36,5 @@ docs/handoff-v3.md
 !/.specify/**
 !/specs/
 !/specs/**
-!/docs/v3/specs/
-!/docs/v3/specs/**
+!/docs/design/specs/
+!/docs/design/specs/**

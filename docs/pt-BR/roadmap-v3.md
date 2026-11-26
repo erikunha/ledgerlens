@@ -5,7 +5,7 @@
 Este documento é o plano de trabalho a partir de 2026-11-11. A decisão que o ancora é o
 [ADR-011](../decisions/ADR-011-v3-roadmap-in-verifiable-slices.md). A especificação detalhada de cada release vive em
 [`specs/`](../../specs/), escrita com o toolkit de especificação, e o pacote de design que dirige o ciclo inteiro é
-versionado em [`docs/v3/`](../v3/ORIGEM.md).
+versionado em [`docs/design/`](../design/ORIGEM.md).
 
 ## A decisão
 
@@ -131,7 +131,7 @@ cada uma com o gate de prova que o pacote define.
 ## Onde está o pacote de design
 
 O pacote com o atlas de 234 capacidades, os 161 novos ids, as 34 telas, as 19 especificações de componentes e os 7
-esquemas é versionado em [`docs/v3/`](../v3/ORIGEM.md), importado por `scripts/import_v3_pack.py`. São 125 arquivos,
+esquemas é versionado em [`docs/design/`](../design/ORIGEM.md), importado por `scripts/import_v3_pack.py`. São 125 arquivos,
 sha256 `4bf1cb2402ac7b31d85244e9ec7e4970c1db5ab63f17361d43471e102a2cbad1` sobre o caminho relativo e os bytes, o mesmo
 digest do ADR-011.
 

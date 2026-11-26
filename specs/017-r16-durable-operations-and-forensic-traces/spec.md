@@ -6,8 +6,8 @@
 
 **Status**: Draft
 
-**Input**: Design documents: `docs/v3/advanced-specs/R16-02-idempotent-durable-operations-and-forensic-traces.md`,
-`docs/v3/ai/01-MULTIAGENT-ORCHESTRATION.md`, and the decisions already in force:
+**Input**: Design documents: `docs/design/advanced-specs/R16-02-idempotent-durable-operations-and-forensic-traces.md`,
+`docs/design/ai/01-MULTIAGENT-ORCHESTRATION.md`, and the decisions already in force:
 `docs/decisions/ADR-021-typed-mutation-and-atomic-commit.md`,
 `docs/decisions/ADR-025-a-failed-write-loses-nothing.md`,
 `docs/decisions/ADR-026-the-store-serialises-the-writes-of-a-branch.md`,
@@ -244,8 +244,8 @@ before and after.
 
 ## Design documents
 
-- [R16-02 Idempotent durable operations and forensic traces](../../docs/v3/advanced-specs/R16-02-idempotent-durable-operations-and-forensic-traces.md)
-- [Multi-Agent Orchestration and Durable Runtime](../../docs/v3/ai/01-MULTIAGENT-ORCHESTRATION.md)
+- [R16-02 Idempotent durable operations and forensic traces](../../docs/design/advanced-specs/R16-02-idempotent-durable-operations-and-forensic-traces.md)
+- [Multi-Agent Orchestration and Durable Runtime](../../docs/design/ai/01-MULTIAGENT-ORCHESTRATION.md)
 - [ADR-021: A mutation is a typed command and the commit is atomic](../../docs/decisions/ADR-021-typed-mutation-and-atomic-commit.md)
 - [ADR-025: A write that fails leaves the branch exactly where it was](../../docs/decisions/ADR-025-a-failed-write-loses-nothing.md)
 - [ADR-026: The store serialises the writes of a branch](../../docs/decisions/ADR-026-the-store-serialises-the-writes-of-a-branch.md)

@@ -18,7 +18,7 @@ A LangChain agent that investigates payment complaints. Public repository, read-
 - The documentation lives in `docs/`. Links in Markdown (`[text](path.md)`), never wikilinks.
 - Diagrams in Mermaid whenever a flow, a sequence or a relation is clearer drawn.
 - Every decision that restricts future work becomes an ADR in `docs/decisions/`.
-- The design package that drives the work is versioned in `docs/v3/`, imported by `scripts/import_v3_pack.py`.
+- The design package that drives the work is versioned in `docs/design/`, imported by `scripts/import_v3_pack.py`.
 - The local planning folders and the local notes stay out of git.
 
 ## Before each commit

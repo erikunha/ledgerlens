@@ -16,8 +16,8 @@ an approval may apply to is in `ledgerlens/sandbox/branch.py`. What did not exis
 task, no queue, no decision and no state.
 
 The design packages
-[LL-V3-R10-06, human approval state machine](../v3/advanced-specs/R10-06-human-approval-state-machine.md) and
-[LL-V3-R10-03, human review queue simulator](../v3/advanced-specs/R10-03-human-review-queue-simulator.md) say
+[LL-V3-R10-06, human approval state machine](../design/advanced-specs/R10-06-human-approval-state-machine.md) and
+[LL-V3-R10-03, human review queue simulator](../design/advanced-specs/R10-03-human-review-queue-simulator.md) say
 what the review has to be, and the two rules that matter most came from them. The agent prepares the evidence and
 never decides, and the review responsibility has to be inspectable and impossible to bypass by an instruction that
 somebody wrote into the content of a case.
@@ -97,7 +97,7 @@ evidence and never decides.**
 - [ADR-037, the case of the demo runs on a bridge over the caller](ADR-037-the-case-of-the-demo-runs-on-a-bridge-over-the-caller.md)
 - [ADR-047, the lifecycle and the limits of the branch](ADR-047-the-lifecycle-and-the-limits-of-the-branch.md)
 - [ADR-074, a case ends in a decision and the decision belongs to the code](ADR-074-a-case-ends-in-a-decision-and-the-decision-belongs-to-the-code.md)
-- [ADR-P007, no multi-agent by default](../v3/adrs/ADR-P007-no-multiagent-by-default.md)
+- [ADR-P007, no multi-agent by default](../design/adrs/ADR-P007-no-multiagent-by-default.md)
 - [the package of the review](../../ledgerlens/review/)
 - [the test of the domain](../../tests/review/test_review_task.py)
 - [the test of the route](../../tests/review/test_review_routes.py)

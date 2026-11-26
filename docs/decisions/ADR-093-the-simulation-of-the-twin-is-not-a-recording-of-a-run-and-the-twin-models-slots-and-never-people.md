@@ -11,7 +11,7 @@ Status: accepted. Date: 2026-11-24.
 ## Context
 
 The design package
-[LL-V3-R17-04, operations digital twin simulation](../v3/advanced-specs/R17-04-operations-digital-twin-simulation.md)
+[LL-V3-R17-04, operations digital twin simulation](../design/advanced-specs/R17-04-operations-digital-twin-simulation.md)
 proposes a twin of the operations: a modelled arrival process, a capacity of slots, a labelled condition of
 the run and a paired comparison of two policies over one stream of arrivals. The repository can generate a
 world of payments, project it deterministically and let a visitor change one field of a branch and read the
@@ -88,4 +88,4 @@ people, and a run of the twin is never a bundle of the agent.**
 - [ADR-032, the state of the branch and the hash](ADR-032-the-state-of-the-branch-and-the-hash.md)
 - [the page of the twin](../twin.md)
 - [the specification of the milestone](../../specs/018-r17-operations-digital-twin/spec.md)
-- [the design package](../v3/advanced-specs/R17-04-operations-digital-twin-simulation.md)
+- [the design package](../design/advanced-specs/R17-04-operations-digital-twin-simulation.md)

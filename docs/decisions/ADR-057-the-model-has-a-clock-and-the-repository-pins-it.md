@@ -34,7 +34,7 @@ the list price the published online evaluation used, transcribed on the day that
 
 The design package already says what to do with a model that goes away: "Model removed/deprecated: mark profile retired,
 block new runs, keep recorded historical artifact with date; refresh tested registry and eval before re-enable"
-(`docs/v3/docs/13-CI-CD-DEPLOYMENT-AND-RUNBOOKS.md:66`). A date in a document is a note, and a note is not a guard.
+(`docs/design/docs/13-CI-CD-DEPLOYMENT-AND-RUNBOOKS.md:66`). A date in a document is a note, and a note is not a guard.
 
 ## Decision
 
@@ -45,7 +45,7 @@ the identity of the model that produced it. The switch to the replacement is not
 ### 1. The pin is the dated snapshot `gpt-4.1-mini-2025-04-14`
 
 The `model_id` of the profile becomes `gpt-4.1-mini-2025-04-14`, and the `profile_id` stays `openai-gpt-4.1-mini`
-because it is the internal stable identifier of the profile (`docs/v3/docs/07-BYOK-MODEL-REGISTRY.md:38`). From the day
+because it is the internal stable identifier of the profile (`docs/design/docs/07-BYOK-MODEL-REGISTRY.md:38`). From the day
 of this record the server calls the dated snapshot and not the alias.
 
 **Why the snapshot and not the alias.** The notice publishes a day for the snapshot and says nothing about the alias, and a
@@ -90,7 +90,7 @@ their provider (`registry.py:87-89`).
 announced shutdown is today or earlier, and `ProviderRegistry.catalogue()` (`registry.py:347-363`) stops offering it. The
 status of the profile becomes `retired` by hand on that day, the status the type already knows (`registry.py:55`),
 which the existing refusal of the registry already refuses (`registry.py:392-397`) and which is what the runbook asks for
-(`docs/v3/docs/13-CI-CD-DEPLOYMENT-AND-RUNBOOKS.md:66`). The status is the record of what happened; the day is the rule
+(`docs/design/docs/13-CI-CD-DEPLOYMENT-AND-RUNBOOKS.md:66`). The status is the record of what happened; the day is the rule
 of what happens next.
 
 **The guard that keeps the refusal true.** A new step of the gate, `scripts/check_model_registry.py`, reads the registry,

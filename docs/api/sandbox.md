@@ -15,7 +15,7 @@ The source of truth is the code: the facade lives in `ledgerlens/api/sandbox.py`
 (`tests/sandbox/`). A reader who wants to see the code reads those files.
 
 **Eight of the twelve paths are paths of the versioned contract of the design package**
-(`docs/v3/contracts/openapi.yaml`) and four of them are beyond it: **the diff of the branch, the history of the branch,
+(`docs/design/contracts/openapi.yaml`) and four of them are beyond it: **the diff of the branch, the history of the branch,
 the undo of the last mutation and the stream of the lifecycle of the branch**. ADR-023 declared the first three beyond
 the contract, because the contract of the package is a converted copy of a package that lives outside the repository and
 cannot be edited, and ADR-047 declared the fourth for the same reason. The front therefore writes against the routes of
