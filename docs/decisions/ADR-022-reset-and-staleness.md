@@ -23,7 +23,7 @@ Around that action the specification asks for two things that are easy to state 
   refused with the code `HASH_MISMATCH` instead of being served (FR-032).
 
 The route of the reset is already declared by the versioned contract of the design package,
-`docs/v3/contracts/openapi.yaml`, with the resource `Sandbox` as the body of the answer, so the reset needs no route
+`docs/design/contracts/openapi.yaml`, with the resource `Sandbox` as the body of the answer, so the reset needs no route
 that the contract does not declare.
 
 ## Decision

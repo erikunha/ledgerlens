@@ -11,7 +11,7 @@ Status: accepted. Date: 2026-11-24.
 ## Context
 
 The design package
-[LL-V3-R22-01, portable proof of work artifact export](../v3/advanced-specs/R22-01-portable-proof-of-work-artifact-export.md)
+[LL-V3-R22-01, portable proof of work artifact export](../design/advanced-specs/R22-01-portable-proof-of-work-artifact-export.md)
 proposes a single artifact that says what was done, which commit did it, what evidence it rests on and how to
 redo it. The repository publishes two catalogs of recorded scenarios, and every bundle names the commit it was
 produced from, carries the digest of every file, and is re-verified offline by the deterministic verifier with
@@ -89,4 +89,4 @@ file is written, and the artifact says nothing about a person, an employer or a 
 - [ADR-075, the site publishes two catalogs](ADR-075-the-site-publishes-two-catalogs-and-each-bundle-declares-the-one-it-belongs-to.md)
 - [the page of the proof](../proof.md)
 - [the specification of the milestone](../../specs/022-r22-portable-proof-of-work-export/spec.md)
-- [the design package](../v3/advanced-specs/R22-01-portable-proof-of-work-artifact-export.md)
+- [the design package](../design/advanced-specs/R22-01-portable-proof-of-work-artifact-export.md)

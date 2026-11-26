@@ -11,8 +11,8 @@
 [ADR-072](../../docs/decisions/ADR-072-a-currency-the-reference-source-does-not-publish-is-missing-data-and-the-case-goes-to-a-person.md),
 [ADR-074](../../docs/decisions/ADR-074-a-case-ends-in-a-decision-and-the-decision-belongs-to-the-code.md),
 [ADR-077](../../docs/decisions/ADR-077-the-published-bundle-is-verified-against-the-answer-the-run-verified.md) and the
-design packages [LL-V3-R9-03, cost per correctly resolved case](../../docs/v3/advanced-specs/R9-03-cost-per-correctly-resolved-case.md)
-and [LL-V3-R9-06, risk weighted decision utility](../../docs/v3/advanced-specs/R9-06-risk-weighted-decision-utility.md).
+design packages [LL-V3-R9-03, cost per correctly resolved case](../../docs/design/advanced-specs/R9-03-cost-per-correctly-resolved-case.md)
+and [LL-V3-R9-06, risk weighted decision utility](../../docs/design/advanced-specs/R9-06-risk-weighted-decision-utility.md).
 The milestone that promised the economics module is
 [specs/005](../005-r4-runtime-latency-and-cost-per-case/spec.md).
 
@@ -270,8 +270,8 @@ answer carries the numbers it can carry.
 | [ADR-072](../../docs/decisions/ADR-072-a-currency-the-reference-source-does-not-publish-is-missing-data-and-the-case-goes-to-a-person.md) | A currency that the reference source does not publish is missing data, so the case goes to a person and the reader sees why. |
 | [ADR-074](../../docs/decisions/ADR-074-a-case-ends-in-a-decision-and-the-decision-belongs-to-the-code.md) | The decision belongs to the code, so the utility consumes the labels of the code and computes no verdict of its own. |
 | [ADR-077](../../docs/decisions/ADR-077-the-published-bundle-is-verified-against-the-answer-the-run-verified.md) | The published bundle is verified against the answer the run verified, so the cohort and its labels come from a verified artifact. |
-| [LL-V3-R9-03](../../docs/v3/advanced-specs/R9-03-cost-per-correctly-resolved-case.md) | The design package of the cost per case. |
-| [LL-V3-R9-06](../../docs/v3/advanced-specs/R9-06-risk-weighted-decision-utility.md) | The design package of the risk weighted utility. |
+| [LL-V3-R9-03](../../docs/design/advanced-specs/R9-03-cost-per-correctly-resolved-case.md) | The design package of the cost per case. |
+| [LL-V3-R9-06](../../docs/design/advanced-specs/R9-06-risk-weighted-decision-utility.md) | The design package of the risk weighted utility. |
 | [specs/005](../005-r4-runtime-latency-and-cost-per-case/spec.md) | The milestone that promised the economics module and the cost per resolved case. |
 | [specs/009](../009-r4-paired-evaluation-arena/spec.md) | The milestone that builds the cohort and the paired comparison this specification consumes. |
 

@@ -3,7 +3,7 @@
 This document is the work plan from 2026-11-11 onwards. The decision that anchors it is the
 [ADR-011](decisions/ADR-011-v3-roadmap-in-verifiable-slices.md). The detailed specification of each release lives in
 [`specs/`](../specs/), written with the specification toolkit, and the design package that drives the whole cycle is
-versioned in [`docs/v3/`](v3/ORIGEM.md).
+versioned in [`docs/design/`](design/ORIGEM.md).
 
 ## The decision
 
@@ -148,7 +148,7 @@ follows this roadmap:
 
 Two of these tracks are not waiting for anything but a measurement, and neither one may claim a gain before it has one.
 The studio of specialists stays behind a flag until a paired comparison over the same cases measures a gain
-([ADR-P007](v3/adrs/ADR-P007-no-multiagent-by-default.md)), and the verified feedback may not become training data
+([ADR-P007](design/adrs/ADR-P007-no-multiagent-by-default.md)), and the verified feedback may not become training data
 without the verdict of the deterministic verifier as its gate.
 
 The routing of the inference is the one track that already has a decision: the model of each task is chosen by the task
@@ -158,7 +158,7 @@ of what the cascade costs against one model for the whole run, and that measurem
 ## Where the design package is
 
 The package with the atlas of 234 capabilities, the 161 new ids, the 34 screens, the 19 component specs and the 7
-schemas is versioned in [`docs/v3/`](v3/ORIGEM.md), imported by `scripts/import_v3_pack.py`. It is 125 files, sha256
+schemas is versioned in [`docs/design/`](design/ORIGEM.md), imported by `scripts/import_v3_pack.py`. It is 125 files, sha256
 `4bf1cb2402ac7b31d85244e9ec7e4970c1db5ab63f17361d43471e102a2cbad1` over the relative path and the bytes, the same
 digest as the ADR-011.
 

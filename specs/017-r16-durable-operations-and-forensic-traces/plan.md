@@ -36,7 +36,7 @@ the branch, and the forensic export lives with the published bundle
 **Testing**: pytest offline with `LEDGERLENS_OFFLINE=1`, with the scripted model and the fake provider, and
 with an injected clock so that a deadline is proved by moving the clock
 **Constraints**: ADR-021, ADR-025, ADR-026, ADR-032, ADR-013, the budget of the run, money as `Decimal`, no
-change in `docs/v3/`, and no rebuild of the sandbox
+change in `docs/design/`, and no rebuild of the sandbox
 
 ## The journal, and the order of its writes
 

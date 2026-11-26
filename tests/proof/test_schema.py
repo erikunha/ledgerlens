@@ -1,6 +1,6 @@
 """The artifact against the schema of the package: the validation passes, and a broken artifact is refused.
 
-What they guarantee, and why: the artifact validates against `docs/v3/contracts/schemas/v3-portfolio-proof.schema.json`
+The artifact validates against `docs/design/contracts/schemas/v3-portfolio-proof.schema.json`
 with `jsonschema`, and an artifact that breaks the schema is refused. The schema is versioned in the frozen
 package and it is read, never edited.
 

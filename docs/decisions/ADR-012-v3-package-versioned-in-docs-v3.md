@@ -4,7 +4,7 @@ status: accepted
 date: 2026-11-11
 ---
 
-# ADR-012: The v3 package versioned in `docs/v3/`
+# ADR-012: The v3 package versioned in `docs/design/`
 
 Status: accepted. Date: 2026-11-11.
 
@@ -22,7 +22,7 @@ changes.
 
 ## Decision
 
-The package is versioned in `docs/v3/`, imported by `scripts/import_v3_pack.py`.
+The package is versioned in `docs/design/`, imported by `scripts/import_v3_pack.py`.
 
 The import is mechanical and declared, and it does exactly these things:
 
@@ -37,7 +37,7 @@ The import is mechanical and declared, and it does exactly these things:
 
 Everything else is copied byte by byte. No claim of the package is corrected, expanded or deleted.
 
-The script writes the provenance in `docs/v3/ORIGEM.md`: the date of the import, the number of files, the sha256 of the
+The script writes the provenance in `docs/design/ORIGEM.md`: the date of the import, the number of files, the sha256 of the
 source set, the sha256 of the converted tree, the exact commands to reimport and to check, the inventory of every file
 with its size, and the list of what was converted and what was not.
 

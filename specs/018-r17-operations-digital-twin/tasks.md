@@ -7,9 +7,9 @@ description: "Task list for operations digital twin"
 **Input**: Design documents from `specs/018-r17-operations-digital-twin/`
 
 **Prerequisites**: plan.md (required), spec.md (required), the design package of the release
-(`docs/v3/advanced-specs/R17-04-operations-digital-twin-simulation.md`), ADR-009
+(`docs/design/advanced-specs/R17-04-operations-digital-twin-simulation.md`), ADR-009
 (`docs/decisions/ADR-009-public-data-first-simulation-for-gaps.md`), ADR-018, ADR-021, ADR-022 and ADR-032 of
-`docs/decisions/`, ADR-P007 and ADR-P009 of `docs/v3/adrs/`, and the generator that the twin builds on:
+`docs/decisions/`, ADR-P007 and ADR-P009 of `docs/design/adrs/`, and the generator that the twin builds on:
 `ledgerlens/sim/config.py`, `ledgerlens/sim/events.py`, `ledgerlens/sim/projector.py`,
 `ledgerlens/sim/scenarios.py` and the truth in `data/scenarios.json`
 

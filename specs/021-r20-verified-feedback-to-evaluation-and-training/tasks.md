@@ -7,9 +7,9 @@ description: "Task list for verified feedback to evaluation and training"
 **Input**: Design documents from `specs/021-r20-verified-feedback-to-evaluation-and-training/`
 
 **Prerequisites**: plan.md (required), spec.md (required), the design package of the release
-(`docs/v3/advanced-specs/R20-01-verified-feedback-to-evaluation-and-training.md`), ADR-052, ADR-059, ADR-062,
+(`docs/design/advanced-specs/R20-01-verified-feedback-to-evaluation-and-training.md`), ADR-052, ADR-059, ADR-062,
 ADR-065, ADR-067, ADR-068, ADR-073, ADR-075 and ADR-077 of `docs/decisions/`, ADR-P007 and ADR-P009 of
-`docs/v3/adrs/`, and the code the loop builds on: the two published catalogs `data/eval/replay/` and
+`docs/design/adrs/`, and the code the loop builds on: the two published catalogs `data/eval/replay/` and
 `data/eval/replay-real/`, the verifier of `ledgerlens/verify/checks.py`, the manifest and the guard of the tuning
 in `ledgerlens/eval/manifest.py`, the reservation of `ledgerlens/eval/heldout.py`, the bundles of
 `ledgerlens/replay/bundle.py` and the check of `scripts/check_eval_datasets.py`

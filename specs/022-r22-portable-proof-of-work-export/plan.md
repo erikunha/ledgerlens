@@ -37,7 +37,7 @@ to `scripts/export_replay_site.py`, and the page under `apps/web/app/(public)/pr
 **Storage**: the canonical bundles under `data/eval/replay/` and `data/eval/replay-real/`, the published artifacts
 under `site/proof/`, and the reports the numbers come from under `data/eval/`
 **Testing**: pytest offline with `LEDGERLENS_OFFLINE=1`, the vitest and the end to end checks of the frontend
-**Constraints**: no key and no network, no change in `docs/v3/`, no change in the two catalogs and no change in an
+**Constraints**: no key and no network, no change in `docs/design/`, no change in the two catalogs and no change in an
 accepted decision record
 
 ## The shape of the artifact

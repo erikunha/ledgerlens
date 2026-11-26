@@ -11,7 +11,7 @@ Status: accepted. Date: 2026-11-24.
 ## Context
 
 The design package
-[LL-V3-R19-02, causal counterfactual interventions](../v3/advanced-specs/R19-02-causal-counterfactual-interventions.md)
+[LL-V3-R19-02, causal counterfactual interventions](../design/advanced-specs/R19-02-causal-counterfactual-interventions.md)
 proposes a registry of the structural functions of the synthetic world, a typed intervention over that registry,
 and a report that separates a difference that the registry explains, a difference that the registry does not
 explain, and a statement of cause that nobody can check. The repository can change one field of a branch and
@@ -85,4 +85,4 @@ is learned from an observation, and every statement of the report is a statement
 - [ADR-074, a case ends in a decision and the decision belongs to the code](ADR-074-a-case-ends-in-a-decision-and-the-decision-belongs-to-the-code.md)
 - [the page of the causal engine](../causal.md)
 - [the specification of the milestone](../../specs/020-r19-causal-counterfactual-interventions/spec.md)
-- [the design package](../v3/advanced-specs/R19-02-causal-counterfactual-interventions.md)
+- [the design package](../design/advanced-specs/R19-02-causal-counterfactual-interventions.md)

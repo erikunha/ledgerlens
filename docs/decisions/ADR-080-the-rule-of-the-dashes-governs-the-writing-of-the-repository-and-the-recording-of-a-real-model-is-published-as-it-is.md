@@ -79,7 +79,7 @@ the bundle publishes it. The bundle is the evidence of the run and the evidence 
 
 ## Links
 
-- [ADR-012, the v3 package versioned in `docs/v3/`](ADR-012-v3-package-versioned-in-docs-v3.md)
+- [ADR-012, the v3 package versioned in `docs/design/`](ADR-012-v3-package-versioned-in-docs-v3.md)
 - [ADR-016, the Brazilian Portuguese translation layer](ADR-016-brazilian-portuguese-translation-layer.md)
 - [ADR-073, the published bundle carries the evidence its verdict was computed on and it is reproducible](ADR-073-the-published-bundle-carries-the-evidence-its-verdict-was-computed-on-and-it-is-reproducible.md)
 - [ADR-076, the answer of the run is published whole, because the claims are extracted from it](ADR-076-the-answer-of-the-run-is-published-whole-because-the-claims-are-extracted-from-it.md)

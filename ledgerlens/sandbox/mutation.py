@@ -73,7 +73,7 @@ from ledgerlens.sim.events import canonical_json
 
 # The published schema of the command. The shape of a payload is checked against it and against nothing else.
 COMMAND_SCHEMA_PATH = (
-    Path(__file__).resolve().parents[2] / "docs" / "v3" / "contracts" / "schemas" / "scenario-mutation.schema.json"
+    Path(__file__).resolve().parents[2] / "docs" / "design" / "contracts" / "schemas" / "scenario-mutation.schema.json"
 )
 
 # The codes of the refusals. Each rule of the domain has its own, and the reason names the rule that failed.

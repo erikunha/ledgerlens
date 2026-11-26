@@ -14,7 +14,7 @@ What it does, and what it does not do:
   addresses of the web alone: a link to a site outside the repository is not a file of the repository;
 - it ignores the fragments of a link, because a fragment names a section of a file and the sections are not
   checked by this script;
-- it leaves the imported design package (`docs/v3/`) alone, because the repository does not own the pages of
+- it leaves the imported design package (`docs/design/`) alone, because the repository does not own the pages of
   the package and a link inside it is a link of the package, and the package is imported as it is.
 
 Usage:
@@ -106,7 +106,7 @@ def _is_imported(base: Path, page: Path) -> bool:
         relative = page.resolve().relative_to(base.resolve())
     except ValueError:  # pragma: no cover - a page outside the root is not imported
         return False
-    return relative.parts[:2] == ("docs", "v3")
+    return relative.parts[:2] == ("docs", "design")
 
 
 def main(argv: Sequence[str] | None = None) -> int:

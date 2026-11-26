@@ -1,7 +1,7 @@
 """The conformance suite of the acceptance scenarios of the design package.
 
 Why this suite exists: the design package of the sandbox
-(`docs/v3/advanced-specs/R2-03-isolated-sandbox-mutations.md`) writes six acceptance scenarios, and the rules
+(`docs/design/advanced-specs/R2-03-isolated-sandbox-mutations.md`) writes six acceptance scenarios, and the rules
 of the branch were built and tested one by one, spread over the tests of the folder. A rule that is tested alone
 is a rule that can hold alone, and the package asks for the six sentences over the seeded scenarios, gathered in
 one suite. This suite is that gathering: every acceptance scenario runs over the seeded scenarios S01, S02 and

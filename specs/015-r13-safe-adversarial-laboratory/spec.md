@@ -6,8 +6,8 @@
 
 **Status**: Draft
 
-**Input**: Design documents: `docs/v3/advanced-specs/R13-02-safe-adversarial-laboratory.md`,
-`docs/v3/ai/06-THREAT-AND-ADVERSARIAL-LAB.md`, `docs/v3/ai/02-SPECIALIST-ROSTER.md`, and the decisions already
+**Input**: Design documents: `docs/design/advanced-specs/R13-02-safe-adversarial-laboratory.md`,
+`docs/design/ai/06-THREAT-AND-ADVERSARIAL-LAB.md`, `docs/design/ai/02-SPECIALIST-ROSTER.md`, and the decisions already
 in force: `docs/decisions/ADR-005-guarded-text-to-sql.md`,
 `docs/decisions/ADR-047-the-lifecycle-and-the-limits-of-the-branch.md`,
 `docs/decisions/ADR-013-public-trace-as-a-versioned-contract.md`,
@@ -210,9 +210,9 @@ absent, and expect the fixtures to still be readable as data.
 
 ## Design documents
 
-- [R13-02 Safe adversarial laboratory](../../docs/v3/advanced-specs/R13-02-safe-adversarial-laboratory.md)
-- [Safety, Prompt Injection, Privileges and Adversarial Learning Lab](../../docs/v3/ai/06-THREAT-AND-ADVERSARIAL-LAB.md)
-- [Agent Roles and Boundaries](../../docs/v3/ai/02-SPECIALIST-ROSTER.md)
+- [R13-02 Safe adversarial laboratory](../../docs/design/advanced-specs/R13-02-safe-adversarial-laboratory.md)
+- [Safety, Prompt Injection, Privileges and Adversarial Learning Lab](../../docs/design/ai/06-THREAT-AND-ADVERSARIAL-LAB.md)
+- [Agent Roles and Boundaries](../../docs/design/ai/02-SPECIALIST-ROSTER.md)
 - [ADR-005: Text-to-SQL with a guard and a read-only connection](../../docs/decisions/ADR-005-guarded-text-to-sql.md)
 - [ADR-047: The lifecycle of the branch travels as a stream](../../docs/decisions/ADR-047-the-lifecycle-and-the-limits-of-the-branch.md)
 - [ADR-013: The public trace is a versioned contract](../../docs/decisions/ADR-013-public-trace-as-a-versioned-contract.md)

@@ -325,7 +325,7 @@ export interface DisclosureHeaders {
 
 /**
  * The three event types that end a run.
- * From the trace contract `docs/v3/contracts/schemas/trace-event.schema.json`.
+ * From the trace contract `docs/design/contracts/schemas/trace-event.schema.json`.
  *
  * Why the list is fixed here: the client of the stream closes the source on a terminal event, and
  * a browser that reconnects would receive the whole stream of the run again, from the beginning,

@@ -19,7 +19,7 @@
 [ADR-031](../../docs/decisions/ADR-031-the-catalog-grows-with-the-round-trip-test.md),
 [ADR-032](../../docs/decisions/ADR-032-the-state-of-the-branch-and-the-hash.md),
 [ADR-047](../../docs/decisions/ADR-047-the-lifecycle-and-the-limits-of-the-branch.md) and the design package
-[LL-V3-R2-03, isolated sandbox mutations](../../docs/v3/advanced-specs/R2-03-isolated-sandbox-mutations.md). The
+[LL-V3-R2-03, isolated sandbox mutations](../../docs/design/advanced-specs/R2-03-isolated-sandbox-mutations.md). The
 milestone that built the branch layer is [specs/002](../002-r2-visitor-sandbox/spec.md).
 
 The package was written for a greenfield plan. The repository has since built the branch layer, the typed mutations,
@@ -270,7 +270,7 @@ branch and of the base, and the command that reproduces the mutation is inside i
 | [ADR-031](../../docs/decisions/ADR-031-the-catalog-grows-with-the-round-trip-test.md) | The catalog of the sandbox grows with the round trip test, so every accepted kind is exercised. |
 | [ADR-032](../../docs/decisions/ADR-032-the-state-of-the-branch-and-the-hash.md) | The hash of the branch is the hash of its state, so the branch proves itself. |
 | [ADR-047](../../docs/decisions/ADR-047-the-lifecycle-and-the-limits-of-the-branch.md) | The lifecycle of the branch travels as a stream and the limits answer with a code. |
-| [LL-V3-R2-03](../../docs/v3/advanced-specs/R2-03-isolated-sandbox-mutations.md) | The design package this specification ports. |
+| [LL-V3-R2-03](../../docs/design/advanced-specs/R2-03-isolated-sandbox-mutations.md) | The design package this specification ports. |
 | [specs/002](../002-r2-visitor-sandbox/spec.md) | The milestone that built the branch layer and the facade. |
 
 ## Status

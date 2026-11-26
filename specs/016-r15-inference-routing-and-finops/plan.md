@@ -45,7 +45,7 @@ it never imports the API layer and it never writes SQL
 configuration of the core
 **Testing**: pytest offline with `LEDGERLENS_OFFLINE=1` and the fake adapter of the provider
 **Constraints**: ADR-034, ADR-037 and FR-013, money as `Decimal`, a price that was not verified is absent,
-no change in `docs/v3/`, and the decision of ADR-078 before the code
+no change in `docs/design/`, and the decision of ADR-078 before the code
 
 ## The decision, and the two paths it governs
 

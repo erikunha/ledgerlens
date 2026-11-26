@@ -13,9 +13,9 @@
 [ADR-047](../../docs/decisions/ADR-047-the-lifecycle-and-the-limits-of-the-branch.md),
 [ADR-073](../../docs/decisions/ADR-073-the-published-bundle-carries-the-evidence-its-verdict-was-computed-on-and-it-is-reproducible.md),
 [ADR-074](../../docs/decisions/ADR-074-a-case-ends-in-a-decision-and-the-decision-belongs-to-the-code.md),
-[ADR-P007](../../docs/v3/adrs/ADR-P007-no-multiagent-by-default.md) and the design packages
-[LL-V3-R10-03, human review queue simulator](../../docs/v3/advanced-specs/R10-03-human-review-queue-simulator.md) and
-[LL-V3-R10-06, human approval state machine](../../docs/v3/advanced-specs/R10-06-human-approval-state-machine.md).
+[ADR-P007](../../docs/design/adrs/ADR-P007-no-multiagent-by-default.md) and the design packages
+[LL-V3-R10-03, human review queue simulator](../../docs/design/advanced-specs/R10-03-human-review-queue-simulator.md) and
+[LL-V3-R10-06, human approval state machine](../../docs/design/advanced-specs/R10-06-human-approval-state-machine.md).
 The milestone that builds the cost of the review is
 [specs/011](../011-r9-cost-per-case-and-decision-utility/spec.md).
 
@@ -277,9 +277,9 @@ the waiting time of the critical class separately and that a class that waits fo
 | [ADR-047](../../docs/decisions/ADR-047-the-lifecycle-and-the-limits-of-the-branch.md) | The lifecycle of the branch travels as a stream and the limits answer with a code, so the task of a review follows the same shape. |
 | [ADR-073](../../docs/decisions/ADR-073-the-published-bundle-carries-the-evidence-its-verdict-was-computed-on-and-it-is-reproducible.md) | The bundle carries the evidence the verdict was computed on, so the reviewer reads the evidence of the bundle. |
 | [ADR-074](../../docs/decisions/ADR-074-a-case-ends-in-a-decision-and-the-decision-belongs-to-the-code.md) | The decision belongs to the code, so the rules of the escalation stay in the code and the person decides among the options the code offers. |
-| [ADR-P007](../../docs/v3/adrs/ADR-P007-no-multiagent-by-default.md) | The runtime stays a single agent with a deterministic verifier, so the agent prepares the evidence and never approves, and any specialist variant stays behind a flag until a comparison measures a gain. |
-| [LL-V3-R10-03](../../docs/v3/advanced-specs/R10-03-human-review-queue-simulator.md) | The design package of the queue simulator. |
-| [LL-V3-R10-06](../../docs/v3/advanced-specs/R10-06-human-approval-state-machine.md) | The design package of the state machine. |
+| [ADR-P007](../../docs/design/adrs/ADR-P007-no-multiagent-by-default.md) | The runtime stays a single agent with a deterministic verifier, so the agent prepares the evidence and never approves, and any specialist variant stays behind a flag until a comparison measures a gain. |
+| [LL-V3-R10-03](../../docs/design/advanced-specs/R10-03-human-review-queue-simulator.md) | The design package of the queue simulator. |
+| [LL-V3-R10-06](../../docs/design/advanced-specs/R10-06-human-approval-state-machine.md) | The design package of the state machine. |
 | [specs/011](../011-r9-cost-per-case-and-decision-utility/spec.md) | The milestone that creates the economics package and the assumptions of the review. |
 
 ## Status

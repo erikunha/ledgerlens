@@ -11,7 +11,7 @@ Status: accepted. Date: 2026-11-14.
 ## Context
 
 The phase R2 gives every visitor a private working copy of a published case. The feature specification
-(`specs/002-r2-visitor-sandbox/spec.md`) and the design package (`docs/v3/specs/LL-R2-02-isolated-sandbox.md`)
+(`specs/002-r2-visitor-sandbox/spec.md`) and the design package (`docs/design/specs/LL-R2-02-isolated-sandbox.md`)
 ask for four things that shape the code:
 
 - the branch store sits behind an interface, so that one implementation can replace the other without any change

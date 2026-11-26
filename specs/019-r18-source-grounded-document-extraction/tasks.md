@@ -7,8 +7,8 @@ description: "Task list for source-grounded document extraction"
 **Input**: Design documents from `specs/019-r18-source-grounded-document-extraction/`
 
 **Prerequisites**: plan.md (required), spec.md (required), the design package of the release
-(`docs/v3/advanced-specs/R18-02-source-grounded-document-extraction.md`), ADR-005, ADR-013, ADR-054, ADR-061 and
-ADR-074 of `docs/decisions/`, ADR-P007 and ADR-P009 of `docs/v3/adrs/`, and the code the pipeline builds on:
+(`docs/design/advanced-specs/R18-02-source-grounded-document-extraction.md`), ADR-005, ADR-013, ADR-054, ADR-061 and
+ADR-074 of `docs/decisions/`, ADR-P007 and ADR-P009 of `docs/design/adrs/`, and the code the pipeline builds on:
 `ledgerlens/schemas.py` for the `Evidence`, `ledgerlens/tools/envelope.py` for the envelope and the scheme of the
 ids, `ledgerlens/tools/ledger_api.py` for the read-only surface of the ledger, `ledgerlens/verify/escalation.py` for
 the decision of the code and `ledgerlens/offline.py` for the scripted model

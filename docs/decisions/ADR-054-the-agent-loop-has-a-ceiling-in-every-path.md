@@ -15,9 +15,9 @@ number of provider calls and an unbounded amount of wall clock. The audit that f
 (`findings/F2_runtime_and_retrieval.md` of the research effort of 2027) is right about the finding and wrong about
 two line numbers, and this record verifies every claim against the code.
 
-The design package has already decided the shape of the ceiling (`docs/v3/docs/06-AGENT-RUNTIME-AND-TOOLING.md:38`
+The design package has already decided the shape of the ceiling (`docs/design/docs/06-AGENT-RUNTIME-AND-TOOLING.md:38`
 names the `RunBudget` with the nine caps, `:126` requires the hard limits, and the item `LL-V3-R6-06` is at
-`docs/v3/roadmap/IMPLEMENTATION-BACKLOG-V3.md:53`), and the package is frozen, so this record decides the wiring and
+`docs/design/roadmap/IMPLEMENTATION-BACKLOG-V3.md:53`), and the package is frozen, so this record decides the wiring and
 not the shape.
 
 ### The ceiling of the shipped loop is the default of a library

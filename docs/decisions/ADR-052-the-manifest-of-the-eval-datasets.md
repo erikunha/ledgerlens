@@ -288,7 +288,7 @@ sound.
 ### What this milestone covers and what it does not
 
 This milestone is release R4 of the design package, and it covers the following items of
-[`docs/v3/specs/LL-R4-03-verifier-eval-reconciliation.md`](../v3/specs/LL-R4-03-verifier-eval-reconciliation.md):
+[`docs/design/specs/LL-R4-03-verifier-eval-reconciliation.md`](../design/specs/LL-R4-03-verifier-eval-reconciliation.md):
 
 - **Item 1**, the immutable `EvalDatasetManifest` with the sha256, the record count, the source, the labeling
   version, the split role, the scenario seed and the contamination policy.

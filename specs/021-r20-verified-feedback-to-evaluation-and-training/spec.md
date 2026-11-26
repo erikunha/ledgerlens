@@ -6,7 +6,7 @@
 
 **Status**: Draft
 
-**Input**: Design documents: [R20-01, verified feedback to evaluation and training](../../docs/v3/advanced-specs/R20-01-verified-feedback-to-evaluation-and-training.md),
+**Input**: Design documents: [R20-01, verified feedback to evaluation and training](../../docs/design/advanced-specs/R20-01-verified-feedback-to-evaluation-and-training.md),
 [ADR-052, the manifest of the eval datasets](../../docs/decisions/ADR-052-the-manifest-of-the-eval-datasets.md),
 [ADR-059, the held out set is read by two blind machines and adjudicated](../../docs/decisions/ADR-059-the-held-out-set-is-read-by-two-blind-machines-and-adjudicated.md),
 [ADR-062, the role held out exists](../../docs/decisions/ADR-062-the-role-held-out-exists-and-the-sentence-of-adr-052-is-superseded.md),
@@ -16,9 +16,9 @@
 [ADR-073, the published bundle carries the evidence its verdict was computed on](../../docs/decisions/ADR-073-the-published-bundle-carries-the-evidence-its-verdict-was-computed-on-and-it-is-reproducible.md),
 [ADR-075, the site publishes two catalogs](../../docs/decisions/ADR-075-the-site-publishes-two-catalogs-and-each-bundle-declares-the-one-it-belongs-to.md),
 [ADR-077, the published bundle is verified against the answer the run verified](../../docs/decisions/ADR-077-the-published-bundle-is-verified-against-the-answer-the-run-verified.md),
-[ADR-P007, one evidence-first agent by default](../../docs/v3/adrs/ADR-P007-no-multiagent-by-default.md),
-[ADR-P009, the privacy scope of the public project](../../docs/v3/adrs/ADR-P009-privacy-scope.md) and
-[the release train, the R20 contract](../../docs/v3/roadmap/RELEASE-TRAIN-2027-2030.md). User description: "The
+[ADR-P007, one evidence-first agent by default](../../docs/design/adrs/ADR-P007-no-multiagent-by-default.md),
+[ADR-P009, the privacy scope of the public project](../../docs/design/adrs/ADR-P009-privacy-scope.md) and
+[the release train, the R20 contract](../../docs/design/roadmap/RELEASE-TRAIN-2027-2030.md). User description: "The
 repository publishes two catalogs of recorded scenarios. One of them holds the cases the agent resolves and the
 cases it fails on. The failures are read, but nothing is done with them: they do not become a regression, they do
 not become a dataset, and no model is trained on them. This specification closes that loop with one rule in front
@@ -335,7 +335,7 @@ the report, and expect that a run over a dataset whose bytes moved is refused wi
 
 ## Design documents
 
-- [R20-01, verified feedback to evaluation and training](../../docs/v3/advanced-specs/R20-01-verified-feedback-to-evaluation-and-training.md)
+- [R20-01, verified feedback to evaluation and training](../../docs/design/advanced-specs/R20-01-verified-feedback-to-evaluation-and-training.md)
 - [ADR-052, the manifest of the eval datasets](../../docs/decisions/ADR-052-the-manifest-of-the-eval-datasets.md)
 - [ADR-059, the held out set is read by two blind machines and adjudicated](../../docs/decisions/ADR-059-the-held-out-set-is-read-by-two-blind-machines-and-adjudicated.md)
 - [ADR-062, the role held out exists](../../docs/decisions/ADR-062-the-role-held-out-exists-and-the-sentence-of-adr-052-is-superseded.md)
@@ -345,9 +345,9 @@ the report, and expect that a run over a dataset whose bytes moved is refused wi
 - [ADR-073, the published bundle carries the evidence its verdict was computed on](../../docs/decisions/ADR-073-the-published-bundle-carries-the-evidence-its-verdict-was-computed-on-and-it-is-reproducible.md)
 - [ADR-075, the site publishes two catalogs](../../docs/decisions/ADR-075-the-site-publishes-two-catalogs-and-each-bundle-declares-the-one-it-belongs-to.md)
 - [ADR-077, the published bundle is verified against the answer the run verified](../../docs/decisions/ADR-077-the-published-bundle-is-verified-against-the-answer-the-run-verified.md)
-- [ADR-P007, one evidence-first agent by default](../../docs/v3/adrs/ADR-P007-no-multiagent-by-default.md)
-- [ADR-P009, the privacy scope of the public project](../../docs/v3/adrs/ADR-P009-privacy-scope.md)
-- [the release train, the R20 contract](../../docs/v3/roadmap/RELEASE-TRAIN-2027-2030.md)
+- [ADR-P007, one evidence-first agent by default](../../docs/design/adrs/ADR-P007-no-multiagent-by-default.md)
+- [ADR-P009, the privacy scope of the public project](../../docs/design/adrs/ADR-P009-privacy-scope.md)
+- [the release train, the R20 contract](../../docs/design/roadmap/RELEASE-TRAIN-2027-2030.md)
 - [the implementation plan of this specification](plan.md) and [its tasks](tasks.md)
 
 ## Status

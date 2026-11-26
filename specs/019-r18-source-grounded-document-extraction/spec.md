@@ -6,14 +6,14 @@
 
 **Status**: Draft
 
-**Input**: Design documents: [R18-02, source-grounded document extraction](../../docs/v3/advanced-specs/R18-02-source-grounded-document-extraction.md),
+**Input**: Design documents: [R18-02, source-grounded document extraction](../../docs/design/advanced-specs/R18-02-source-grounded-document-extraction.md),
 [ADR-005, the guarded text to SQL and the read-only connection](../../docs/decisions/ADR-005-guarded-text-to-sql.md),
 [ADR-054, the agent loop has a ceiling in every path](../../docs/decisions/ADR-054-the-agent-loop-has-a-ceiling-in-every-path.md),
 [ADR-061, the corpus of the policies is the contract of a fictional company](../../docs/decisions/ADR-061-the-corpus-of-the-policies-is-the-contract-of-a-fictional-company.md),
 [ADR-074, a case ends in a decision and the decision belongs to the code](../../docs/decisions/ADR-074-a-case-ends-in-a-decision-and-the-decision-belongs-to-the-code.md),
-[ADR-P007, one evidence-first agent by default](../../docs/v3/adrs/ADR-P007-no-multiagent-by-default.md),
-[ADR-P009, the privacy scope of the public project](../../docs/v3/adrs/ADR-P009-privacy-scope.md) and
-[the release train, the R18 contract](../../docs/v3/roadmap/RELEASE-TRAIN-2027-2030.md). User description: "The
+[ADR-P007, one evidence-first agent by default](../../docs/design/adrs/ADR-P007-no-multiagent-by-default.md),
+[ADR-P009, the privacy scope of the public project](../../docs/design/adrs/ADR-P009-privacy-scope.md) and
+[the release train, the R18 contract](../../docs/design/roadmap/RELEASE-TRAIN-2027-2030.md). User description: "The
 repository reads a ledger, a corpus of policies and a reference rate. It cannot read a receipt, and when a
 merchant sends a picture of a receipt and the ledger says another number, the repository has no way to hold both.
 This specification adds a document pipeline that extracts the fields of a document, says where on the page it read
@@ -48,7 +48,7 @@ Four adaptations the port makes, because the repository had already decided the 
    the `EvidenceSource` literal gains `doc` and the `ToolName` literal gains the tool of the extraction. The scheme
    is checked in `ledgerlens/tools/envelope.py` and in `ledgerlens/schemas.py`, and the trace of ADR-013 carries the
    same vocabulary, so the trace contract is checked too. The package's `EvidenceRef` schema of
-   `docs/v3/contracts/schemas/v3-evidence-ref.schema.json`, with its `source_kind` of `simulated_document` and its
+   `docs/design/contracts/schemas/v3-evidence-ref.schema.json`, with its `source_kind` of `simulated_document` and its
    `trust_level`, is the shape of the reference that the new evidence carries, and the port maps it onto the
    repository's `Evidence` instead of introducing a second kind of evidence.
 3. **No upload ships.** The package assumes that a document arrives from somewhere. ADR-P009 forbids the collection
@@ -274,16 +274,16 @@ same license, and assert that the evidence refuses to be written when the versio
 
 ## Design documents
 
-- [R18-02, source-grounded document extraction](../../docs/v3/advanced-specs/R18-02-source-grounded-document-extraction.md)
+- [R18-02, source-grounded document extraction](../../docs/design/advanced-specs/R18-02-source-grounded-document-extraction.md)
 - [ADR-005, the guarded text to SQL and the read-only connection](../../docs/decisions/ADR-005-guarded-text-to-sql.md)
 - [ADR-013, the public trace is a versioned contract](../../docs/decisions/ADR-013-public-trace-as-a-versioned-contract.md)
 - [ADR-054, the agent loop has a ceiling in every path](../../docs/decisions/ADR-054-the-agent-loop-has-a-ceiling-in-every-path.md)
 - [ADR-061, the corpus of the policies is the contract of a fictional company](../../docs/decisions/ADR-061-the-corpus-of-the-policies-is-the-contract-of-a-fictional-company.md)
 - [ADR-074, a case ends in a decision and the decision belongs to the code](../../docs/decisions/ADR-074-a-case-ends-in-a-decision-and-the-decision-belongs-to-the-code.md)
-- [ADR-P007, one evidence-first agent by default](../../docs/v3/adrs/ADR-P007-no-multiagent-by-default.md)
-- [ADR-P009, the privacy scope of the public project](../../docs/v3/adrs/ADR-P009-privacy-scope.md)
-- [the evidence ref schema of the package](../../docs/v3/contracts/schemas/v3-evidence-ref.schema.json)
-- [the release train, the R18 contract](../../docs/v3/roadmap/RELEASE-TRAIN-2027-2030.md)
+- [ADR-P007, one evidence-first agent by default](../../docs/design/adrs/ADR-P007-no-multiagent-by-default.md)
+- [ADR-P009, the privacy scope of the public project](../../docs/design/adrs/ADR-P009-privacy-scope.md)
+- [the evidence ref schema of the package](../../docs/design/contracts/schemas/v3-evidence-ref.schema.json)
+- [the release train, the R18 contract](../../docs/design/roadmap/RELEASE-TRAIN-2027-2030.md)
 - [the implementation plan of this specification](plan.md) and [its tasks](tasks.md)
 
 ## Status

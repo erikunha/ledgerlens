@@ -7,7 +7,7 @@ description: "Task list for the inference routing and the cost of the run"
 **Input**: Design documents from `specs/016-r15-inference-routing-and-finops/`
 
 **Prerequisites**: plan.md (required), spec.md (required), the design package
-(`docs/v3/advanced-specs/R15-02-model-router-with-budgeted-fallback.md`), the decisions that already bind
+(`docs/design/advanced-specs/R15-02-model-router-with-budgeted-fallback.md`), the decisions that already bind
 (`docs/decisions/ADR-034-the-registry-the-budget-and-the-endpoint.md` and
 `docs/decisions/ADR-037-the-case-of-the-demo-runs-on-a-bridge-over-the-caller.md`) and the decision that this
 milestone starts, ADR-078 (in preparation)

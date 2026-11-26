@@ -6,7 +6,7 @@
 
 **Status**: Draft
 
-**Input**: Design document: `docs/v3/specs/LL-R4-03-verifier-eval-reconciliation.md`. User description: "The
+**Input**: Design document: `docs/design/specs/LL-R4-03-verifier-eval-reconciliation.md`. User description: "The
 repository publishes an accuracy of the verifier and a correctness of the agent, and a reader of those numbers
 cannot tell over which dataset they were measured, whether the decisions of the repository were taken against that
 dataset, or how wide the uncertainty is. The release makes every number name its dataset and its restriction, pins
@@ -178,7 +178,7 @@ over a different set.
 
 ## Assumptions
 
-- The design package of the release is `docs/v3/specs/LL-R4-03-verifier-eval-reconciliation.md`, and the decision
+- The design package of the release is `docs/design/specs/LL-R4-03-verifier-eval-reconciliation.md`, and the decision
   that carries the first step of it is `docs/decisions/ADR-052-the-manifest-of-the-eval-datasets.md`.
 - The numbers of the calibration do not change in this release. What changes is what they can be read as, and the
   data they were measured over is pinned.

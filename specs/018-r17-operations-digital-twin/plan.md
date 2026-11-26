@@ -38,7 +38,7 @@ the caller
 **Testing**: pytest offline with `LEDGERLENS_OFFLINE=1`, the scripted model where a model is involved at all, and
 the seed 42 of the repository
 **Constraints**: no key and no network, money as `Decimal`, the domain never speaks SQL and never imports the
-API, no change in `docs/v3/`, and no change in an accepted decision record
+API, no change in `docs/design/`, and no change in an accepted decision record
 
 ## What the repository already does, and what the twin adds on top
 

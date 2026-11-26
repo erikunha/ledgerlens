@@ -40,7 +40,7 @@ and the manifest of an extraction in the result of the tool, never in a database
 **Testing**: pytest offline with `LEDGERLENS_OFFLINE=1`, the scripted model of `ledgerlens/offline.py` for the
 vision path
 **Constraints**: no key and no network, money as `Decimal`, the domain never speaks SQL and never imports the
-API, no change in `docs/v3/`, and no change in an accepted decision record
+API, no change in `docs/design/`, and no change in an accepted decision record
 
 ## The shape of the pipeline
 

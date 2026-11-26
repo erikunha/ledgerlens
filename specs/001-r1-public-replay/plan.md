@@ -38,7 +38,7 @@ The work splits into six user stories: the entry with no key, the step-by-step t
 
 ## Boundaries and contracts
 
-- The frontend consumes the versioned JSON schemas of the design package, namely `docs/v3/contracts/schemas/replay-bundle.schema.json`, `docs/v3/contracts/schemas/trace-event.schema.json` and `docs/v3/contracts/schemas/public-investigation-result.schema.json`, and the recorded artifacts that follow them. It never re-implements a domain rule: verification, decimal arithmetic, policy reading, the query guard and the escalation rules stay in Python.
+- The frontend consumes the versioned JSON schemas of the design package, namely `docs/design/contracts/schemas/replay-bundle.schema.json`, `docs/design/contracts/schemas/trace-event.schema.json` and `docs/design/contracts/schemas/public-investigation-result.schema.json`, and the recorded artifacts that follow them. It never re-implements a domain rule: verification, decimal arithmetic, policy reading, the query guard and the escalation rules stay in Python.
 - The Python core stays the authority. The verdicts, the amounts, the statuses and the recommended action of the interface are read from the published result, and the browser only formats them with the platform number formatter. A value that the artifact does not carry is rendered as unavailable, never invented.
 - The artifacts are immutable and hashed. The interface shows the digests and the provenance, and it refuses an artifact whose digest does not match its manifest.
 - The static export carries no secret of any kind: no key, no session token, no private dataset. The URL carries the scenario identifier and harmless view preferences only.

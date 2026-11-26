@@ -9,18 +9,18 @@
  * stay readable and has to explain what each field means for whoever opens the replay for the first time.
  */
 
-/** The schema version of the trace contract. From `docs/v3/contracts/schemas/trace-event.schema.json`. */
+/** The schema version of the trace contract. From `docs/design/contracts/schemas/trace-event.schema.json`. */
 export const TRACE_SCHEMA_VERSION = "1" as const;
 
-/** The schema version of the bundle contract. From `docs/v3/contracts/schemas/replay-bundle.schema.json`. */
+/** The schema version of the bundle contract. From `docs/design/contracts/schemas/replay-bundle.schema.json`. */
 export const BUNDLE_SCHEMA_VERSION = "1" as const;
 
-/** The schema version of the result contract. From `docs/v3/contracts/schemas/public-investigation-result.schema.json`. */
+/** The schema version of the result contract. From `docs/design/contracts/schemas/public-investigation-result.schema.json`. */
 export const RESULT_SCHEMA_VERSION = "1" as const;
 
 /**
  * The eleven event types of the trace contract.
- * From `docs/v3/contracts/schemas/trace-event.schema.json`, property `event_type`.
+ * From `docs/design/contracts/schemas/trace-event.schema.json`, property `event_type`.
  */
 export const TRACE_EVENT_TYPES = [
   "run.started",
@@ -41,7 +41,7 @@ export type TraceEventType = (typeof TRACE_EVENT_TYPES)[number];
 
 /**
  * The three modes of the contract.
- * From `docs/v3/contracts/schemas/trace-event.schema.json`, property `mode`.
+ * From `docs/design/contracts/schemas/trace-event.schema.json`, property `mode`.
  */
 export const TRACE_MODES = ["recorded_replay", "deterministic_sandbox", "live_agent"] as const;
 
@@ -50,7 +50,7 @@ export type TraceMode = (typeof TRACE_MODES)[number];
 
 /**
  * The two capture kinds of the bundle contract.
- * From `docs/v3/contracts/schemas/replay-bundle.schema.json`, property `capture_kind`.
+ * From `docs/design/contracts/schemas/replay-bundle.schema.json`, property `capture_kind`.
  */
 export const CAPTURE_KINDS = ["real_model_recorded", "scripted_fixture"] as const;
 
@@ -59,7 +59,7 @@ export type CaptureKind = (typeof CAPTURE_KINDS)[number];
 
 /**
  * One observable step of a recorded execution.
- * From `docs/v3/contracts/schemas/trace-event.schema.json`, title `TraceEvent`.
+ * From `docs/design/contracts/schemas/trace-event.schema.json`, title `TraceEvent`.
  *
  * The optional fields are optional in the schema: the Python writer emits `span_id`, `parent_span_id` and `mode` on
  * every event, but a bundle written by an older tool may leave them out, and the reader has to cope with that.
@@ -89,7 +89,7 @@ export interface TraceEvent {
 
 /**
  * One statement of the answer, with the evidence it cites.
- * From `docs/v3/contracts/schemas/public-investigation-result.schema.json`, property `claims`.
+ * From `docs/design/contracts/schemas/public-investigation-result.schema.json`, property `claims`.
  */
 export interface PublicClaim {
   /** The canonical identifier of the claim. */
@@ -104,7 +104,7 @@ export interface PublicClaim {
 
 /**
  * One source that supports a claim.
- * From `docs/v3/contracts/schemas/public-investigation-result.schema.json`, property `evidence`.
+ * From `docs/design/contracts/schemas/public-investigation-result.schema.json`, property `evidence`.
  */
 export interface PublicEvidence {
   /** The canonical identifier of the evidence. */
@@ -123,7 +123,7 @@ export interface PublicEvidence {
 
 /**
  * The verification decision about one claim.
- * From `docs/v3/contracts/schemas/public-investigation-result.schema.json`, property `verdicts`.
+ * From `docs/design/contracts/schemas/public-investigation-result.schema.json`, property `verdicts`.
  */
 export interface PublicVerdict {
   /** The claim the decision is about. */
@@ -140,7 +140,7 @@ export interface PublicVerdict {
 
 /**
  * The result of the recorded investigation.
- * From `docs/v3/contracts/schemas/public-investigation-result.schema.json`, title `PublicInvestigationResult`.
+ * From `docs/design/contracts/schemas/public-investigation-result.schema.json`, title `PublicInvestigationResult`.
  */
 export interface PublicInvestigationResult {
   /** Always `"1"`. */
@@ -182,7 +182,7 @@ export interface PublicInvestigationResult {
 
 /**
  * The whole recorded bundle, as one document.
- * From `docs/v3/contracts/schemas/replay-bundle.schema.json`, title `RecordedReplayBundle`.
+ * From `docs/design/contracts/schemas/replay-bundle.schema.json`, title `RecordedReplayBundle`.
  */
 export interface ReplayBundle {
   /** Always `"1"`. */

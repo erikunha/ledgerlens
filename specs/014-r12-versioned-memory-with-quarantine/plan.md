@@ -38,7 +38,7 @@ and the snapshots of a run live with the run
 **Testing**: pytest offline with `LEDGERLENS_OFFLINE=1`, with the scripted model and with the verifier of the
 repository for the cases that propose a record
 **Constraints**: the rule that only what was verified gets in, the scope of the session, the expiry of the
-session, the reproduction of the published bundle, no change in `docs/v3/`
+session, the reproduction of the published bundle, no change in `docs/design/`
 
 ## The four parts, and the order of the work
 

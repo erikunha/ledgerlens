@@ -73,7 +73,7 @@ ANSWER_KEYS = {
 # The fields of the verdict that every answer of the branch remembers carries.
 VERDICT_KEYS = {"label", "measure", "value", "low", "high", "detail"}
 # The contract of the design package, which the facade follows.
-CONTRACT_PATH = Path(__file__).resolve().parents[2] / "docs" / "v3" / "contracts" / "openapi.yaml"
+CONTRACT_PATH = Path(__file__).resolve().parents[2] / "docs" / "design" / "contracts" / "openapi.yaml"
 
 # The name of the setting of the limit of the committed mutations of one branch, as the configuration names it.
 MUTATIONS_LIMIT_ENV = "LEDGERLENS_SANDBOX_MAX_COMMITTED_MUTATIONS"

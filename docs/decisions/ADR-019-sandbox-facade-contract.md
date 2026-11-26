@@ -10,7 +10,7 @@ Status: accepted. Date: 2026-11-14.
 
 ## Context
 
-The design package versions an HTTP contract for the sandbox, in `docs/v3/contracts/openapi.yaml`. It names the
+The design package versions an HTTP contract for the sandbox, in `docs/design/contracts/openapi.yaml`. It names the
 paths, the security scheme and the shape of the answers:
 
 - `POST /v1/sandboxes` takes a body with the scenario id and answers `201` with the resource `Sandbox`;

@@ -20,7 +20,7 @@ the hash and the diff of a branch had to answer that case first.
 The two kinds are `tool.fx_outage`, whose data says that the FX tool of the branch is unavailable or is available
 again, and `record.inject_untrusted_note`, whose data attaches a note of an untrusted source to a record of the
 case. The published command schema
-([`scenario-mutation.schema.json`](../v3/contracts/schemas/scenario-mutation.schema.json)) declares both, and the
+([`scenario-mutation.schema.json`](../design/contracts/schemas/scenario-mutation.schema.json)) declares both, and the
 sandbox refused them with the code `UNKNOWN_MUTATION_TYPE`, exactly like a kind that does not exist.
 
 The refusal was honest but it left the catalog short of the contract. The two kinds are the ones the scenarios of

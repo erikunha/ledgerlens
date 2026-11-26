@@ -60,7 +60,7 @@ target". They are, with the line that registers them:
 | 588 | `GET /v1/sandboxes/{sandbox_id}/ledger` | `200` with the rows of the projection |
 
 Three of them are beyond the contract of the design package, and ADR-023 declared them: the diff, the history and
-the undo. The contract of the package cannot be edited, because `docs/v3/` is a converted copy of material that
+the undo. The contract of the package cannot be edited, because `docs/design/` is a converted copy of material that
 lives outside the repository, and the guard of the paths of the facade enumerates the difference in
 `tests/sandbox/test_sandbox_api.py`, in the constant `PATHS_BEYOND_THE_CONTRACT` at line 513.
 
@@ -109,7 +109,7 @@ setting of the configuration. The three settings that T081 needs do not exist an
 the media type `text/event-stream` and the headers of the version of the schema, of the erasure of the key and of
 the no store. The generator `_events_of` at line 1287 writes `event: {event_type}\ndata: {event.to_json()}\n\n` and
 nothing else: the stream of the live mode carries NO `id:` line, NO heartbeat and NO resume, and it always starts
-from the beginning. The design package asks for more than the code delivers: `docs/v3/specs/LL-R0-03-trace-event-transport.md`
+from the beginning. The design package asks for more than the code delivers: `docs/design/specs/LL-R0-03-trace-event-transport.md`
 says that each event carries `id=<seq>`, `event=<event_type>` and `data=<JSON>`, that the idle heartbeat is every
 fifteen seconds, and that the reconnection uses `Last-Event-ID` and answers with the catch-up when it is available
 or with an explicit resync when the buffer evicted it. The browser side has a client of the stream in
@@ -134,7 +134,7 @@ measured against the code that exists today.
 ### Decision 1: the format of the stream
 
 **The route is `GET /v1/sandboxes/{sandbox_id}/events`, and it is one of the paths beyond the contract of the
-design package.** The path is a path of the facade and NOT a path of `docs/v3/contracts/openapi.yaml`, so ADR-023
+design package.** The path is a path of the facade and NOT a path of `docs/design/contracts/openapi.yaml`, so ADR-023
 declares it, exactly as it declares the diff, the history and the undo, and the constant
 `PATHS_BEYOND_THE_CONTRACT` of `tests/sandbox/test_sandbox_api.py` has to name it. A route that nobody decided
 cannot appear in the facade, and that guard is the reason this paragraph exists.
@@ -342,7 +342,7 @@ in the queue one turn of the loop later, and a close that was put in the queue a
 ### Decision 4: the heartbeat
 
 **The heartbeat is every fifteen seconds, and the number is the one the design package names for the idle
-heartbeat of the trace transport** (`docs/v3/specs/LL-R0-03-trace-event-transport.md`). One number for the two
+heartbeat of the trace transport** (`docs/design/specs/LL-R0-03-trace-event-transport.md`). One number for the two
 streams of the deployment is better than two numbers that nobody compares.
 
 **The heartbeat keeps the connection alive and lets the client detect a dead one.** The intermediaries of a

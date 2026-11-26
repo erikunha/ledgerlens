@@ -7,7 +7,7 @@ description: "Task list for the versioned memory with a poisoning quarantine"
 **Input**: Design documents from `specs/014-r12-versioned-memory-with-quarantine/`
 
 **Prerequisites**: plan.md (required), spec.md (required), the design package
-(`docs/v3/advanced-specs/R12-04-versioned-memory-with-poisoning-quarantine.md`) and the decisions that already
+(`docs/design/advanced-specs/R12-04-versioned-memory-with-poisoning-quarantine.md`) and the decisions that already
 bind: `docs/decisions/ADR-015-run-context-in-the-core.md`,
 `docs/decisions/ADR-030-case-memory-scoped-to-the-session.md` and
 `docs/decisions/ADR-029-the-expiry-and-the-cleanup-job.md`

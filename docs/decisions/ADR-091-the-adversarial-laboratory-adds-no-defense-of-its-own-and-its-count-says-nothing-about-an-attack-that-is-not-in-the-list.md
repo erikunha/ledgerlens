@@ -11,7 +11,7 @@ Status: accepted. Date: 2026-11-24.
 ## Context
 
 The design package
-[LL-V3-R13-02, safe adversarial laboratory](../v3/advanced-specs/R13-02-safe-adversarial-laboratory.md)
+[LL-V3-R13-02, safe adversarial laboratory](../design/advanced-specs/R13-02-safe-adversarial-laboratory.md)
 proposes a laboratory where an agent is attacked on purpose and where the boundaries of the system are
 inspectable. The repository already holds the boundaries: the guard of the SQL refuses a write and a table
 outside the allowlist ([ADR-005](ADR-005-guarded-text-to-sql.md)), the read-only connection of the tool is the
@@ -90,4 +90,4 @@ mapping of the taxonomy is proposed and not a certification.**
 - [ADR-013, the public trace is a versioned contract](ADR-013-public-trace-as-a-versioned-contract.md)
 - [the page of the adversarial laboratory](../adversarial-lab.md)
 - [the specification of the milestone](../../specs/015-r13-safe-adversarial-laboratory/spec.md)
-- [the design package](../v3/advanced-specs/R13-02-safe-adversarial-laboratory.md)
+- [the design package](../design/advanced-specs/R13-02-safe-adversarial-laboratory.md)

@@ -47,7 +47,7 @@ from ledgerlens.replay.site_export import (
 ROOT = Path(__file__).resolve().parents[2]
 CANONICAL = ROOT / "data" / "eval" / "replay" / "s01"
 DATASET = ROOT / "data" / "scenarios.json"
-SCHEMA = ROOT / "docs" / "v3" / "contracts" / "schemas" / "trace-event.schema.json"
+SCHEMA = ROOT / "docs" / "design" / "contracts" / "schemas" / "trace-event.schema.json"
 SCRIPT = ROOT / "scripts" / "export_replay_site.py"
 VERIFY_SCRIPT = ROOT / "scripts" / "verify_replay_digests.py"
 PUBLISHED = ROOT / "site" / "replay"

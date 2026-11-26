@@ -94,7 +94,7 @@ def test_the_imported_design_package_is_left_alone(tmp_path: Path) -> None:
     that refused on them would stop the gate of a repository whose own documentation did not change at all.
     """
     root = _root_with_a_page(tmp_path, "The link to [a file](README.md).")
-    imported = root / "docs" / "v3"
+    imported = root / "docs" / "design"
     imported.mkdir(parents=True)
     (imported / "README.md").write_text(
         "# The package\n\nThe link to [a file of the package](docs/00-NOT-THERE.md).\n", encoding="utf-8"

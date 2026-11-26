@@ -16,7 +16,7 @@
 [ADR-075](../../docs/decisions/ADR-075-the-site-publishes-two-catalogs-and-each-bundle-declares-the-one-it-belongs-to.md),
 [ADR-076](../../docs/decisions/ADR-076-the-answer-of-the-run-is-published-whole-because-the-claims-are-extracted-from-it.md),
 [ADR-077](../../docs/decisions/ADR-077-the-published-bundle-is-verified-against-the-answer-the-run-verified.md) and the
-design package [LL-V3-R1-02, cold start guided replay](../../docs/v3/advanced-specs/R1-02-cold-start-guided-replay.md).
+design package [LL-V3-R1-02, cold start guided replay](../../docs/design/advanced-specs/R1-02-cold-start-guided-replay.md).
 The milestone that delivered the recording itself is [specs/001](../001-r1-public-replay/spec.md).
 
 The package was written for a greenfield plan. The repository has since built the recording, the bundle, the static
@@ -237,7 +237,7 @@ command that rebuilds the artifact.
 | [ADR-075](../../docs/decisions/ADR-075-the-site-publishes-two-catalogs-and-each-bundle-declares-the-one-it-belongs-to.md) | The site publishes two catalogs, so the guide names the capture of the scenario it walks. |
 | [ADR-076](../../docs/decisions/ADR-076-the-answer-of-the-run-is-published-whole-because-the-claims-are-extracted-from-it.md) | The answer of the run is published whole, so the guide reads the claims of the bundle and not a summary of them. |
 | [ADR-077](../../docs/decisions/ADR-077-the-published-bundle-is-verified-against-the-answer-the-run-verified.md) | The published bundle is verified against the answer the run verified, so the guide may show the verdict of the bundle. |
-| [LL-V3-R1-02](../../docs/v3/advanced-specs/R1-02-cold-start-guided-replay.md) | The design package this specification ports. |
+| [LL-V3-R1-02](../../docs/design/advanced-specs/R1-02-cold-start-guided-replay.md) | The design package this specification ports. |
 | [specs/001](../001-r1-public-replay/spec.md) | The milestone that built the recording, the bundle and the reader. |
 
 ## Status

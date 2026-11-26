@@ -20,9 +20,9 @@ Three facts of the repository decide the shape of the milestone.
 The first is the static export. `apps/web/next.config.ts:10` declares `output: "export"`, and the comment above it
 names the reason: the replay reads published JSON artifacts and nothing else, so the whole site can be a folder of
 files served by a content delivery network. That promise is not only a comment. It is written in the R1 specification
-(`specs/001-r1-public-replay/spec.md:224`), in the design package (`docs/v3/adrs/ADR-P008-portfolio-deployment.md`:
+(`specs/001-r1-public-replay/spec.md:224`), in the design package (`docs/design/adrs/ADR-P008-portfolio-deployment.md`:
 "CDN/static Next pages and versioned public replay") and in the runbook
-(`docs/v3/docs/13-CI-CD-DEPLOYMENT-AND-RUNBOOKS.md:25`: "Deploy CDN/static replay before optional Live backend"). A
+(`docs/design/docs/13-CI-CD-DEPLOYMENT-AND-RUNBOOKS.md:25`: "Deploy CDN/static replay before optional Live backend"). A
 static export has no server runtime: there is no route handler, no API route and no middleware. Task T035 of R3 asks
 for an SSE bridge at `apps/web/app/api/live/[runId]/route.ts` (`specs/003-r3-bring-your-own-key/tasks.md:91`), and that
 file cannot exist in a static export.
@@ -723,7 +723,7 @@ browsers is heavy and the four commands above are the gate that the milestone ow
 - No change to the session issuer, to the vault, to the budget or to the coordinator.
 - No interface for the sandbox. The routes of the sandbox keep working for the API, and the branch of the visitor is
   created by the live flow, but the milestone builds no page for the mutations.
-- No edit of `docs/v3/`, and no change of the imported design package.
+- No edit of `docs/design/`, and no change of the imported design package.
 - No new key on the disk and no new dependency in Python.
 - No change to `scripts/gate.sh`.
 

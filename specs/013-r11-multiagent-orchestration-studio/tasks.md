@@ -7,9 +7,9 @@ description: "Task list for the multi-agent orchestration studio"
 **Input**: Design documents from `specs/013-r11-multiagent-orchestration-studio/`
 
 **Prerequisites**: plan.md (required), spec.md (required), the decision that draws the red line
-(`docs/v3/adrs/ADR-P007-no-multiagent-by-default.md`), the design package
-(`docs/v3/advanced-specs/R11-02-budgeted-specialist-dispatch.md` and
-`docs/v3/advanced-specs/R11-05-graph-checkpoint-and-resume.md`), the decision that fixes the one model of a
+(`docs/design/adrs/ADR-P007-no-multiagent-by-default.md`), the design package
+(`docs/design/advanced-specs/R11-02-budgeted-specialist-dispatch.md` and
+`docs/design/advanced-specs/R11-05-graph-checkpoint-and-resume.md`), the decision that fixes the one model of a
 run (`docs/decisions/ADR-037-the-case-of-the-demo-runs-on-a-bridge-over-the-caller.md`) and the decision that
 fixes the budget (`docs/decisions/ADR-034-the-registry-the-budget-and-the-endpoint.md`)
 

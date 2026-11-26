@@ -6,7 +6,7 @@
 
 **Status**: Draft
 
-**Input**: Design documents: [R17-04, operations digital twin simulation](../../docs/v3/advanced-specs/R17-04-operations-digital-twin-simulation.md),
+**Input**: Design documents: [R17-04, operations digital twin simulation](../../docs/design/advanced-specs/R17-04-operations-digital-twin-simulation.md),
 [ADR-009, public data first and simulation only for the gaps](../../docs/decisions/ADR-009-public-data-first-simulation-for-gaps.md),
 [ADR-018, the branch layer and the store interface](../../docs/decisions/ADR-018-branch-layer-and-store-interface.md),
 [ADR-021, a typed mutation and an atomic commit](../../docs/decisions/ADR-021-typed-mutation-and-atomic-commit.md),
@@ -14,9 +14,9 @@
 [ADR-032, the state of the branch and the hash](../../docs/decisions/ADR-032-the-state-of-the-branch-and-the-hash.md),
 [ADR-073, the published bundle carries the evidence its verdict was computed on](../../docs/decisions/ADR-073-the-published-bundle-carries-the-evidence-its-verdict-was-computed-on-and-it-is-reproducible.md),
 [ADR-075, the site publishes two catalogs](../../docs/decisions/ADR-075-the-site-publishes-two-catalogs-and-each-bundle-declares-the-one-it-belongs-to.md),
-[ADR-P007, one evidence-first agent by default](../../docs/v3/adrs/ADR-P007-no-multiagent-by-default.md),
-[ADR-P009, the privacy scope of the public project](../../docs/v3/adrs/ADR-P009-privacy-scope.md) and
-[the release train, the R17 contract](../../docs/v3/roadmap/RELEASE-TRAIN-2027-2030.md). User description: "The
+[ADR-P007, one evidence-first agent by default](../../docs/design/adrs/ADR-P007-no-multiagent-by-default.md),
+[ADR-P009, the privacy scope of the public project](../../docs/design/adrs/ADR-P009-privacy-scope.md) and
+[the release train, the R17 contract](../../docs/design/roadmap/RELEASE-TRAIN-2027-2030.md). User description: "The
 repository has a seeded generator of payments, a deterministic projector and an event-sourced sandbox for the
 visitor. It has no model of how cases arrive, how many analysts there are, how a queue behaves when it never
 drains, and no way to compare two policies over the same arrivals. The twin adds that, and every number it
@@ -279,7 +279,7 @@ is the same.
 
 ## Design documents
 
-- [R17-04, operations digital twin simulation](../../docs/v3/advanced-specs/R17-04-operations-digital-twin-simulation.md)
+- [R17-04, operations digital twin simulation](../../docs/design/advanced-specs/R17-04-operations-digital-twin-simulation.md)
 - [ADR-009, public data first and simulation only for the gaps](../../docs/decisions/ADR-009-public-data-first-simulation-for-gaps.md)
 - [ADR-018, the branch layer and the store interface](../../docs/decisions/ADR-018-branch-layer-and-store-interface.md)
 - [ADR-021, a typed mutation and an atomic commit](../../docs/decisions/ADR-021-typed-mutation-and-atomic-commit.md)
@@ -287,9 +287,9 @@ is the same.
 - [ADR-032, the state of the branch and the hash](../../docs/decisions/ADR-032-the-state-of-the-branch-and-the-hash.md)
 - [ADR-073, the published bundle carries the evidence its verdict was computed on](../../docs/decisions/ADR-073-the-published-bundle-carries-the-evidence-its-verdict-was-computed-on-and-it-is-reproducible.md)
 - [ADR-075, the site publishes two catalogs](../../docs/decisions/ADR-075-the-site-publishes-two-catalogs-and-each-bundle-declares-the-one-it-belongs-to.md)
-- [ADR-P007, one evidence-first agent by default](../../docs/v3/adrs/ADR-P007-no-multiagent-by-default.md)
-- [ADR-P009, the privacy scope of the public project](../../docs/v3/adrs/ADR-P009-privacy-scope.md)
-- [the release train, the R17 contract](../../docs/v3/roadmap/RELEASE-TRAIN-2027-2030.md)
+- [ADR-P007, one evidence-first agent by default](../../docs/design/adrs/ADR-P007-no-multiagent-by-default.md)
+- [ADR-P009, the privacy scope of the public project](../../docs/design/adrs/ADR-P009-privacy-scope.md)
+- [the release train, the R17 contract](../../docs/design/roadmap/RELEASE-TRAIN-2027-2030.md)
 - [the implementation plan of this specification](plan.md) and [its tasks](tasks.md)
 
 ## Status

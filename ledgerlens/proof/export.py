@@ -25,7 +25,7 @@ from ledgerlens.replay.site_export import discover_bundles
 
 __all__ = ["ProofExportError", "build_proof_export", "check_proof_export", "write_proof_export"]
 
-SCHEMA_PATH = Path("docs/v3/contracts/schemas/v3-portfolio-proof.schema.json")
+SCHEMA_PATH = Path("docs/design/contracts/schemas/v3-portfolio-proof.schema.json")
 CATALOG_DIRS = {"replay": Path("data/eval/replay"), "replay-real": Path("data/eval/replay-real")}
 DATASET_PATH = Path("data/scenarios.json")
 HELDOUT_REPORT = Path("data/eval/report_heldout.json")

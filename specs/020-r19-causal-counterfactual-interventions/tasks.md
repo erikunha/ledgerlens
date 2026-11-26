@@ -7,8 +7,8 @@ description: "Task list for causal counterfactual interventions"
 **Input**: Design documents from `specs/020-r19-causal-counterfactual-interventions/`
 
 **Prerequisites**: plan.md (required), spec.md (required), the design package of the release
-(`docs/v3/advanced-specs/R19-02-causal-counterfactual-interventions.md`), ADR-013, ADR-028, ADR-032 and ADR-074 of
-`docs/decisions/`, ADR-P007 and ADR-P009 of `docs/v3/adrs/`, and the code the registry describes: `ledgerlens/sim/fx.py`,
+(`docs/design/advanced-specs/R19-02-causal-counterfactual-interventions.md`), ADR-013, ADR-028, ADR-032 and ADR-074 of
+`docs/decisions/`, ADR-P007 and ADR-P009 of `docs/design/adrs/`, and the code the registry describes: `ledgerlens/sim/fx.py`,
 `ledgerlens/sim/pipeline.py`, `ledgerlens/sim/gaps.py`, `ledgerlens/sim/calendars.py`, `ledgerlens/tools/calculator.py`,
 `ledgerlens/tools/fx.py`, `ledgerlens/retrieval.py`, `ledgerlens/verify/escalation.py` and `ledgerlens/verify/checks.py`.
 The arrival stream of the world comes from the twin of `specs/018-r17-operations-digital-twin/`, and the parts of

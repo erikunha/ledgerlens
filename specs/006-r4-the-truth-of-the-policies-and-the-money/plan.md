@@ -68,7 +68,7 @@ four tests of the audit read the corpus and the data together
 `data/index/policies_fastembed/`, the document of the truth of the policies under `docs/`, and the lock of the
 sources in `data/sources.lock.json`
 **Testing**: pytest offline with `LEDGERLENS_OFFLINE=1`, and the scripted model for the agent
-**Constraints**: no key and no network in the gate, money as `Decimal`, no change in `docs/v3/`, and no rewrite of
+**Constraints**: no key and no network in the gate, money as `Decimal`, no change in `docs/design/`, and no rewrite of
 the simulator outside the tasks that say so
 
 ## The milestones of the release

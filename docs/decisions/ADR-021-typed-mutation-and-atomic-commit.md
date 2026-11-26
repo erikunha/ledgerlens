@@ -20,7 +20,7 @@ with `Decimal` and never with a float (FR-017).
 
 The design package says that a new event of the sandbox must satisfy the whitelist of the simulator or be
 interpreted by an explicit versioned sandbox domain interpreter
-(`docs/v3/specs/LL-R2-02-isolated-sandbox.md`). The whitelist of the simulator has no event that adjusts the payout
+(`docs/design/specs/LL-R2-02-isolated-sandbox.md`). The whitelist of the simulator has no event that adjusts the payout
 of a refund, so the sandbox needs its own vocabulary.
 
 ## Decision

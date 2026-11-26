@@ -6,10 +6,10 @@
 
 **Status**: Draft
 
-**Input**: Design documents: `docs/v3/adrs/ADR-P007-no-multiagent-by-default.md`,
-`docs/v3/ai/01-MULTIAGENT-ORCHESTRATION.md`, `docs/v3/ai/02-SPECIALIST-ROSTER.md`,
-`docs/v3/advanced-specs/R11-02-budgeted-specialist-dispatch.md`,
-`docs/v3/advanced-specs/R11-05-graph-checkpoint-and-resume.md`, and the decisions already in force:
+**Input**: Design documents: `docs/design/adrs/ADR-P007-no-multiagent-by-default.md`,
+`docs/design/ai/01-MULTIAGENT-ORCHESTRATION.md`, `docs/design/ai/02-SPECIALIST-ROSTER.md`,
+`docs/design/advanced-specs/R11-02-budgeted-specialist-dispatch.md`,
+`docs/design/advanced-specs/R11-05-graph-checkpoint-and-resume.md`, and the decisions already in force:
 `docs/decisions/ADR-037-the-case-of-the-demo-runs-on-a-bridge-over-the-caller.md`,
 `docs/decisions/ADR-054-the-agent-loop-has-a-ceiling-in-every-path.md`,
 `docs/decisions/ADR-034-the-registry-the-budget-and-the-endpoint.md`,
@@ -220,11 +220,11 @@ the result, including the decision that keeps the flag off.
 
 ## Design documents
 
-- [ADR-P007: Prefer one evidence-first agent; multiagent requires a measured win](../../docs/v3/adrs/ADR-P007-no-multiagent-by-default.md)
-- [Multi-Agent Orchestration and Durable Runtime](../../docs/v3/ai/01-MULTIAGENT-ORCHESTRATION.md)
-- [Agent Roles and Boundaries](../../docs/v3/ai/02-SPECIALIST-ROSTER.md)
-- [R11-02 Budgeted specialist dispatch](../../docs/v3/advanced-specs/R11-02-budgeted-specialist-dispatch.md)
-- [R11-05 Graph checkpoint and resume](../../docs/v3/advanced-specs/R11-05-graph-checkpoint-and-resume.md)
+- [ADR-P007: Prefer one evidence-first agent; multiagent requires a measured win](../../docs/design/adrs/ADR-P007-no-multiagent-by-default.md)
+- [Multi-Agent Orchestration and Durable Runtime](../../docs/design/ai/01-MULTIAGENT-ORCHESTRATION.md)
+- [Agent Roles and Boundaries](../../docs/design/ai/02-SPECIALIST-ROSTER.md)
+- [R11-02 Budgeted specialist dispatch](../../docs/design/advanced-specs/R11-02-budgeted-specialist-dispatch.md)
+- [R11-05 Graph checkpoint and resume](../../docs/design/advanced-specs/R11-05-graph-checkpoint-and-resume.md)
 - [ADR-037: The case of the demo runs on a bridge over the caller](../../docs/decisions/ADR-037-the-case-of-the-demo-runs-on-a-bridge-over-the-caller.md)
 - [ADR-034: The registry of tested models, the two costs of a run and the endpoint](../../docs/decisions/ADR-034-the-registry-the-budget-and-the-endpoint.md)
 - [ADR-054: The agent loop has a ceiling in every path](../../docs/decisions/ADR-054-the-agent-loop-has-a-ceiling-in-every-path.md)

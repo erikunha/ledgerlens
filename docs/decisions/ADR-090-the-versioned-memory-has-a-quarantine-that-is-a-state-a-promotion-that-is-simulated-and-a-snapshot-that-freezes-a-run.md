@@ -11,7 +11,7 @@ Status: accepted. Date: 2026-11-24.
 ## Context
 
 The design package
-[LL-V3-R12-04, versioned memory with a poisoning quarantine](../v3/advanced-specs/R12-04-versioned-memory-with-poisoning-quarantine.md)
+[LL-V3-R12-04, versioned memory with a poisoning quarantine](../design/advanced-specs/R12-04-versioned-memory-with-poisoning-quarantine.md)
 proposes a memory that is versioned, that carries a trust tier and an approval state, and that quarantines
 what a poisoned case put in it. The repository had a memory already: the case memory of
 [`ledgerlens/memory/long_term.py`](../../ledgerlens/memory/long_term.py) holds what a verified case concluded,
@@ -97,4 +97,4 @@ a snapshot freezes the memory of a run, and the file format of the case memory o
 - [ADR-030, the case memory scoped to the session](ADR-030-case-memory-scoped-to-the-session.md)
 - [the page of the versioned memory](../memory.md)
 - [the specification of the milestone](../../specs/014-r12-versioned-memory-with-quarantine/spec.md)
-- [the design package](../v3/advanced-specs/R12-04-versioned-memory-with-poisoning-quarantine.md)
+- [the design package](../design/advanced-specs/R12-04-versioned-memory-with-poisoning-quarantine.md)
