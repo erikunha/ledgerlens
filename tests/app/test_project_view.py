@@ -35,3 +35,13 @@ def test_project_explains_execution_and_links_published_results():
     assert page.tabs[1].get("download_button")
     assert page.tabs[2].get("download_button")
     assert page.tabs[3].get("download_button")
+
+
+def test_project_evaluation_links_the_candidate_and_its_coverage_limit():
+    page = AppTest.from_string(
+        "from app.project_view import render_project\nrender_project()", default_timeout=30
+    ).run()
+    evaluation = "\n".join(item.value for item in page.tabs[1].markdown)
+    assert "Receipt-backed cutoff verifier" in evaluation
+    assert "8 paraphrases" in evaluation
+    assert "docs/evaluation.md#receipt-backed-cutoff-verification" in evaluation

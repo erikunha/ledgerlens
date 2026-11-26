@@ -382,3 +382,50 @@ search failed. The report keeps each search error and the passages cited by the 
   the confusion matrix, with the scripted model and no network.
 
 A number of this repository that is not held by a test is a number that is not published.
+
+## Visitor experiment rehearsal
+
+Use the A/A audit before assigning different treatments. Both arms must serve the same experience during A/A. Export one record per eligible, consenting visitor from the assignment ledger, including visitors with no exposure or adjudication. Use an opaque visitor token and the first eligible live investigation only. Scripted demos, recordings and internal probes are outside this denominator. The audit processes an offline JSON array and emits only aggregate counts.
+
+```json
+[
+  {"visitor":"synthetic-one","arm":"A","exposed":true,"resolved":true},
+  {"visitor":"synthetic-two","arm":"B","exposed":false,"resolved":null}
+]
+```
+
+    uv run python scripts/report_aa_readiness.py assignments.json --baseline 0.50 --improvement 0.05
+
+The example flags the missing exposure and outcome in B. Audit the assignment export against the enrollment source: an entirely omitted visitor cannot be detected from this file. Duplicate assignments, extra fields and recorded outcomes without exposure are rejected. Missing outcomes stay in the primary denominator. Inspect the arm counts, exposure gaps and resolution rates before interpreting the statistical checks.
+
+The allocation check assumes 1:1 randomization. The outcome check compares two completed A/A arms. Both flag a two-sided p-value below 0.01 for investigation. With at most 100 assignments the allocation check uses the binomial distribution and the outcome check uses Fisher's exact test. Larger samples use normal approximations. The outcome test withholds its approximation for sparse expected counts. A clean rehearsal alone cannot establish equivalence or qualify a live launch.
+
+The planning calculation assumes independent visitors, complete binary adjudication, equal allocation, two-sided significance of 0.05, 80% power and one fixed analysis horizon. Moving from 50% to 55% requires approximately 1,565 eligible visitors per arm under these assumptions. Those rates are illustrative. Estimate the baseline, consent rate, eligible traffic and adjudication coverage before scheduling a live experiment. Freeze the stopping rule and safety limits before observing comparative outcomes. [Trustworthy Online Controlled Experiments](https://experimentguide.com/)
+
+## Blinded comparisons across scenario families
+
+Freeze the case definitions, adjudication criteria, variant configurations and split seed before collecting results. Assign paraphrases of one transaction or policy example to the same family. The manifest below illustrates two development or holdout families. A real comparison needs enough independently authored families to support its intended decision.
+
+```json
+{"variants":["current","candidate"],"cases":{"r1":"refund","r2":"refund","s1":"settlement"},"holdout_families":1,"repeats":3,"split_seed":"registered-v1"}
+```
+
+    uv run python scripts/report_holdout_comparison.py plan --manifest manifest.json --blind-seed "$BLIND_SEED" > private-plan.json
+    uv run python scripts/report_holdout_comparison.py report --manifest manifest.json --blind-seed "$BLIND_SEED" --results results.json
+
+Keep the private plan and its random seed with the coordinator. Give reviewers the question, blinded transcript, expected evidence and opaque trial ID. Remove model names, arm labels and other identifying metadata. Two reviewers label independently, then adjudicate disagreements before the coordinator unmasks results.
+
+The result file is an array of adjudicated trials. Each row contains the opaque `id`, an `outcome` of `resolved`, `clarified`, `failed`, `error` or `timeout`, and optional decimal-string `cost_usd`. Use `success` to score an appropriate clarification against the frozen criteria. Declare the treatment of clarifications before reviewing answers. All scheduled trials count in the denominator. Missing trials count as unsuccessful, while missing costs remain unknown.
+
+The report separates per-trial success from success on every repetition of a case. Its paired difference gives equal weight to each family. The 95% percentile interval resamples whole families, preserving their trials and paraphrases. An interval requires observed trial pairs in at least two families. With a handful of families treat the interval as descriptive. A repeated deterministic replay measures regression coverage only. [τ-bench](https://arxiv.org/abs/2406.12045)
+
+## Receipt-backed cutoff verification
+
+    uv run python -m scripts.report_cutoff_receipts
+    uv run python -m scripts.report_cutoff_controls
+
+The first command reconstructs three archived dated answers and compares the default verifier with an opt-in candidate. The candidate recomputes the cutoff from the cited tool call and checks its operation, deadline, currency, output, policy passage and wording. An independent review flag still applies. This comparison measures the verifier decision on the recorded answer. The original end-to-end policy score remains 7/17.
+
+The second command runs [fixed controls](../data/eval/cutoff_receipt_controls.json) across four deadline families and two currencies. In the eight valid cases, the baseline requested review eight times and the candidate zero times. Both kept all 40 mandatory reviews. These include a changed date, a valid receipt for the wrong currency, an absent receipt, a false promise and an independent review flag.
+
+All eight additional paraphrases still required review. The candidate recognizes two question forms and three answer forms. These tests support reuse of a receipt in those forms; they provide no estimate of coverage for open-ended visitor questions. The live investigator continues to use the default verifier. Promotion requires an independently authored and adjudicated holdout with both supported and unsupported answers. Report coverage alongside unsafe releases and unnecessary reviews.

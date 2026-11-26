@@ -89,6 +89,11 @@ def render_project() -> None:
         _render_scores()
         _render_architecture()
     with evaluation:
+        st.markdown(
+            "**Receipt-backed cutoff verifier** · Offline experiment. The candidate cleared 8 valid dates "
+            "and kept all 40 required reviews. All 8 paraphrases still went to review. "
+            f"[Cases, comparison and limitations]({REPOSITORY}/docs/evaluation.md#receipt-backed-cutoff-verification)"
+        )
         render_evaluation()
     with proofs:
         render_proof()

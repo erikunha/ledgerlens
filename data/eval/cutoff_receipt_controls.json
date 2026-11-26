@@ -1,0 +1,17 @@
+{
+  "scope": "Synthetic calculator and verifier probes. Each family uses one deadline. Labels are fixed before scoring. These cases share published wording and measure transfer across dates, currencies and controlled faults.",
+  "families": [
+    {"id":"independence-day-weekend","deadline":"2026-07-06","USD":"2026-07-02","EUR":"2026-07-03"},
+    {"id":"ordinary-midweek","deadline":"2026-06-17","USD":"2026-06-16","EUR":"2026-06-16"},
+    {"id":"new-year","deadline":"2027-01-04","USD":"2026-12-31","EUR":"2026-12-31"},
+    {"id":"thanksgiving","deadline":"2026-11-27","USD":"2026-11-25","EUR":"2026-11-26"}
+  ],
+  "conditions": {
+    "valid": false,
+    "altered-date": true,
+    "wrong-currency": true,
+    "missing-receipt": true,
+    "false-promise": true,
+    "prior-review": true
+  }
+}
