@@ -27,3 +27,21 @@ For a new answer-quality experiment, specify the failure, the reference that sup
 Both versions gave a substantive answer on 13 of 14 trials. The candidate made fewer claims. Its improvement was concentrated in the question that motivated the edit. On the four new questions precision tied, and the candidate had one fewer fully correct answer. Both versions missed the distinction between when a response was sent and when it was received. The candidate also left a merchant's request for what to tell the disputes team incomplete. This sample gives no estimate of overall agent precision.
 
 The intermediate comparison covered six questions and ten trials per arm. Its blinded reviewer counted 34/47 supported claims for the control and 32/40 for the intermediate prompt. The final comparison used a fresh reviewer and included four additional questions. Compare arms within each round.
+
+## Evidence for future improvements
+
+For changes to model behavior, cite the original book or paper that informs the design and state how its method applies. Use the product policy or ledger as the authority for the expected answer. Compare versions on identical questions and score whether the answer delivered what the user requested. Also report factual precision, unnecessary clarification and results by scenario. These measures distinguish a concise answer that completes the task from one that simply makes fewer claims. [FActScore](https://aclanthology.org/2023.emnlp-main.741/) and [Trustworthy Online Controlled Experiments](https://experimentguide.com/).
+
+## Answer completeness
+
+The [paired answers and grades](../data/eval/reports/policy-answer-completeness.json) compare the shipped investigator at `44ef7af` with a candidate that distinguishes a policy question from a status lookup, addresses the requested handoff and distinguishes receipt from dispatch. Within each set, a reviewer saw shuffled answers without version labels. An appropriate clarification counts as complete when checking recorded status requires an identifier.
+
+| Set | Control complete | Candidate complete | Control supported claims | Candidate supported claims |
+| --- | ---: | ---: | ---: | ---: |
+| Original 14 trials, archived control | 5/14 | 12/14 | 44/44 | 47/47 |
+| Eight diagnostic questions | 5/8 | 6/8 | 13/15 | 12/13 |
+| Four fresh transfer questions | 3/4 | 3/4 | 7/7 | 7/8 |
+
+The original comparison above scored the same archived control answers 8/14. The new reviewer required the answer to say directly whether a missed cutoff establishes loss. That difference in judgment affects all five repetitions of the original scenario. The paired result here compares both versions under the same reviewer. The candidate completed all 12 historical trials that returned an answer. Two trials returned an OpenAI quota error and count as incomplete.
+
+Both arms used live GPT-4.1 on the eight diagnostics and four fresh questions. The candidate drafted the requested handoff on the fresh set but described mandatory escalation as optional in another answer. The small transfer set shows no increase in complete answers. The live results precede two subsequent wording edits covering combined policy and status requests and separate citations for escalation and review timing. Live qualification of those edits is pending.

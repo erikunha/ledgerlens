@@ -450,8 +450,7 @@ def test_the_policy_answer_prompt_requires_a_next_step_without_assuming_late_evi
         "in place of the placeholders" in answer_prompt
     )
     assert (
-        "If your internal cutoff has passed and the response deadline is within two days, escalate the case to a "
-        "human analyst for a same-day decision" in answer_prompt
+        "If your internal cutoff has passed, escalate the case to a human analyst" in answer_prompt
     )
     assert "The retrieved passages do not establish whether late evidence can still be accepted" in answer_prompt
     assert (
@@ -459,6 +458,44 @@ def test_the_policy_answer_prompt_requires_a_next_step_without_assuming_late_evi
         in answer_prompt
     )
     assert "I need the dispute record to verify the case status" in answer_prompt
+
+
+def test_the_policy_answer_prompt_covers_the_team_handoff_and_both_deadline_events(
+    ledger_db: Path, index_root: Path, cases: CaseMemory
+) -> None:
+    model = ScriptedChatModel(
+        script=[
+            tool_call_message(
+                "search_policies", {"query": "dispute escalation handoff response deadline", "transform": "none"}
+            ),
+            text_message("The case needs human review."),
+        ]
+    )
+    triage = triage_script(("find dispute escalation and response timing", "search_policies"))
+    investigate(
+        triaged(ledger_db, index_root, cases, model, triage),
+        "Draft a note to the disputes team. Our evidence cutoff passed and the response arrived after the deadline.",
+        thread_id="t-dispute-handoff",
+    )
+
+    instructions = "\n".join(str(message.content) for message in model.calls[1] if message.type == "system")
+    required_guidance = (
+        "draft the message itself",
+        "Missing the internal evidence cutoff alone does not mean the dispute is lost",
+        "late arrival alone does not establish late sending",
+        "days left until the response deadline, the internal evidence cutoff, and the evidence still missing",
+        "identify any of those details that are unknown",
+        "missed internal cutoff requires escalation to a human analyst regardless of the days left",
+        "Apply review timing separately from the duty to escalate",
+        "a missed cutoff alone can make a case critical",
+        "same business day from escalation",
+        "search for urgency levels and response times",
+        "distinguish when the merchant sent the response from when it was received",
+        "If the send time is unknown, state the automatic-loss rule conditionally",
+        "without ruling out other grounds for loss",
+    )
+    missing = [guidance for guidance in required_guidance if guidance not in instructions]
+    assert not missing, f"The answer model lacks guidance for {missing}"
 
 
 def test_the_triage_plan_is_given_to_the_agent_and_kept_in_the_result(

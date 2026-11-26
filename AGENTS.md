@@ -14,6 +14,10 @@ A LangChain agent that investigates payment complaints. Public repository, read-
 - Numbers (amounts, exchange rates, fees) come out of functions with `Decimal`, never from the model.
 - Test before the code: every tool and chain has a test with the scripted model (`ScriptedChatModel`).
 
+## Evidence for improvements
+- Ground each proposed improvement in relevant books or research papers. Cite the original publication and explain which design or evaluation choice it supports.
+- Verify its effect in this project. For model changes, compare complete answers and factual precision on the same cases across versions.
+
 ## Documentation
 - The documentation lives in `docs/`. Links in Markdown (`[text](path.md)`), never wikilinks.
 - Diagrams in Mermaid whenever a flow, a sequence or a relation is clearer drawn.

@@ -234,3 +234,24 @@ def test_stream_through_a_streaming_model_ends_with_the_validated_triage(style: 
 def test_triage_prompt_has_the_format_instructions_filled_in() -> None:
     prompt = triage_prompt()
     assert prompt.input_variables == ["complaint"]
+
+
+def test_triage_sends_distinct_policy_guidance_and_status_lookup_instructions() -> None:
+    case = CASES[0]
+    model = ScriptedChatModel(script=[reply_for(case)])
+    build_triage_declarative(model).invoke({"complaint": case.complaint})
+    system, _ = model.calls[0]
+    rules = str(system.content).split("\n- ")
+
+    policy = next(rule for rule in rules if "plan search_policies" in rule)
+    assert "needs_clarification=false" in policy, "Policy guidance must proceed without an identifier"
+    assert "policy_question" in policy
+
+    mixed = next(rule for rule in rules if "combining recorded status and policy guidance" in rule)
+    assert "record lookup and search_policies" in mixed
+    assert "needs_clarification=false" in mixed
+    assert "ask for the identifier in the answer" in mixed
+
+    clarification = next(rule for rule in rules if "needs_clarification=true" in rule)
+    assert "recorded case status" in clarification
+    assert "clarification_question" in clarification
