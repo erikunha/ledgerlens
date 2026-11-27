@@ -44,4 +44,18 @@ The [paired answers and grades](../data/eval/reports/policy-answer-completeness.
 
 The original comparison above scored the same archived control answers 8/14. The new reviewer required the answer to say directly whether a missed cutoff establishes loss. That difference in judgment affects all five repetitions of the original scenario. The paired result here compares both versions under the same reviewer. The candidate completed all 12 historical trials that returned an answer. Two trials returned an OpenAI quota error and count as incomplete.
 
-Both arms used live GPT-4.1 on the eight diagnostics and four fresh questions. The candidate drafted the requested handoff on the fresh set but described mandatory escalation as optional in another answer. The small transfer set shows no increase in complete answers. The live results precede two subsequent wording edits covering combined policy and status requests and separate citations for escalation and review timing. Live qualification of those edits is pending.
+Both arms used live GPT-4.1 on the eight diagnostics and four fresh questions. The candidate drafted the requested handoff on the fresh set but described mandatory escalation as optional in another answer. The small transfer set shows no increase in complete answers. The live results precede two subsequent wording edits covering combined policy and status requests and separate citations for escalation and review timing.
+
+## Live qualification
+
+The final investigator produced 11 complete, policy-supported answers in 14 original trials after review. It completed all four diagnostic questions and all four transfer questions. The table distinguishes the blinded automated comparison from the engineering review of the final answers.
+
+| Questions | Control, automated | Candidate, automated | Candidate, reviewed |
+| --- | ---: | ---: | ---: |
+| Original 14 trials | 12/14 | 14/14 | 11/14 |
+| Four diagnostic questions | 3/4 | 4/4 | 4/4 |
+| Four transfer questions | 3/4 | 4/4 | 4/4 |
+
+Two original answers described late sending as the only cause of automatic loss. The policy establishes it as a sufficient condition. A third claimed a decision was pending without checking the case record. The engineering review counted all three as incomplete.
+
+GPT-4.1 graded shuffled answers without version labels. It gave identical archived answers different grades and accepted an ID request that omitted the policy decision. The original control uses archived answers. The remaining controls ran live on the preceding PR revision. The historical 8/14 and this round's 12/14 score the same archived answers under different grading instructions. Five original trials repeat one question. Transfer questions informed refinement and measure regression coverage. [Questions, answers, source identifiers and grades](../data/eval/reports/policy-answer-qualification.json).

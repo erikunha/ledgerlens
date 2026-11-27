@@ -70,6 +70,7 @@ from ledgerlens.agents.integrator import (
     close_trace,
     default_verifier_for,
     finish,
+    first_turn_triage,
     followup_message,
     fx_days_to_redo,
     plan_message,
@@ -218,6 +219,8 @@ def _investigate(agent: ExecutorIntegrator, question: str, session_id: str, trac
     history = agent.runnable.get_session_history(session_id)
     first_turn = not history.messages
     triage = run_triage(agent.triage, question, config=traced("triage", trace))
+    if first_turn:
+        triage = first_turn_triage(triage)
     if (asked := clarification_to_ask(triage, first_turn)) is not None:
         history.add_messages([HumanMessage(question), AIMessage(asked)])
         return clarification_result(question, session_id, triage, asked)

@@ -13,6 +13,8 @@ from pathlib import Path
 
 import pytest
 
+from ledgerlens.retrieval import load_policy_documents
+
 DATA = Path(__file__).resolve().parents[1] / "data"
 POLICIES = DATA / "policies"
 QUESTIONS = DATA / "eval" / "policy_questions.jsonl"
@@ -169,6 +171,38 @@ def test_the_holiday_example_of_scenario_s08_is_documented(sections):
 def test_the_internal_cutoff_of_scenario_s03_is_documented(sections):
     text = sections["chargeback-handling#response-deadline"]["text"]
     assert "Friday" in text or "business day before" in text
+
+
+@pytest.fixture(scope="module")
+def indexed_excerpts() -> dict[str, str]:
+    return {doc.metadata["chunk_id"]: doc.page_content for doc in load_policy_documents(POLICIES)}
+
+
+def test_automatic_chargeback_loss_excerpt_identifies_the_merchants_send_time(indexed_excerpts):
+    deadline_id = "chargeback-handling#response-deadline"
+    trigger = r"merchant sends the response after the response deadline[,.]"
+    outcome = r"(?:lost|loses)[^.]*automatically"
+    assert re.search(rf"{trigger}[^.]*{outcome}", indexed_excerpts[deadline_id], re.I)
+    for chunk_id, excerpt in indexed_excerpts.items():
+        if chunk_id.startswith(deadline_id) and re.search(outcome, excerpt, re.I):
+            assert re.search(trigger, excerpt, re.I), chunk_id
+
+
+@pytest.mark.parametrize("anchor", ["deadline-within-2-days", "response-times"])
+def test_missed_cutoff_excerpts_ground_the_critical_review_timing(indexed_excerpts, anchor):
+    excerpt = indexed_excerpts[f"escalation-and-review#{anchor}"].lower()
+    assert re.search(r"(?:internal cutoff has passed|missed the internal cutoff)", excerpt)
+    assert "critical" in excerpt
+    assert "same business day" in excerpt
+    assert re.search(r"(?:as the escalation|from the moment the case is escalated)", excerpt)
+    if anchor == "deadline-within-2-days":
+        assert "regardless of how many days remain" in excerpt
+
+
+def test_submission_excerpt_explains_the_handoff_after_the_cutoff(indexed_excerpts):
+    excerpt = indexed_excerpts["chargeback-handling#who-submits"]
+    assert "escalate to a human analyst" in excerpt
+    assert "same business day as escalation" in excerpt
 
 
 # -- the 12 policy questions --------------------------------------------------------------------

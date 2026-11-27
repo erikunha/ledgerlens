@@ -118,7 +118,17 @@ from ledgerlens.config import get_chat_model, get_settings, model_cascade
 from ledgerlens.memory.long_term import CaseMemory
 from ledgerlens.observability.trace import OnEvent, Tracer, langsmith_url, review_reasons, summary_line
 from ledgerlens.run_context import SHIPPED_RUN_BUDGET, RunBudget, RunContext
-from ledgerlens.schemas import Coherence, Evidence, InvestigationResult, PlanStep, ToolCallRecord, Triage, VerdictLabel
+from ledgerlens.schemas import (
+    Coherence,
+    Evidence,
+    Intent,
+    InvestigationResult,
+    PlanStep,
+    ToolCallRecord,
+    ToolName,
+    Triage,
+    VerdictLabel,
+)
 from ledgerlens.tools.envelope import error
 from ledgerlens.tools.fx import FxClient
 from ledgerlens.tools.policies import build_search_policies_tool
@@ -126,6 +136,8 @@ from ledgerlens.tools.policies import build_search_policies_tool
 log = logging.getLogger(__name__)
 
 Verifier = Callable[..., InvestigationResult]
+POLICY_QUESTION: Intent = "policy_question"
+POLICY_TOOL: ToolName = "search_policies"
 
 # The verifier only links a claim to evidence when the SAME sentence cites the id in brackets. With no citation the
 # claim has no support and the case goes to human review, so the model must be told to cite. A real
@@ -176,6 +188,9 @@ POLICY_EVIDENCE_RULE = (
     "If the send time is unknown, state the automatic-loss rule conditionally. Explain what follows from late "
     "sending without ruling out other grounds for loss. For receipt-only facts, answer directly: late arrival "
     "alone does not establish late sending. If needed, ask for the dispatch timestamp. "
+    "State a sufficient condition as an if-statement. Do not say loss only occurs under that condition. "
+    "For a handoff, describe evidence as missing only when the user or a record identifies it as missing. "
+    "Do not apply a late-send rule to a response that was never sent or infer that human review ends. "
     "Example for a missed evidence cutoff when asked about next steps and automatic loss. Use only parts supported "
     "by the current search and cite the actual retrieved passage IDs in place of the placeholders. "
     "'Missing the internal evidence cutoff alone does not mean the dispute is lost [review passage ID]. "
@@ -517,6 +532,8 @@ def _investigate(
     # The reason of a triage whose retry did not happen: the run answers without a plan and the reader of the
     # result has to know why the plan is missing (ADR-085).
     triage_stop = _stop_reason_of(turn.state.fallbacks[before_triage:])
+    if first_turn:
+        triage = first_turn_triage(triage)
     if (asked := clarification_to_ask(triage, first_turn)) is not None:
         agent.graph.update_state(config, {"messages": [HumanMessage(question), AIMessage(asked)]})
         return clarification_result(question, thread_id, triage, asked)
@@ -873,6 +890,30 @@ def _triage_with_fallback(
         log.warning("triage unreadable (%s), the agent runs without a plan", out.code)
         return None
     return out
+
+
+def first_turn_triage(triage: Triage | None) -> Triage | None:
+    """Keep a policy search runnable when recorded status needs clarification."""
+    if triage is None or triage.intent != POLICY_QUESTION or not triage.needs_clarification:
+        return triage
+    question = triage.clarification_question
+    if not question:
+        return triage
+
+    searches = [step for step in triage.plan if step.tool == POLICY_TOOL and not step.depends_on]
+    if not searches:
+        return triage
+
+    # Other steps may need details the customer has yet to provide.
+    plan = [step.model_copy(update={"id": f"S{index}"}) for index, step in enumerate(searches, start=1)]
+    plan.append(
+        PlanStep(
+            id=f"S{len(plan) + 1}",
+            goal=f"Explain the supported policy, then ask for the missing case details: {question}",
+            depends_on=[step.id for step in plan],
+        )
+    )
+    return triage.model_copy(update={"plan": plan, "needs_clarification": False, "clarification_question": None})
 
 
 def clarification_to_ask(triage: Triage | None, first_turn: bool) -> str | None:

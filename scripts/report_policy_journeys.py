@@ -74,6 +74,27 @@ CONTROLS = (
     ("verify-status", "Has my specific dispute already been marked lost? Please verify its actual recorded status."),
     ("policy-status", "As a general policy, does passing the evidence cutoff automatically lose the dispute?"),
     ("deadline-paraphrase", "We missed the evidence handoff but still have time to respond. What happens now?"),
+    (
+        "handoff-tuesday",
+        "Our internal deadline for the evidence packet was this morning. The deadline for the merchant response "
+        "is tomorrow. Does policy already count this as a loss, and who should act today?",
+    ),
+    (
+        "response-question",
+        "Suppose the response itself reaches Acme the day after the response deadline. "
+        "What does the dispute policy say happens?",
+    ),
+    (
+        "mixed-no-id",
+        "Was my dispute marked lost, and what does policy require if the internal evidence cutoff has passed?",
+    ),
+    (
+        "packet-yesterday",
+        "The evidence packet was due yesterday and the merchant response is due today. "
+        "Is there still a decision for someone to make?",
+    ),
+    ("late-send", "The merchant sent the response the day after the response deadline. What does policy require?"),
+    ("timing", "The internal evidence cutoff passed. What review is required and when must it happen?"),
     ("refund-trigger", "When does a refund need human review because of its amount?"),
     ("settlement-trigger", "When is a payout considered delayed?"),
     ("fee-trigger", "When is the chargeback fee charged?"),
@@ -191,6 +212,7 @@ def run_config():
     paths = (
         "ledgerlens/agents/integrator.py",
         "ledgerlens/prompts/templates.py",
+        "ledgerlens/chains/triage.py",
         "ledgerlens/tools/policies.py",
         "scripts/report_policy_journeys.py",
         "ledgerlens/tools/calculator.py",
