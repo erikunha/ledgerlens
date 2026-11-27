@@ -755,7 +755,7 @@ def render_payments() -> None:
         st.rerun()
     brand, switch = st.columns([3, 1.2], vertical_alignment="center")
     with brand.container(key="brand"):
-        st.title(BRAND, anchor=False)
+        st.title("Investigations", anchor=False)
         st.caption("Sample payments · Account investigation")
     with switch:
         account_picker(accounts, pending_live)
@@ -942,9 +942,6 @@ def render_payments() -> None:
 def main() -> None:
     from app.artifact_views import render_engineering, render_evaluation, render_proof, render_replay
     from app.interactive_views import render_sandbox
-
-    st.set_page_config(page_title=BRAND, page_icon=":material/payments:", layout="wide")
-    st.html(STYLE)
     from app.project_view import render_project
 
     pages = {
@@ -958,26 +955,35 @@ def main() -> None:
         "Engineering": render_engineering,
     }
 
-    def navigate(destination):
-        st.query_params["view"] = destination
-
-    destination = st.session_state.pop("go_to", None)
-    if destination in pages:
-        navigate(destination)
-    page = st.query_params.get("view", "Payments")
+    titles = {
+        "Payments": "Investigations",
+        DATA_PAGE: "Explore data",
+        "Replay": "Recordings",
+        PROJECT_PAGE: "Project details",
+        "Sandbox": "Visitor sandbox",
+        "Evaluation": "Evaluation",
+        "Proof": "Proof artifacts",
+        "Engineering": "Engineering",
+    }
+    slugs = {key: title.lower().replace(" ", "-") for key, title in titles.items()}
+    requested = st.query_params.get("view")
+    by_slug = {slug: key for key, slug in slugs.items()}
+    page = st.session_state.pop("go_to", None) or by_slug.get(requested, requested)
     if page == "Live":
-        page = "Payments"
-        navigate(page)
         request_openai()
     if page not in pages:
         page = "Payments"
+    st.set_page_config(page_title=f"{titles[page]} | {BRAND}", page_icon=":material/payments:", layout="wide")
+    st.html(STYLE)
+
+    def navigate(destination):
+        st.query_params["view"] = slugs[destination]
+
+    if requested != slugs[page]:
+        navigate(page)
     with st.container(horizontal=True, gap="small", key="demo-navigation"):
-        for target, label in (
-            ("Payments", "Investigation"),
-            (DATA_PAGE, "Explore data"),
-            ("Replay", "Recordings"),
-            (PROJECT_PAGE, "Project details"),
-        ):
+        for target in ("Payments", DATA_PAGE, "Replay", PROJECT_PAGE):
+            label = titles[target]
             st.button(
                 label,
                 key=f"nav-{target}",

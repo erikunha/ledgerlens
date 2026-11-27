@@ -164,7 +164,7 @@ def test_featured_explorer_starts_at_payment_and_resets_on_account_switch(monkey
     monkeypatch.setenv("LEDGERLENS_OFFLINE", "1")
     page = AppTest.from_file(str(APP), default_timeout=30).run()
     page.button(key="explore-featured").click().run()
-    assert page.query_params["view"] == "Data"
+    assert page.query_params["view"] == "explore-data"
     assert "draft" not in [widget.key for widget in page.text_input]
     assert page.session_state["explore_payment"] == "TX-2048"
     page.selectbox(key="account").set_value("M-03").run()
@@ -199,5 +199,28 @@ def test_data_navigation_defaults_to_the_complete_sample(monkeypatch):
     assert len(payment.options) == 2117
     assert "nav-Evaluation" not in [item.key for item in page.button]
     page.button(key="nav-Project").click().run()
-    assert page.query_params["view"] == "Project"
+    assert page.query_params["view"] == "project-details"
+    assert not page.exception
+
+
+@pytest.mark.parametrize(
+    ("legacy", "slug"),
+    [
+        ("Payments", "investigations"),
+        ("Data", "explore-data"),
+        ("Replay", "recordings"),
+        ("Project", "project-details"),
+        ("Sandbox", "visitor-sandbox"),
+        ("Evaluation", "evaluation"),
+        ("Proof", "proof-artifacts"),
+        ("Engineering", "engineering"),
+    ],
+)
+def test_bookmarked_page_updates_only_its_view_parameter(monkeypatch, legacy, slug):
+    monkeypatch.setenv("LEDGERLENS_OFFLINE", "1")
+    page = AppTest.from_file(str(APP), default_timeout=30)
+    page.query_params.update(view=legacy, case="S01")
+    page.run()
+    assert page.query_params["view"] == slug
+    assert page.query_params["case"] in ("S01", ["S01"])
     assert not page.exception

@@ -57,7 +57,7 @@ BUDGET_BYTES = 400 * 1024
 COMPRESSION_LEVEL = 9
 
 DEFAULT_APP_URL = "http://127.0.0.1:8501"
-PAINT_ROUTE = "/?view=Replay"
+PAINT_ROUTE = "/?view=recordings"
 
 # The throttling of the measurement of the paint.
 #

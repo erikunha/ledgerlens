@@ -6,18 +6,18 @@ Install the application and API dependencies with `uv sync --extra app --extra a
 LEDGERLENS_OFFLINE=1 uv run uvicorn app.server:portal --host 127.0.0.1 --port 8501
 ```
 
-Open http://localhost:8501. Start with **Investigate this payment**, edit the suggested question, then press **Send**. The trace is optional. Follow **See the recorded calculation** to inspect the same case and open its published proof. The mode indicator above the case shows whether the next answer is scripted or uses your key. Choose **Use my OpenAI key** to configure OpenAI on the same page. Configure the key, model and limits in the side panel. It closes when the API accepts the key. The connected status appears in the investigation, and the current question stays editable. Press **Send to OpenAI** to submit it. **Switch to demo** returns to scripted answers. A paid run requires a published snapshot for the selected account and case. **Recordings** opens the published cases. **Project details** presents published scores, evidence and the technical implementation. Navigation updates the URL. A link such as `/?view=Replay` opens that workspace.
+Open http://localhost:8501. Start with **Investigate this payment**, edit the suggested question, then press **Send**. The trace is optional. Follow **See the recorded calculation** to inspect the same case and open its published proof. The mode indicator above the case shows whether the next answer is scripted or uses your key. Choose **Use my OpenAI key** to configure OpenAI on the same page. Configure the key, model and limits in the side panel. It closes when the API accepts the key. The connected status appears in the investigation, and the current question stays editable. Press **Send to OpenAI** to submit it. **Switch to demo** returns to scripted answers. A paid run requires a published snapshot for the selected account and case. **Recordings** opens the published cases. **Project details** presents published scores, evidence and the technical implementation. The view parameter uses the lowercase page title with hyphens between words. The default is `/?view=investigations`. Earlier links open the matching page and update its URL. A link such as `/?view=recordings` opens that workspace.
 
 | Workspace | What you can do |
 | --- | --- |
-| Payments | Switch demo accounts, inspect synthetic payments and ask a scripted question. Expand the trace to see the evidence behind an answer. |
-| Data | Browse all nine sample tables or switch to the current demo account. |
-| Project | Read how the agent works and inspect published evaluation results, proofs and implementation. |
-| Replay | Browse scripted and real-model recordings, then inspect an answer, its evidence and recorded events. Playback requires no credentials. |
-| Sandbox | Fork a published case into a private branch and edit it through the demo API. |
-| OpenAI mode in Payments | Connect a key with consent and investigate the selected payment using the same question field. The legacy `/?view=Live` link opens this mode. |
+| Investigations | Switch demo accounts, inspect synthetic payments and ask a scripted question. Expand the trace to see the evidence behind an answer. |
+| Explore data | Browse all nine sample tables or switch to the current demo account. |
+| Project details | Read how the agent works and inspect published evaluation results, proofs and implementation. |
+| Recordings | Browse scripted and real-model recordings, then inspect an answer, its evidence and recorded events. Playback requires no credentials. |
+| Visitor sandbox | Fork a published case into a private branch and edit it through the demo API. |
+| OpenAI mode in Investigations | Connect a key with consent and investigate the selected payment using the same question field. The legacy `/?view=Live` link opens this mode. |
 | Evaluation | Inspect published evaluation results and download the underlying data. |
-| Proof | Inspect and download published evidence. |
+| Proof artifacts | Inspect and download published evidence. |
 | Engineering | Inspect the implementation behind the payment investigation. |
 
 ## Connect the API
@@ -30,7 +30,7 @@ A deployment must serve Streamlit's WebSocket connection and package the publish
 
 ### Consult the sample database
 
-**Explore data** at `/?view=Data` opens the full synthetic sample. **Records** contains payments, refunds, disputes, currency conversions, settlements, customers, merchants and the projector checkpoint. **Events** shows the event history. Filter by payment or inspect the whole database. The full sample includes simulator-generated card fingerprints and the shortened hashes stored as invoice references. Browsing does not require an OpenAI key.
+**Explore data** at `/?view=explore-data` opens the full synthetic sample. **Records** contains payments, refunds, disputes, currency conversions, settlements, customers, merchants and the projector checkpoint. **Events** shows the event history. Filter by payment or inspect the whole database. The full sample includes simulator-generated card fingerprints and the shortened hashes stored as invoice references. Browsing does not require an OpenAI key.
 
 A payment shortcut opens **Current demo account** with the payment selected. In this scope **Ask about this record** prepares an editable investigation draft. The full database is for inspection. Live questions are sent only when the visitor submits a supported case against its account snapshot.
 
