@@ -60,7 +60,8 @@ rewrites the question of the policy search in `ledgerlens/tools/policies.py`. Th
 the agent, so none of the three is ever taken, and a test proves it by making the fallback raise.
 
 Policy retrieval and case memory use deterministic word-count embeddings by default. Verification compares
-amounts against the branch ledger and applies deterministic text rules. Callers can supply both dependencies.
+amounts against the branch ledger. OpenAI live runs classify cited text through a fifth metered bridge. Other runs
+use deterministic text rules. Callers can supply both dependencies.
 
 The cancellation of the run is not swallowed: the caller raises `RunCancelled` before the next call, and the case
 turns any failure of a cancelled run back into the cancellation, so the run ends as cancelled and not as a mystery
@@ -84,7 +85,9 @@ in the missing information of the result, and the case repeats it in the words t
 from __future__ import annotations
 
 import json
+import logging
 import re
+from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from functools import partial
@@ -109,13 +112,17 @@ from ledgerlens.byok import arguments_text
 from ledgerlens.byok.adapter import ProviderMessage, ProviderRequest, ProviderResponse, ToolCall, ToolSchema
 from ledgerlens.byok.budget import BudgetExceededError
 from ledgerlens.byok.errors import ByokError
+from ledgerlens.config import offline
 from ledgerlens.embeddings import OfflineEmbeddings
 from ledgerlens.memory.long_term import CaseMemory
 from ledgerlens.run_context import RunContext
-from ledgerlens.schemas import ESCALATION_PREFIX, InvestigationResult
+from ledgerlens.schemas import ESCALATION_PREFIX, InvestigationResult, VerdictLabel
 from ledgerlens.tools.fx import FxClient
 from ledgerlens.verify import verify_result
 from ledgerlens.verify.nli import StubNli
+from ledgerlens.verify.openai_classifier import EvidenceClassifier
+
+log = logging.getLogger(__name__)
 
 __all__ = [
     "MAX_BRIDGE_REQUESTS",
@@ -140,6 +147,16 @@ SLOT_AGENT = "agent"
 SLOT_TRIAGE = "triage"
 SLOT_SQL = "sql"
 SLOT_POLICY = "policy"
+SLOT_VERIFIER = "verifier"
+
+_OPENAI_PROVIDER = "openai"
+_VERIFICATION_UNAVAILABLE = "Verification could not be completed."
+_UNAVAILABLE_CLASSIFIER_SCORES = {"entailment": 0.0, "contradiction": 0.0, "neutral": 1.0}
+_VERDICT_NAMES: dict[VerdictLabel, str] = {
+    "supported": "supported",
+    "contradicted": "contradicted",
+    "not_enough_evidence": "with insufficient evidence",
+}
 
 # How many requests a bridge keeps. The last requests are the evidence of what a slot spoke and asked for, and the
 # bound keeps the memory of a long run from growing without end (FR-012).
@@ -304,7 +321,7 @@ def wrap_tool(caller: ModelCaller, tool: BaseTool) -> BaseTool:
 
 @dataclass(frozen=True)
 class DemoAgent:
-    """The agent of the demo on the bridge, and the four bridges it speaks through.
+    """The agent of the demo and the bridges it speaks through.
 
     Why the bridges are named: a reader of a run has to be able to see which slot of the agent spoke and how many
     times it spoke, and the budget counts them all the same (FR-012).
@@ -330,6 +347,43 @@ def _live_tool_failure_content(exc: Exception, request: ToolCallRequest) -> str 
     return _tool_failure_content(exc, request)
 
 
+@dataclass
+class _LiveEvidenceClassifier:
+    """Let the deterministic checks finish when the provider cannot classify a claim."""
+
+    classifier: EvidenceClassifier
+    failed: bool = False
+
+    def predict(self, premise: str, hypothesis: str) -> dict[str, float]:
+        if not self.failed:
+            try:
+                return self.classifier.predict(premise, hypothesis)
+            except (BudgetExceededError, LiveRunError):
+                raise
+            except Exception as failure:
+                # One failed call makes the verification incomplete. Avoid spending on further labels.
+                log.warning("Live claim verification failed (%s)", type(failure).__name__)
+                self.failed = True
+        return _UNAVAILABLE_CLASSIFIER_SCORES.copy()
+
+
+def _verify_openai_result(
+    result: InvestigationResult, *, classifier: EvidenceClassifier, ledger_db: Path | str | None
+) -> InvestigationResult:
+    """Mark incomplete verification for review after the deterministic checks run."""
+    live_classifier = _LiveEvidenceClassifier(classifier)
+    verified = verify_result(result, nli=live_classifier, ledger_db=ledger_db)
+    if not live_classifier.failed:
+        return verified
+    return verified.model_copy(
+        update={
+            "requires_human_review": True,
+            "recommended_action": "escalate_to_human",
+            "missing_information": [*verified.missing_information, _VERIFICATION_UNAVAILABLE],
+        }
+    )
+
+
 def build_demo_agent(
     caller: ModelCaller,
     *,
@@ -347,7 +401,8 @@ def build_demo_agent(
     model and the triage model. All four are the bridge over the caller of the run, so every call of the agent is
     reserved, counted, traced and capped by the budget of the run (FR-012).
 
-    The default verifier runs deterministic checks against the same ledger the investigation reads.
+    The default verifier checks the same ledger the investigation reads. OpenAI live runs use the visitor's
+    selected model for cited text classification.
 
     Why the graph is built twice: `build_integrator` does not take the tools, so the tools it built are wrapped
     here and the graph of the agent is bound over the wrapped tools. The agent itself is not rewritten: the same
@@ -362,11 +417,18 @@ def build_demo_agent(
         slot: BridgeChatModel(caller=caller, model_id=caller.model_id, slot=slot)
         for slot in (SLOT_AGENT, SLOT_TRIAGE, SLOT_SQL, SLOT_POLICY)
     }
+    if verifier is None:
+        if caller.provider == _OPENAI_PROVIDER and not offline():
+            judge = BridgeChatModel(caller=caller, model_id=caller.model_id, slot=SLOT_VERIFIER)
+            bridges[SLOT_VERIFIER] = judge
+            verifier = partial(_verify_openai_result, classifier=EvidenceClassifier(judge), ledger_db=db_path)
+        else:
+            verifier = partial(verify_result, nli=StubNli(), ledger_db=db_path)
     checkpointer = InMemorySaver()
     agent = build_integrator(
         bridges[SLOT_AGENT],
         db_path=db_path,
-        verifier=verifier if verifier is not None else partial(verify_result, nli=StubNli(), ledger_db=db_path),
+        verifier=verifier,
         checkpointer=checkpointer,
         query_model=bridges[SLOT_SQL],
         fx_client=fx_client,
@@ -421,7 +483,7 @@ class DemoCase:
     Why the ledger of the run is the ledger of the plan: the branch of the visitor is the only truth of the visitor,
     and the tools of the agent read the file of that branch and never the ledger of the configuration (ADR-038).
 
-    Why the case forgets a run that ended: the case holds a context and four bridges for every run it ever served,
+    Why the case forgets a run that ended: the case holds a context and bridges for every run it ever served,
     and a case that lives in a long lived process would grow without end. The coordinator knows when a run ends and
     tells the case, and the case drops the run from its two maps (ADR-038).
     """
@@ -457,7 +519,7 @@ class DemoCase:
         self._contexts: dict[str, RunContext] = {}
 
     def bridges_of(self, run_id: str) -> Mapping[str, BridgeChatModel]:
-        """The four bridges of the run with that identifier, empty when the run never happened.
+        """The bridges of the run with that identifier, empty when the run never happened.
 
         Why the bridges are asked by the identifier of the run: the bridges belong to the run, and a reader that
         wants the calls of a run has to name it (FR-012).
@@ -483,7 +545,7 @@ class DemoCase:
         forget, and the coordinator only asks the case that knows how to forget (ADR-038).
 
         Why the run is forgotten at its end and not later: a case that keeps every run it ever served grows without
-        end in a long lived process, one context and four bridges for every run (ADR-038).
+        end in a long lived process, one context and its bridges for every run (ADR-038).
         """
         self._contexts.pop(run_id, None)
         self._bridges.pop(run_id, None)
@@ -513,7 +575,7 @@ class DemoCase:
             raise
         if caller.cancelled:
             raise RunCancelled("the run was cancelled while the case was running")
-        return _the_answer_of_the_result(result)
+        return _the_answer_of_the_result(result, show_verification=SLOT_VERIFIER in demo.bridges)
 
     def _options_of_the_run(self, plan: LiveRunPlan) -> dict[str, Any]:
         """The options of the agent of this run: the ledger of the plan and the memory of the session.
@@ -806,13 +868,28 @@ def _answer_of(response: ProviderResponse) -> AIMessage:
     )
 
 
-def _the_answer_of_the_result(result: InvestigationResult) -> str:
+def _verification_summary(result: InvestigationResult) -> str:
+    """Report verifier outcomes without presenting categorical scores as confidence."""
+    review = "Human review required. " if result.requires_human_review else ""
+    if _VERIFICATION_UNAVAILABLE in result.missing_information:
+        return review + _VERIFICATION_UNAVAILABLE
+    if not result.verdicts:
+        return review.strip()
+    counts = Counter(verdict.label for verdict in result.verdicts)
+    summary = ", ".join(f"{counts[label]} {name}" for label, name in _VERDICT_NAMES.items())
+    return f"{review}Verification found {summary}."
+
+
+def _the_answer_of_the_result(result: InvestigationResult, *, show_verification: bool = False) -> str:
     """The text the visitor reads: the answer of the agent, or what stopped the run when there is no answer.
 
     Why a run without an answer says so: an empty answer is a run that says nothing, and a visitor cannot tell a
     run that a ceiling cut from a run that never started (ADR-054).
     """
     if result.answer.strip():
+        summary = _verification_summary(result) if show_verification else ""
+        if summary:
+            return f"{summary}\n\n{result.answer}"
         return result.answer
     limit = _the_limit_of_the_cut(result)
     if limit is None:

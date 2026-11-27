@@ -29,6 +29,7 @@ def _render_scores() -> None:
         )
         verifier.metric("OpenAI verifier accuracy · held-out set", f"{candidate['correct']} / {candidate['total']}")
         verifier.caption(
+            f"Evaluated model: {candidate['model']}. "
             f"Baseline: {held_out['correct']}/{held_out['denominator']}. Two blind model readers supplied the labels. "
             f"[OpenAI verifier results]({REPOSITORY}/{OPENAI_VERIFIER}) · "
             f"[Held-out verifier report]({REPOSITORY}/data/eval/report_heldout.json)"
@@ -63,8 +64,8 @@ Each tool result can supply an evidence ID for the final answer.
 
 Deterministic checks validate claims against evidence, including money and dates. Claims can be supported,
 contradicted or marked as having insufficient evidence. The workflow can flag uncertain results for human review.
-Learned verification evaluates whether text evidence supports a claim. That component is unavailable in the
-visitor demo, which runs deterministic checks.
+In live OpenAI mode, the selected model also checks claims against the cited text using the visitor's key.
+These verification calls share the investigation budget. The scripted demo works without a key.
 """
     )
     st.markdown(

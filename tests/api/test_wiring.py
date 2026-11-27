@@ -808,7 +808,10 @@ def test_a_live_case_runs_end_to_end_against_the_wired_application(client: TestC
     run_id = str(started.json()["run_id"])
     state = _wait_for_the_end(client, run_id)
     assert state["status"] == "completed", state
-    assert state["answer"] == FINAL_ANSWER
+    assert state["answer"] == (
+        "Human review required. Verification found 0 supported, 0 contradicted, 1 with insufficient evidence.\n\n"
+        + FINAL_ANSWER
+    )
     cost = client.get(f"/v1/live-runs/{run_id}/cost")
     assert cost.status_code == 200
     assert cost.json()["observed_cost_usd"] is not None
