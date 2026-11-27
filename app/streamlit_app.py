@@ -606,18 +606,22 @@ def render_lines(tab: str, lines: list[dict[str, Any]], account: Account, marks:
             question = demo.ask_question(line, account.id, manifest)
             scripted = demo.offline_script(question, manifest) is not None
             available = scripted or st.session_state.get("investigation_mode") == OPENAI_MODE
-            st.button(
+            payment = next((rid for rid in line["ids"] if rid.startswith("TX-")), None)
+            actions = st.columns(2, gap="small") if payment else [st.container()]
+            actions[0].button(
                 "Ask about this",
                 key=f"ask-{tab}-{line['id']}",
                 help=f"Prepare this question: {question}" if available else OFFLINE_ASK_HELP,
                 on_click=fill_draft,
                 args=(question, [line["id"]]),
                 type="primary",
+                width="stretch",
                 disabled=not available,
             )
-            if payment := next((rid for rid in line["ids"] if rid.startswith("TX-")), None):
-                st.button(
+            if payment:
+                actions[1].button(
                     "Explore data",
+                    width="stretch",
                     key=f"explore-{tab}-{line['id']}",
                     on_click=open_data,
                     args=(payment, CURRENT_ACCOUNT),
