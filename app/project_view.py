@@ -5,7 +5,8 @@ import streamlit as st
 from app.artifact_views import ROOT, SITE, _artifact_errors, _read, render_engineering, render_evaluation, render_proof
 from app.interactive_views import CASE_SIMULATOR
 
-REPOSITORY = "https://github.com/erikunha/ledgerlens/blob/main"
+REPOSITORY_URL = "https://github.com/erikunha/ledgerlens"
+REPOSITORY = f"{REPOSITORY_URL}/blob/main"
 EVALUATION_INDEX = SITE / "eval" / "index.json"
 CANDIDATE_REVIEW = "data/eval/reports/policy-resolution-comparison.json"
 OPENAI_VERIFIER = "data/eval/report_openai_verifier.json"
