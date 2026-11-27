@@ -1,14 +1,14 @@
 {
   "embedding": "offline:wordcount-crc32-64",
   "dimension": 64,
-  "chunks": 106,
+  "chunks": 107,
   "metric": "l2 on unit vectors",
   "chunk_size": 800,
   "chunk_overlap": 100,
-  "built_on": "2026-11-26",
-  "corpus_sha256": "0b79819fc26a34e36b992d771db5d70238a949562c74f6ee3d551f42304dfd0e",
+  "built_on": "2026-11-27",
+  "corpus_sha256": "4b3d54aa447f2b70d77ec9e8e7cd5cac74e24615351f46608be6b1b825601bbd",
   "artifact_sha256": {
-    "index.faiss": "0aad03cd2d5403dd22d267e51f6fa19a514401e2516bd05a5ab10f2ea50dd034",
-    "index.pkl": "8bc305fffd6a209e4d43e6fb18adb0fa5afc4bdb48598512cf70e127e944853e"
+    "index.faiss": "607c3d1fc5fced04f6d05a01e0738a1d22a7df63e332c5503165973d7f3b65a9",
+    "index.pkl": "6ae0d99b6ae3c1b2f7ba25ff248b6d057dd9bf3b66554b692603005d0a8aac13"
   }
 }

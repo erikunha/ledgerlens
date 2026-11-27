@@ -16,6 +16,7 @@ from pathlib import Path
 
 import pytest
 
+from ledgerlens.agents.executor_integrator import build_executor_integrator, investigate_with_executor
 from ledgerlens.agents.integrator import Integrator, build_integrator, investigate
 from ledgerlens.embeddings import OfflineEmbeddings
 from ledgerlens.memory.long_term import CaseMemory
@@ -450,8 +451,7 @@ def test_the_policy_answer_prompt_requires_a_next_step_without_assuming_late_evi
         "in place of the placeholders" in answer_prompt
     )
     assert (
-        "If your internal cutoff has passed and the response deadline is within two days, escalate the case to a "
-        "human analyst for a same-day decision" in answer_prompt
+        "If your internal cutoff has passed, escalate the case to a human analyst" in answer_prompt
     )
     assert "The retrieved passages do not establish whether late evidence can still be accepted" in answer_prompt
     assert (
@@ -459,6 +459,45 @@ def test_the_policy_answer_prompt_requires_a_next_step_without_assuming_late_evi
         in answer_prompt
     )
     assert "I need the dispute record to verify the case status" in answer_prompt
+
+
+def test_the_policy_answer_prompt_covers_the_team_handoff_and_both_deadline_events(
+    ledger_db: Path, index_root: Path, cases: CaseMemory
+) -> None:
+    model = ScriptedChatModel(
+        script=[
+            tool_call_message(
+                "search_policies", {"query": "dispute escalation handoff response deadline", "transform": "none"}
+            ),
+            text_message("The case needs human review."),
+        ]
+    )
+    triage = triage_script(("find dispute escalation and response timing", "search_policies"))
+    investigate(
+        triaged(ledger_db, index_root, cases, model, triage),
+        "Draft a note to the disputes team. Our evidence cutoff passed and the response arrived after the deadline.",
+        thread_id="t-dispute-handoff",
+    )
+
+    instructions = "\n".join(str(message.content) for message in model.calls[1] if message.type == "system")
+    required_guidance = (
+        "draft the message itself",
+        "Missing the internal evidence cutoff alone does not mean the dispute is lost",
+        "late arrival alone does not establish late sending",
+        "Do not apply a late-send rule to a response that was never sent",
+        "days left until the response deadline, the internal evidence cutoff, and the evidence still missing",
+        "identify any of those details that are unknown",
+        "missed internal cutoff requires escalation to a human analyst regardless of the days left",
+        "Apply review timing separately from the duty to escalate",
+        "a missed cutoff alone can make a case critical",
+        "same business day from escalation",
+        "search for urgency levels and response times",
+        "distinguish when the merchant sent the response from when it was received",
+        "If the send time is unknown, state the automatic-loss rule conditionally",
+        "without ruling out other grounds for loss",
+    )
+    missing = [guidance for guidance in required_guidance if guidance not in instructions]
+    assert not missing, f"The answer model lacks guidance for {missing}"
 
 
 def test_the_triage_plan_is_given_to_the_agent_and_kept_in_the_result(
@@ -619,6 +658,109 @@ def test_a_follow_up_the_triage_cannot_read_alone_still_reaches_the_agent(
     assert second.answer == "TX-2048 again." and len(model.calls) == 2
     assert "Which transaction?" not in seen_by(model, 1)  # triage's question back does not go to the agent
     assert "Triage plan" not in seen_by(model, 1).split("Which transaction did I just")[-1]
+
+
+MIXED_STATUS_AND_POLICY = (
+    "Was my dispute marked lost, and what does policy require if the internal evidence cutoff has passed?"
+)
+MISSING_DISPUTE_ID = "What is the dispute ID?"
+
+
+@pytest.fixture(params=["graph", "executor"])
+def investigation_session(request, ledger_db, index_root, cases, tmp_path):
+    def start(model, triage):
+        if request.param == "graph":
+            agent = triaged(ledger_db, index_root, cases, model, triage)
+            return lambda question: investigate(agent, question, thread_id="mixed-policy")
+        agent = build_executor_integrator(
+            model,
+            triage_model=triage,
+            db_path=ledger_db,
+            history_db_path=tmp_path / "history.db",
+            verifier=lambda result, *, nli=None: result,
+            query_model=ScriptedChatModel(script=[]),
+            index_root=index_root,
+            case_memory=cases,
+        )
+        return lambda question: investigate_with_executor(agent, question, session_id="mixed-policy")
+
+    return start
+
+
+def mixed_policy_triage(*, blocked_lookup: bool = False) -> Triage:
+    plan = [PlanStep(id="S1", goal="Find the rules for the missed cutoff", tool="search_policies")]
+    if blocked_lookup:
+        plan = [
+            PlanStep(id="S1", goal="Verify the dispute status", tool="get_ledger_record"),
+            plan[0].model_copy(update={"id": "S2"}),
+            PlanStep(id="S3", goal="Find the rule on who must review the dispute", tool="search_policies"),
+        ]
+    return Triage(
+        intent="policy_question",
+        entities=Entities(),
+        urgency="high",
+        plan=plan,
+        needs_clarification=True,
+        clarification_question=MISSING_DISPUTE_ID,
+    )
+
+
+@pytest.mark.parametrize("blocked_lookup", [False, True])
+def test_first_turn_answers_independent_policy_before_asking_for_dispute_id(investigation_session, blocked_lookup):
+    triage = ScriptedChatModel(script=[mixed_policy_triage(blocked_lookup=blocked_lookup).model_dump_json()])
+    search = tool_call_message("search_policies", {"query": "missed internal cutoff", "transform": "none"})
+    answer = f"Escalate to a human analyst. {MISSING_DISPUTE_ID}"
+    model = ScriptedChatModel(script=[search, text_message(answer)])
+
+    result = investigation_session(model, triage)(MIXED_STATUS_AND_POLICY)
+
+    assert result.answer == answer
+    assert [call.tool for call in result.tool_trace] == ["search_policies"]
+    assert result.evidence and all(item.source_type == "policy" for item in result.evidence)
+    assert result.recommended_action != "ask_for_clarification"
+    assert result.triage is not None and not result.triage.needs_clarification
+    assert result.triage.clarification_question is None
+    planned_searches, answer_step = result.triage.plan[:-1], result.triage.plan[-1]
+    assert [step.id for step in planned_searches] == (["S1", "S2"] if blocked_lookup else ["S1"])
+    assert all(step.tool == "search_policies" for step in planned_searches)
+    assert answer_step.id == ("S3" if blocked_lookup else "S2")
+    assert answer_step.tool is None and answer_step.depends_on == [step.id for step in planned_searches]
+    answer_instruction = f"Explain the supported policy, then ask for the missing case details: {MISSING_DISPUTE_ID}"
+    assert answer_instruction in seen_by(model)
+    assert len(triage.calls) == 1
+
+
+@pytest.mark.parametrize(("intent", "dependencies"), [("chargeback_status", []), ("policy_question", ["S1"])])
+def test_first_turn_with_policy_that_cannot_proceed_asks_for_dispute_id(investigation_session, intent, dependencies):
+    triage = mixed_policy_triage(blocked_lookup=True)
+    triage.intent = intent
+    triage.plan = [triage.plan[0], triage.plan[1].model_copy(update={"depends_on": dependencies})]
+    model = ScriptedChatModel(script=[])
+
+    result = investigation_session(model, ScriptedChatModel(script=[triage.model_dump_json()]))(
+        "Was my dispute marked lost?"
+    )
+
+    assert result.answer == MISSING_DISPUTE_ID
+    assert result.recommended_action == "ask_for_clarification"
+    assert result.triage == triage and result.tool_trace == [] and model.calls == []
+
+
+def test_follow_up_with_policy_and_status_uses_history_without_first_turn_plan(investigation_session):
+    triage = ScriptedChatModel(script=[triage_json(("answer", None)), mixed_policy_triage().model_dump_json()])
+    search = tool_call_message("search_policies", {"query": "missed internal cutoff", "transform": "none"})
+    model = ScriptedChatModel(
+        script=[text_message("I have your dispute number."), search, text_message("Escalate it.")]
+    )
+    ask = investigation_session(model, triage)
+    ask("My dispute is CB-0001.")
+
+    result = ask(MIXED_STATUS_AND_POLICY)
+
+    assert result.answer == "Escalate it."
+    assert result.triage is None
+    assert "My dispute is CB-0001." in seen_by(model, 1)
+    assert MISSING_DISPUTE_ID not in seen_by(model, 1)
 
 
 def test_a_triage_that_fails_does_not_stop_the_investigation(

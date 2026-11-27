@@ -22,7 +22,9 @@ Each dispute has a reason code. `FRD` means fraud, when the cardholder says they
 
 ## Response deadline {#response-deadline}
 
-Evidence must be sent at least one business day before the response deadline of the dispute. The response deadline is the deadline of Acme for the response of the merchant: it shows up in the dispute's deadline field, ten to fourteen days after the dispute is opened, and it is a house rule of Acme and not the deadline of the card network. The window of the card network itself is longer, thirty calendar days for the categories of Visa and the frames of Mastercard (source: the Visa Core Rules and the Mastercard Chargeback Guide, read on 2026-11-25), and it is written down in `docs/policies-of-acme.md`. The Acme Payments internal cutoff is one business day before the response deadline. A response sent after the response deadline loses the dispute automatically, with no review of the merits. For a Monday deadline, the cutoff is the preceding Friday if that Friday is a business day on the settlement currency's calendar. Otherwise, continue backwards to the preceding business day. For example, for a Monday, July 7, 2025 response deadline, the USD cutoff is Thursday, July 3 because July 4 is a US federal holiday. The EUR cutoff is Friday, July 4 because the TARGET calendar is open.
+If the merchant sends the response after the response deadline, the merchant loses the dispute automatically, without a review of the merits. A receipt timestamp alone does not establish when the merchant sent the response. The response deadline is the deadline of Acme for the response of the merchant: it shows up in the dispute's deadline field, ten to fourteen days after the dispute is opened, and it is a house rule of Acme and not the deadline of the card network. The Acme Payments internal cutoff for sending evidence is one business day before the response deadline. The card network has a separate, longer window of thirty calendar days for the categories of Visa and the frames of Mastercard (source: the Visa Core Rules and the Mastercard Chargeback Guide, read on 2026-11-25). See `docs/policies-of-acme.md`.
+
+For a Monday response deadline, the internal cutoff is the preceding Friday if Friday is a business day on the settlement currency's calendar. If Friday is a holiday, go back to the preceding business day. For a Monday, July 7, 2025 response deadline, the USD cutoff is Thursday, July 3 because July 4 is a US federal holiday. The EUR cutoff is Friday, July 4 because the TARGET calendar is open.
 
 ## How to count business days {#business-days}
 
@@ -50,7 +52,7 @@ In a dispute for a duplicate charge, the defense shows that the two charges come
 
 ## Who submits the evidence {#who-submits}
 
-The merchant gathers the evidence and the Acme Payments disputes team checks it and forwards it. The analyst handling the case does not send evidence on their own. They confirm that the dispute is at the right stage, that the internal cutoff has not passed and that the evidence list for the reason code is complete.
+The merchant gathers the evidence and the Acme Payments disputes team checks it and forwards it. The analyst handling the case does not send evidence on their own. Before normal submission they check the stage, internal cutoff and evidence list for the reason code. If the evidence hand-in has closed, escalate to a human analyst. Review time starts at escalation and the human decision is due on the same business day as escalation.
 
 ## Outcome {#outcomes}
 
@@ -66,4 +68,4 @@ A payment with an open dispute is not refunded, because the customer could get p
 
 ## When to escalate {#escalation}
 
-A dispute must be escalated to a human analyst when the response deadline is 2 days away or less, when the internal cutoff has already passed, when the amount exceeds 5,000 or when required evidence is missing. The full criteria are in the escalation and review policy.
+A dispute must be escalated to a human analyst when the response deadline is 2 days away or less, when the internal cutoff has already passed, when the amount exceeds 5,000 or when required evidence is missing. A missed internal cutoff makes the case critical. The human decision is due on the same business day as escalation. The full criteria are in the escalation and review policy.

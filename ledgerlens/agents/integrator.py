@@ -118,7 +118,17 @@ from ledgerlens.config import get_chat_model, get_settings, model_cascade
 from ledgerlens.memory.long_term import CaseMemory
 from ledgerlens.observability.trace import OnEvent, Tracer, langsmith_url, review_reasons, summary_line
 from ledgerlens.run_context import SHIPPED_RUN_BUDGET, RunBudget, RunContext
-from ledgerlens.schemas import Coherence, Evidence, InvestigationResult, PlanStep, ToolCallRecord, Triage, VerdictLabel
+from ledgerlens.schemas import (
+    Coherence,
+    Evidence,
+    Intent,
+    InvestigationResult,
+    PlanStep,
+    ToolCallRecord,
+    ToolName,
+    Triage,
+    VerdictLabel,
+)
 from ledgerlens.tools.envelope import error
 from ledgerlens.tools.fx import FxClient
 from ledgerlens.tools.policies import build_search_policies_tool
@@ -126,6 +136,8 @@ from ledgerlens.tools.policies import build_search_policies_tool
 log = logging.getLogger(__name__)
 
 Verifier = Callable[..., InvestigationResult]
+POLICY_QUESTION: Intent = "policy_question"
+POLICY_TOOL: ToolName = "search_policies"
 
 # The verifier only links a claim to evidence when the SAME sentence cites the id in brackets. With no citation the
 # claim has no support and the case goes to human review, so the model must be told to cite. A real
@@ -155,6 +167,14 @@ POLICY_EVIDENCE_RULE = (
     "For a missed internal cutoff, state the next step the cited policy prescribes. If asked whether late evidence "
     "can still be submitted and the policy only prescribes review, say the cited policy does not establish whether "
     "late evidence can be accepted. Do not infer acceptance, rejection, or an exception from the cutoff alone. "
+    "When the cited policy says so, a missed internal cutoff requires escalation to a human analyst regardless of "
+    "the days left. Apply review timing separately from the duty to escalate. A deadline within two days or "
+    "a missed cutoff alone can make a case critical. If the retrieved passages do not establish the timing for "
+    "critical cases, search for urgency levels and response times. When supported, say the case needs review on "
+    "the same business day from escalation. "
+    "When asked what to tell the disputes team, draft the message itself. Include the days left until the response "
+    "deadline, the internal evidence cutoff, and the evidence still missing. Use known facts and identify any of "
+    "those details that are unknown. "
     "For an exact merchant evidence cutoff date, search the rule and use calculate with previous_business_day, "
     "the response deadline and the settlement currency. Ask for the currency if it is missing. "
     "For policy questions, distinguish an internal cutoff from the final deadline. State what follows if the "
@@ -164,13 +184,22 @@ POLICY_EVIDENCE_RULE = (
     "the interval and its reference deadline. Include consequences only when asked, and quote their triggering "
     "condition from the retrieved passage. If the retrieved passages do not answer the question, say what "
     "you could not establish from those passages. A ranked search does not establish what the entire handbook covers. "
+    "For automatic loss, distinguish when the merchant sent the response from when it was received. "
+    "If the send time is unknown, state the automatic-loss rule conditionally. Explain what follows from late "
+    "sending without ruling out other grounds for loss. For receipt-only facts, answer directly: late arrival "
+    "alone does not establish late sending. If needed, ask for the dispatch timestamp. "
+    "State a sufficient condition as an if-statement. Do not say loss only occurs under that condition. "
+    "For a handoff, describe evidence as missing only when the user or a record identifies it as missing. "
+    "Do not apply a late-send rule to a response that was never sent or infer that human review ends. "
     "Example for a missed evidence cutoff when asked about next steps and automatic loss. Use only parts supported "
     "by the current search and cite the actual retrieved passage IDs in place of the placeholders. "
-    "'If your internal cutoff has passed and the response deadline is within two days, escalate the case to a "
-    "human analyst for a same-day decision [review passage ID]. The retrieved passages do not "
+    "'Missing the internal evidence cutoff alone does not mean the dispute is lost [review passage ID]. "
+    "If your internal cutoff has passed, escalate the case to a human analyst [escalation passage ID]. "
+    "Critical cases need human review on the same business day from escalation [timing passage ID]. "
+    "The retrieved passages do not "
     "establish whether late evidence can still be accepted. If the merchant response is sent after the response "
     "deadline, the dispute is lost automatically [response deadline passage ID]. I need the dispute record to "
-    "verify the case status.'"
+    "verify the case status.' Limit the answer to what the user asked. Never open with an unverified case outcome."
 )
 INTEGRATOR_SYSTEM_PROMPT = DEFAULT_SYSTEM_PROMPT + CITATION_RULE + DATE_RULE + POLICY_EVIDENCE_RULE
 
@@ -503,6 +532,8 @@ def _investigate(
     # The reason of a triage whose retry did not happen: the run answers without a plan and the reader of the
     # result has to know why the plan is missing (ADR-085).
     triage_stop = _stop_reason_of(turn.state.fallbacks[before_triage:])
+    if first_turn:
+        triage = first_turn_triage(triage)
     if (asked := clarification_to_ask(triage, first_turn)) is not None:
         agent.graph.update_state(config, {"messages": [HumanMessage(question), AIMessage(asked)]})
         return clarification_result(question, thread_id, triage, asked)
@@ -859,6 +890,30 @@ def _triage_with_fallback(
         log.warning("triage unreadable (%s), the agent runs without a plan", out.code)
         return None
     return out
+
+
+def first_turn_triage(triage: Triage | None) -> Triage | None:
+    """Keep a policy search runnable when recorded status needs clarification."""
+    if triage is None or triage.intent != POLICY_QUESTION or not triage.needs_clarification:
+        return triage
+    question = triage.clarification_question
+    if not question:
+        return triage
+
+    searches = [step for step in triage.plan if step.tool == POLICY_TOOL and not step.depends_on]
+    if not searches:
+        return triage
+
+    # Other steps may need details the customer has yet to provide.
+    plan = [step.model_copy(update={"id": f"S{index}"}) for index, step in enumerate(searches, start=1)]
+    plan.append(
+        PlanStep(
+            id=f"S{len(plan) + 1}",
+            goal=f"Explain the supported policy, then ask for the missing case details: {question}",
+            depends_on=[step.id for step in plan],
+        )
+    )
+    return triage.model_copy(update={"plan": plan, "needs_clarification": False, "clarification_question": None})
 
 
 def clarification_to_ask(triage: Triage | None, first_turn: bool) -> str | None:

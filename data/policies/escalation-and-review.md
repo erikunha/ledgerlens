@@ -14,7 +14,7 @@ The investigation system helps the analyst, but it does not decide on its own in
 
 ## When to escalate {#when-to-escalate}
 
-Escalate the case to a human analyst when there are claims contradicted by the evidence, when missing data prevents a conclusion, when a dispute deadline is 2 days away or less, or when any amount involved is above 5,000. A single one of these criteria is enough to make human review mandatory.
+Escalate the case to a human analyst when there are claims contradicted by the evidence, when missing data prevents a conclusion, when a dispute deadline is 2 days away or less, or when any amount involved is above 5,000. A missed internal evidence cutoff also requires escalation to a human analyst. Review time starts when the case is escalated. A decision on a missed cutoff is due that same business day. A single one of these criteria is enough to make human review mandatory.
 
 ## Contradicted claims {#contradicted-claims}
 
@@ -26,7 +26,9 @@ Data is missing when a required record, rate or policy was not found. The system
 
 ## Deadline close {#deadline-within-2-days}
 
-A dispute with the response deadline 2 days away or less has critical urgency. If the internal cutoff, which is one business day before the response deadline, has already passed, the case needs a human decision on the same day. The system reports the days left, the internal cutoff and the evidence still missing.
+Escalate a dispute for a human decision when its internal cutoff has passed. The case is critical regardless of how many days remain before the response deadline. The decision is due on the same business day as the escalation. The cutoff is one business day before the response deadline.
+
+A dispute with a response deadline 2 days away or less is also critical. The system reports the days left, the internal cutoff and the evidence still missing.
 
 ## High amounts {#high-amount}
 
@@ -42,11 +44,11 @@ Urgency can be low, normal, high or critical. It is critical when a deadline is 
 
 ## Response times {#response-times}
 
-Critical cases must be seen by a person on the same business day. High urgency cases, within 1 business day. Normal cases, within 3 business days. Low urgency cases can wait in the regular queue. These times count from the moment the case is escalated, not from the moment the customer wrote.
+Critical cases, including disputes that have missed the internal cutoff, must be seen by a person on the same business day. High urgency cases must be seen within 1 business day and normal cases within 3 business days. Low urgency cases can wait in the regular queue. These times count from the moment the case is escalated.
 
 ## What goes with the case {#handoff-contents}
 
-Every escalated case carries the summary of the question, the identifiers involved, the evidence looked up with the source of each item, the verified claims and the result of each check, the missing data and the recommended action. The person who gets the case should not need to redo the whole lookup.
+Review time starts at escalation. Every escalated case carries the summary of the question, the identifiers involved, the evidence looked up with the source of each item, the verified claims and the result of each check, the missing data and the recommended action. The person who gets the case should not need to redo the whole lookup.
 
 ## Human review flag {#human-review-flag}
 

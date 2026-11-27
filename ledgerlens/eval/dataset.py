@@ -263,7 +263,10 @@ def _scenario_cases(scenarios: dict[str, Any], sentences: dict[str, str]) -> lis
                 Line(text=f"CB-0310 deadline {truth['S03']['deadline']}", evidence=["sql:1"]),
                 Line(text=f"CB-0310 stage {truth['S03']['stage']}", evidence=["sql:1"]),
                 Line(text=f"CB-0310 reason_code {truth['S03']['reason_code']}", evidence=["sql:1"]),
-                policy("chargeback-handling#response-deadline"),
+                Line(
+                    text="Evidence must be sent at least one business day before the response deadline of the dispute",
+                    evidence=["policy:chargeback-handling#response-deadline"],
+                ),
             ],
             "facts": [truth["S03"]["deadline"], truth["S03"]["stage"], truth["S03"]["reason_code"]],
         },

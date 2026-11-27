@@ -1,0 +1,632 @@
+{
+  "model": "gpt-4.1",
+  "grading": {
+    "model": "gpt-4.1",
+    "temperature": 0,
+    "blinded": true,
+    "instructions": "Independently grade an answer using the following policies. The question is the actual task. Require an explicit conclusion about loss when asked, and address late evidence when asked; if the policies do not establish acceptance or rejection, the answer must say so. For mixed questions require ID follow-up and policy answer. An explicit statement that missing the cutoff alone does not mean the dispute is lost directly answers whether that cutoff establishes loss. Never require guessing a recorded status. Distinguish receipt and send. Do not accept a conclusion that receipt alone proves loss. Fail unsupported exclusivity (only cause of loss), automatic loss for absence of submission, invented missing documents, and an assertion of recorded status without lookup. A question about who must decide needs a policy answer. Count distinct material factual propositions once per answer and assess factual support. A clarification may be complete with zero factual claims. A case-specific assertion requires case evidence beyond general policy. Complete means fully responsive with all material claims supported. Cite a concrete deficiency in the reason when incomplete. Return JSON with supported and total (integers), complete (boolean), reason (brief English)."
+  },
+  "control": {
+    "original": "Archived responses from 44ef7afd6673529729fb79fdbacf3f421a8878cf.",
+    "diagnostic_and_transfer": "Live responses from 3b106aa4cdf07e0a2dd536385a8ddc3db219d095."
+  },
+  "candidate_configuration": {
+    "revision": "3b106aa4cdf07e0a2dd536385a8ddc3db219d095",
+    "source_sha256": {
+      "ledgerlens/agents/integrator.py": "e70afa360eb7cfa13b4f2f662f2b53a82da263420d5b2358a4ab031d845ea389",
+      "ledgerlens/prompts/templates.py": "7b0e3e167f7cf139cebbf33c5f1f18be3fbf360a4acae493b4f200f8e2cd6dcc",
+      "ledgerlens/chains/triage.py": "b721c3b31be970718a4374f50045539f1bec0c018978c718aa5c0220e7a60779",
+      "ledgerlens/tools/policies.py": "3a1d1f36e54210f723e1ae34edf76f1b269f22b2efa0a3b771a41a363ab7cfb8",
+      "scripts/report_policy_journeys.py": "1e2dfb0a166a595e5d6aaa4138c68d363d28134f3885a123ffef5f5acd4ff236",
+      "ledgerlens/tools/calculator.py": "247ebf4bb70b728c7cd7fbb1d5de1bf5688372c03afad7d398cbc148eb8a1542",
+      "ledgerlens/sim/calendars.py": "17b1659b2e1e4cb6e9be4adcb31e729fab5ee469ea26ab73506095c9a3103fc7",
+      "ledgerlens/verify/checks.py": "a26d2fe0401b3daf8dbffb850348b0277476742a39180c8cc46bd54d14f54859",
+      "ledgerlens/verify/escalation.py": "3b4c7154af8d0aee9f1bc2bbd74cf0b99975f2e2d6b7c464c5bc84c988258f46",
+      "ledgerlens/verify/__init__.py": "47537ec17d3fc896c87f980964499f96f0a77912f2acfb99615886c9a9a05bdd"
+    },
+    "index": {
+      "embedding": "openai:text-embedding-3-small",
+      "dimension": 1536,
+      "chunks": 107,
+      "metric": "l2 on unit vectors",
+      "chunk_size": 800,
+      "chunk_overlap": 100,
+      "built_on": "2026-11-27",
+      "corpus_sha256": "4b3d54aa447f2b70d77ec9e8e7cd5cac74e24615351f46608be6b1b825601bbd",
+      "artifact_sha256": {
+        "index.faiss": "1756c2863d61d20d6477e74aba36cc05572e8eebea7bffb86d7e425249ae5699",
+        "index.pkl": "62c46672537afaefae4e47824e9be8ad432de3f891b831b3fd979ba9d249847b"
+      }
+    },
+    "model": "gpt-4.1",
+    "verifier": "offline_stub",
+    "standard_usd_per_million": {
+      "input": "2",
+      "cached": "0.50",
+      "output": "8",
+      "embedding": "0.02"
+    }
+  },
+  "summary": {
+    "original": {
+      "candidate": {
+        "automatic_complete": 14,
+        "total": 14,
+        "reviewed_complete": 11
+      },
+      "control": {
+        "automatic_complete": 12,
+        "total": 14
+      }
+    },
+    "transfer": {
+      "candidate": {
+        "automatic_complete": 4,
+        "total": 4,
+        "reviewed_complete": 4
+      },
+      "control": {
+        "automatic_complete": 3,
+        "total": 4
+      }
+    },
+    "diagnostic": {
+      "control": {
+        "automatic_complete": 3,
+        "total": 4
+      },
+      "candidate": {
+        "automatic_complete": 4,
+        "total": 4,
+        "reviewed_complete": 4
+      }
+    }
+  },
+  "answers": [
+    {
+      "group": "original",
+      "arm": "candidate",
+      "case": "late-response-control",
+      "question": "The merchant filed the response a day after the dispute response deadline. What outcome does Acme policy specify?",
+      "answer": "If the merchant sends the response after the response deadline, the merchant loses the dispute automatically, without a review of the merits [policy:chargeback-handling#response-deadline]. A receipt timestamp alone does not establish when the merchant sent the response; the actual send time is required to apply this rule [policy:chargeback-handling#response-deadline]. If the response was indeed sent after the deadline, the outcome is automatic loss for the merchant [policy:chargeback-handling#response-deadline].",
+      "supported_claims": 3,
+      "material_claims": 3,
+      "automatic_complete": true,
+      "automatic_reason": "All material factual claims are supported by explicit policy: late submission results in automatic loss, a receipt timestamp alone is insufficient, and if the response was sent after the deadline, the outcome is loss. The answer is fully responsive and cites the correct policy.",
+      "reviewed_complete": true,
+      "review_comment": null
+    },
+    {
+      "group": "original",
+      "arm": "candidate",
+      "case": "acceptance-question",
+      "question": "Our evidence bundle is late but the response is due tomorrow. Does the written policy promise that the reviewer will take our extra documents?",
+      "answer": "The retrieved policy passages do not establish that reviewers are required to accept late merchant evidence simply because the response deadline has not yet passed. The policy states that if the evidence hand-in has closed, the case should be escalated to a human analyst, and review time starts at escalation with a decision due on the same business day as escalation [policy:chargeback-handling#who-submits]. However, the passages do not specify whether the reviewer must accept or can reject late evidence submitted before the final response deadline. Therefore, based on the retrieved policy, it cannot be concluded that the reviewer is obligated to accept your extra documents if they are submitted after the internal cutoff but before the response deadline.",
+      "supported_claims": 4,
+      "material_claims": 4,
+      "automatic_complete": true,
+      "automatic_reason": "The answer correctly identifies that the policies require escalation after the internal cutoff but do not specify that the reviewer must accept late evidence. It explicitly states that the policy does not promise acceptance of late documents, fully addressing the question with all claims supported by the cited policy passages.",
+      "reviewed_complete": true,
+      "review_comment": null
+    },
+    {
+      "group": "transfer",
+      "arm": "candidate",
+      "case": "cutoff-clock",
+      "question": "The evidence hand-in has closed. Who takes the case, and what starts the clock for their review?",
+      "answer": "If the evidence hand-in has closed, the case is escalated to a human analyst [policy:chargeback-handling#who-submits]. The review clock starts at escalation, and the human decision is due on the same business day as escalation [policy:chargeback-handling#who-submits].",
+      "supported_claims": 2,
+      "material_claims": 2,
+      "automatic_complete": true,
+      "automatic_reason": "The answer correctly states that a human analyst takes the case when the evidence hand-in has closed and that review time starts at escalation, with the decision due the same business day. Both claims are directly supported by policy.",
+      "reviewed_complete": true,
+      "review_comment": null
+    },
+    {
+      "group": "diagnostic",
+      "arm": "control",
+      "case": "response-question",
+      "question": "Suppose the response itself reaches Acme the day after the response deadline. What does the dispute policy say happens?",
+      "answer": "If the merchant response arrives after the response deadline, the dispute is lost automatically, with no review of the merits [policy:chargeback-handling#response-deadline, policy:chargeback-handling#response-deadline-2].",
+      "supported_claims": 2,
+      "material_claims": 2,
+      "automatic_complete": true,
+      "automatic_reason": "The answer correctly states that if the response arrives after the response deadline, the dispute is lost automatically and there is no review of the merits, which is directly supported by the policy."
+    },
+    {
+      "group": "transfer",
+      "arm": "control",
+      "case": "cutoff-clock",
+      "question": "The evidence hand-in has closed. Who takes the case, and what starts the clock for their review?",
+      "answer": "When the evidence hand-in (internal cutoff) has closed, the case is escalated to a human analyst for review [policy:escalation-and-review#deadline-within-2-days]. The review clock starts when the case is escalated after the internal cutoff has passed [policy:escalation-and-review#deadline-within-2-days].",
+      "supported_claims": 2,
+      "material_claims": 2,
+      "automatic_complete": true,
+      "automatic_reason": "The answer correctly states that a human analyst takes the case after the evidence hand-in has closed and that the review clock starts at escalation, both supported by the cited policy."
+    },
+    {
+      "group": "original",
+      "arm": "candidate",
+      "case": "cutoff-passed",
+      "question": "Our merchant evidence cutoff passed, but the dispute response deadline is tomorrow. Have we lost? What should we do today?",
+      "answer": "Missing the internal evidence cutoff alone does not mean the dispute is lost [policy:chargeback-handling#response-deadline]. If your internal cutoff has passed, escalate the case to a human analyst [policy:chargeback-handling#who-submits, policy:escalation-and-review#deadline-within-2-days]. Critical cases need human review on the same business day from escalation [policy:escalation-and-review#deadline-within-2-days]. The retrieved passages do not establish whether late evidence can still be accepted. If the merchant response is sent after the response deadline, the dispute is lost automatically [policy:chargeback-handling#response-deadline]. I need the dispute record to verify the case status.",
+      "supported_claims": 6,
+      "material_claims": 6,
+      "automatic_complete": true,
+      "automatic_reason": "All material factual claims are supported: missing the internal cutoff does not alone mean loss; escalation is required; critical cases need same-day review; the policy does not establish if late evidence is accepted; missing the response deadline means automatic loss; and a record is needed to check status. The answer is fully responsive and cites policy for each point.",
+      "reviewed_complete": true,
+      "review_comment": null
+    },
+    {
+      "group": "diagnostic",
+      "arm": "candidate",
+      "case": "mixed-no-id",
+      "question": "Was my dispute marked lost, and what does policy require if the internal evidence cutoff has passed?",
+      "answer": "If the internal evidence cutoff has passed for a dispute, policy requires that the case be escalated to a human analyst for review. This escalation is mandatory even if there are still days left before the response deadline, and the case is considered critical. The human decision is due on the same business day as the escalation [policy:escalation-and-review#deadline-within-2-days, policy:escalation-and-review#when-to-escalate, policy:chargeback-handling#escalation].\n\nI need the dispute (chargeback) ID to check if your dispute was marked lost. Please provide the dispute ID so I can verify the case status.",
+      "supported_claims": 4,
+      "material_claims": 4,
+      "automatic_complete": true,
+      "automatic_reason": "The answer correctly states that missing the internal evidence cutoff requires escalation to a human analyst, that this is mandatory even if the response deadline is not imminent, and that the human decision is due the same business day. It also correctly requests the dispute ID to check if the dispute was marked lost, as policy does not allow guessing the recorded status without lookup. All material claims are supported by policy.",
+      "reviewed_complete": true,
+      "review_comment": null
+    },
+    {
+      "group": "original",
+      "arm": "control",
+      "case": "deadline-paraphrase",
+      "question": "We missed the evidence handoff but still have time to respond. What happens now?",
+      "answer": "If your internal evidence handoff cutoff has passed but the response deadline has not, the case needs a human decision on the same day if the response deadline is within two days [policy:escalation-and-review#deadline-within-2-days]. The internal cutoff is one business day before the response deadline [policy:chargeback-handling#response-deadline]. The retrieved passages do not establish whether late evidence can still be accepted. If the merchant response is sent after the response deadline, the dispute is lost automatically, with no review of the merits [policy:chargeback-handling#response-deadline].",
+      "supported_claims": 4,
+      "material_claims": 4,
+      "automatic_complete": true,
+      "automatic_reason": "The answer correctly states that missing the internal evidence handoff requires escalation to a human analyst, that the internal cutoff is one business day before the response deadline, and that missing the response deadline results in automatic loss. It also correctly notes that the policies do not establish whether late evidence can be accepted after the internal cutoff but before the response deadline. All material claims are supported."
+    },
+    {
+      "group": "transfer",
+      "arm": "control",
+      "case": "status-only",
+      "question": "Can you tell me whether my actual dispute was marked lost in the system? I do not have the ID here.",
+      "answer": "Could you please provide the chargeback or dispute ID so I can check its status for you?",
+      "supported_claims": 0,
+      "material_claims": 0,
+      "automatic_complete": true,
+      "automatic_reason": "The answer is a clarification request and does not make any factual claims, which is appropriate given the lack of an identifier."
+    },
+    {
+      "group": "original",
+      "arm": "control",
+      "case": "cutoff-passed",
+      "question": "Our merchant evidence cutoff passed, but the dispute response deadline is tomorrow. Have we lost? What should we do today?",
+      "answer": "If your internal cutoff has passed and the response deadline is within two days, escalate the case to a human analyst for a same-day decision [policy:escalation-and-review#deadline-within-2-days]. The retrieved passages do not establish whether late evidence can still be accepted. If the merchant response is sent after the response deadline, the dispute is lost automatically [policy:chargeback-handling#response-deadline, policy:chargeback-handling#response-deadline-2]. I need the dispute record to verify the case status.",
+      "supported_claims": 4,
+      "material_claims": 4,
+      "automatic_complete": true,
+      "automatic_reason": "The answer correctly states that a missed internal cutoff and a response deadline within two days require escalation to a human analyst for a same-day decision, per policy. It also accurately notes that the policies do not establish whether late evidence can be accepted, and that loss is automatic only if the response is sent after the response deadline. The need for the dispute record to verify status is appropriate. All material claims are supported."
+    },
+    {
+      "group": "original",
+      "arm": "candidate",
+      "case": "deadline-paraphrase",
+      "question": "We missed the evidence handoff but still have time to respond. What happens now?",
+      "answer": "Missing the internal evidence cutoff does not mean the dispute is lost, but it does require escalation to a human analyst, even if there is still time before the response deadline [policy:escalation-and-review#when-to-escalate, policy:chargeback-handling#escalation]. The case becomes critical and the human decision is due on the same business day as escalation [policy:escalation-and-review#deadline-within-2-days, policy:chargeback-handling#escalation]. The cited policy does not establish whether late evidence can still be accepted. Your next step is to escalate the case to a human analyst for review [policy:escalation-and-review#when-to-escalate, policy:chargeback-handling#who-submits].",
+      "supported_claims": 6,
+      "material_claims": 6,
+      "automatic_complete": true,
+      "automatic_reason": "All material factual claims are supported: missing the internal cutoff does not itself mean loss; escalation is required; the case is critical; the human decision is due same business day; policy does not establish if late evidence is accepted; and escalation is the next step. No unsupported claims or omissions.",
+      "reviewed_complete": true,
+      "review_comment": null
+    },
+    {
+      "group": "original",
+      "arm": "candidate",
+      "case": "cutoff-passed",
+      "question": "Our merchant evidence cutoff passed, but the dispute response deadline is tomorrow. Have we lost? What should we do today?",
+      "answer": "Missing the internal evidence cutoff alone does not mean the dispute is lost [policy:chargeback-handling#response-deadline]. If your internal cutoff has passed, escalate the case to a human analyst [policy:chargeback-handling#who-submits, policy:chargeback-handling#escalation]. Critical cases, including those where the internal cutoff has passed or the response deadline is within two days, need human review on the same business day from escalation [policy:escalation-and-review#deadline-within-2-days, policy:chargeback-handling#escalation]. The retrieved passages do not establish whether late evidence can still be accepted. If the merchant response is sent after the response deadline, the dispute is lost automatically [policy:chargeback-handling#response-deadline]. I need the dispute record to verify the case status.",
+      "supported_claims": 6,
+      "material_claims": 6,
+      "automatic_complete": true,
+      "automatic_reason": "All material factual claims are supported by policy: missing the internal cutoff does not alone mean loss; escalation is required; critical cases must be reviewed same day; the policy does not establish if late evidence is accepted; missing the response deadline means automatic loss; and a record lookup is needed for case status.",
+      "reviewed_complete": true,
+      "review_comment": null
+    },
+    {
+      "group": "transfer",
+      "arm": "control",
+      "case": "arrival-unknown",
+      "question": "The mailbox shows a Friday delivery, the deadline was Thursday, and nobody can locate the outgoing timestamp. Is loss automatic?",
+      "answer": "A response sent after the response deadline loses the dispute automatically, with no review of the merits [policy:chargeback-handling#response-deadline]. The cited policy does not require the outgoing timestamp to establish automatic loss: it is the sending time that matters. If the only evidence is the delivery date, and it is after the deadline, the policy establishes that loss is automatic if the response was sent after the deadline. The absence of an outgoing timestamp does not prevent automatic loss if late sending is established by other means [policy:chargeback-handling#response-deadline]. If you cannot prove the response was sent before the deadline, loss is automatic.",
+      "supported_claims": 4,
+      "material_claims": 5,
+      "automatic_complete": false,
+      "automatic_reason": "The answer incorrectly concludes that loss is automatic if you cannot prove the response was sent before the deadline. Policy requires an explicit conclusion about loss when asked, but also states that a receipt timestamp alone does not establish when the merchant sent the response. The answer fails to address that receipt (mailbox delivery) alone does not prove late sending, and thus does not fully support its conclusion. The deficiency is that it treats absence of proof of timely sending as proof of late sending, which is not supported by policy."
+    },
+    {
+      "group": "transfer",
+      "arm": "candidate",
+      "case": "arrival-unknown",
+      "question": "The mailbox shows a Friday delivery, the deadline was Thursday, and nobody can locate the outgoing timestamp. Is loss automatic?",
+      "answer": "If the merchant sends the response after the response deadline, the merchant loses the dispute automatically, without a review of the merits [policy:chargeback-handling#response-deadline]. A receipt timestamp alone does not establish when the merchant sent the response [policy:chargeback-handling#response-deadline]. If the outgoing timestamp is missing, the policy does not establish when the response was sent, so automatic loss is not established by the receipt timestamp alone [policy:chargeback-handling#response-deadline]. If you can provide the outgoing timestamp, I can check whether the response was sent after the deadline.",
+      "supported_claims": 4,
+      "material_claims": 4,
+      "automatic_complete": true,
+      "automatic_reason": "The answer correctly states that loss is automatic if the response is sent after the deadline, that a receipt timestamp alone does not prove when the response was sent, and that without the outgoing timestamp, automatic loss is not established. It also invites follow-up for more evidence. All claims are supported and the answer is fully responsive.",
+      "reviewed_complete": true,
+      "review_comment": null
+    },
+    {
+      "group": "diagnostic",
+      "arm": "candidate",
+      "case": "timing",
+      "question": "The internal evidence cutoff passed. What review is required and when must it happen?",
+      "answer": "A missed internal evidence cutoff requires escalation to a human analyst [policy:escalation-and-review#when-to-escalate, policy:chargeback-handling#escalation]. The case is considered critical regardless of how many days remain before the response deadline [policy:escalation-and-review#deadline-within-2-days]. The review must happen on the same business day as the escalation [policy:escalation-and-review#when-to-escalate, policy:chargeback-handling#escalation, policy:chargeback-handling#who-submits].",
+      "supported_claims": 3,
+      "material_claims": 3,
+      "automatic_complete": true,
+      "automatic_reason": "All material factual claims are directly supported by the cited policies: escalation is required for a missed internal cutoff, the case is critical regardless of days left, and review is due the same business day.",
+      "reviewed_complete": true,
+      "review_comment": null
+    },
+    {
+      "group": "original",
+      "arm": "candidate",
+      "case": "cutoff-passed",
+      "question": "Our merchant evidence cutoff passed, but the dispute response deadline is tomorrow. Have we lost? What should we do today?",
+      "answer": "Missing the internal evidence cutoff alone does not mean the dispute is lost [policy:chargeback-handling#response-deadline]. If your internal cutoff has passed, escalate the case to a human analyst [policy:chargeback-handling#who-submits, policy:escalation-and-review#deadline-within-2-days, policy:chargeback-handling#escalation]. Critical cases, including those where the internal cutoff has passed or the response deadline is within two days, need human review on the same business day from escalation [policy:escalation-and-review#deadline-within-2-days, policy:chargeback-handling#escalation]. The retrieved passages do not establish whether late evidence can still be accepted. If the merchant response is sent after the response deadline, the dispute is lost automatically [policy:chargeback-handling#response-deadline]. I need the dispute record to verify the case status.",
+      "supported_claims": 7,
+      "material_claims": 7,
+      "automatic_complete": true,
+      "automatic_reason": "All material factual claims are supported by policy: missing the internal cutoff does not alone mean loss; escalation is required; critical cases require same-day human review; the policy does not establish if late evidence is accepted; missing the response deadline means automatic loss; and a record lookup is needed for case status.",
+      "reviewed_complete": true,
+      "review_comment": null
+    },
+    {
+      "group": "original",
+      "arm": "control",
+      "case": "handoff-tuesday",
+      "question": "Our internal deadline for the evidence packet was this morning. The deadline for the merchant response is tomorrow. Does policy already count this as a loss, and who should act today?",
+      "answer": "Policy does not count this as a loss yet. If the internal cutoff has already passed and the response deadline is within two days, the case needs a human decision on the same day [policy:escalation-and-review#deadline-within-2-days]. The merchant response is only lost automatically if it is sent after the response deadline [policy:chargeback-handling#response-deadline, policy:chargeback-handling#response-deadline-2]. The analyst should act today to escalate the case for a same-day decision [policy:escalation-and-review#deadline-within-2-days].",
+      "supported_claims": 5,
+      "material_claims": 5,
+      "automatic_complete": true,
+      "automatic_reason": "The answer correctly states that missing the internal cutoff does not itself establish loss, that loss is automatic only if the response is sent after the response deadline, and that escalation to a human analyst is required today for a same-day decision. It also identifies who should act. All claims are supported by policy."
+    },
+    {
+      "group": "original",
+      "arm": "control",
+      "case": "response-late",
+      "question": "We sent the merchant response after the dispute response deadline. What happens to the dispute?",
+      "answer": "A merchant response sent after the response deadline loses the dispute automatically, with no review of the merits [policy:chargeback-handling#response-deadline, policy:chargeback-handling#response-deadline-2].",
+      "supported_claims": 2,
+      "material_claims": 2,
+      "automatic_complete": true,
+      "automatic_reason": "The answer correctly states that a merchant response sent after the response deadline results in automatic loss of the dispute, with no review of the merits, as required by policy. Both material factual claims are supported by the cited policy."
+    },
+    {
+      "group": "original",
+      "arm": "control",
+      "case": "cutoff-passed",
+      "question": "Our merchant evidence cutoff passed, but the dispute response deadline is tomorrow. Have we lost? What should we do today?",
+      "answer": "If your internal cutoff has passed and the response deadline is within two days, escalate the case to a human analyst for a same-day decision [policy:escalation-and-review#deadline-within-2-days]. The retrieved passages do not establish whether late evidence can still be accepted. If the merchant response is sent after the response deadline, the dispute is lost automatically [policy:chargeback-handling#response-deadline, policy:chargeback-handling#response-deadline-2]. I need the dispute record to verify the case status.",
+      "supported_claims": 4,
+      "material_claims": 4,
+      "automatic_complete": true,
+      "automatic_reason": "The answer correctly states that a missed internal cutoff and a response deadline within two days require escalation to a human analyst for a same-day decision, per policy. It accurately notes that the policies do not establish whether late evidence can be accepted, and that loss is automatic only if the response is sent after the response deadline. It also correctly requests the dispute record for verification. All material claims are supported."
+    },
+    {
+      "group": "original",
+      "arm": "candidate",
+      "case": "cutoff-passed",
+      "question": "Our merchant evidence cutoff passed, but the dispute response deadline is tomorrow. Have we lost? What should we do today?",
+      "answer": "Missing the internal evidence cutoff alone does not mean the dispute is lost [policy:chargeback-handling#response-deadline]. If your internal cutoff has passed, escalate the case to a human analyst [policy:chargeback-handling#who-submits, policy:chargeback-handling#escalation]. Critical cases, including those where the internal cutoff has passed or the response deadline is within two days, need human review on the same business day from escalation [policy:escalation-and-review#deadline-within-2-days, policy:chargeback-handling#escalation]. The retrieved passages do not establish whether late evidence can still be accepted. If the merchant response is sent after the response deadline, the dispute is lost automatically [policy:chargeback-handling#response-deadline]. I need the dispute record to verify the case status.",
+      "supported_claims": 6,
+      "material_claims": 6,
+      "automatic_complete": true,
+      "automatic_reason": "All material factual claims are supported by policy: missing the internal cutoff does not alone mean loss; escalation is required; critical cases must be reviewed same day; the policy does not establish if late evidence is accepted; missing the response deadline means automatic loss; and a record lookup is needed for case status.",
+      "reviewed_complete": true,
+      "review_comment": null
+    },
+    {
+      "group": "original",
+      "arm": "control",
+      "case": "acceptance-question",
+      "question": "Our evidence bundle is late but the response is due tomorrow. Does the written policy promise that the reviewer will take our extra documents?",
+      "answer": "The retrieved policy passages do not establish that reviewers are required to accept extra evidence submitted after the internal evidence cutoff but before the response deadline. The policy states that if the internal cutoff has passed and the response deadline is within two days, the case needs a human decision on the same day, but it does not specify whether late evidence must be accepted by the reviewer [policy:escalation-and-review#deadline-within-2-days]. The passages also clarify that evidence must be sent at least one business day before the response deadline, and a response sent after the response deadline loses the dispute automatically, with no review of the merits [policy:chargeback-handling#response-deadline, policy:chargeback-handling#response-deadline-2]. There is no explicit promise in the cited policy that the reviewer will take extra documents submitted after the internal cutoff.",
+      "supported_claims": 5,
+      "material_claims": 5,
+      "automatic_complete": true,
+      "automatic_reason": "The answer correctly states that the policies do not explicitly promise that reviewers will accept extra evidence submitted after the internal cutoff but before the response deadline. It cites the relevant escalation and deadline rules, distinguishes between the internal cutoff and the response deadline, and notes the absence of an explicit policy promise. All material factual claims are supported by the cited policy passages."
+    },
+    {
+      "group": "diagnostic",
+      "arm": "control",
+      "case": "handoff-tuesday",
+      "question": "Our internal deadline for the evidence packet was this morning. The deadline for the merchant response is tomorrow. Does policy already count this as a loss, and who should act today?",
+      "answer": "Missing the internal evidence packet deadline alone does not mean the dispute is lost [policy:escalation-and-review#deadline-within-2-days, policy:chargeback-handling#response-deadline]. If your internal cutoff has passed and the response deadline is within two days, the case needs a human decision on the same day [policy:escalation-and-review#deadline-within-2-days]. The retrieved passages do not establish whether late evidence can still be accepted. If the merchant response is sent after the response deadline, the dispute is lost automatically [policy:chargeback-handling#response-deadline].",
+      "supported_claims": 5,
+      "material_claims": 5,
+      "automatic_complete": true,
+      "automatic_reason": "The answer correctly states that missing the internal cutoff alone does not mean the dispute is lost, cites the need for human review today, and distinguishes the internal cutoff from the response deadline. It also notes that loss is automatic only if the response deadline is missed, and that the policy does not establish whether late evidence can be accepted. All material claims are supported by the cited policies."
+    },
+    {
+      "group": "transfer",
+      "arm": "candidate",
+      "case": "two-requests",
+      "question": "Can you look up the status of my dispute? Also, what does the policy require after the evidence handoff deadline?",
+      "answer": "After the evidence handoff (internal evidence cutoff) deadline, the policy requires that the case be escalated to a human analyst for review. This escalation is mandatory even if only one of the criteria is met, such as missing the internal evidence cutoff. Once escalated, the human decision is due on the same business day as the escalation. The case is considered critical regardless of how many days remain before the response deadline [policy:escalation-and-review#when-to-escalate, policy:escalation-and-review#deadline-within-2-days, policy:chargeback-handling#who-submits].\n\nTo look up the status of your dispute, could you provide the dispute or chargeback ID (e.g., CB-0000) so I can look up the status for you?",
+      "supported_claims": 5,
+      "material_claims": 5,
+      "automatic_complete": true,
+      "automatic_reason": "All material factual claims are supported: (1) escalation is required after the internal cutoff, (2) a single criterion is enough for escalation, (3) human decision is due same business day, (4) case is critical regardless of days left, (5) a follow-up for the dispute ID is requested for the lookup. The answer is fully responsive to both the policy and follow-up requirements.",
+      "reviewed_complete": true,
+      "review_comment": null
+    },
+    {
+      "group": "original",
+      "arm": "control",
+      "case": "late-response-control",
+      "question": "The merchant filed the response a day after the dispute response deadline. What outcome does Acme policy specify?",
+      "answer": "A response sent after the response deadline loses the dispute automatically, with no review of the merits [policy:chargeback-handling#response-deadline, policy:chargeback-handling#response-deadline-2].",
+      "supported_claims": 2,
+      "material_claims": 2,
+      "automatic_complete": true,
+      "automatic_reason": "The answer correctly states that a response sent after the response deadline results in automatic loss without review, as specified in the cited policy section. All material factual claims are supported."
+    },
+    {
+      "group": "original",
+      "arm": "control",
+      "case": "packet-yesterday",
+      "question": "The evidence packet was due yesterday and the merchant response is due today. Is there still a decision for someone to make?",
+      "answer": "Can you provide a specific case or identifier (such as a chargeback or transaction ID) so we can check if a decision is still pending for your situation?",
+      "supported_claims": 0,
+      "material_claims": 1,
+      "automatic_complete": true,
+      "automatic_reason": "The answer correctly requests a case identifier for a mixed (case-specific) question, as required by policy. No unsupported factual claims are made."
+    },
+    {
+      "group": "original",
+      "arm": "control",
+      "case": "cutoff-passed",
+      "question": "Our merchant evidence cutoff passed, but the dispute response deadline is tomorrow. Have we lost? What should we do today?",
+      "answer": "If your internal cutoff has passed and the response deadline is within two days, escalate the case to a human analyst for a same-day decision [policy:escalation-and-review#deadline-within-2-days]. The retrieved passages do not establish whether late evidence can still be accepted. If the merchant response is sent after the response deadline, the dispute is lost automatically [policy:chargeback-handling#response-deadline, policy:chargeback-handling#response-deadline-2]. I need the dispute record to verify the case status.",
+      "supported_claims": 4,
+      "material_claims": 5,
+      "automatic_complete": false,
+      "automatic_reason": "The answer correctly states that escalation is required when the internal cutoff has passed and the response deadline is within two days, and that a same-day decision is due. It also correctly notes that sending a response after the response deadline results in automatic loss. However, the answer does not explicitly state whether the merchant has already lost solely due to missing the internal cutoff, which is required by the question. The answer also does not make an explicit conclusion about loss as required. The statement about needing the dispute record is correct for verification, but the answer is incomplete because it does not directly answer whether missing the internal cutoff alone means the dispute is lost."
+    },
+    {
+      "group": "original",
+      "arm": "candidate",
+      "case": "cutoff-passed",
+      "question": "Our merchant evidence cutoff passed, but the dispute response deadline is tomorrow. Have we lost? What should we do today?",
+      "answer": "Missing the internal evidence cutoff alone does not mean the dispute is lost [policy:escalation-and-review#when-to-escalate, policy:chargeback-handling#response-deadline]. If your internal cutoff has passed, escalate the case to a human analyst [policy:chargeback-handling#who-submits, policy:chargeback-handling#escalation, policy:escalation-and-review#when-to-escalate]. Critical cases, including those where the internal cutoff is missed or the response deadline is within two days, need human review on the same business day from escalation [policy:escalation-and-review#deadline-within-2-days, policy:chargeback-handling#escalation]. The retrieved passages do not establish whether late evidence can still be accepted. If the merchant response is sent after the response deadline, the dispute is lost automatically [policy:chargeback-handling#response-deadline]. I need the dispute record to verify the case status.",
+      "supported_claims": 6,
+      "material_claims": 6,
+      "automatic_complete": true,
+      "automatic_reason": "All material factual claims are supported: missing the internal cutoff does not alone mean loss; escalation is required; critical cases require same-day review; the policy does not establish if late evidence is accepted; missing the response deadline means automatic loss; and the need for the dispute record to verify status is correct. The answer is fully responsive and cites policy.",
+      "reviewed_complete": true,
+      "review_comment": null
+    },
+    {
+      "group": "original",
+      "arm": "control",
+      "case": "outcome-question",
+      "question": "Does missing the evidence handoff, by itself, tell us the dispute outcome? There are two days until the response is due.",
+      "answer": "Missing the evidence handoff, by itself, does not determine the dispute outcome when there are still two days until the response deadline. If the internal cutoff has passed and the response deadline is within two days, the case must be escalated to a human analyst for a same-day decision [policy:escalation-and-review#deadline-within-2-days, policy:chargeback-handling#escalation]. The retrieved passages do not establish whether late evidence can still be accepted. The dispute is lost automatically only if the merchant response is sent after the response deadline, not merely for missing the evidence handoff [policy:chargeback-handling#response-deadline, policy:chargeback-handling#response-deadline-2].",
+      "supported_claims": 5,
+      "material_claims": 5,
+      "automatic_complete": true,
+      "automatic_reason": "The answer correctly states that missing the evidence handoff alone does not determine the dispute outcome, cites the need for escalation when the internal cutoff is missed and the deadline is close, and accurately distinguishes between missing the handoff and missing the response deadline. All material factual claims are supported by the cited policies."
+    },
+    {
+      "group": "original",
+      "arm": "control",
+      "case": "response-question",
+      "question": "Suppose the response itself reaches Acme the day after the response deadline. What does the dispute policy say happens?",
+      "answer": "A response sent after the response deadline loses the dispute automatically, with no review of the merits [policy:chargeback-handling#response-deadline, policy:chargeback-handling#response-deadline-2].",
+      "supported_claims": 1,
+      "material_claims": 1,
+      "automatic_complete": true,
+      "automatic_reason": "The answer correctly states that a response sent after the response deadline results in automatic loss without review of the merits, as required by the policy. It does not make any unsupported claims and directly cites the relevant policy."
+    },
+    {
+      "group": "diagnostic",
+      "arm": "candidate",
+      "case": "handoff-tuesday",
+      "question": "Our internal deadline for the evidence packet was this morning. The deadline for the merchant response is tomorrow. Does policy already count this as a loss, and who should act today?",
+      "answer": "Missing the internal evidence packet deadline does not count as an automatic loss according to policy. Instead, it requires the case to be escalated to a human analyst for review, and this review must happen on the same business day as the escalation [policy:escalation-and-review#when-to-escalate, policy:chargeback-handling#escalation, policy:escalation-and-review#deadline-within-2-days]. The case is considered critical regardless of how many days remain before the response deadline, and the disputes team should act today by escalating the case for human review [policy:escalation-and-review#deadline-within-2-days].",
+      "supported_claims": 5,
+      "material_claims": 5,
+      "automatic_complete": true,
+      "automatic_reason": "The answer correctly states that missing the internal evidence deadline does not itself count as an automatic loss, but requires escalation to a human analyst for same-day review. It also correctly identifies who should act (the disputes team should escalate today). All material factual claims are supported by the cited policies.",
+      "reviewed_complete": true,
+      "review_comment": null
+    },
+    {
+      "group": "transfer",
+      "arm": "candidate",
+      "case": "status-only",
+      "question": "Can you tell me whether my actual dispute was marked lost in the system? I do not have the ID here.",
+      "answer": "Could you please provide the chargeback or dispute ID so I can check its status for you?",
+      "supported_claims": 0,
+      "material_claims": 0,
+      "automatic_complete": true,
+      "automatic_reason": "The answer is a clarification request and makes no factual claims, which is allowed. It correctly asks for the dispute ID to look up the status, as required by policy.",
+      "reviewed_complete": true,
+      "review_comment": null
+    },
+    {
+      "group": "diagnostic",
+      "arm": "control",
+      "case": "timing",
+      "question": "The internal evidence cutoff passed. What review is required and when must it happen?",
+      "answer": "When the internal evidence cutoff has passed, the case must be escalated to a human analyst for review [policy:chargeback-handling#escalation, policy:escalation-and-review#when-to-escalate]. If the response deadline is 2 days away or less, the case is considered critical and requires a human decision on the same business day from escalation [policy:escalation-and-review#deadline-within-2-days]. After the review, the decision and its reasoning must be recorded with the case [policy:escalation-and-review#after-review].",
+      "supported_claims": 4,
+      "material_claims": 4,
+      "automatic_complete": true,
+      "automatic_reason": "All material factual claims are supported: escalation is required when the internal cutoff is missed, review must be by a human analyst, the decision is due the same business day, and the decision and reasoning must be recorded. The answer is fully responsive and cites the relevant policies."
+    },
+    {
+      "group": "transfer",
+      "arm": "control",
+      "case": "two-requests",
+      "question": "Can you look up the status of my dispute? Also, what does the policy require after the evidence handoff deadline?",
+      "answer": "After the evidence handoff deadline (the internal cutoff, which is one business day before the response deadline), the case needs a human decision on the same day if the response deadline is two days away or less, making it a case of critical urgency [policy:escalation-and-review#deadline-within-2-days]. The system will report the days left, the internal cutoff, and any evidence still missing [policy:escalation-and-review#deadline-within-2-days].\n\nA response sent after the response deadline results in an automatic loss of the dispute, with no review of the merits [policy:chargeback-handling#response-deadline, policy:chargeback-handling#response-deadline-2].\n\nTo look up the status of your dispute, I need the dispute identifier. Please provide the dispute ID.",
+      "supported_claims": 5,
+      "material_claims": 5,
+      "automatic_complete": true,
+      "automatic_reason": "The answer correctly explains the policy requirements after the evidence handoff deadline, including escalation and automatic loss after the response deadline, and requests the dispute ID for a lookup, as required for a mixed question. All material claims are supported."
+    },
+    {
+      "group": "diagnostic",
+      "arm": "control",
+      "case": "mixed-no-id",
+      "question": "Was my dispute marked lost, and what does policy require if the internal evidence cutoff has passed?",
+      "answer": "Please provide the dispute (chargeback) ID so I can check if your dispute was marked lost.",
+      "supported_claims": 0,
+      "material_claims": 2,
+      "automatic_complete": false,
+      "automatic_reason": "The answer does not address whether the dispute was marked lost, nor does it state what policy requires if the internal evidence cutoff has passed. It only requests an ID, which is not a policy answer and does not provide any supported factual claims."
+    },
+    {
+      "group": "original",
+      "arm": "control",
+      "case": "open-question",
+      "question": "Policy question: our evidence hand-in time passed an hour ago. The dispute response is due tomorrow. What should the merchant tell the disputes team?",
+      "answer": "If your internal cutoff has passed and the response deadline is within two days, escalate the case to a human analyst for a same-day decision [policy:escalation-and-review#deadline-within-2-days]. The retrieved passages do not establish whether late evidence can still be accepted. If the merchant response is sent after the response deadline, the dispute is lost automatically [policy:chargeback-handling#response-deadline].",
+      "supported_claims": 3,
+      "material_claims": 3,
+      "automatic_complete": true,
+      "automatic_reason": "The answer correctly states that escalation is required after the internal cutoff passes and the response deadline is close, cites the need for a same-day human decision, and notes that the policies do not establish whether late evidence can be accepted. All material claims are supported by the cited policies."
+    },
+    {
+      "group": "original",
+      "arm": "candidate",
+      "case": "outcome-question",
+      "question": "Does missing the evidence handoff, by itself, tell us the dispute outcome? There are two days until the response is due.",
+      "answer": "Missing the internal evidence handoff by itself does not determine the dispute outcome. The policy states that if the evidence hand-in has closed, the case must be escalated to a human analyst, and review time starts at escalation with a decision due on the same business day as escalation [policy:chargeback-handling#who-submits]. The dispute is lost automatically only if the merchant sends the response after the response deadline, not merely for missing the internal evidence cutoff [policy:chargeback-handling#response-deadline]. There are still two days until the response deadline, so missing the internal handoff alone does not mean the dispute is lost.",
+      "supported_claims": 4,
+      "material_claims": 4,
+      "automatic_complete": true,
+      "automatic_reason": "The answer correctly states that missing the internal evidence handoff does not by itself determine the dispute outcome, cites the need for escalation, distinguishes the internal cutoff from the response deadline, and explicitly concludes that missing the cutoff alone does not mean the dispute is lost. All material claims are supported by policy.",
+      "reviewed_complete": false,
+      "review_comment": "Treats late sending as the only possible cause of automatic loss."
+    },
+    {
+      "group": "original",
+      "arm": "control",
+      "case": "cutoff-passed",
+      "question": "Our merchant evidence cutoff passed, but the dispute response deadline is tomorrow. Have we lost? What should we do today?",
+      "answer": "If your internal cutoff has passed and the response deadline is within two days, escalate the case to a human analyst for a same-day decision [policy:escalation-and-review#deadline-within-2-days]. The retrieved passages do not establish whether late evidence can still be accepted. If the merchant response is sent after the response deadline, the dispute is lost automatically [policy:chargeback-handling#response-deadline, policy:chargeback-handling#response-deadline-2]. I need the dispute record to verify the case status.",
+      "supported_claims": 4,
+      "material_claims": 5,
+      "automatic_complete": false,
+      "automatic_reason": "The answer correctly states that escalation is required when the internal cutoff has passed and the deadline is within two days, and that loss is automatic if the response is sent after the response deadline. It also correctly notes that the retrieved passages do not establish whether late evidence can be accepted. However, the answer fails to make an explicit conclusion about whether the merchant has already lost due to missing the internal cutoff, as required by the question. The answer should explicitly state that missing the internal cutoff alone does not mean the dispute is lost, per policy."
+    },
+    {
+      "group": "original",
+      "arm": "control",
+      "case": "cutoff-passed",
+      "question": "Our merchant evidence cutoff passed, but the dispute response deadline is tomorrow. Have we lost? What should we do today?",
+      "answer": "If your internal cutoff has passed and the response deadline is within two days, escalate the case to a human analyst for a same-day decision [policy:escalation-and-review#deadline-within-2-days]. The retrieved passages do not establish whether late evidence can still be accepted. If the merchant response is sent after the response deadline, the dispute is lost automatically [policy:chargeback-handling#response-deadline, policy:chargeback-handling#response-deadline-2]. I need the dispute record to verify the case status.",
+      "supported_claims": 4,
+      "material_claims": 4,
+      "automatic_complete": true,
+      "automatic_reason": "The answer correctly states that a missed internal cutoff and a response deadline within two days require escalation to a human analyst for a same-day decision, per policy. It also accurately notes that the policies do not establish whether late evidence can be accepted and that missing the response deadline results in automatic loss. The request for the dispute record to verify status is appropriate. All material factual claims are supported."
+    },
+    {
+      "group": "diagnostic",
+      "arm": "candidate",
+      "case": "response-question",
+      "question": "Suppose the response itself reaches Acme the day after the response deadline. What does the dispute policy say happens?",
+      "answer": "If the merchant sends the response after the response deadline, the merchant loses the dispute automatically, without a review of the merits [policy:chargeback-handling#response-deadline]. A receipt timestamp alone does not establish when the merchant sent the response [policy:chargeback-handling#response-deadline]. If the response itself reaches Acme the day after the response deadline, and it was also sent after the deadline, the dispute is lost automatically according to the policy [policy:chargeback-handling#response-deadline].",
+      "supported_claims": 3,
+      "material_claims": 3,
+      "automatic_complete": true,
+      "automatic_reason": "All material factual claims are supported by the cited policy: sending the response after the deadline results in automatic loss, and a receipt timestamp alone does not prove when it was sent. The answer explicitly concludes that if the response reaches Acme after the deadline and was sent late, the dispute is lost automatically, which matches the policy.",
+      "reviewed_complete": true,
+      "review_comment": null
+    },
+    {
+      "group": "original",
+      "arm": "candidate",
+      "case": "handoff-tuesday",
+      "question": "Our internal deadline for the evidence packet was this morning. The deadline for the merchant response is tomorrow. Does policy already count this as a loss, and who should act today?",
+      "answer": "Missing the internal evidence packet deadline does not mean the dispute is already lost. Policy requires that the case be escalated to a human analyst as soon as the internal cutoff is missed, regardless of how many days remain before the response deadline. The case is considered critical and a human decision is due on the same business day as escalation [policy:escalation-and-review#when-to-escalate, policy:chargeback-handling#escalation, policy:escalation-and-review#deadline-within-2-days].\n\nAutomatic loss only occurs if the merchant sends the response after the response deadline, not simply for missing the internal cutoff [policy:chargeback-handling#response-deadline].\n\nToday, the disputes team must escalate the case to a human analyst for same-day review, since the internal evidence packet deadline has passed and the response deadline is tomorrow [policy:escalation-and-review#when-to-escalate, policy:escalation-and-review#deadline-within-2-days].",
+      "supported_claims": 6,
+      "material_claims": 6,
+      "automatic_complete": true,
+      "automatic_reason": "The answer correctly states that missing the internal cutoff does not itself mean the dispute is lost, distinguishes the internal cutoff from the response deadline, explains that escalation to a human analyst is required, and identifies who must act and when. All material factual claims are supported by policy references.",
+      "reviewed_complete": false,
+      "review_comment": "Treats late sending as the only possible cause of automatic loss."
+    },
+    {
+      "group": "original",
+      "arm": "candidate",
+      "case": "packet-yesterday",
+      "question": "The evidence packet was due yesterday and the merchant response is due today. Is there still a decision for someone to make?",
+      "answer": "After the internal evidence cutoff has passed, the case must be escalated to a human analyst for review, and a decision is still pending at that point. The human decision is due on the same business day as the escalation [policy:chargeback-handling#who-submits, policy:escalation-and-review#deadline-within-2-days].\n\nIf the merchant sends the response after the response deadline, the merchant loses the dispute automatically, without a review of the merits. However, as long as the response deadline has not yet passed, a decision is still pending [policy:chargeback-handling#response-deadline].\n\nTherefore, since the evidence packet was due yesterday (internal cutoff passed) and the merchant response is due today (response deadline not yet passed), there is still a decision for someone to make, specifically a human analyst must review and decide the case today [policy:chargeback-handling#who-submits, policy:escalation-and-review#deadline-within-2-days].",
+      "supported_claims": 5,
+      "material_claims": 5,
+      "automatic_complete": true,
+      "automatic_reason": "All material factual claims are supported: (1) escalation is required after the internal cutoff passes, (2) a human decision is due the same business day, (3) automatic loss only after the response deadline, (4) the response deadline is today so loss is not yet automatic, (5) a decision is still pending and must be made by a human analyst. The answer cites the correct policies and is fully responsive.",
+      "reviewed_complete": false,
+      "review_comment": "States that a decision is pending without checking whether a reviewer has already decided."
+    },
+    {
+      "group": "original",
+      "arm": "candidate",
+      "case": "open-question",
+      "question": "Policy question: our evidence hand-in time passed an hour ago. The dispute response is due tomorrow. What should the merchant tell the disputes team?",
+      "answer": "The merchant should tell the disputes team that the internal evidence hand-in time has passed, but the dispute response deadline is tomorrow. Missing the internal evidence cutoff alone does not mean the dispute is lost [policy:chargeback-handling#response-deadline]. The policy requires escalation to a human analyst when the internal cutoff has passed, regardless of how many days remain before the response deadline [policy:chargeback-handling#who-submits, policy:escalation-and-review#deadline-within-2-days, policy:chargeback-handling#escalation]. Critical cases like this need human review on the same business day from escalation [policy:escalation-and-review#deadline-within-2-days, policy:chargeback-handling#escalation].\n\nThe message to the disputes team should include:\n- The number of days left until the response deadline (1 day)\n- That the internal evidence cutoff has passed (an hour ago)\n- Any evidence that is still missing (if known)\n\nThe retrieved policy does not establish whether late evidence can still be accepted. If the merchant sends the response after the response deadline, the dispute is lost automatically [policy:chargeback-handling#response-deadline].",
+      "supported_claims": 8,
+      "material_claims": 8,
+      "automatic_complete": true,
+      "automatic_reason": "All material factual claims are supported by the cited policies: the internal cutoff has passed, escalation is required, missing the cutoff alone does not mean the dispute is lost, the response deadline is tomorrow, and the message to the disputes team should include the required details. The answer correctly notes that the policy does not establish whether late evidence can be accepted, and that missing the response deadline results in automatic loss.",
+      "reviewed_complete": true,
+      "review_comment": null
+    },
+    {
+      "group": "original",
+      "arm": "candidate",
+      "case": "response-question",
+      "question": "Suppose the response itself reaches Acme the day after the response deadline. What does the dispute policy say happens?",
+      "answer": "If the merchant sends the response after the response deadline, the merchant loses the dispute automatically, without a review of the merits [policy:chargeback-handling#response-deadline]. A receipt timestamp alone does not establish when the merchant sent the response [policy:chargeback-handling#response-deadline]. If the response itself reaches Acme the day after the response deadline, and it was also sent after the deadline, the policy states the dispute is lost automatically [policy:chargeback-handling#response-deadline].",
+      "supported_claims": 3,
+      "material_claims": 3,
+      "automatic_complete": true,
+      "automatic_reason": "All material factual claims are directly supported by the cited policy: late submission results in automatic loss, and receipt timestamp alone does not prove when sent. The answer explicitly concludes loss per policy.",
+      "reviewed_complete": true,
+      "review_comment": null
+    },
+    {
+      "group": "original",
+      "arm": "candidate",
+      "case": "response-late",
+      "question": "We sent the merchant response after the dispute response deadline. What happens to the dispute?",
+      "answer": "If the merchant sends the response after the response deadline, the merchant loses the dispute automatically, without a review of the merits [policy:chargeback-handling#response-deadline]. This rule applies to the time the response was sent, not just when it was received. A receipt timestamp alone does not establish when the merchant sent the response [policy:chargeback-handling#response-deadline]. If the merchant response is sent after the response deadline, the dispute is lost automatically.",
+      "supported_claims": 4,
+      "material_claims": 4,
+      "automatic_complete": true,
+      "automatic_reason": "All material factual claims are supported by the cited policy: sending the response after the response deadline results in automatic loss, the rule applies to the send time, and receipt timestamp alone does not establish send time. The answer explicitly concludes loss as required.",
+      "reviewed_complete": true,
+      "review_comment": null
+    }
+  ],
+  "late_send_positive_control": {
+    "question": "The merchant sent the response the day after the response deadline. What does policy require?",
+    "answer": "If the merchant sends the response after the response deadline, the merchant loses the dispute automatically, without a review of the merits [policy:chargeback-handling#response-deadline]. A receipt timestamp alone does not establish when the merchant sent the response; the actual send time is required to determine if the response was late [policy:chargeback-handling#response-deadline].",
+    "status": "answered",
+    "policy_citations": [
+      {
+        "id": "policy:chargeback-handling#response-deadline",
+        "passage": "Response deadline\nIf the merchant sends the response after the response deadline, the merchant loses the dispute automatically, without a review of the merits. A receipt timestamp alone does not establish when the merchant sent the response. The response deadline is the deadline of Acme for the response of the merchant: it shows up in the dispute's deadline field, ten to fourteen days after the dispute is opened, and it is a house rule of Acme and not the deadline of the card network. The Acme Payments internal cutoff for sending evidence is one business day before the response deadline. The card network has a separate, longer window of thirty calendar days for the categories of Visa and the frames of Mastercard (source: the Visa Core Rules and the Mastercard Chargeback Guide, read on 2026-11-25). See"
+      }
+    ]
+  },
+  "review_notes": {
+    "method": "The engineering review checked all 22 final candidate answers against the questions and source policies. Control counts and claim counts are raw model grades. The reviewer knew which answers were candidate outputs.",
+    "control_grader_error": "The model accepted the archived packet-yesterday ID-only answer and the diagnostic response-question that treated receipt as sending. It also assigned different grades to identical original cutoff-passed control answers.",
+    "transfer": "These prompts were written before the fixes. Their observed outcomes informed further changes, so they are regression checks rather than an untouched holdout.",
+    "positive_control": "The additional late-send example was collected before the final prompt and index refinements."
+  }
+}

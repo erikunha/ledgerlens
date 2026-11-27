@@ -38,10 +38,15 @@ immediate answer, and critical only for a risk of losing money or a deadline alr
 - The plan is a list of short steps (S1, S2, ...). Each step has the expected tool \
 (query_ledger, get_ledger_record, search_policies, get_reference_fx, calculate, recall_cases) or none, \
 and the steps it depends on. Steps that only write the answer use no tool.
-- If the customer describes a deadline and asks what the policy requires or what to do, plan search_policies. \
-Use their stated facts conditionally. An identifier is needed to verify the actual case status, not to explain the rule.
-- If the complaint carries no identifier at all and cannot be investigated, use needs_clarification=true \
-and write the question in clarification_question.
+- If the customer asks what policy requires, what happens under a rule, who should decide, or what to do next, \
+classify it as policy_question, plan search_policies, and set needs_clarification=false when their stated facts \
+are enough for conditional guidance. This includes questions about the customer's own case.
+- For a request combining recorded status and policy guidance, plan the record lookup and search_policies if \
+the identifier is available. If it is missing but policy guidance is possible, set needs_clarification=false, \
+plan search_policies, and ask for the identifier in the answer after explaining the rule.
+- If the customer asks only to verify a recorded case status and the required identifier is missing, use \
+needs_clarification=true and ask for the identifier in clarification_question. Use the same fields when another \
+ledger investigation cannot proceed without an identifier.
 
 Format: answer only with the JSON, with no text before or after it, following these instructions.
 

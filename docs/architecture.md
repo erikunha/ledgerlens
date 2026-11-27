@@ -160,7 +160,7 @@ Planning rules:
 
 1. Triage produces the plan as part of the `Triage` object (the `plan` field, a list of `PlanStep`). The plan goes into the agent's context.
 2. The agent runs the ReAct loop. If an observation invalidates a step (a currency with no quote, a missing row), it records the deviation and revises the plan instead of following it blindly.
-3. A request with no identifier at all (for example, "the money did not arrive") produces `needs_clarification` and a question back, with no tool calls. A request with an identifier that matches two transactions (scenario S05) shows the ambiguity only after the ledger query: triage plans the query and the agent asks afterward.
+3. A lookup that requires a missing identifier (for example, "the money did not arrive") produces `needs_clarification` and a question back, with no tool calls. If a first-turn mixed request also has an independent policy search, the investigator answers the policy question and asks for the identifier needed for the lookup. A request with an identifier that matches two transactions (scenario S05) shows the ambiguity only after the ledger query: triage plans the query and the agent asks afterward.
 4. Steps S2 and S3 do not depend on each other and can run in parallel (a parallel chain).
 5. The plan is an intention, not a proof. The evaluation compares the tools actually called (the trajectory) with the expected ones.
 
@@ -186,20 +186,20 @@ sequenceDiagram
   participant V as Verifier
   participant C as Case memory
   A->>S: "Why was the BRL refund for TX-2048 lower?"
-  S->>T: question + history
+  S->>T: current question
   T-->>G: Triage (refund_discrepancy, TX-2048, 5-step plan)
   G->>L: recall_cases(M-17)
   L-->>G: CASE-0001 (markup of about 2.5%)
   G->>L: query_ledger(TX-2048, its refunds and the plan of the merchant)
-  L-->>G: rows (EUR 100.00; BRL 549.31; rate 5.4931; plan markup)
+  L-->>G: rows (EUR 100.00, BRL 549.31, rate 5.4931, plan markup)
   G->>L: search_policies(cross-currency refund)
   L-->>G: policy passages
   G->>L: get_reference_fx(EUR, BRL, 2026-10-20)
   L-->>G: 5.6339 (ECB, date 2026-10-20)
   G->>L: calculate(fx_markup_check, plan markup)
-  L-->>G: gap 17.48 = 3.40 market + 14.08 markup; limit 3.00; within the limit
+  L-->>G: gap 17.48 = 3.40 market + 14.08 markup, limit 3.00, within the limit
   G-->>V: answer + evidence
-  V->>V: NLI on text claims; numbers through calculate; coherence
+  V->>V: NLI on text claims, numbers through calculate, coherence
   V-->>S: InvestigationResult with verdicts
   S-->>A: answer, tools used, verdicts
   V->>C: write the case (only if everything is supported)
