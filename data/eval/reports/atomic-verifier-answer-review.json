@@ -1,0 +1,286 @@
+{
+  "comparison_sha256": "7ff95bdb59ed8678dd71abb7d390ae77a875719590e47c74778ee51cdd399fce",
+  "method": "One independent automated reviewer graded 48 shuffled answers without arm identifiers. A complete answer states every required fact and has no materially unsupported assertion or incorrect verdict. Equivalent wording is accepted. No human adjudication.",
+  "complete": {
+    "baseline": 22,
+    "candidate": 21
+  },
+  "cases": [
+    {
+      "id": "AV-01A",
+      "baseline": {
+        "missing": [],
+        "unsupported": []
+      },
+      "candidate": {
+        "missing": [],
+        "unsupported": []
+      }
+    },
+    {
+      "id": "AV-01B",
+      "baseline": {
+        "missing": [],
+        "unsupported": []
+      },
+      "candidate": {
+        "missing": [],
+        "unsupported": []
+      }
+    },
+    {
+      "id": "AV-02A",
+      "candidate": {
+        "missing": [],
+        "unsupported": []
+      },
+      "baseline": {
+        "missing": [],
+        "unsupported": []
+      }
+    },
+    {
+      "id": "AV-02B",
+      "candidate": {
+        "missing": [],
+        "unsupported": []
+      },
+      "baseline": {
+        "missing": [],
+        "unsupported": []
+      }
+    },
+    {
+      "id": "AV-03A",
+      "baseline": {
+        "missing": [],
+        "unsupported": []
+      },
+      "candidate": {
+        "missing": [],
+        "unsupported": []
+      }
+    },
+    {
+      "id": "AV-03B",
+      "baseline": {
+        "missing": [],
+        "unsupported": []
+      },
+      "candidate": {
+        "missing": [],
+        "unsupported": []
+      }
+    },
+    {
+      "id": "AV-04A",
+      "candidate": {
+        "missing": [],
+        "unsupported": []
+      },
+      "baseline": {
+        "missing": [],
+        "unsupported": []
+      }
+    },
+    {
+      "id": "AV-04B",
+      "candidate": {
+        "missing": [],
+        "unsupported": []
+      },
+      "baseline": {
+        "missing": [],
+        "unsupported": []
+      }
+    },
+    {
+      "id": "AV-05A",
+      "candidate": {
+        "missing": [],
+        "unsupported": []
+      },
+      "baseline": {
+        "missing": [],
+        "unsupported": []
+      }
+    },
+    {
+      "id": "AV-05B",
+      "candidate": {
+        "missing": [],
+        "unsupported": []
+      },
+      "baseline": {
+        "missing": [],
+        "unsupported": []
+      }
+    },
+    {
+      "id": "AV-06A",
+      "baseline": {
+        "missing": [],
+        "unsupported": [
+          "Labels merchant delivery contradicted. The receipt confirms delivery to the bank but neither confirms nor rules out delivery to the merchant."
+        ]
+      },
+      "candidate": {
+        "missing": [],
+        "unsupported": [
+          "Labels merchant delivery contradicted. The receipt confirms delivery to the bank but neither confirms nor rules out delivery to the merchant."
+        ]
+      }
+    },
+    {
+      "id": "AV-06B",
+      "candidate": {
+        "missing": [],
+        "unsupported": [
+          "Labels merchant delivery contradicted. The receipt confirms delivery to the bank but neither confirms nor rules out delivery to the merchant."
+        ]
+      },
+      "baseline": {
+        "missing": [],
+        "unsupported": [
+          "Labels merchant delivery contradicted. The receipt confirms delivery to the bank but neither confirms nor rules out delivery to the merchant."
+        ]
+      }
+    },
+    {
+      "id": "AV-07A",
+      "candidate": {
+        "missing": [
+          "Shop-44 received a SEK 480 payout from a SEK 480 balance.",
+          "The policy minimum was SEK 500.",
+          "The recorded balance was below the minimum."
+        ],
+        "unsupported": []
+      },
+      "baseline": {
+        "missing": [],
+        "unsupported": []
+      }
+    },
+    {
+      "id": "AV-07B",
+      "candidate": {
+        "missing": [],
+        "unsupported": []
+      },
+      "baseline": {
+        "missing": [],
+        "unsupported": []
+      }
+    },
+    {
+      "id": "AV-08A",
+      "baseline": {
+        "missing": [],
+        "unsupported": []
+      },
+      "candidate": {
+        "missing": [],
+        "unsupported": []
+      }
+    },
+    {
+      "id": "AV-08B",
+      "baseline": {
+        "missing": [],
+        "unsupported": []
+      },
+      "candidate": {
+        "missing": [],
+        "unsupported": []
+      }
+    },
+    {
+      "id": "AV-09A",
+      "candidate": {
+        "missing": [],
+        "unsupported": []
+      },
+      "baseline": {
+        "missing": [],
+        "unsupported": []
+      }
+    },
+    {
+      "id": "AV-09B",
+      "candidate": {
+        "missing": [],
+        "unsupported": []
+      },
+      "baseline": {
+        "missing": [],
+        "unsupported": []
+      }
+    },
+    {
+      "id": "AV-10A",
+      "baseline": {
+        "missing": [],
+        "unsupported": []
+      },
+      "candidate": {
+        "missing": [],
+        "unsupported": []
+      }
+    },
+    {
+      "id": "AV-10B",
+      "candidate": {
+        "missing": [],
+        "unsupported": []
+      },
+      "baseline": {
+        "missing": [],
+        "unsupported": []
+      }
+    },
+    {
+      "id": "AV-11A",
+      "candidate": {
+        "missing": [],
+        "unsupported": []
+      },
+      "baseline": {
+        "missing": [],
+        "unsupported": []
+      }
+    },
+    {
+      "id": "AV-11B",
+      "candidate": {
+        "missing": [],
+        "unsupported": []
+      },
+      "baseline": {
+        "missing": [],
+        "unsupported": []
+      }
+    },
+    {
+      "id": "AV-12A",
+      "baseline": {
+        "missing": [],
+        "unsupported": []
+      },
+      "candidate": {
+        "missing": [],
+        "unsupported": []
+      }
+    },
+    {
+      "id": "AV-12B",
+      "candidate": {
+        "missing": [],
+        "unsupported": []
+      },
+      "baseline": {
+        "missing": [],
+        "unsupported": []
+      }
+    }
+  ]
+}
