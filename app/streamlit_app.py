@@ -13,7 +13,7 @@ investigation's trace in an `st.status`, like LangSmith's run tree: the root `in
 parser), the agent with each model call (name, tokens) and each tool (arguments, the response envelope and the
 generated SQL), the plan's single follow-up, verification with one node per claim (check, label, NLI scores) and
 escalation. Each node shows `run_type · name · latency · tokens` and opens the span's JSON; an error shows in red. At
-the end the block collapses into a one-line summary ("Checked 4 sources in 6.2 s: 3 claims supported, 1 without
+the end the expanded block shows a summary ("Checked 4 sources in 6.2 s: 3 claims supported, 1 without
 evidence"), the answer appears below it, and the spans are kept with the message, so the trace can still be opened
 in the history. With LangSmith on in the process, the links to the runs sent to it appear under the summary. The
 spans come from `investigate(..., on_event=...)` (`ledgerlens.observability.trace`); the tools run in the graph's
@@ -353,7 +353,7 @@ def span_header(span: Span, depth: int) -> str:
 
 
 def draw_span(span: Span, depth: int) -> None:
-    """A trace node: the header always in view; the generated SQL, the error in red and the span's JSON, collapsed."""
+    """A trace node: the header always in view; the generated SQL, the error in red and the span's expanded JSON."""
     st.markdown(span_header(span, depth))
     if span.error:
         st.error(span.error, icon=":material/error:")
@@ -369,7 +369,7 @@ def draw_span(span: Span, depth: int) -> None:
         "outputs": span.outputs,
         "metadata": span.metadata,
     }
-    st.json(body, expanded=False)
+    st.json(body, expanded=True)
 
 
 class TraceView:
@@ -403,7 +403,7 @@ def final_spans(events: list[Span]) -> list[Span]:
 
 
 def trace_summary(spans: list[Span]) -> tuple[str, str]:
-    """The title of the closed trace and the block's state, taken from the root `investigate`."""
+    """The title of the trace and the block's state, taken from the root `investigate`."""
     root = next((s for s in spans if s.parent_run_id is None), None)
     if root is None:
         return WORKING, "complete"
@@ -420,10 +420,10 @@ def langsmith_links(spans: list[Span]) -> None:
 
 
 def show_trace(spans: list[Span]) -> None:
-    """The trace of an answer already given: the closed summary, which opens to the whole tree."""
+    """Show the stored trace with its summary and expanded run tree."""
     label, state = trace_summary(spans)
     by_id = {s.run_id: s for s in spans}
-    with st.status(label, state=state, expanded=False):
+    with st.status(label, state=state, expanded=True):
         for span in spans:
             draw_span(span, depth_of(span, by_id))
     langsmith_links(spans)
@@ -471,7 +471,7 @@ def investigate_live(
     spans = final_spans(events)
     if status is not None:
         label, state = trace_summary(spans)
-        status.update(label=label, state=state, expanded=False)
+        status.update(label=label, state=state, expanded=True)
         langsmith_links(spans)
     if "error" in outcome:
         error = outcome["error"]
@@ -567,7 +567,7 @@ def account_card(account: Account, lines: list[dict[str, Any]], profile: dict[st
 
 
 def line_label(line: dict[str, Any], kind: str, marks: dict[str, set[str]]) -> str:
-    """The closed line: amount first, then what it is, the date and the status pill; demo marks at the end."""
+    """The entry heading: amount first, then what it is, the date and the status pill; demo marks at the end."""
     label, color = demo.status_pill(line)
     parts = [
         f"**{demo.money(line['amount'], line['currency'])}**",
@@ -590,7 +590,7 @@ def render_lines(tab: str, lines: list[dict[str, Any]], account: Account, marks:
     manifest = demo.load_manifest()
     visible = lines if st.session_state.get(f"all-{tab}") else lines[:PAGE_SIZE]
     for line in visible:
-        with st.expander(line_label(line, account.kind, marks), key=f"line-{tab}-{line['id']}"):
+        with st.expander(line_label(line, account.kind, marks), key=f"line-{tab}-{line['id']}", expanded=True):
             st.markdown(f":gray[{demo.ID_LABELS[line['type']]}] `{line['id']}`")
             cells = st.columns(3)
             for index, (name, value) in enumerate(demo.line_details(line, account.kind)):
@@ -625,7 +625,7 @@ def render_lines(tab: str, lines: list[dict[str, Any]], account: Account, marks:
 def render_portal(account: Account, lines: list[dict[str, Any]], marks: dict[str, set[str]]) -> None:
     account_card(account, lines, load_account_profile(account_ledger(account.id), account.id))
     st.markdown("#### Your activity")
-    with st.expander("Filters", icon=":material/filter_list:"):
+    with st.expander("Filters", icon=":material/filter_list:", expanded=True):
         period, status, search = st.columns([1, 1.4, 1])
         period.selectbox("Period", list(demo.PERIODS), key="f_period")
         status.multiselect(
@@ -842,7 +842,7 @@ def render_payments() -> None:
         if turns and not st.session_state.get("question") and st.session_state.pop("reveal_reply", False):
             st.html(REVEAL_REPLY, unsafe_allow_javascript=True)
 
-        tries = st.expander("More sample questions")
+        tries = st.expander("More sample questions", expanded=True)
         with tries:
             for index, text in enumerate(demo.account_questions(account.id, manifest)):
                 st.button(text, key=f"suggestion-{index}", width="stretch", on_click=fill_draft, args=(text, []))

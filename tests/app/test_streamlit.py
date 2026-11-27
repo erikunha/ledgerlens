@@ -2,7 +2,7 @@
 
 What they guarantee, and why: (a) a question typed in the chat becomes an answer under a live trace of the
 investigation (the run tree: triage, each model and tool call, the verdict per claim and escalation), which
-collapses into a one-line summary and stays stored with the message; (b) the second question of the same session
+shows a summary above the expanded details and stays with the message; (b) the second question of the same session
 continues the first (the history stays on screen and the conversation uses the same `thread_id`); (c) the Help panel
 identifies the scripted demo when Live is enabled; (d) a suggestion fills the field, and the submitted text
 goes to the agent; (e) the page reads like a portal: the signed-in account's statement, an "Ask" per
@@ -369,13 +369,13 @@ def test_after_an_answer_the_trace_the_sql_and_the_lines_read_appear(at: AppTest
     assert not any(e.label in ("What the assistant checked", "Evidence") for e in at.expander)  # they are in the trace
 
 
-def test_the_answer_carries_a_trace_that_collapses_to_a_summary_and_survives_a_rerun(at: AppTest) -> None:
+def test_the_answer_carries_a_trace_that_starts_expanded_and_survives_a_rerun(at: AppTest) -> None:
     """The processing was hidden; now each answer carries the run tree, like LangSmith's."""
     send(at, QUESTION)
     assert not at.exception
     status = at.chat_message[1].status[0]
     assert status.label.startswith("Checked 4 sources in ") and "1 claim supported" in status.label
-    assert status.state == "complete" and not status.proto.expanded
+    assert status.state == "complete" and status.proto.expanded
     headers = trace_headers(at)
     for header in (
         "`chain` · **investigate**",
@@ -389,7 +389,7 @@ def test_the_answer_carries_a_trace_that_collapses_to_a_summary_and_survives_a_r
         assert header in headers, header
     assert headers.index("**query_ledger**") < headers.index("**calculate**") < headers.index("**verify**")
     assert ":gray[│ │ ]" in headers  # nested nodes are indented, one bar per level
-    assert all(j.expanded is False for j in status.json)  # each node's body starts collapsed
+    assert all(j.expanded for j in status.json)
     assert S01["truth"]["refund_brl"] in answer_of(at)  # the answer comes below the trace
     spans = at.session_state["turns"][0]["trace"]
     assert spans[0].name == "investigate" and spans[0].outputs["summary"] == status.label
@@ -402,7 +402,7 @@ def test_the_answer_carries_a_trace_that_collapses_to_a_summary_and_survives_a_r
 def test_a_failed_investigation_shows_the_error_and_keeps_the_page(
     at: AppTest, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """An exception in the agent closes the trace in red and leaves the conversation usable."""
+    """An exception in the agent marks the trace as failed and leaves the conversation usable."""
 
     def boom(agent, question, **kw):
         raise RuntimeError("model unavailable")

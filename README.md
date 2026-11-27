@@ -123,9 +123,9 @@ Offline mode uses scripted chat, recorded HTTP responses and the committed sampl
 
 ### Demo app (Streamlit)
 
-The guided demo opens on a synthetic refund for customer C-0412. Compare the amount paid with the amount refunded, then investigate the payment. **Switch demo account** opens another customer or merchant. Expand a statement entry for its dates, fees and exchange rates. **Ask about this** prepares an editable question about that entry. The tools can read only the selected account’s records.
+The guided demo opens on a synthetic refund for customer C-0412. Compare the amount paid with the amount refunded, then investigate the payment. **Switch demo account** opens another customer or merchant. Statement entries open with their dates, fees and exchange rates visible. **Ask about this** prepares an editable question about that entry. The tools can read only the selected account’s records.
 
-Enable **Show the agent trace** to inspect tool inputs, citations, claim verification and escalation. The trace starts collapsed and disabled. The scripted cases cover refunds, duplicate charges, disputes, payouts and missing transactions.
+Enable **Show the agent trace** to inspect tool inputs, citations, claim verification and escalation. The trace is hidden by default. Turning it on shows the expanded details. The scripted cases cover refunds, duplicate charges, disputes, payouts and missing transactions.
 
 ```bash
 uv run uvicorn app.server:portal --host 127.0.0.1 --port 8501
