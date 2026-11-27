@@ -92,6 +92,9 @@ TABS = {"activity": None, "refunds": "Refund", "disputes": "Chargeback", "payout
 CITATION = re.compile(r"\s*\[((?:sql|api|policy|fx|calc|case):[^\]]*)\]")
 STYLE = """
 <style>
+.st-key-demo-navigation [data-testid="stElementContainer"]:has([data-testid="stLinkButton"]) {
+  margin-inline-start: auto;
+}
 header[data-testid="stHeader"], [data-testid="stMainMenu"], [data-testid="stStatusWidget"],
 [data-testid="stHeadingActionElements"], [data-testid="stSidebarCollapsedControl"],
 [data-testid="InputInstructions"] { display: none !important; }
@@ -957,7 +960,7 @@ def render_payments() -> None:
 def main() -> None:
     from app.artifact_views import render_engineering, render_evaluation, render_proof, render_replay
     from app.interactive_views import CASE_SIMULATOR, CASE_SIMULATOR_TITLE, render_sandbox
-    from app.project_view import render_project
+    from app.project_view import REPOSITORY_URL, render_project
 
     pages = {
         INVESTIGATIONS: ("Investigations", render_payments),
@@ -997,6 +1000,7 @@ def main() -> None:
                 args=() if enter_data else (target,),
                 type="primary" if section == target else "tertiary",
             )
+        st.link_button("GitHub", REPOSITORY_URL, icon=":material/open_in_new:", help="Open the LedgerLens repository")
     if page == RECORDINGS:
         st.caption(AI_DISCLOSURE)
     render()
