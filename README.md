@@ -133,7 +133,7 @@ uv run uvicorn app.server:portal --host 127.0.0.1 --port 8501
 
 ### Streamlit workspace
 
-Open http://localhost:8501. Choose **Investigate this payment**, review the question and press **Send**. Open **Explore data** to check the full sample database. A payment shortcut opens the corresponding account records and events. Open the recorded calculation to inspect the evidence. **Recordings** works without a key. The mode indicator shows whether answers are scripted or use your key. **Use my OpenAI key** opens the settings panel. **Project details** explains how the agent works and shows published scores, evaluation data and proofs. Start the API in a second terminal for Sandbox and Live.
+Open http://localhost:8501. Choose **Use this question**, review the question and press **Send**. Open **Explore data** to check the full sample database. A payment shortcut opens the corresponding account records and events. Open the recorded calculation to inspect the evidence. **Recordings** works without a key. The mode indicator shows whether answers are scripted or use your key. **Use my OpenAI key** opens the settings panel. **Project details** explains how the agent works and shows published scores, evaluation data and proofs. Start the API in a second terminal for Case simulator and Live.
 
 ```bash
 uv run ledgerlens-demo --port 8010
@@ -155,7 +155,7 @@ Start Streamlit and the API with `LEDGERLENS_OFFLINE=0`. In the guided demo, sel
 
 ## Live runs with your own key
 
-Live uses the API from the quickstart above. The Streamlit server shares one API session between Sandbox and Live for each visitor.
+Live uses the API from the quickstart above. The Streamlit server shares one API session between Case simulator and Live for each visitor.
 
 - Streamlit forwards the key to the API through `POST /v1/credentials`. The vault holds it in process memory: no file, no database, no log, no trace, no URL. The answer carries an opaque handle, the provider and the expiry, and never the key itself;
 - the handle is bound to the session of the visitor. A handle of another session is refused with the same message as a handle that never existed;

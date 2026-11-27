@@ -11,7 +11,7 @@ uv run ledgerlens-demo --port 8010
 LEDGERLENS_OFFLINE=1 uv run uvicorn app.server:portal --host 127.0.0.1 --port 8501
 ```
 
-Replay reads the published recordings. Sandbox and Live use the API.
+Recordings opens the published investigations. Case simulator and Live use the API.
 
 ## Recorded walkthrough
 

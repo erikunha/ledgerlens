@@ -169,6 +169,9 @@ def test_featured_explorer_starts_at_payment_and_resets_on_account_switch(monkey
     assert page.query_params["view"] == "explore-data"
     assert "draft" not in [widget.key for widget in page.text_input]
     assert page.session_state["explore_payment"] == "TX-2048"
+    page.button(key="nav-explore-data").click().run()
+    assert page.radio(key="data_scope").value == "Current demo account"
+    assert next(item.value for item in page.selectbox if item.label == "Payment scope") == "TX-2048"
     page.selectbox(key="account").set_value("M-03").run()
     assert "explore_payment" not in page.session_state
     assert not page.exception
@@ -212,7 +215,7 @@ def test_data_navigation_defaults_to_the_complete_sample(monkeypatch):
         "explore-data",
         "recordings",
         "project-details",
-        "visitor-sandbox",
+        "case-simulator",
         "evaluation",
         "proof-artifacts",
         "engineering",
@@ -226,3 +229,23 @@ def test_canonical_view_preserves_case(monkeypatch, slug):
     assert page.query_params["view"] in (slug, [slug])
     assert page.query_params["case"] in ("S01", ["S01"])
     assert not page.exception
+
+
+def test_legacy_simulator_keeps_case_and_marks_its_navigation_active():
+    page = AppTest.from_file(str(APP), default_timeout=30)
+    page.query_params.update(view="visitor-sandbox", case="S03")
+    page.run()
+    assert not page.exception
+    assert page.query_params["view"] == "case-simulator"
+    assert page.selectbox[0].value == "S03"
+    assert page.button(key="nav-case-simulator").proto.type == "primary"
+    assert page.title[0].value == "Case simulator"
+
+
+@pytest.mark.parametrize("view", ["evaluation", "proof-artifacts", "engineering"])
+def test_project_detail_routes_highlight_project_navigation(view):
+    page = AppTest.from_file(str(APP), default_timeout=30)
+    page.query_params["view"] = view
+    page.run()
+    assert not page.exception
+    assert page.button(key="nav-project-details").proto.type == "primary"

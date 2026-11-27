@@ -26,6 +26,8 @@ SESSION = "/v1/sessions"
 SANDBOXES = "/v1/sandboxes"
 RUNS = "/v1/live-runs"
 CREDENTIALS = "/v1/credentials"
+CASE_SIMULATOR = "case-simulator"
+CASE_SIMULATOR_TITLE = "Case simulator"
 FX_EXAMPLE_SCENARIO = "S01"
 RUN_UNAVAILABLE = "unavailable"
 UNKNOWN_RUN_CODE = "NOT_FOUND"
@@ -210,7 +212,7 @@ def render_sandbox():
 
 def _sandbox():
     """Open a branch and let its owner preview, apply, inspect and undo changes."""
-    st.header("Visitor sandbox")
+    st.title(CASE_SIMULATOR_TITLE)
     st.write("Open a private copy of a published case to see how a change affects its ledger.")
     cases = _cases()
     requested = st.query_params.get("case")

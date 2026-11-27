@@ -135,7 +135,7 @@ uv run uvicorn app.server:portal --host 127.0.0.1 --port 8501
 
 ### Portal Streamlit
 
-Abra http://localhost:8501. Clique em **Investigate this payment**, revise a pergunta e pressione **Send**. Abra **Explore data** para consultar a base de demonstração completa. O atalho de um pagamento abre os registros e eventos daquela conta. Abra o cálculo gravado para conferir as evidências. **Recordings** funciona sem chave. O indicador mostra se as respostas são simuladas ou usam sua chave. **Use my OpenAI key** abre o painel de configuração. **Project details** explica como o agente funciona e reúne os scores publicados, os dados da avaliação e os comprovantes. Para usar Sandbox e Live, inicie a API em outro terminal.
+Abra http://localhost:8501. Clique em **Use this question**, revise a pergunta e pressione **Send**. Abra **Explore data** para consultar a base de demonstração completa. O atalho de um pagamento abre os registros e eventos daquela conta. Abra o cálculo gravado para conferir as evidências. **Recordings** funciona sem chave. O indicador mostra se as respostas são simuladas ou usam sua chave. **Use my OpenAI key** abre o painel de configuração. **Project details** explica como o agente funciona e reúne os scores publicados, os dados da avaliação e os comprovantes. Para usar Case simulator e Live, inicie a API em outro terminal.
 
 ```bash
 uv run ledgerlens-demo --port 8010
@@ -157,7 +157,7 @@ Inicie o Streamlit e a API com `LEDGERLENS_OFFLINE=0`. Na demonstração guiada,
 
 ## Execução com chave própria
 
-O modo Live usa a API iniciada no guia acima. O servidor Streamlit compartilha uma sessão de API entre Sandbox e Live para cada visitante.
+O modo Live usa a API iniciada no guia acima. O servidor Streamlit compartilha uma sessão de API entre Case simulator e Live para cada visitante.
 
 - o Streamlit encaminha a chave para a API com `POST /v1/credentials`. O cofre a mantém em memória: nem arquivo, nem banco de dados, nem log, nem trace, nem URL. A resposta carrega um handle opaco, o provedor e o prazo de validade, e nunca a chave em si;
 - o handle fica preso à sessão do visitante. Um handle de outra sessão é recusado com a mesma mensagem de um handle que nunca existiu;

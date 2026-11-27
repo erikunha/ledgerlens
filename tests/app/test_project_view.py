@@ -9,7 +9,7 @@ def test_project_explains_execution_and_links_published_results():
     ).run()
 
     assert not page.exception
-    assert "Project details" in [item.value for item in page.title]
+    assert [item.value for item in page.title] == ["Project details"]
     assert [item.label for item in page.tabs] == ["How it works", "Evaluation", "Proofs", "Engineering"]
     overview = page.tabs[0]
     scores = {item.label: item.value for item in overview.metric}
@@ -29,7 +29,7 @@ def test_project_explains_execution_and_links_published_results():
         "published snapshot",
         "selected model also checks claims",
         "OpenAI may charge",
-        "?view=visitor-sandbox",
+        "?view=case-simulator",
     ):
         assert detail in copy
     assert page.tabs[1].get("download_button")

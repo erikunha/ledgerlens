@@ -133,12 +133,18 @@ header[data-testid="stHeader"], [data-testid="stMainMenu"], [data-testid="stStat
 FOCUS_DRAFT = """
 <style>
 @keyframes ll-flash { 0% { box-shadow: 0 0 0 3px rgba(47, 91, 211, 0.55); } 100% { box-shadow: 0 0 0 0 transparent; } }
-.st-key-draft input { animation: ll-flash 1.6s ease-out; }
+@media (prefers-reduced-motion: no-preference) {
+  .st-key-draft input { animation: ll-flash 1.6s ease-out; }
+}
 </style>
 <script>
 setTimeout(() => {
   const box = document.querySelector('.st-key-draft input');
-  if (box) { box.scrollIntoView({block: 'nearest', behavior: 'smooth'}); box.focus({preventScroll: true}); }
+  if (box) {
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    box.scrollIntoView({block: 'nearest', behavior: reduced ? 'instant' : 'smooth'});
+    box.focus({preventScroll: true});
+  }
 }, 250);
 </script>
 """
@@ -660,6 +666,7 @@ INVESTIGATIONS = "investigations"
 RECORDINGS = "recordings"
 DATA_PAGE = "explore-data"
 PROJECT_PAGE = "project-details"
+LEGACY_SIMULATOR_PAGE = "visitor-sandbox"
 FULL_SAMPLE = "Full sample database"
 CURRENT_ACCOUNT = "Current demo account"
 
@@ -720,7 +727,7 @@ def has_pending_turn() -> bool:
 
 
 def render_payments() -> None:
-    from app.interactive_views import render_live_settings, render_live_status, submit_live_question
+    from app.interactive_views import CASE_SIMULATOR, render_live_settings, render_live_status, submit_live_question
 
     manifest = demo.load_manifest()
     accounts = {a.id: a for a in portal_accounts()}
@@ -787,7 +794,7 @@ def render_payments() -> None:
             if "charge_brl" in truth and "refund_brl" in truth:
                 st.caption(f"Paid BRL {truth['charge_brl']} · Refunded BRL {truth['refund_brl']}")
             st.button(
-                "Investigate this payment",
+                "Use this question",
                 key="featured",
                 type="primary",
                 on_click=fill_draft,
@@ -842,10 +849,6 @@ def render_payments() -> None:
         if turns and not st.session_state.get("question") and st.session_state.pop("reveal_reply", False):
             st.html(REVEAL_REPLY, unsafe_allow_javascript=True)
 
-        tries = st.expander("More sample questions", expanded=True)
-        with tries:
-            for index, text in enumerate(demo.account_questions(account.id, manifest)):
-                st.button(text, key=f"suggestion-{index}", width="stretch", on_click=fill_draft, args=(text, []))
         if st.session_state["selected"]:
             about, clear = st.columns([4, 1], vertical_alignment="center")
             about.caption(f"About {', '.join(st.session_state['selected'])} from your activity")
@@ -877,6 +880,10 @@ def render_payments() -> None:
         if st.session_state.pop("focus_draft", False):
             st.toast("Review your question, then press Send.", icon=":material/support_agent:")
             st.html(FOCUS_DRAFT, unsafe_allow_javascript=True)
+        tries = st.expander("More sample questions", expanded=True)
+        with tries:
+            for index, text in enumerate(demo.account_questions(account.id, manifest)):
+                st.button(text, key=f"suggestion-{index}", width="stretch", on_click=fill_draft, args=(text, []))
         question = st.session_state.pop("question", "")
 
         if question and st.session_state.pop("submission_mode", mode) == mode:
@@ -939,13 +946,13 @@ def render_payments() -> None:
             recording_label = "See the recorded calculation" if "gap_brl" in truth else "See the recording"
             st.button(recording_label, key="recording-link", on_click=open_case, args=(RECORDINGS,))
             st.button(
-                "Simulate a change to this case", key="sandbox-link", on_click=open_case, args=("visitor-sandbox",)
+                "Simulate a change to this case", key="sandbox-link", on_click=open_case, args=(CASE_SIMULATOR,)
             )
 
 
 def main() -> None:
     from app.artifact_views import render_engineering, render_evaluation, render_proof, render_replay
-    from app.interactive_views import render_sandbox
+    from app.interactive_views import CASE_SIMULATOR, CASE_SIMULATOR_TITLE, render_sandbox
     from app.project_view import render_project
 
     pages = {
@@ -953,13 +960,15 @@ def main() -> None:
         DATA_PAGE: ("Explore data", render_account_data),
         PROJECT_PAGE: ("Project details", render_project),
         RECORDINGS: ("Recordings", render_replay),
-        "visitor-sandbox": ("Visitor sandbox", render_sandbox),
+        CASE_SIMULATOR: (CASE_SIMULATOR_TITLE, render_sandbox),
         "evaluation": ("Evaluation", render_evaluation),
         "proof-artifacts": ("Proof artifacts", render_proof),
         "engineering": ("Engineering", render_engineering),
     }
     requested = st.query_params.get("view")
     page = st.session_state.pop("go_to", None) or requested
+    if page == LEGACY_SIMULATOR_PAGE:
+        page = CASE_SIMULATOR
     if page not in pages:
         page = INVESTIGATIONS
     title, render = pages[page]
@@ -972,14 +981,17 @@ def main() -> None:
     if requested != page:
         navigate(page)
     with st.container(horizontal=True, gap="small", key="demo-navigation"):
-        for target in (INVESTIGATIONS, DATA_PAGE, RECORDINGS, PROJECT_PAGE):
+        navigation = (INVESTIGATIONS, DATA_PAGE, RECORDINGS, CASE_SIMULATOR, PROJECT_PAGE)
+        section = page if page in navigation else PROJECT_PAGE
+        for target in navigation:
+            enter_data = target == DATA_PAGE and page != DATA_PAGE
             label, _ = pages[target]
             st.button(
                 label,
                 key=f"nav-{target}",
-                on_click=open_data if target == DATA_PAGE else navigate,
-                args=() if target == DATA_PAGE else (target,),
-                type="primary" if page == target else "tertiary",
+                on_click=open_data if enter_data else navigate,
+                args=() if enter_data else (target,),
+                type="primary" if section == target else "tertiary",
             )
     if page == RECORDINGS:
         st.caption(AI_DISCLOSURE)

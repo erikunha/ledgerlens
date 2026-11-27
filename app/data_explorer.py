@@ -338,7 +338,6 @@ def render_explorer(
         with records:
             if full_sample:
                 dataset = st.selectbox("Record type", SAMPLE_RECORDS, key=f"{context}-dataset")
-                _show_schema(path, dataset)
             else:
                 dataset = st.selectbox(
                     "Record type",
@@ -358,10 +357,10 @@ def render_explorer(
                 st.info("No records match these filters.")
             elif on_ask is not None and not full_sample:
                 _inspect_record(visible, dataset, key, on_ask)
+            if full_sample:
+                _show_schema(path, dataset)
     if events.open:
         with events:
-            if full_sample:
-                _show_schema(path, EVENTS)
             key = f"{context}-{EVENTS}"
             filtered = _filtered(explore_rows(path, EVENTS, scope, full_sample=full_sample), EVENTS, key)
             visible = _show_rows(filtered, EVENTS, key, full_sample)
@@ -369,3 +368,5 @@ def render_explorer(
                 _inspect_event(visible, context, tabs_key)
             else:
                 st.info("No events match these filters.")
+            if full_sample:
+                _show_schema(path, EVENTS)
