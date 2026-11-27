@@ -581,8 +581,9 @@ def _investigate(
 
     asked = uncalled_steps(plan, result.tool_trace)
     days = fx_days_to_redo(question, result.evidence, result.tool_trace)
-    if asked or days:
-        text = followup_message(asked, days=days)
+    policy_gap = _policy_timing_gap(result)
+    if asked or days or policy_gap:
+        text = followup_message(asked, days=days, policy_gap=policy_gap)
         span = trace.begin("plan_followup", "chain", {"asked": asked, "fx_days": days, "message": text})
         cut_by = turn.cut_by()
         reason: str | None = None
@@ -1047,7 +1048,48 @@ def fx_days_to_redo(question: str, evidence: list[Evidence], trace: list[ToolCal
     return [] if any(day in known for day in asked) else list(dict.fromkeys(asked))
 
 
-def followup_message(steps: list[PlanStep], *, days: list[str] | None = None) -> str:
+_DISPUTE = re.compile(r"\b(?:chargebacks?|disputes?)\b", re.I)
+_REFUND = re.compile(r"\brefund(?:s|ed)?\b", re.I)
+_RESPONSE_RULE = re.compile(r"\b(?:response deadline|deadline for (?:the )?(?:merchant.?s? )?response)\b", re.I)
+_EVIDENCE_INTERVAL = re.compile(r"\b(?:business|working) days?\b", re.I)
+_TRIGGER = re.compile(r"\b(?:notice|notifi\w+|opens?|opened|initiated|filed)\b", re.I)
+
+
+def _policy_timing_gap(result: InvestigationResult) -> str:
+    """Ask once for the missing rule when a policy draft covers only part of a timing question."""
+    question = result.question.casefold()
+    if not _DISPUTE.search(question) or not any(call.tool == POLICY_TOOL and call.ok for call in result.tool_trace):
+        return ""
+    if _REFUND.search(question) and "deadline" in question and "response" in question:
+        from ledgerlens.verify.claims import extract_claims
+
+        ids = {ref for claim in extract_claims(result.answer, []) for ref in claim.evidence_ids}
+        cited = []
+        for item in result.evidence:
+            if item.tool != POLICY_TOOL or item.id not in ids:
+                continue
+            try:
+                passage = json.loads(item.content)
+            except ValueError:
+                continue
+            # Section labels and search queries may mention both rules without stating either one.
+            if isinstance(passage, dict) and isinstance(passage.get("text"), str):
+                cited.append(passage["text"])
+        if not any(_RESPONSE_RULE.search(text) for text in cited) or not any(_REFUND.search(text) for text in cited):
+            return (
+                "Explain separately what the response deadline governs and how a refund request is handled. "
+                "Look up each rule with its own policy search if needed."
+            )
+    if "when" in question.split() and "evidence" in question and "requir" in question:
+        if not (_EVIDENCE_INTERVAL.search(result.answer) and _TRIGGER.search(result.answer)):
+            return (
+                "Answer both possible meanings of when: the triggering event and the merchant evidence submission "
+                "cutoff relative to the response deadline. Search separately for any missing rule."
+            )
+    return ""
+
+
+def followup_message(steps: list[PlanStep], *, days: list[str] | None = None, policy_gap: str = "") -> str:
     """The single follow-up to the agent: what was missing (a plan tool, FX for a ledger date) and the final answer."""
     parts = []
     if steps:
@@ -1062,6 +1104,8 @@ def followup_message(steps: list[PlanStep], *, days: list[str] | None = None) ->
             "you queried nor in the question. Read the payment or refund date in the ledger (query it again if "
             "it is missing), ask for the FX rate on that date and redo the calculation with the new rate."
         )
+    if policy_gap:
+        parts.append(f"{policy_gap} Cite the supporting passage in each factual sentence, even when an ID repeats.")
     parts.append("Then give the final answer to the original question, with the citations.")
     return " ".join(parts)
 

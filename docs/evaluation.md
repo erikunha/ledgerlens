@@ -450,3 +450,11 @@ A fresh investigation for each of the original 17 development questions resolved
 The evaluation combines exact calendar and action checks with judgment of open-ended answers. See chapters 3 and 4 of [AI Engineering by Chip Huyen](https://www.oreilly.com/library/view/ai-engineering/9781098166298/).
 
 For a standalone first-turn policy question about a dated evidence cutoff, the investigator can request the missing settlement currency before returning a date. The payment currency can differ from the settlement currency. The clarification still passes through the normal verifier and escalation checks. Account investigations and follow-up questions retain their existing context.
+
+### Policy resolution on repeated runs
+
+With the same models and original questions, the baseline resolved 9/17 on a fresh run. The candidate resolved 12/17 on its first run and 14/17 on a repeat. Three questions lack a definitive first-turn answer in the supplied data: the dispute ID is missing, the settlement currency is missing, or the handbook does not cover the product. All three remain in each denominator. The first run also escalated a supported USD date and cited an insufficient passage for a late-response consequence. The repeat resolved all 14 answerable questions.
+
+The investigator can make one follow-up request within its turn budget if a policy answer omits the triggering event or submission interval, or cites only one side of a refund and dispute timing question. A user report of a missed internal evidence cutoff, together with a retrieved escalation rule, can trigger the structured human-review action. A hypothetical question alone does not trigger it.
+
+A reviewer scored shuffled answers against their citations, calendar receipts and structured actions without seeing which version produced them. Four additional phrasings yielded three complete answers. The remaining answer cited the responsibility for submitting evidence as support for the event that triggers submission. These are synthetic development measurements. [Answers, judgments, run costs and source digests](../data/eval/reports/policy-resolution-comparison.json)

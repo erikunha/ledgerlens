@@ -188,3 +188,16 @@ def test_cli_records_frozen_classifier_model(monkeypatch, capsys):
     monkeypatch.setattr(sys, "argv", ["runner", "--openai-verifier", "--case", "fee-trigger"])
     runner.main()
     assert json.loads(capsys.readouterr().out)["verifier"] == runner.VERIFIER_MODEL
+
+
+def test_published_policy_comparison_preserves_questions_and_resolution_counts():
+    baseline = json.loads((runner.PROJECT_ROOT / "data/eval/reports/policy-journeys-openai.json").read_text())
+    comparison = json.loads((runner.PROJECT_ROOT / "data/eval/reports/policy-resolution-comparison.json").read_text())
+    questions = [(row["case_id"], row["question"]) for row in baseline["cases"]]
+    for name, run in comparison["runs"].items():
+        cases = run["cases"]
+        if name != "transfer":
+            assert [(row["case_id"], row["question"]) for row in cases] == questions
+        assert run["total_cases"] == len(cases)
+        assert run["resolved_cases"] == sum(row["resolved"] for row in cases)
+        assert all(row["assessment"] for row in cases)

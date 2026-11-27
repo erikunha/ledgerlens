@@ -79,6 +79,22 @@ _LEDGER_TOOLS = ("query_ledger", "get_ledger_record")
 # The calculations that explain a difference to a customer: the settlement of a payout, the split of an FX gap and
 # the check of the markup of a refund in another currency.
 _EXPLAIN_OPERATIONS = {"fx_gap_breakdown", "fx_markup_check", "net_settlement"}
+_OTHER_CUTOFF_POLICIES = {
+    "policy:chargeback-handling#escalation",
+    "policy:escalation-and-review#when-to-escalate",
+    "policy:chargeback-handling#who-submits",
+}
+_CUTOFF = (
+    r"(?:(?:internal (?:evidence )?|(?:merchant(?:['’]s)? )?evidence )(?:cutoff|cut-off|deadline)"
+    r"|(?:internal )?evidence (?:handoff|hand-in))"
+)
+_HYPOTHETICAL_CUTOFF = re.compile(r"\b(?:if|unless|hypothetically|training exercise|simulation|drill)\b", re.I)
+_REPORTED_CUTOFF = re.compile(
+    rf"(?:we|i|our team) (?:have |already )?missed (?:the|our|my) {_CUTOFF}\b"
+    rf"|(?:the|our|my) {_CUTOFF} (?:has )?(?:already )?(?:passed|closed)\b"
+    r"(?=$|[,;]| (?:but|and|today|yesterday|last|on|at)\b)",
+    re.IGNORECASE,
+)
 _ENTITY_ID = re.compile(r"\b[A-Z]{1,3}-\d+\b")
 _CHARGEBACK_COLUMNS = ("id", "transaction_id", "amount_minor", "currency", "stage", "deadline")
 _RECORD_TABLES = {
@@ -435,6 +451,20 @@ def _fx_markup_reasons(result: InvestigationResult, ledger_db: Path | str | None
 # ---- escalation ---------------------------------------------------------------------------------
 
 
+def _reported_cutoff(question: str) -> bool:
+    """Accept an affirmative report in a statement from the user."""
+    for sentence in re.finditer(r"([^.!?]+)([.!?]|$)", question):
+        statement, punctuation = sentence.groups()
+        if punctuation == "?":
+            parts = re.split(r"[,;]\s*(?=(?:what|how|who|can|should|where)\b)", statement, maxsplit=1, flags=re.I)
+            if len(parts) == 1:
+                continue
+            statement = parts[0]
+        if _REPORTED_CUTOFF.match(statement.strip()) and not _HYPOTHETICAL_CUTOFF.search(statement):
+            return True
+    return False
+
+
 def escalation_reasons(
     result: InvestigationResult, as_of: date | None = None, *, ledger_db: Path | str | None = None
 ) -> list[str]:
@@ -449,6 +479,15 @@ def escalation_reasons(
     rows = _ledger_rows(result)
     currency_of_tx = {r["id"]: r.get("currency", "") for r in rows if _kind(r) == "TX"}
     reasons: list[str] = []
+
+    cutoff_policy = _policy_id(rules["internal_cutoff_passed"])
+    if _reported_cutoff(result.question):
+        for evidence in result.evidence:
+            if evidence.source_type == "policy" and (
+                evidence.id == cutoff_policy or evidence.id in _OTHER_CUTOFF_POLICIES
+            ):
+                reasons.append(f"The user reports a missed internal evidence cutoff [{evidence.id}]")
+                break
 
     for row in _deadline_rows(result, rows, ledger_db):
         deadline = _day(row.get("deadline"))
