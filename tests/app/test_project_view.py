@@ -45,3 +45,13 @@ def test_project_evaluation_links_the_candidate_and_its_coverage_limit():
     assert "Receipt-backed cutoff verifier" in evaluation
     assert "8 paraphrases" in evaluation
     assert "docs/evaluation.md#receipt-backed-cutoff-verification" in evaluation
+
+
+def test_evaluation_research_quotes_link_to_the_original_sources():
+    page = AppTest.from_string(
+        "from app.project_view import render_project\nrender_project()", default_timeout=30
+    ).run()
+    research = next(item.value for item in page.tabs[1].markdown if "Claim-level precision" in item.value)
+    assert research.count("> “") == 4
+    for source in ("aclanthology.org", "arxiv.org/abs/2406.12045", "oreilly.com", "cambridge.org"):
+        assert source in research
