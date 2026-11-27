@@ -12,8 +12,9 @@ def test_returning_to_payments_preserves_the_selected_account(monkeypatch):
     monkeypatch.setenv("LEDGERLENS_OFFLINE", "1")
     page = AppTest.from_file(str(APP), default_timeout=30).run()
     page.selectbox(key="account").set_value("M-03").run()
-    for view in ("recordings", "project-details", "explore-data", "investigations"):
-        page.button(key=f"nav-{view}").click().run()
+    for label in ("Recordings", "Project details", "Explore data", "Investigations"):
+        next(button for button in page.button if button.label == label).click().run()
+        assert page.query_params["view"] == label.lower().replace(" ", "-")
         assert not page.exception
     assert page.selectbox(key="account").value == "M-03"
 
