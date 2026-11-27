@@ -10,7 +10,7 @@ Open http://localhost:8501. Start with **Investigate this payment**, edit the su
 
 | Workspace | What you can do |
 | --- | --- |
-| Investigations | Switch demo accounts, inspect synthetic payments and ask a scripted question. Expand the trace to see the evidence behind an answer. |
+| Investigations | Switch demo accounts, inspect synthetic payments and ask a scripted question. Enable the trace to see the evidence behind an answer. |
 | Explore data | Browse all nine sample tables or switch to the current demo account. |
 | Project details | Read how the agent works and inspect published evaluation results, proofs and implementation. |
 | Recordings | Browse scripted and real-model recordings, then inspect an answer, its evidence and recorded events. Playback requires no credentials. |
@@ -19,6 +19,8 @@ Open http://localhost:8501. Start with **Investigate this payment**, edit the su
 | Evaluation | Inspect published evaluation results and download the underlying data. |
 | Proof artifacts | Inspect and download published evidence. |
 | Engineering | Inspect the implementation behind the payment investigation. |
+
+Collapsible sections open by default across pages and tabs. Select a section heading to collapse it.
 
 ## Connect the API
 

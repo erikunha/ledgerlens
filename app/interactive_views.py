@@ -120,7 +120,7 @@ def _session():
 def _end_session():
     if "visitor" not in st.session_state:
         return
-    with st.expander("Session settings"):
+    with st.expander("Session settings", expanded=True):
         active = False
         if run_id := st.session_state.get("live_run"):
             active = _read_run(run_id)["status"] in ACTIVE_RUN
@@ -195,7 +195,7 @@ def _comparison(command, result, *, committed):
         for entry in result["diff"]:
             field = entry["field"].replace("_", " ").capitalize()
             st.text(f"{entry['record_id']} · {field}: {entry['before']} → {entry['after']}")
-    with st.expander("Technical details"):
+    with st.expander("Technical details", expanded=True):
         st.json(result)
 
 
@@ -329,7 +329,7 @@ def _run_result():
     ):
         amount = cost.get(field)
         column.metric(label, f"USD {amount}" if amount is not None else "Unavailable")
-    with st.expander("Run usage and cost details"):
+    with st.expander("Run usage and cost details", expanded=True):
         st.json(cost)
     if st.button("Show run trace"):
         trace = _request("GET", f"{run_path}/events")
@@ -446,7 +446,7 @@ def _configure_key():
         st.caption(
             f"Per million tokens: USD {pricing['input_per_1m_usd']} input · USD {pricing['output_per_1m_usd']} output."
         )
-    with st.expander("Run limits"):
+    with st.expander("Run limits", expanded=True):
         saved_limits = saved.get("limits", {})
         limits = {
             key: st.number_input(label, low, high, value=saved_limits.get(key, default))

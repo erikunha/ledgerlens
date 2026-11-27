@@ -254,7 +254,7 @@ def _show_rows(rows: list[Row], dataset: str, key: str, full_sample: bool) -> li
 
 
 def _show_schema(path: Path, dataset: str) -> None:
-    with st.expander("SQLite schema"):
+    with st.expander("SQLite schema", expanded=True):
         st.code(explore_schema(path, dataset), language="sql")
         if dataset in (TRANSACTIONS, EVENTS):
             st.caption("The simulator generates card fingerprints and hashes public invoice IDs for source references.")

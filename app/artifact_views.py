@@ -124,13 +124,13 @@ def render_replay():
         )
         st.subheader("Supporting records")
         for seq, name, output in tools:
-            with st.expander(f"{TOOL_LABELS.get(name, name)} · event {seq}"):
-                st.json(output, expanded=False)
-        with st.expander("Ledger reads"):
-            st.json(_read(bundle / "ledger.json"), expanded=False)
-        with st.expander("Recording provenance"):
-            st.json(_read(bundle / "provenance.json"), expanded=False)
-        with st.expander("Event timeline"):
+            with st.expander(f"{TOOL_LABELS.get(name, name)} · event {seq}", expanded=True):
+                st.json(output, expanded=True)
+        with st.expander("Ledger reads", expanded=True):
+            st.json(_read(bundle / "ledger.json"), expanded=True)
+        with st.expander("Recording provenance", expanded=True):
+            st.json(_read(bundle / "provenance.json"), expanded=True)
+        with st.expander("Event timeline", expanded=True):
             by_sequence = {event["seq"]: event for event in events}
 
             def event_label(sequence):
@@ -162,7 +162,7 @@ def render_evaluation():
         left.caption(f"{tuning['denominator']} cases · {tuning['repeats']} repeats")
         right.metric("Baseline verifier accuracy · held-out set", heldout["accuracy"])
         right.caption(f"{heldout['correct']} correct out of {heldout['denominator']} cases")
-        with st.expander("How to interpret the scores"):
+        with st.expander("How to interpret the scores", expanded=True):
             st.write(tuning["restriction"].capitalize() + ".")
             st.write(heldout["restriction"].capitalize() + ".")
         matrix = report["confusion_matrix"]
@@ -184,7 +184,7 @@ def render_evaluation():
             case = failures[chosen]
             st.write(case["claim"])
             st.caption(f"Expected: {case['expected']} · Recorded: {case['got']}")
-            with st.expander("Evidence for this case"):
+            with st.expander("Evidence for this case", expanded=True):
                 st.text(case["evidence"])
         _download(path, "Download evaluation report")
 
@@ -233,15 +233,15 @@ def render_proof():
                 st.write(check["note"])
             for seq, name, output in _tool_results(events):
                 if set(refs).intersection(output.get("evidence_ids", [])):
-                    with st.expander(f"{TOOL_LABELS.get(name, name)} · event {seq}"):
+                    with st.expander(f"{TOOL_LABELS.get(name, name)} · event {seq}", expanded=True):
                         if name == "calculate":
                             _formula(output["data"])
-                        st.json(output, expanded=False)
+                        st.json(output, expanded=True)
         _download(path, "Download proof JSON")
-        with st.expander("Receipt details and limitations"):
+        with st.expander("Receipt details and limitations", expanded=True):
             for limitation in artifact["known_limitations"]:
                 st.write(limitation)
-            st.json(artifact, expanded=False)
+            st.json(artifact, expanded=True)
 
 
 def render_engineering():
@@ -257,8 +257,8 @@ def render_engineering():
         st.write(purpose)
         st.caption(MODULES[name])
         if details:
-            with st.expander("Module documentation"):
+            with st.expander("Module documentation", expanded=True):
                 st.write(details)
-        with st.expander("Inspect source"):
+        with st.expander("Inspect source", expanded=True):
             st.code(source, language="python")
         _download(path, "Download module", "text/x-python")

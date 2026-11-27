@@ -125,7 +125,7 @@ No modo offline, o chat segue um roteiro, o HTTP lê respostas gravadas e os dad
 
 ### Aplicativo de demonstração (Streamlit)
 
-A demonstração começa com um reembolso simulado do cliente C-0412. Compare o valor pago com o valor devolvido e investigue o pagamento. **Switch demo account** abre a conta de outro cliente ou lojista. Expanda um lançamento para consultar datas, tarifas e taxas de câmbio. **Ask about this** prepara uma pergunta editável sobre o lançamento. As ferramentas só consultam os registros da conta selecionada.
+A demonstração começa com um reembolso simulado do cliente C-0412. Compare o valor pago com o valor devolvido e investigue o pagamento. **Switch demo account** abre a conta de outro cliente ou lojista. Os lançamentos já mostram datas, tarifas e taxas de câmbio. **Ask about this** prepara uma pergunta editável sobre o lançamento. As ferramentas só consultam os registros da conta selecionada.
 
 Ative **Show the agent trace** para consultar chamadas de ferramentas, citações, verificação das afirmações e encaminhamentos. Essa opção começa desligada. Os casos simulados cobrem reembolsos, cobranças duplicadas, disputas, repasses e transações ausentes.
 
