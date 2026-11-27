@@ -418,7 +418,10 @@ def _settings_drawer():
 
 
 def _configure_key():
-    st.caption("This demo uses deterministic checks. Learned verification is unavailable.")
+    st.caption(
+        "Your selected OpenAI model also checks claims against their cited evidence. "
+        "These additional calls use your key and count toward your run limits."
+    )
     saved = st.session_state.get("live_settings", {})
     models = _request("GET", "/v1/models").json()["models"]
     profiles = {

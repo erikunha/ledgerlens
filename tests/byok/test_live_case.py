@@ -31,7 +31,7 @@ from __future__ import annotations
 import json
 import threading
 from dataclasses import replace
-from datetime import date
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -69,6 +69,7 @@ from ledgerlens.observability.trace_event import InMemoryTraceSink, TraceEventSt
 from ledgerlens.retrieval import build_policy_index, index_dir_for, load_policy_documents
 from ledgerlens.run_context import RunBudget
 from ledgerlens.sandbox.ledger_view import LedgerView
+from ledgerlens.schemas import Coherence, Evidence, InvestigationResult
 from ledgerlens.sim.config import SimConfig
 from ledgerlens.sim.pipeline import build_ledger
 from tests.tools import test_policies as base
@@ -81,6 +82,7 @@ SESSION = "sess-case"
 PROFILE_ID = "openai-gpt-4.1-mini"
 MODEL_ID = "gpt-4.1-mini"
 QUESTION = "What happened to the refund of TX-0001?"
+VERIFICATION_ANSWER = "The refund is still pending [sql:1]."
 
 # The account of the scenario of the tests. The ledger of the visitor holds the rows of that account and of no other
 # one, and the transaction that the query of the tests asks for belongs to another customer of the same published
@@ -190,6 +192,7 @@ def _coordinator(
 def _caller(
     adapter: ProviderAdapter,
     *,
+    provider: str = "openai",
     cancel: threading.Event | None = None,
     sink: InMemoryTraceSink | None = None,
     max_model_calls: int = 8,
@@ -209,7 +212,7 @@ def _caller(
         ),
         trace=TraceEventStream("run-case", sink if sink is not None else InMemoryTraceSink(), mode=LIVE_MODE),
         cancel=cancel if cancel is not None else threading.Event(),
-        provider="openai",
+        provider=provider,
         model_id=MODEL_ID,
         call_timeout=lambda: None,
     )
@@ -372,6 +375,20 @@ def _the_case_that_remembers_the_bridges(case: DemoCase) -> tuple[Any, list[dict
     return spy, kept
 
 
+@pytest.fixture
+def cited_case(
+    ledger_db: Path, index_root: Path, embeddings: FastEmbedEmbeddings, tmp_path: Path
+) -> tuple[DemoCase, FakeProviderAdapter]:
+    """An investigation with one cited text claim and four calls before verification."""
+    adapter = FakeProviderAdapter(provider="openai", api_key=MARKER)
+    adapter.script_answer(SIMPLE_TRIAGE_ANSWER)
+    adapter.script_tool_call("query_ledger", json.dumps({"question": QUESTION}))
+    adapter.script_answer(SQL_ANSWER)
+    adapter.script_answer(VERIFICATION_ANSWER)
+    case = DemoCase(db_path=ledger_db, index_root=index_root, embeddings=embeddings, runtime_dir=tmp_path)
+    return case, adapter
+
+
 # --- the case on the bridge over the caller of the run ----------------------------------------------
 
 
@@ -395,6 +412,135 @@ def test_every_model_call_of_the_case_goes_through_the_caller_of_the_run(case: D
     assert len(_spans(coordinator, "run-case", "model.call")) == len(adapter.calls)
     # Every call of the case asked for the model of the run (FR-013).
     assert {call.model_id for call in adapter.calls} == {MODEL_ID}
+
+
+@pytest.mark.parametrize(
+    ("classifier_reply", "summary", "review_required"),
+    [
+        ("entailment", "1 supported, 0 contradicted, 0 with insufficient evidence", False),
+        ("contradiction", "0 supported, 1 contradicted, 0 with insufficient evidence", True),
+        ("neutral", "0 supported, 0 contradicted, 1 with insufficient evidence", True),
+        ("unexpected private provider text", "Verification could not be completed", True),
+    ],
+)
+def test_openai_live_verifier_reads_cited_evidence_through_the_run_budget(
+    cited_case: tuple[DemoCase, FakeProviderAdapter],
+    classifier_reply: str,
+    summary: str,
+    review_required: bool,
+) -> None:
+    """The metered visitor model checks cited claims and the answer shows the outcome."""
+    case, adapter = cited_case
+    adapter.script_answer(classifier_reply, input_tokens=41, output_tokens=2)
+    vault = CredentialVault()
+    coordinator = _coordinator(adapter, vault, executor=case)
+    handle = vault.accept(MARKER, "openai", session_id=SESSION)
+
+    coordinator.start(_plan(handle.handle))
+    result = coordinator.wait("run-case", timeout=20.0)
+
+    assert result is not None
+    assert result.status == "completed"
+    assert result.report.calls_by_model == {MODEL_ID: 5}
+    assert result.report.input_tokens == 41
+    assert result.report.output_tokens == 2
+    assert len(_spans(coordinator, "run-case", "model.call")) == 5
+    request = adapter.calls[-1]
+    assert request.model_id == MODEL_ID
+    assert not request.tools
+    pair = json.loads(request.messages[-1]["content"])
+    assert pair["claim"] == "The refund is still pending."
+    assert "id: TX-0001" in pair["evidence"]
+    assert "status:" in pair["evidence"]
+    assert summary in result.answer
+    assert ("Human review required" in result.answer) is review_required
+    assert result.answer.endswith(VERIFICATION_ANSWER)
+    assert classifier_reply not in result.answer
+
+
+@pytest.mark.parametrize(("provider", "offline_mode"), [("anthropic", "0"), ("openai", "1")])
+def test_non_openai_and_offline_cases_keep_deterministic_verification(
+    cited_case: tuple[DemoCase, FakeProviderAdapter],
+    monkeypatch: pytest.MonkeyPatch,
+    provider: str,
+    offline_mode: str,
+) -> None:
+    """The case does not call a provider for verification outside the OpenAI online route."""
+    case, adapter = cited_case
+    monkeypatch.setenv("LEDGERLENS_OFFLINE", offline_mode)
+
+    max_output_tokens = 4096
+    caller = _caller(adapter, provider=provider, max_output_tokens=max_output_tokens)
+    plan = _plan("unused")
+    plan = replace(plan, budget=replace(plan.budget, max_output_tokens=max_output_tokens))
+    answer = case(caller, plan)
+
+    assert answer == VERIFICATION_ANSWER
+    assert len(adapter.calls) == 4
+
+
+def test_model_call_cap_stops_openai_live_verification(cited_case: tuple[DemoCase, FakeProviderAdapter]) -> None:
+    """Verification stops the run at the shared model cap before calling the provider."""
+    case, adapter = cited_case
+    adapter.script_answer("entailment")
+    vault = CredentialVault()
+    coordinator = _coordinator(adapter, vault, executor=case)
+    handle = vault.accept(MARKER, "openai", session_id=SESSION)
+    plan = _plan(handle.handle)
+    plan = replace(plan, budget=replace(plan.budget, max_model_calls=4))
+
+    coordinator.start(plan)
+    result = coordinator.wait(plan.run_id, timeout=20.0)
+
+    assert result is not None
+    assert result.status == "failed"
+    assert result.report.cut_by == "max_model_calls"
+    assert result.report.model_calls == len(adapter.calls) == 4
+
+
+def test_classifier_failure_preserves_numeric_verification_and_escalation(ledger_db: Path) -> None:
+    """A text provider failure leaves amount checks and ledger-based review rules active."""
+    adapter = FakeProviderAdapter(provider="openai", api_key=MARKER)
+    adapter.script_failure(RuntimeError("private provider error"))
+    demo = build_demo_agent(_caller(adapter), db_path=ledger_db)
+    draft = InvestigationResult(
+        session_id=SESSION,
+        question=QUESTION,
+        answer=(
+            "The payment was captured [sql:1]. The payment amount was 6000.00 USD [sql:1]. "
+            "The transaction was successful [sql:1]."
+        ),
+        claims=[],
+        evidence=[
+            Evidence(
+                id="sql:1",
+                source_type="sql",
+                tool="query_ledger",
+                content=json.dumps(
+                    {"rows": [{"id": "TX-0001", "status": "captured", "amount_minor": 600000, "currency": "USD"}]}
+                ),
+                ref="sql:1",
+                retrieved_at=datetime(2026, 11, 8, tzinfo=UTC),
+            )
+        ],
+        verdicts=[],
+        coherence=Coherence(passed=True),
+        recommended_action="none",
+        requires_human_review=False,
+    )
+
+    verified = demo.agent.verifier(draft)
+
+    assert [(verdict.method, verdict.label) for verdict in verified.verdicts] == [
+        ("nli", "not_enough_evidence"),
+        ("numeric", "supported"),
+        ("nli", "not_enough_evidence"),
+    ]
+    assert "Verification could not be completed." in verified.missing_information
+    assert any("amount above 5000" in reason for reason in verified.missing_information)
+    assert verified.requires_human_review
+    assert verified.recommended_action == "escalate_to_human"
+    assert len(adapter.calls) == 1
 
 
 def test_the_triage_model_and_the_generator_of_the_sql_are_counted(case: DemoCase) -> None:
@@ -594,12 +740,13 @@ def test_the_cancellation_of_the_run_stops_the_next_call_of_the_case(case: DemoC
 def test_the_executor_of_the_demo_answers_with_the_answer_of_the_agent(
     monkeypatch: pytest.MonkeyPatch, ledger_of_the_visitor: LedgerView
 ) -> None:
-    """The case of the demo is a case of the run: it answers with what the agent answered.
+    """The run returns the agent's draft with its metered verification outcome.
 
     Why the plan carries the ledger of the visitor: the case of the demo has no ledger of its own, and a run without
     the ledger of the visitor is a refusal, because the fallback would hand the model the rows of every account of the
     repository (ADR-038).
     """
+
     def unexpected_inference(*args, **kwargs):
         pytest.fail("Live retrieval and verification must not use a configured inference backend.")
 
@@ -607,6 +754,7 @@ def test_the_executor_of_the_demo_answers_with_the_answer_of_the_agent(
     monkeypatch.setattr("ledgerlens.memory.long_term.get_embeddings", unexpected_inference)
     monkeypatch.setattr("ledgerlens.verify.nli.get_nli", unexpected_inference)
     adapter = scripted_adapter()
+    adapter.script_answer("contradiction")
     vault = CredentialVault()
     coordinator = _coordinator(adapter, vault, executor=demo_executor)
     handle = vault.accept(MARKER, "openai", session_id=SESSION)
@@ -616,8 +764,11 @@ def test_the_executor_of_the_demo_answers_with_the_answer_of_the_agent(
 
     assert result is not None
     assert result.status == "completed"
-    assert result.answer == FINAL_ANSWER
-    assert len(adapter.calls) == 6
+    assert result.answer == (
+        "Human review required. Verification found 0 supported, 1 contradicted, 0 with insufficient evidence."
+        f"\n\n{FINAL_ANSWER}"
+    )
+    assert len(adapter.calls) == 7
 
 
 def test_the_case_reads_the_ledger_of_the_plan_and_never_the_ledger_of_the_case(

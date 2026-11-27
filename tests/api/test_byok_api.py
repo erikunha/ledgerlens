@@ -910,7 +910,10 @@ def test_the_run_of_the_demo_answers_about_the_ledger_of_the_branch_of_the_visit
         state = _wait_for_the_end(client, run_id)
 
     assert state["status"] == "completed", state
-    assert state["answer"] == FINAL_ANSWER
+    assert state["answer"] == (
+        "Human review required. Verification found 0 supported, 0 contradicted, 1 with insufficient evidence.\n\n"
+        + FINAL_ANSWER
+    )
     # The tool of the agent read the ledger of the branch: the row of the transaction of the account came back.
     answers_of_the_tools = [
         message.content for call in adapter.calls for message in call.messages if message.role == "tool"

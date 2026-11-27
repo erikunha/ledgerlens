@@ -27,7 +27,7 @@ def test_project_explains_execution_and_links_published_results():
         "append-only",
         "Deterministic checks",
         "published snapshot",
-        "Learned verification",
+        "selected model also checks claims",
         "OpenAI may charge",
         "?view=visitor-sandbox",
     ):

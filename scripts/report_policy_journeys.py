@@ -228,6 +228,7 @@ def run_config(*, use_cutoff_receipts: bool = False, openai_verifier: bool = Fal
         "ledgerlens/tools/policies.py",
         "scripts/report_policy_journeys.py",
         "scripts/measure_openai_verifier.py",
+        "ledgerlens/verify/openai_classifier.py",
         "ledgerlens/tools/calculator.py",
         "ledgerlens/sim/calendars.py",
         "ledgerlens/verify/checks.py",

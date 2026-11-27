@@ -36,7 +36,7 @@ What it guarantees:
 * the case of a run travels with the run: a run that is started with a case runs that case, and the coordinator of the
   caller is never rewritten, so it keeps the case it was built with (ADR-038);
 * the case of a run is told that the run is over, so a case that lives in a long lived process does not keep the
-  context and the four bridges of every run it ever served (ADR-038).
+  context and bridges of every run it ever served (ADR-038).
 
 Why the coordinator holds the secret of the run: the vault does not keep the secret of a credential that is gone, on
 purpose (ADR-033), and a credential can die in the middle of a run (the visitor presses "forget key", the session
@@ -432,6 +432,11 @@ class ModelCaller:
     def model_id(self) -> str:
         """The model of the run, the one the request may not change (FR-013)."""
         return self._model_id
+
+    @property
+    def provider(self) -> str:
+        """The provider selected for this run."""
+        return self._provider
 
     @property
     def cancelled(self) -> bool:
@@ -1021,7 +1026,7 @@ class LiveRunCoordinator:
             # The file of the ledger of the run goes away with the run, on every path: a file that outlives its run
             # holds the rows of a visitor on the disk of the server longer than the run needs it (ADR-038).
             remove_the_ledger_of_the_run(plan.ledger)
-            # The case forgets the run when the run ends: the case holds a context and four bridges for every run
+            # The case forgets the run when the run ends: the case holds a context and bridges for every run
             # it ever served, and a long lived process would grow without end (ADR-038).
             _forget_the_run(run.case, plan.run_id)
 
