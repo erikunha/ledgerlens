@@ -15,8 +15,8 @@ def test_project_explains_execution_and_links_published_results():
     scores = {item.label: item.value for item in overview.metric}
     assert scores == {
         "Agent correctness · tuning set": "81.67%",
-        "Verifier accuracy · held-out set": "24 / 48",
-        "Policy questions resolved · development": "7 / 17",
+        "OpenAI verifier accuracy · held-out set": "43 / 48",
+        "Policy questions resolved · development": "10 / 17",
     }
     copy = "\n".join(item.value for item in (*overview.markdown, *overview.caption))
     for detail in (

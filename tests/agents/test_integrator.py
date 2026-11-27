@@ -1012,3 +1012,115 @@ def test_without_context_nothing_is_added(ledger_db: Path, index_root: Path, cas
     )
     investigate(agent, "Hi", thread_id="t-no-context")
     assert not any("signed in" in str(m.content) for m in model.calls[0])
+
+
+@pytest.mark.parametrize(
+    ("currency_statement", "settlement_known"),
+    [
+        ("", False),
+        ("The purchase was charged in USD. ", False),
+        ("Our settlement currency is USD. ", True),
+        ("Our settlement currency is usd. ", True),
+        ("We settle in euros. ", True),
+        ("Our settlement currency is not provided. ", False),
+    ],
+)
+def test_exact_calendar_date_requires_grounded_settlement_currency(
+    ledger_db, index_root, cases, currency_statement, settlement_known
+):
+    question = (
+        currency_statement + "Our dispute response deadline is Monday, July 7, 2025. What is our exact cutoff date?"
+    )
+    currency, day = ("EUR", 4) if "euros" in currency_statement else ("USD", 3)
+    answer = f"The evidence cutoff is July {day}, 2025 [calc:1]."
+    agent = integrator_for(
+        ledger_db,
+        index_root,
+        cases,
+        [
+            tool_call_message(
+                "calculate",
+                {
+                    "operation": "previous_business_day",
+                    "values": {
+                        "date": "2025-07-07",
+                        "currency": currency,
+                    },
+                },
+            ),
+            text_message(answer),
+        ],
+        verifier=supporting_verifier([]),
+    )
+    result = investigate(agent, question, thread_id="cutoff")
+    if settlement_known:
+        assert result.answer == answer
+    else:
+        assert result.recommended_action == "ask_for_clarification"
+        assert "settlement currency" in result.answer
+        assert "July 3" not in result.answer
+        history = agent.graph.get_state({"configurable": {"thread_id": "cutoff"}}).values["messages"]
+        assert history[-1].content == result.answer
+
+
+@pytest.mark.parametrize(
+    "draft",
+    [
+        "Your cutoff is July 3, 2025.",
+        "The deadline depends on local holidays. Could you confirm your settlement currency?",
+    ],
+)
+def test_date_policy_question_without_calculator_still_gets_one_clarification(ledger_db, index_root, cases, draft):
+    from ledgerlens.verify import verify_result
+
+    agent = integrator_for(
+        ledger_db,
+        index_root,
+        cases,
+        [text_message(draft)],
+        verifier=lambda result: verify_result(result, nli=StubNli()),
+    )
+    result = investigate(agent, "Deadline: 2025-07-07. When is the evidence due?", thread_id="policy-date")
+    assert result.recommended_action == "ask_for_clarification"
+    assert not result.requires_human_review
+    assert result.claims == []
+    assert "settlement currency" in result.answer
+
+
+def test_cutoff_question_preserves_preceding_settlement_context(ledger_db, index_root, cases):
+    from ledgerlens.verify import verify_result
+
+    draft = "The previous business day is July 3, 2025."
+    agent = integrator_for(
+        ledger_db,
+        index_root,
+        cases,
+        [text_message("Understood."), text_message(draft)],
+        verifier=lambda result: verify_result(result, nli=StubNli()),
+    )
+    investigate(agent, "Our settlement currency is USD.", thread_id="prior-currency")
+    result = investigate(agent, "Deadline: 2025-07-07. When is the evidence due?", thread_id="prior-currency")
+    assert result.answer == draft
+
+
+def test_dated_policy_question_with_high_amount_evidence_keeps_escalation(ledger_db, index_root, cases):
+    from ledgerlens.verify import verify_result
+
+    agent = build_integrator(
+        ScriptedChatModel(
+            script=[
+                tool_call_message("query_ledger", {"question": "Read this account's transaction."}),
+                text_message("Please confirm the settlement currency."),
+            ]
+        ),
+        db_path=ledger_db,
+        query_model=ScriptedChatModel(
+            script=["SELECT id, amount_minor FROM transactions ORDER BY amount_minor DESC LIMIT 1"]
+        ),
+        index_root=index_root,
+        case_memory=cases,
+        verifier=lambda result: verify_result(result, nli=StubNli(), ledger_db=ledger_db),
+    )
+    result = investigate(agent, "Deadline: 2025-07-07. When is the evidence due?", thread_id="high-amount")
+    assert result.recommended_action == "escalate_to_human"
+    assert any("amount above" in item for item in result.missing_information)

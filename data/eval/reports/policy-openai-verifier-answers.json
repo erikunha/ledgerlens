@@ -1,0 +1,390 @@
+{
+  "scope": "One fresh investigation per original synthetic development question. Calculator cutoff receipt rule disabled. Frozen OpenAI claim classifier injected into the policy journey runner. The provider saw only synthetic data. Total cost unavailable because the experimental instrumentation excluded classifier calls.",
+  "investigator": "gpt-4.1",
+  "verifier": "openai:gpt-4.1-mini-2025-04-14",
+  "cases": [
+    {
+      "case_id": "chargeback-cutoff",
+      "question": "When does Acme require merchant evidence for a chargeback?",
+      "answer": "Acme requires merchant evidence for a chargeback when a cardholder opens a dispute with their issuing bank and Acme Payments receives notice of the dispute. At that point, Acme informs the merchant and prepares the defense, which includes gathering and submitting the required evidence according to the policy stages and deadlines [policy:chargeback-handling#overview]. The merchant is responsible for gathering the evidence, and the Acme Payments disputes team checks and forwards it; the analyst does not send evidence on their own [policy:chargeback-handling#who-submits].",
+      "policy_citations": [
+        {
+          "id": "policy:chargeback-handling#overview",
+          "passage": "Overview\nA chargeback is a dispute the cardholder opens with the issuing bank to ask for a payment back. Acme Payments gets the notice of the dispute, informs the merchant and prepares the defense. This policy defines the stages, the deadlines and the evidence required."
+        },
+        {
+          "id": "policy:chargeback-handling#who-submits",
+          "passage": "Who submits the evidence\nThe merchant gathers the evidence and the Acme Payments disputes team checks it and forwards it. The analyst handling the case does not send evidence on their own. Before normal submission they check the stage, internal cutoff and evidence list for the reason code. If the evidence hand-in has closed, escalate to a human analyst. Review time starts at escalation and the human decision is due on the same business day as escalation."
+        }
+      ],
+      "calculations": [],
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "status": "answered"
+    },
+    {
+      "case_id": "refund-versus-chargeback",
+      "question": "Do I need to submit a refund request before the chargeback response deadline?",
+      "answer": "The retrieved policy states that a payment with an open chargeback cannot be refunded at the same time, because the customer would get paid twice. While the dispute is open, the refund request waits for the outcome. If the merchant wins the dispute, the payment goes back to being a normal captured payment and the request can be reviewed again [policy:refund-policy#refunds-and-chargebacks]. The policy passages do not establish that a refund request must be submitted before the chargeback response deadline.",
+      "policy_citations": [
+        {
+          "id": "policy:refund-policy#refunds-and-chargebacks",
+          "passage": "Refunds and disputes\nA payment with an open chargeback cannot be refunded at the same time, because the customer would get paid twice. While the dispute is open, the refund request waits for the outcome. If the merchant wins the dispute, the payment goes back to being a normal captured payment and the request can be reviewed again."
+        }
+      ],
+      "calculations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "status": "answered"
+    },
+    {
+      "case_id": "pet-insurance",
+      "question": "How much pet insurance coverage does Acme provide?",
+      "answer": "The retrieved policy passages do not establish how much pet insurance coverage Acme provides. None of the results mention a coverage amount or policy limit for pet insurance. I could not establish the coverage amount from these passages.",
+      "policy_citations": [],
+      "calculations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "status": "answered"
+    },
+    {
+      "case_id": "explicit-chargeback-deadline",
+      "question": "How far before the dispute response deadline must the merchant submit chargeback evidence?",
+      "answer": "The merchant must submit chargeback evidence one business day before the dispute response deadline [policy:chargeback-handling#response-deadline, policy:escalation-and-review#deadline-within-2-days]. This is the Acme Payments internal cutoff for sending evidence.",
+      "policy_citations": [
+        {
+          "id": "policy:chargeback-handling#response-deadline",
+          "passage": "Response deadline\nIf the merchant sends the response after the response deadline, the merchant loses the dispute automatically, without a review of the merits. A receipt timestamp alone does not establish when the merchant sent the response. The response deadline is the deadline of Acme for the response of the merchant: it shows up in the dispute's deadline field, ten to fourteen days after the dispute is opened, and it is a house rule of Acme and not the deadline of the card network. The Acme Payments internal cutoff for sending evidence is one business day before the response deadline. The card network has a separate, longer window of thirty calendar days for the categories of Visa and the frames of Mastercard (source: the Visa Core Rules and the Mastercard Chargeback Guide, read on 2026-11-25). See"
+        },
+        {
+          "id": "policy:escalation-and-review#deadline-within-2-days",
+          "passage": "Deadline close\nEscalate a dispute for a human decision when its internal cutoff has passed. The case is critical regardless of how many days remain before the response deadline. The decision is due on the same business day as the escalation. The cutoff is one business day before the response deadline.\n\nA dispute with a response deadline 2 days away or less is also critical. The system reports the days left, the internal cutoff and the evidence still missing."
+        }
+      ],
+      "calculations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "status": "answered"
+    },
+    {
+      "case_id": "cutoff-passed",
+      "question": "Our merchant evidence cutoff passed, but the dispute response deadline is tomorrow. Have we lost? What should we do today?",
+      "answer": "Missing the internal evidence cutoff alone does not mean the dispute is lost [policy:chargeback-handling#response-deadline]. If your internal cutoff has passed, escalate the case to a human analyst [policy:escalation-and-review#deadline-within-2-days; policy:chargeback-handling#who-submits]. Critical cases need human review on the same business day from escalation [policy:escalation-and-review#deadline-within-2-days; policy:chargeback-handling#who-submits]. The retrieved passages do not establish whether late evidence can still be accepted. If the merchant response is sent after the response deadline, the dispute is lost automatically [policy:chargeback-handling#response-deadline]. I need the dispute record to verify the case status.",
+      "policy_citations": [
+        {
+          "id": "policy:chargeback-handling#response-deadline",
+          "passage": "Response deadline\nIf the merchant sends the response after the response deadline, the merchant loses the dispute automatically, without a review of the merits. A receipt timestamp alone does not establish when the merchant sent the response. The response deadline is the deadline of Acme for the response of the merchant: it shows up in the dispute's deadline field, ten to fourteen days after the dispute is opened, and it is a house rule of Acme and not the deadline of the card network. The Acme Payments internal cutoff for sending evidence is one business day before the response deadline. The card network has a separate, longer window of thirty calendar days for the categories of Visa and the frames of Mastercard (source: the Visa Core Rules and the Mastercard Chargeback Guide, read on 2026-11-25). See"
+        }
+      ],
+      "calculations": [],
+      "recommended_action": "escalate_to_human",
+      "requires_human_review": true,
+      "status": "answered"
+    },
+    {
+      "case_id": "monday-deadline",
+      "question": "The dispute response deadline is Monday and Friday is a business day for our settlement currency. By which day must we send evidence?",
+      "answer": "If the dispute response deadline is Monday and Friday is a business day for your settlement currency, the internal cutoff for sending merchant evidence is the preceding Friday [policy:chargeback-handling#response-deadline-3]. This means you must send the evidence by Friday, one business day before the Monday deadline [policy:chargeback-handling#response-deadline-3, policy:chargeback-handling#business-days].",
+      "policy_citations": [
+        {
+          "id": "policy:chargeback-handling#response-deadline-3",
+          "passage": "Response deadline\nFor a Monday response deadline, the internal cutoff is the preceding Friday if Friday is a business day on the settlement currency's calendar. If Friday is a holiday, go back to the preceding business day. For a Monday, July 7, 2025 response deadline, the USD cutoff is Thursday, July 3 because July 4 is a US federal holiday. The EUR cutoff is Friday, July 4 because the TARGET calendar is open."
+        },
+        {
+          "id": "policy:chargeback-handling#business-days",
+          "passage": "How to count business days\nBusiness days exclude Saturdays, Sundays and the bank holidays of the calendar of the merchant's settlement currency. To count the internal cutoff, go back one business day from the response deadline. If today's date is already past the internal cutoff, the dispute is late for the normal submission and must be escalated."
+        }
+      ],
+      "calculations": [],
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "status": "answered"
+    },
+    {
+      "case_id": "response-late",
+      "question": "We sent the merchant response after the dispute response deadline. What happens to the dispute?",
+      "answer": "If the merchant sends the response after the response deadline, the merchant loses the dispute automatically, without a review of the merits [policy:chargeback-handling#response-deadline]. This rule applies regardless of when the response is received; what matters is the time the merchant sent the response [policy:chargeback-handling#response-deadline].",
+      "policy_citations": [
+        {
+          "id": "policy:chargeback-handling#response-deadline",
+          "passage": "Response deadline\nIf the merchant sends the response after the response deadline, the merchant loses the dispute automatically, without a review of the merits. A receipt timestamp alone does not establish when the merchant sent the response. The response deadline is the deadline of Acme for the response of the merchant: it shows up in the dispute's deadline field, ten to fourteen days after the dispute is opened, and it is a house rule of Acme and not the deadline of the card network. The Acme Payments internal cutoff for sending evidence is one business day before the response deadline. The card network has a separate, longer window of thirty calendar days for the categories of Visa and the frames of Mastercard (source: the Visa Core Rules and the Mastercard Chargeback Guide, read on 2026-11-25). See"
+        }
+      ],
+      "calculations": [],
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "status": "answered"
+    },
+    {
+      "case_id": "july-cutoff-usd",
+      "question": "Our settlement currency is USD. The dispute response deadline is Monday, July 7, 2025. On what date must we submit evidence?",
+      "answer": "You must submit evidence by one business day before the dispute response deadline [policy:chargeback-handling#response-deadline, policy:chargeback-handling#business-days]. For a response deadline of Monday, July 7, 2025, and a settlement currency of USD, the evidence submission deadline is Thursday, July 3, 2025 [calc:1].",
+      "policy_citations": [
+        {
+          "id": "policy:chargeback-handling#response-deadline",
+          "passage": "Response deadline\nIf the merchant sends the response after the response deadline, the merchant loses the dispute automatically, without a review of the merits. A receipt timestamp alone does not establish when the merchant sent the response. The response deadline is the deadline of Acme for the response of the merchant: it shows up in the dispute's deadline field, ten to fourteen days after the dispute is opened, and it is a house rule of Acme and not the deadline of the card network. The Acme Payments internal cutoff for sending evidence is one business day before the response deadline. The card network has a separate, longer window of thirty calendar days for the categories of Visa and the frames of Mastercard (source: the Visa Core Rules and the Mastercard Chargeback Guide, read on 2026-11-25). See"
+        },
+        {
+          "id": "policy:chargeback-handling#business-days",
+          "passage": "How to count business days\nBusiness days exclude Saturdays, Sundays and the bank holidays of the calendar of the merchant's settlement currency. To count the internal cutoff, go back one business day from the response deadline. If today's date is already past the internal cutoff, the dispute is late for the normal submission and must be escalated."
+        }
+      ],
+      "calculations": [
+        {
+          "inputs": {
+            "operation": "previous_business_day",
+            "values": {
+              "date": "2025-07-07",
+              "currency": "USD"
+            }
+          },
+          "outputs": {
+            "ok": true,
+            "evidence_ids": [
+              "calc:1"
+            ],
+            "data": {
+              "operation": "previous_business_day",
+              "result": "2025-07-03",
+              "formula": "One business day before 2025-07-07 on the USD calendar (US)"
+            }
+          }
+        }
+      ],
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "status": "answered"
+    },
+    {
+      "case_id": "july-cutoff-eur",
+      "question": "Our settlement currency is EUR. The dispute response deadline is Monday, July 7, 2025. On what date must we submit evidence?",
+      "answer": "For a dispute with a response deadline of Monday, July 7, 2025 and settlement currency EUR, you must submit evidence by Friday, July 4, 2025. This is one business day before the response deadline, using the TARGET calendar for EUR settlements [policy:chargeback-handling#response-deadline-3, policy:chargeback-handling#response-deadline, policy:chargeback-handling#business-days, calc:1].",
+      "policy_citations": [
+        {
+          "id": "policy:chargeback-handling#response-deadline-3",
+          "passage": "Response deadline\nFor a Monday response deadline, the internal cutoff is the preceding Friday if Friday is a business day on the settlement currency's calendar. If Friday is a holiday, go back to the preceding business day. For a Monday, July 7, 2025 response deadline, the USD cutoff is Thursday, July 3 because July 4 is a US federal holiday. The EUR cutoff is Friday, July 4 because the TARGET calendar is open."
+        },
+        {
+          "id": "policy:chargeback-handling#response-deadline",
+          "passage": "Response deadline\nIf the merchant sends the response after the response deadline, the merchant loses the dispute automatically, without a review of the merits. A receipt timestamp alone does not establish when the merchant sent the response. The response deadline is the deadline of Acme for the response of the merchant: it shows up in the dispute's deadline field, ten to fourteen days after the dispute is opened, and it is a house rule of Acme and not the deadline of the card network. The Acme Payments internal cutoff for sending evidence is one business day before the response deadline. The card network has a separate, longer window of thirty calendar days for the categories of Visa and the frames of Mastercard (source: the Visa Core Rules and the Mastercard Chargeback Guide, read on 2026-11-25). See"
+        },
+        {
+          "id": "policy:chargeback-handling#business-days",
+          "passage": "How to count business days\nBusiness days exclude Saturdays, Sundays and the bank holidays of the calendar of the merchant's settlement currency. To count the internal cutoff, go back one business day from the response deadline. If today's date is already past the internal cutoff, the dispute is late for the normal submission and must be escalated."
+        }
+      ],
+      "calculations": [
+        {
+          "inputs": {
+            "operation": "previous_business_day",
+            "values": {
+              "date": "2025-07-07",
+              "currency": "EUR"
+            }
+          },
+          "outputs": {
+            "ok": true,
+            "evidence_ids": [
+              "calc:1"
+            ],
+            "data": {
+              "operation": "previous_business_day",
+              "result": "2025-07-04",
+              "formula": "One business day before 2025-07-07 on the EUR calendar (TARGET)"
+            }
+          }
+        }
+      ],
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "status": "answered"
+    },
+    {
+      "case_id": "unseen-usd",
+      "question": "USD settlement. Our dispute response deadline is Monday, June 1, 2026. What date is the evidence due?",
+      "answer": "For a dispute with a USD settlement and a response deadline of Monday, June 1, 2026, the evidence is due by the previous business day, which is Friday, May 29, 2026 [policy:chargeback-handling#response-deadline, calc:1].",
+      "policy_citations": [
+        {
+          "id": "policy:chargeback-handling#response-deadline",
+          "passage": "Response deadline\nIf the merchant sends the response after the response deadline, the merchant loses the dispute automatically, without a review of the merits. A receipt timestamp alone does not establish when the merchant sent the response. The response deadline is the deadline of Acme for the response of the merchant: it shows up in the dispute's deadline field, ten to fourteen days after the dispute is opened, and it is a house rule of Acme and not the deadline of the card network. The Acme Payments internal cutoff for sending evidence is one business day before the response deadline. The card network has a separate, longer window of thirty calendar days for the categories of Visa and the frames of Mastercard (source: the Visa Core Rules and the Mastercard Chargeback Guide, read on 2026-11-25). See"
+        }
+      ],
+      "calculations": [
+        {
+          "inputs": {
+            "operation": "previous_business_day",
+            "values": {
+              "date": "2026-06-01",
+              "currency": "USD"
+            }
+          },
+          "outputs": {
+            "ok": true,
+            "evidence_ids": [
+              "calc:1"
+            ],
+            "data": {
+              "operation": "previous_business_day",
+              "result": "2026-05-29",
+              "formula": "One business day before 2026-06-01 on the USD calendar (US)"
+            }
+          }
+        }
+      ],
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "status": "answered"
+    },
+    {
+      "case_id": "unknown-currency",
+      "question": "Our dispute response deadline is Monday, July 7, 2025. What is our exact cutoff date?",
+      "answer": "The exact internal evidence cutoff date for a dispute response deadline of Monday, July 7, 2025, is Thursday, July 3, 2025, which is one business day before the response deadline on the USD calendar [policy:chargeback-handling#response-deadline, calc:1].",
+      "policy_citations": [
+        {
+          "id": "policy:chargeback-handling#response-deadline",
+          "passage": "Response deadline\nIf the merchant sends the response after the response deadline, the merchant loses the dispute automatically, without a review of the merits. A receipt timestamp alone does not establish when the merchant sent the response. The response deadline is the deadline of Acme for the response of the merchant: it shows up in the dispute's deadline field, ten to fourteen days after the dispute is opened, and it is a house rule of Acme and not the deadline of the card network. The Acme Payments internal cutoff for sending evidence is one business day before the response deadline. The card network has a separate, longer window of thirty calendar days for the categories of Visa and the frames of Mastercard (source: the Visa Core Rules and the Mastercard Chargeback Guide, read on 2026-11-25). See"
+        }
+      ],
+      "calculations": [
+        {
+          "inputs": {
+            "operation": "previous_business_day",
+            "values": {
+              "date": "2025-07-07",
+              "currency": "USD"
+            }
+          },
+          "outputs": {
+            "ok": true,
+            "evidence_ids": [
+              "calc:1"
+            ],
+            "data": {
+              "operation": "previous_business_day",
+              "result": "2025-07-03",
+              "formula": "One business day before 2025-07-07 on the USD calendar (US)"
+            }
+          }
+        }
+      ],
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "status": "answered"
+    },
+    {
+      "case_id": "verify-status",
+      "question": "Has my specific dispute already been marked lost? Please verify its actual recorded status.",
+      "answer": "Could you please provide the chargeback (dispute) ID so I can verify its recorded status?",
+      "policy_citations": [],
+      "calculations": [],
+      "recommended_action": "ask_for_clarification",
+      "requires_human_review": false,
+      "status": "clarification"
+    },
+    {
+      "case_id": "policy-status",
+      "question": "As a general policy, does passing the evidence cutoff automatically lose the dispute?",
+      "answer": "Passing the internal evidence cutoff does not automatically lose the dispute. If the internal cutoff has passed, the case must be escalated to a human analyst for review, and the decision is due on the same business day as escalation [policy:chargeback-handling#who-submits, policy:escalation-and-review#deadline-within-2-days]. Automatic loss only occurs if the merchant sends the response after the response deadline, not merely for missing the internal evidence cutoff [policy:chargeback-handling#response-deadline].",
+      "policy_citations": [
+        {
+          "id": "policy:chargeback-handling#who-submits",
+          "passage": "Who submits the evidence\nThe merchant gathers the evidence and the Acme Payments disputes team checks it and forwards it. The analyst handling the case does not send evidence on their own. Before normal submission they check the stage, internal cutoff and evidence list for the reason code. If the evidence hand-in has closed, escalate to a human analyst. Review time starts at escalation and the human decision is due on the same business day as escalation."
+        },
+        {
+          "id": "policy:escalation-and-review#deadline-within-2-days",
+          "passage": "Deadline close\nEscalate a dispute for a human decision when its internal cutoff has passed. The case is critical regardless of how many days remain before the response deadline. The decision is due on the same business day as the escalation. The cutoff is one business day before the response deadline.\n\nA dispute with a response deadline 2 days away or less is also critical. The system reports the days left, the internal cutoff and the evidence still missing."
+        },
+        {
+          "id": "policy:chargeback-handling#response-deadline",
+          "passage": "Response deadline\nIf the merchant sends the response after the response deadline, the merchant loses the dispute automatically, without a review of the merits. A receipt timestamp alone does not establish when the merchant sent the response. The response deadline is the deadline of Acme for the response of the merchant: it shows up in the dispute's deadline field, ten to fourteen days after the dispute is opened, and it is a house rule of Acme and not the deadline of the card network. The Acme Payments internal cutoff for sending evidence is one business day before the response deadline. The card network has a separate, longer window of thirty calendar days for the categories of Visa and the frames of Mastercard (source: the Visa Core Rules and the Mastercard Chargeback Guide, read on 2026-11-25). See"
+        }
+      ],
+      "calculations": [],
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "status": "answered"
+    },
+    {
+      "case_id": "deadline-paraphrase",
+      "question": "We missed the evidence handoff but still have time to respond. What happens now?",
+      "answer": "Missing the internal evidence cutoff alone does not mean the dispute is lost. If your internal cutoff has passed, escalate the case to a human analyst. The case is considered critical regardless of how many days remain before the response deadline, and a decision is due on the same business day as the escalation [policy:escalation-and-review#deadline-within-2-days, policy:escalation-and-review#when-to-escalate]. The retrieved passages do not establish whether late evidence can still be accepted. If the merchant sends the response after the response deadline, the dispute is lost automatically, without a review of the merits [policy:chargeback-handling#response-deadline].",
+      "policy_citations": [
+        {
+          "id": "policy:escalation-and-review#deadline-within-2-days",
+          "passage": "Deadline close\nEscalate a dispute for a human decision when its internal cutoff has passed. The case is critical regardless of how many days remain before the response deadline. The decision is due on the same business day as the escalation. The cutoff is one business day before the response deadline.\n\nA dispute with a response deadline 2 days away or less is also critical. The system reports the days left, the internal cutoff and the evidence still missing."
+        },
+        {
+          "id": "policy:escalation-and-review#when-to-escalate",
+          "passage": "When to escalate\nEscalate the case to a human analyst when there are claims contradicted by the evidence, when missing data prevents a conclusion, when a dispute deadline is 2 days away or less, or when any amount involved is above 5,000. A missed internal evidence cutoff also requires escalation to a human analyst. Review time starts when the case is escalated. A decision on a missed cutoff is due that same business day. A single one of these criteria is enough to make human review mandatory."
+        },
+        {
+          "id": "policy:chargeback-handling#response-deadline",
+          "passage": "Response deadline\nIf the merchant sends the response after the response deadline, the merchant loses the dispute automatically, without a review of the merits. A receipt timestamp alone does not establish when the merchant sent the response. The response deadline is the deadline of Acme for the response of the merchant: it shows up in the dispute's deadline field, ten to fourteen days after the dispute is opened, and it is a house rule of Acme and not the deadline of the card network. The Acme Payments internal cutoff for sending evidence is one business day before the response deadline. The card network has a separate, longer window of thirty calendar days for the categories of Visa and the frames of Mastercard (source: the Visa Core Rules and the Mastercard Chargeback Guide, read on 2026-11-25). See"
+        }
+      ],
+      "calculations": [],
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "status": "answered"
+    },
+    {
+      "case_id": "refund-trigger",
+      "question": "When does a refund need human review because of its amount?",
+      "answer": "A refund requires human review if its amount is above 5,000 in the record's currency. This threshold applies to the amount of each individual refund, not to the sum of several refunds. Amounts close to the limit must be checked carefully, as rounding can push the total over the threshold [policy:escalation-and-review#high-amount].",
+      "policy_citations": [
+        {
+          "id": "policy:escalation-and-review#high-amount",
+          "passage": "High amounts\nAny payment, refund or dispute above 5,000, in the record's currency, requires human review, even if all the evidence is complete. The limit applies to the amount of each record and not to the sum of several. Amounts close to the limit must be checked carefully, because rounding can push the total over."
+        }
+      ],
+      "calculations": [],
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "status": "answered"
+    },
+    {
+      "case_id": "settlement-trigger",
+      "question": "When is a payout considered delayed?",
+      "answer": "A payout is considered delayed when the expected payout date has passed and the settlement is still in the status \"scheduled\" [policy:settlement-schedule#late-payout]. If a settlement remains \"scheduled\" after its expected date, this indicates a delay and the case must be escalated for human review [policy:settlement-schedule#status].",
+      "policy_citations": [
+        {
+          "id": "policy:settlement-schedule#late-payout",
+          "passage": "Late payout\nA payout counts as late when the expected date has passed and the settlement is still `scheduled`. The common causes are invalid bank details, a hold for risk review and bank failures. The analyst does not fix the delay: they describe what the record shows and escalate the case to the operations team."
+        },
+        {
+          "id": "policy:settlement-schedule#status",
+          "passage": "Settlement status\nA settlement is `scheduled` when it has been computed and the expected date has not come yet. It moves to `paid` when the payout was made, and the actual payment date is recorded. A settlement still `scheduled` after the expected date means a delay and must be taken to human review. A paid settlement is never recomputed."
+        }
+      ],
+      "calculations": [],
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "status": "answered"
+    },
+    {
+      "case_id": "fee-trigger",
+      "question": "When is the chargeback fee charged?",
+      "answer": "The chargeback fee is charged to the merchant for each dispute opened, regardless of whether the merchant wins or loses the dispute [policy:chargeback-handling#fee-reference, policy:fees-and-pricing#chargeback-fee]. The fee is deducted in the settlement of the period in which the dispute was opened, and what counts is the date the dispute was opened, not the date of the original payment [policy:chargeback-handling#fee-reference, policy:fees-and-pricing#chargeback-fee].",
+      "policy_citations": [
+        {
+          "id": "policy:chargeback-handling#fee-reference",
+          "passage": "Chargeback fee\nEach dispute opened creates a fixed fee charged to the merchant, even if the merchant wins the defense. The fee amount and the rule for charging it per period are in the fees and pricing policy. The fee is deducted in the settlement of the period in which the dispute was opened."
+        },
+        {
+          "id": "policy:fees-and-pricing#chargeback-fee",
+          "passage": "Chargeback fee\nFor each chargeback opened in the period, Acme charges a fixed fee of 15.00 in the merchant's settlement currency. The fee applies to each chargeback opened in the period, whether the merchant later wins or loses the dispute. What counts is the date the dispute was opened, not the date of the original payment."
+        }
+      ],
+      "calculations": [],
+      "recommended_action": "none",
+      "requires_human_review": false,
+      "status": "answered"
+    }
+  ],
+  "source_sha256": {
+    "ledgerlens/agents/integrator.py": "e70afa360eb7cfa13b4f2f662f2b53a82da263420d5b2358a4ab031d845ea389",
+    "ledgerlens/verify/checks.py": "a26d2fe0401b3daf8dbffb850348b0277476742a39180c8cc46bd54d14f54859",
+    "ledgerlens/tools/policies.py": "3a1d1f36e54210f723e1ae34edf76f1b269f22b2efa0a3b771a41a363ab7cfb8"
+  },
+  "index_corpus_sha256": "4b3d54aa447f2b70d77ec9e8e7cd5cac74e24615351f46608be6b1b825601bbd"
+}

@@ -110,7 +110,7 @@ def compare_archived_cases(archive: Path) -> dict[str, Any]:
     for case_id in DATED_CASES:
         source = cases[case_id]
         reconstructed = reconstruct_archived_case(source)
-        baseline = verify_result(reconstructed, nli=nli)
+        baseline = verify_result(reconstructed, nli=nli, use_cutoff_receipts=False)
         candidate = verify_result(reconstructed, nli=nli, use_cutoff_receipts=True)
         preflagged = reconstructed.model_copy(update={"requires_human_review": True})
         preflagged_candidate = verify_result(preflagged, nli=nli, use_cutoff_receipts=True)

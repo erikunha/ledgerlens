@@ -64,8 +64,10 @@ Numbers: nothing here computes money. What the result claims comes from the tool
 
 from __future__ import annotations
 
+import calendar
 import json
 import logging
+import re
 import time
 import typing
 from collections.abc import Callable, Mapping
@@ -618,7 +620,66 @@ def _investigate(
             span,
             outputs={"failed": extra is None, "cut_by": cut_by, "plan_deviations": result.plan_deviations},
         )
+    if first_turn and not context and _unqualified_cutoff_question(result):
+        # The question carries no assertion to verify. Keep tool evidence and verify escalation normally.
+        asked = "Which settlement currency should I use for the holiday calendar?"
+        latest = agent.graph.get_state(config).values["messages"][-1]
+        if isinstance(latest, AIMessage):
+            agent.graph.update_state(config, {"messages": [AIMessage(asked, id=latest.id)]})
+        result.answer = asked
+        result.recommended_action = "ask_for_clarification"
+        result.missing_information.append("Settlement currency")
+        if not result.evidence:
+            # Assembly flags an answer without receipts. A request for missing input needs no receipt.
+            result.requires_human_review = False
     return finish(agent, result, trace=trace)
+
+
+_MONTH_NAMES = "|".join((*calendar.month_name[1:], *calendar.month_abbr[1:]))
+_CALENDAR_DATE = re.compile(
+    rf"\b(?:\d{{4}}-\d{{2}}-\d{{2}}|(?:{_MONTH_NAMES})\.?\s+\d{{1,2}}(?:,?\s+\d{{4}})?)\b", re.I
+)
+_CUTOFF_REQUEST = re.compile(r"\b(?:cutoff|evidence|submission)\b", re.I)
+_DATE_REQUEST = re.compile(
+    r"\b(?:when|(?:what|which|calculate|determine|compute|give)\b[^?.!]{0,65}\b(?:date|day|cutoff))\b", re.I
+)
+_SEPARATE_CASE_QUESTION = re.compile(
+    r"\b(?:[a-z]{1,3}-\d+|missed|passed|lost|late|urgent|critical|escalat\w*|status|refund|fraud)\b", re.I
+)
+_CALENDAR_CURRENCY = r"(?:USD|U\.?S\.? dollars?|EUR|euros?|BRL|Brazilian (?:real|reais))"
+_STATED_SETTLEMENT = re.compile(
+    rf"\b(?:settl(?:e|ed|es|ement)(?: currency)?(?: is| in| of|:)?\s+{_CALENDAR_CURRENCY}"
+    rf"|{_CALENDAR_CURRENCY} settlement)\b", re.I
+)
+_POLICY_CALENDAR_TOOLS = frozenset({POLICY_TOOL, "calculate"})
+
+
+def _unqualified_cutoff_question(result: InvestigationResult) -> bool:
+    """Identify a dated policy question whose only missing input is the settlement calendar."""
+    from ledgerlens.verify.claims import find_amounts
+
+    question = result.question
+    if result.triage:
+        entities = result.triage.entities.model_dump(exclude={"dates", "currencies"})
+        if (
+            result.triage.intent != POLICY_QUESTION
+            or any(entities.values())
+            or any(step.tool and step.tool not in _POLICY_CALENDAR_TOOLS for step in result.triage.plan)
+        ):
+            return False
+    return bool(
+        _CALENDAR_DATE.search(question)
+        and "deadline" in question.casefold()
+        and _CUTOFF_REQUEST.search(question)
+        and _DATE_REQUEST.search(question)
+        and not _STATED_SETTLEMENT.search(question)
+        and not _SEPARATE_CASE_QUESTION.search(question)
+        and not find_amounts(question)
+        and question.count("?") <= 1
+        and not result.missing_information
+        and all(call.ok and call.tool in _POLICY_CALENDAR_TOOLS for call in result.tool_trace)
+        and all(item.source_type in {"policy", "calc"} for item in result.evidence)
+    )
 
 
 def _graph_cut(caps: RunBudget) -> str:

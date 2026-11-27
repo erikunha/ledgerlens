@@ -1,0 +1,95 @@
+{
+  "scope": "Independent model-assisted adjudication of one fresh run per original development question. The reviewer checked answer, citations, action, calendar and human-review flag against the original resolution criteria. A correct clarification or abstention remains unresolved. Comparison to the historical run includes changes to the investigator and sampling variation.",
+  "source_report": "data/eval/reports/policy-openai-verifier-answers.json",
+  "source_sha256": "334d0a161dad0daaca4ec35c584896966118124dc58a9bf7fa8ac19afc5f6fe1",
+  "baseline_review": "data/eval/policy_journey_review.json",
+  "resolved_cases": 10,
+  "total_cases": 17,
+  "cases": [
+    {
+      "case_id": "chargeback-cutoff",
+      "resolved": false,
+      "reason": "Explains notice and responsibility but omits the one-business-day cutoff."
+    },
+    {
+      "case_id": "refund-versus-chargeback",
+      "resolved": false,
+      "reason": "Cites only the refund passage and escalates a general question."
+    },
+    {
+      "case_id": "pet-insurance",
+      "resolved": false,
+      "reason": "Correctly abstains on a subject outside the handbook."
+    },
+    {
+      "case_id": "explicit-chargeback-deadline",
+      "resolved": false,
+      "reason": "The supported general deadline answer triggered unnecessary escalation."
+    },
+    {
+      "case_id": "cutoff-passed",
+      "resolved": true,
+      "reason": "Distinguishes the two deadlines and escalates the live case for same-day review."
+    },
+    {
+      "case_id": "monday-deadline",
+      "resolved": true,
+      "reason": "Preceding Friday follows from the supplied business-day condition."
+    },
+    {
+      "case_id": "response-late",
+      "resolved": true,
+      "reason": "Correctly explains the consequence of sending the response late."
+    },
+    {
+      "case_id": "july-cutoff-usd",
+      "resolved": true,
+      "reason": "July 3 matches the USD calendar and cited receipt."
+    },
+    {
+      "case_id": "july-cutoff-eur",
+      "resolved": true,
+      "reason": "July 4 matches the TARGET calendar and cited receipt."
+    },
+    {
+      "case_id": "unseen-usd",
+      "resolved": true,
+      "reason": "May 29 matches the cited USD calendar receipt."
+    },
+    {
+      "case_id": "unknown-currency",
+      "resolved": false,
+      "reason": "Assumes USD although the question supplies no settlement currency."
+    },
+    {
+      "case_id": "verify-status",
+      "resolved": false,
+      "reason": "Appropriately requests the missing dispute identifier. The original status remains unknown."
+    },
+    {
+      "case_id": "policy-status",
+      "resolved": true,
+      "reason": "Distinguishes a missed cutoff from automatic loss and avoids escalating a hypothetical."
+    },
+    {
+      "case_id": "deadline-paraphrase",
+      "resolved": false,
+      "reason": "A live missed handoff needs escalation. The recorded action is none despite the recommendation in prose."
+    },
+    {
+      "case_id": "refund-trigger",
+      "resolved": true,
+      "reason": "Correct strict threshold per record in its currency."
+    },
+    {
+      "case_id": "settlement-trigger",
+      "resolved": true,
+      "reason": "Identifies scheduled status and elapsed expected date."
+    },
+    {
+      "case_id": "fee-trigger",
+      "resolved": true,
+      "reason": "Cites the fee on opening and the correct settlement period."
+    }
+  ]
+}
