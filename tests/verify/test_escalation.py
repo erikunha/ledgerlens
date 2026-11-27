@@ -1019,3 +1019,40 @@ def test_escalation_records_each_triggered_rule() -> None:
     assert conditions[0]["condition"] == "policy_rule"
     assert DEADLINE_POLICY in conditions[0]["reason"]
     assert any(conditions[0]["reason"] in message for message in out.missing_information)
+
+
+@pytest.mark.parametrize(
+    ("question", "expected"),
+    [
+        ("We missed our internal cutoff. How should we proceed?", True),
+        ("We missed the evidence handoff but can still respond. What now?", True),
+        ("Our internal evidence cutoff has already passed. Who handles this?", True),
+        ("Our merchant evidence cutoff has passed, what should we do today?", True),
+        ("We missed the evidence handoff in our training exercise. What now?", False),
+        ("Our merchant evidence cutoff passed, but we can respond tomorrow.", True),
+        ("The merchant's evidence cutoff has passed. What can we do?", True),
+        ("My evidence hand-in has closed. Can someone help?", True),
+        ("Our internal evidence cutoff passed the audit.", False),
+        ("Our merchant evidence cutoff has not passed.", False),
+        ("If we missed the evidence handoff, what would happen?", False),
+        ("Suppose we missed our internal cutoff. Who handles that?", False),
+        ("We have not missed the evidence handoff. What do we need?", False),
+        ("Did we miss the evidence handoff?", False),
+        ("We missed the evidence handoff?", False),
+        ("When does an internal cutoff trigger review?", False),
+    ],
+)
+def test_reported_cutoff_requires_retrieved_policy_and_an_actual_miss(question: str, expected: bool) -> None:
+    evidence = ev(DEADLINE_POLICY, "Escalate a dispute when its internal cutoff has passed.")
+    result = apply_escalation(about(question, evidence))
+    assert result.requires_human_review is expected
+    assert result.recommended_action == ("escalate_to_human" if expected else "none")
+    assert apply_escalation(about(question, ev(AMOUNT_POLICY, "Review large amounts."))).requires_human_review is False
+
+
+@pytest.mark.parametrize("policy", ["policy:chargeback-handling#who-submits", "policy:chargeback-handling#escalation"])
+def test_reported_cutoff_can_cite_the_chargeback_rule(policy: str) -> None:
+    evidence = ev(policy, "If the evidence hand-in has closed, escalate to a human analyst.")
+    result = apply_escalation(about("The evidence hand-in has closed.", evidence))
+    assert result.recommended_action == "escalate_to_human"
+    assert any(policy in reason for reason in result.missing_information)

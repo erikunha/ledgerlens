@@ -6,7 +6,7 @@ from app.artifact_views import ROOT, SITE, _artifact_errors, _read, render_engin
 
 REPOSITORY = "https://github.com/erikunha/ledgerlens/blob/main"
 EVALUATION_INDEX = SITE / "eval" / "index.json"
-CANDIDATE_REVIEW = "data/eval/reports/policy-openai-verifier-review.json"
+CANDIDATE_REVIEW = "data/eval/reports/policy-resolution-comparison.json"
 OPENAI_VERIFIER = "data/eval/report_openai_verifier.json"
 POLICY_REVIEW = "data/eval/policy_journey_review.json"
 
@@ -17,7 +17,8 @@ def _render_scores() -> None:
         report = _read(EVALUATION_INDEX)
         tuning = report["evaluation"]
         held_out = report["verification"]
-        policy = _read(ROOT / CANDIDATE_REVIEW)
+        runs = _read(ROOT / CANDIDATE_REVIEW)["runs"]
+        policy = runs["repeat"]
         candidate = _read(ROOT / OPENAI_VERIFIER)
 
         agent, verifier, policy_runs = st.columns(3)
@@ -33,10 +34,11 @@ def _render_scores() -> None:
             f"[Held-out verifier report]({REPOSITORY}/data/eval/report_heldout.json)"
         )
         policy_runs.metric(
-            "Policy questions resolved · development", f"{policy['resolved_cases']} / {policy['total_cases']}"
+            "Policy questions resolved · development rerun", f"{policy['resolved_cases']} / {policy['total_cases']}"
         )
         policy_runs.caption(
-            "OpenAI verifier experiment. Baseline: 7/17. One run per synthetic case. "
+            f"First candidate run: {runs['candidate']['resolved_cases']}/17. "
+            f"Baseline rerun: {runs['control']['resolved_cases']}/17. Same 17 questions. "
             "A case counts as resolved when the answer is definitive, "
             f"supported and gives an appropriate action. [Candidate results]({REPOSITORY}/{CANDIDATE_REVIEW}) · "
             f"[Baseline review]({REPOSITORY}/{POLICY_REVIEW})"

@@ -1124,3 +1124,66 @@ def test_dated_policy_question_with_high_amount_evidence_keeps_escalation(ledger
     result = investigate(agent, "Deadline: 2025-07-07. When is the evidence due?", thread_id="high-amount")
     assert result.recommended_action == "escalate_to_human"
     assert any("amount above" in item for item in result.missing_information)
+
+
+@pytest.mark.parametrize(
+    ("question", "draft", "guidance"),
+    [
+        (
+            "When are merchants required to provide evidence in a dispute?",
+            "Evidence is gathered after notice [policy:chargeback-handling#overview].",
+            "submission cutoff",
+        ),
+        (
+            "Does the refund request follow the same deadline as the dispute response?",
+            "A refund waits while a dispute is open [policy:refund-policy#refunds-and-chargebacks].",
+            "response deadline governs",
+        ),
+    ],
+)
+def test_partial_policy_timing_answer_gets_one_revision(ledger_db, index_root, cases, question, draft, guidance):
+    revised = "Revised answer with support for both parts."
+    model = ScriptedChatModel(
+        script=[
+            tool_call_message("search_policies", {"query": question, "transform": "none"}),
+            text_message(draft),
+            text_message(revised),
+        ]
+    )
+    result = investigate(no_plan(ledger_db, index_root, cases, model), question, thread_id="policy-revision")
+    assert result.answer == revised
+    assert guidance in model.calls[-1][-1].content
+
+
+@pytest.mark.parametrize(
+    ("content", "suffix", "revision"),
+    [
+        ("plain text", "", True),
+        ("[]", "", True),
+        ('{"text": 2}', "", True),
+        ('{"text": "The response deadline governs the dispute."}', "-extra", True),
+        ('{"text": "The response deadline governs the dispute."}', "", False),
+    ],
+)
+def test_policy_timing_requires_exact_citations_to_usable_passages(content, suffix, revision):
+    from ledgerlens.agents.integrator import _policy_timing_gap
+    from ledgerlens.schemas import ToolCallRecord
+
+    result = injected_refund_result()
+    result.question = "Is the refund request due by the dispute response deadline?"
+    result.answer = (
+        "A refund waits [policy:refund#request]. The deadline applies to the response "
+        f"[policy:dispute#deadline{suffix}]."
+    )
+    result.evidence = [
+        Evidence(
+            id=evidence_id, source_type="policy", tool="search_policies", content=passage,
+            ref=evidence_id, retrieved_at=datetime.now(UTC),
+        )
+        for evidence_id, passage in [
+            ("policy:refund#request", '{"text":"A refund waits for the dispute outcome."}'),
+            ("policy:dispute#deadline", content),
+        ]
+    ]
+    result.tool_trace = [ToolCallRecord(step=1, tool="search_policies", input={}, ok=True, duration_ms=0)]
+    assert bool(_policy_timing_gap(result)) is revision
