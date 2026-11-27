@@ -55,7 +55,7 @@ def test_calculation_and_recording_specific_proof():
         """
 import streamlit as st
 from artifact_views import render_proof, render_replay
-if st.session_state.get("go_to") == "Proof":
+if st.session_state.get("go_to") == "proof-artifacts":
     render_proof()
 else:
     render_replay()

@@ -12,8 +12,9 @@ def test_returning_to_payments_preserves_the_selected_account(monkeypatch):
     monkeypatch.setenv("LEDGERLENS_OFFLINE", "1")
     page = AppTest.from_file(str(APP), default_timeout=30).run()
     page.selectbox(key="account").set_value("M-03").run()
-    for view in ("Replay", "Project", "Data", "Payments"):
-        page.button(key=f"nav-{view}").click().run()
+    for label in ("Recordings", "Project details", "Explore data", "Investigations"):
+        next(button for button in page.button if button.label == label).click().run()
+        assert page.query_params["view"] == label.lower().replace(" ", "-")
         assert not page.exception
     assert page.selectbox(key="account").value == "M-03"
 
@@ -54,16 +55,17 @@ def test_both_modes_share_the_editable_payment_question(monkeypatch):
     assert page.session_state["turns"] == []
 
 
-def test_legacy_live_link_opens_the_shared_payment_composer(monkeypatch):
+@pytest.mark.parametrize("unknown", ["Replay", "Live", "Payments", "invalid"])
+def test_unknown_view_falls_back_to_investigations(monkeypatch, unknown):
     monkeypatch.setenv("LEDGERLENS_OFFLINE", "1")
     page = AppTest.from_file(str(APP), default_timeout=30)
-    page.query_params["view"] = "Live"
+    page.query_params["view"] = unknown
     page.run()
     assert page.session_state["investigation_mode"] == "Scripted demo"
     assert page.selectbox(key="account").value == "C-0412"
     assert page.button(key="featured")
     assert not page.button(key="send").disabled
-    assert "nav-Live" not in [button.key for button in page.button]
+    assert page.query_params["view"] == "investigations"
 
 
 def test_paid_turns_keep_edited_questions_answers_and_account(monkeypatch):
@@ -192,35 +194,35 @@ def test_test_message_does_not_require_a_paid_snapshot_or_provider(monkeypatch):
 def test_data_navigation_defaults_to_the_complete_sample(monkeypatch):
     monkeypatch.setenv("LEDGERLENS_OFFLINE", "1")
     page = AppTest.from_file(str(APP), default_timeout=30).run()
-    page.button(key="nav-Data").click().run()
+    page.button(key="nav-explore-data").click().run()
     assert not page.exception
     assert page.session_state["data_scope"] == "Full sample database"
     payment = next(widget for widget in page.selectbox if widget.label == "Payment scope")
     assert len(payment.options) == 2117
-    assert "nav-Evaluation" not in [item.key for item in page.button]
-    page.button(key="nav-Project").click().run()
+    assert "nav-evaluation" not in [item.key for item in page.button]
+    page.button(key="nav-project-details").click().run()
     assert page.query_params["view"] == "project-details"
     assert not page.exception
 
 
 @pytest.mark.parametrize(
-    ("legacy", "slug"),
+    "slug",
     [
-        ("Payments", "investigations"),
-        ("Data", "explore-data"),
-        ("Replay", "recordings"),
-        ("Project", "project-details"),
-        ("Sandbox", "visitor-sandbox"),
-        ("Evaluation", "evaluation"),
-        ("Proof", "proof-artifacts"),
-        ("Engineering", "engineering"),
+        "investigations",
+        "explore-data",
+        "recordings",
+        "project-details",
+        "visitor-sandbox",
+        "evaluation",
+        "proof-artifacts",
+        "engineering",
     ],
 )
-def test_bookmarked_page_updates_only_its_view_parameter(monkeypatch, legacy, slug):
+def test_canonical_view_preserves_case(monkeypatch, slug):
     monkeypatch.setenv("LEDGERLENS_OFFLINE", "1")
     page = AppTest.from_file(str(APP), default_timeout=30)
-    page.query_params.update(view=legacy, case="S01")
+    page.query_params.update(view=slug, case="S01")
     page.run()
-    assert page.query_params["view"] == slug
+    assert page.query_params["view"] in (slug, [slug])
     assert page.query_params["case"] in ("S01", ["S01"])
     assert not page.exception

@@ -656,8 +656,10 @@ def render_portal(account: Account, lines: list[dict[str, Any]], marks: dict[str
         st.html(f"<style>{selectors} {{ background: rgba(250, 170, 40, 0.12); border-radius: 0.5rem; }}</style>")
 
 
-DATA_PAGE = "Data"
-PROJECT_PAGE = "Project"
+INVESTIGATIONS = "investigations"
+RECORDINGS = "recordings"
+DATA_PAGE = "explore-data"
+PROJECT_PAGE = "project-details"
 FULL_SAMPLE = "Full sample database"
 CURRENT_ACCOUNT = "Current demo account"
 
@@ -705,7 +707,7 @@ def render_account_data() -> None:
         if record:
             question = demo.ask_question(record, account.id, demo.load_manifest())
         fill_draft(question, ids)
-        st.session_state["go_to"] = "Payments"
+        st.session_state["go_to"] = INVESTIGATIONS
 
     render_explorer(path, account.id, st.session_state.get("explore_payment"), ask_record)
 
@@ -927,7 +929,7 @@ def render_payments() -> None:
     if case:
 
         def open_case(destination):
-            if destination == "Replay":
+            if destination == RECORDINGS:
                 st.session_state["replay_target"] = ("replay", case["id"])
             else:
                 st.query_params["case"] = case["id"]
@@ -935,8 +937,10 @@ def render_payments() -> None:
 
         with st.container(horizontal=True):
             recording_label = "See the recorded calculation" if "gap_brl" in truth else "See the recording"
-            st.button(recording_label, key="recording-link", on_click=open_case, args=("Replay",))
-            st.button("Simulate a change to this case", key="sandbox-link", on_click=open_case, args=("Sandbox",))
+            st.button(recording_label, key="recording-link", on_click=open_case, args=(RECORDINGS,))
+            st.button(
+                "Simulate a change to this case", key="sandbox-link", on_click=open_case, args=("visitor-sandbox",)
+            )
 
 
 def main() -> None:
@@ -945,45 +949,31 @@ def main() -> None:
     from app.project_view import render_project
 
     pages = {
-        "Payments": render_payments,
-        DATA_PAGE: render_account_data,
-        PROJECT_PAGE: render_project,
-        "Replay": render_replay,
-        "Sandbox": render_sandbox,
-        "Evaluation": render_evaluation,
-        "Proof": render_proof,
-        "Engineering": render_engineering,
+        INVESTIGATIONS: ("Investigations", render_payments),
+        DATA_PAGE: ("Explore data", render_account_data),
+        PROJECT_PAGE: ("Project details", render_project),
+        RECORDINGS: ("Recordings", render_replay),
+        "visitor-sandbox": ("Visitor sandbox", render_sandbox),
+        "evaluation": ("Evaluation", render_evaluation),
+        "proof-artifacts": ("Proof artifacts", render_proof),
+        "engineering": ("Engineering", render_engineering),
     }
-
-    titles = {
-        "Payments": "Investigations",
-        DATA_PAGE: "Explore data",
-        "Replay": "Recordings",
-        PROJECT_PAGE: "Project details",
-        "Sandbox": "Visitor sandbox",
-        "Evaluation": "Evaluation",
-        "Proof": "Proof artifacts",
-        "Engineering": "Engineering",
-    }
-    slugs = {key: title.lower().replace(" ", "-") for key, title in titles.items()}
     requested = st.query_params.get("view")
-    by_slug = {slug: key for key, slug in slugs.items()}
-    page = st.session_state.pop("go_to", None) or by_slug.get(requested, requested)
-    if page == "Live":
-        request_openai()
+    page = st.session_state.pop("go_to", None) or requested
     if page not in pages:
-        page = "Payments"
-    st.set_page_config(page_title=f"{titles[page]} | {BRAND}", page_icon=":material/payments:", layout="wide")
+        page = INVESTIGATIONS
+    title, render = pages[page]
+    st.set_page_config(page_title=f"{title} | {BRAND}", page_icon=":material/payments:", layout="wide")
     st.html(STYLE)
 
     def navigate(destination):
-        st.query_params["view"] = slugs[destination]
+        st.query_params["view"] = destination
 
-    if requested != slugs[page]:
+    if requested != page:
         navigate(page)
     with st.container(horizontal=True, gap="small", key="demo-navigation"):
-        for target in ("Payments", DATA_PAGE, "Replay", PROJECT_PAGE):
-            label = titles[target]
+        for target in (INVESTIGATIONS, DATA_PAGE, RECORDINGS, PROJECT_PAGE):
+            label, _ = pages[target]
             st.button(
                 label,
                 key=f"nav-{target}",
@@ -991,9 +981,9 @@ def main() -> None:
                 args=() if target == DATA_PAGE else (target,),
                 type="primary" if page == target else "tertiary",
             )
-    if page == "Replay":
+    if page == RECORDINGS:
         st.caption(AI_DISCLOSURE)
-    pages[page]()
+    render()
 
 
 main()
