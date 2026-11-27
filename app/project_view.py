@@ -75,14 +75,14 @@ visitor demo, which runs deterministic checks.
   selected account and case. The key lives in a session-bound, in-memory vault. The run uses the configured limits,
   and OpenAI may charge for calls. The paid model still investigates demo data.
 
-Use the [case simulator](?view=Sandbox) to change a published case on a private branch and preview the result.
+Use the [case simulator](?view=visitor-sandbox) to change a published case on a private branch and preview the result.
 """
     )
 
 
 def render_project() -> None:
     """Present the architecture and scores alongside the existing evidence browsers."""
-    st.title("Project")
+    st.title("Project details")
     st.write("LedgerLens investigates payment complaints and shows the evidence behind its answers.")
     overview, evaluation, proofs, engineering = st.tabs(["How it works", "Evaluation", "Proofs", "Engineering"])
     with overview:

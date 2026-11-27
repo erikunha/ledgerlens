@@ -85,7 +85,7 @@ def _open_proof(catalog, scenario):
 
 def render_replay():
     """Show the recorded answer, its calculation and links to the same recording's proof."""
-    st.title("Recorded investigations")
+    st.title("Recordings")
     target = st.session_state.pop("replay_target", None)
     if target and target[0] in CATALOG_LABELS:
         st.session_state["recording_kind"] = CATALOG_LABELS[target[0]]
