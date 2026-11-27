@@ -1,17 +1,20 @@
 """Drive private branch changes and credential consent through Streamlit's widget interface."""
 
+from datetime import UTC, datetime, timedelta
+
 import pytest
 from fastapi.testclient import TestClient
 from streamlit.testing.v1 import AppTest
 
 from ledgerlens.api.wiring import build_wired_app
+from ledgerlens.config import Settings
 
 
 def _button(page, label):
     return next(button for button in page.button if button.label == label)
 
 
-def _page(view, client):
+def _page(view, client, *, case=None):
     script = f"from app.interactive_views import {view}\n{view}()"
     if view == "render_live":
         script = """
@@ -28,13 +31,15 @@ render_live_status()
 """
     page = AppTest.from_string(script, default_timeout=30)
     page.session_state["_visitor_http"] = client
+    if case is not None:
+        page.query_params["case"] = case
     return page.run()
 
 
 def test_private_branch_preview_commit_undo_reset(tmp_path):
     with TestClient(build_wired_app(runtime_dir=tmp_path)) as client:
         page = _page("render_sandbox", client)
-        _button(page, "Open private branch").click().run()
+        assert "Revision 0 · S01" in page.caption[0].value
         _button(page, "Preview change").click().run()
         assert [(item.label, item.value) for item in page.metric] == [
             ("Current refund", "BRL 549.31"),
@@ -51,7 +56,14 @@ def test_private_branch_preview_commit_undo_reset(tmp_path):
         assert "Revision 0" in page.caption[0].value
         _button(page, "End session").click().run()
         assert not page.exception
-        assert "branch" not in page.session_state
+        for _ in range(2):
+            assert "visitor" not in page.session_state
+            assert not any(button.label == "Preview change" for button in page.button)
+            assert not client.cookies
+            page.run()
+        _button(page, "Start a new session").click().run()
+        assert "Revision 0 · S01" in page.caption[0].value
+        assert not client.cookies
 
 
 def test_offline_live_view_accepts_no_key(tmp_path):
@@ -100,7 +112,8 @@ def test_live_consent_budget_cancel_and_forget(monkeypatch):
                 },
                 "/v1/models/demo": {"price_note": "Fixture pricing."},
                 "/v1/credentials": {"provider": "openai", "handle": "opaque", "expires_at": "tomorrow"},
-                "/v1/sandboxes": {"id": "branch", "revision": 2},
+                "/v1/sandboxes": {"id": "branch", "revision": 2, "expires_at": "tomorrow"},
+                "/v1/sandboxes/branch": {"id": "branch", "revision": 2, "expires_at": "tomorrow"},
                 "/v1/live-runs": {"run_id": "run_demo"},
                 "/v1/live-runs/run_demo/cost": {"model_calls": 0},
                 "/v1/credentials/forget": {"forgotten": True},
@@ -179,28 +192,135 @@ def test_remote_plaintext_api_cannot_receive_a_key(monkeypatch, origin):
 def test_visitors_fork_separate_branches(tmp_path):
     api = build_wired_app(runtime_dir=tmp_path)
     with TestClient(api) as first, TestClient(api) as second:
-        pages = [_page("render_sandbox", client) for client in (first, second)]
-        for page in pages:
-            _button(page, "Open private branch").click().run()
+        fork_paths = []
+
+        def record_fork(response):
+            if response.request.method == "POST" and response.request.url.path == "/v1/sandboxes":
+                response.read()
+                fork_paths.append(f"/v1/sandboxes/{response.json()['id']}")
+
+        for client in (first, second):
+            client.event_hooks["response"].append(record_fork)
+            page = _page("render_sandbox", client)
+            _button(page, "Preview change").click().run()
             assert not page.exception
-        first_branch = pages[0].session_state.branch[1]
-        assert first_branch != pages[1].session_state.branch[1]
-        assert second.get(f"/v1/sandboxes/{first_branch}").status_code == 404
+        assert len(fork_paths) == 2
+        assert fork_paths[0] != fork_paths[1]
+        assert second.get(fork_paths[0]).status_code == 404
 
 
-def test_switching_case_requires_opening_its_branch(tmp_path):
+def test_switching_cases_reuses_mutated_branches_and_clears_old_views(tmp_path):
+    requests = []
     with TestClient(build_wired_app(runtime_dir=tmp_path)) as client:
+        client.event_hooks["request"].append(requests.append)
         page = _page("render_sandbox", client)
-        _button(page, "Open private branch").click().run()
-        first_branch = page.session_state.branch[1]
+        assert any(button.label == "Preview change" for button in page.button)
+        assert not page.metric
+        next(widget for widget in page.text_input if widget.label == "Reason (optional)").input("Keep this").run()
+        _button(page, "Preview change").click().run()
+        assert next(widget for widget in page.text_input if widget.label == "Reason (optional)").value == "Keep this"
+        _button(page, "Commit change").click().run()
+        _button(page, "Show history").click().run()
+        next(widget for widget in page.text_input if widget.label == "Reason (optional)").input("S01 draft").run()
+        _button(page, "Preview change").click().run()
+        assert len(page.json) == 3
         page.selectbox[0].select("S02").run()
         assert not page.exception
+        assert "Revision 0 · S02" in page.caption[0].value
+        assert not page.metric
+        assert not page.json
+        assert next(widget for widget in page.text_input if widget.label == "Reason (optional)").value == ""
+        assert any(button.label == "Preview change" for button in page.button)
+        _button(page, "Show history").click().run()
+        assert page.json
+        assert "Expires" in page.caption[0].value
+        page.run()
+        page.selectbox[0].select("S01").run()
+        assert "Revision 1 · S01" in page.caption[0].value
+        assert not any(button.label == "Commit change" for button in page.button)
+        assert not page.json
+        _button(page, "Preview change").click().run()
+        page.selectbox[0].select("S04").run()
+        page.selectbox[0].select("S01").run()
+        assert not any(button.label == "Commit change" for button in page.button)
+    assert [request.content for request in requests if request.url.path == "/v1/sandboxes"] == [
+        b'{"scenario_id":"S01"}',
+        b'{"scenario_id":"S02"}',
+    ]
+    assert sum(request.url.path == "/v1/sessions" for request in requests) == 1
+
+
+def test_browsing_published_cases_does_not_allocate_private_branches(tmp_path):
+    with TestClient(build_wired_app(runtime_dir=tmp_path)) as client:
+        requests = []
+        client.event_hooks["request"].append(requests.append)
+        page = _page("render_sandbox", client, case="S02")
+        assert page.selectbox[0].value == "S02"
+        assert "Revision 0 · S02" in page.caption[0].value
+        page.query_params["case"] = "S03"
+        page.run()
+        assert page.selectbox[0].value == "S03"
+        assert "Revision 0 · S03" in page.caption[0].value
+        for case in ("S01", "S05", "S06", "S07", "S08", "S09"):
+            page.selectbox[0].select(case).run()
+            assert any(f"Revision 0 · {case}" in caption.value for caption in page.caption)
+            assert _button(page, "Preview change")
+            assert not page.error
+        assert not requests
+
+
+def test_accountless_case_explains_missing_transaction_without_allocating(tmp_path):
+    with TestClient(build_wired_app(runtime_dir=tmp_path)) as client:
+        requests = []
+        client.event_hooks["request"].append(requests.append)
+        page = _page("render_sandbox", client, case="S04")
+        assert page.selectbox[0].value == "S04"
+        assert any("TX-9999" in block.value for block in page.markdown)
+        assert any("absent from the ledger" in info.value for info in page.info)
         assert not any(button.label == "Preview change" for button in page.button)
-        assert page.session_state.branch[1] == first_branch
-        _button(page, "Open private branch").click().run()
-        assert page.session_state.branch[0] == "S02"
-        assert page.session_state.branch[1] != first_branch
-        assert _button(page, "Preview change")
+        assert not page.error
+        assert not requests
+
+
+def test_case_limit_keeps_switching_and_ending_available(tmp_path):
+    settings = Settings(runtime_dir=tmp_path, sandbox_session_branch_cap=1)
+    with TestClient(build_wired_app(settings=settings)) as client:
+        page = _page("render_sandbox", client)
+        _button(page, "Preview change").click().run()
+        page.selectbox[0].select("S02").run()
+        assert not page.error
+        _button(page, "Show history").click().run()
+        assert any("RESOURCE_LIMIT" in error.value for error in page.error)
+        assert not _button(page, "End session").disabled
+        assert not any(button.label == "Commit change" for button in page.button)
+        page.selectbox[0].select("S01").run()
+        assert "Revision 0 · S01" in page.caption[0].value
+        assert not page.error
+
+
+@pytest.mark.parametrize("queued_click", ["Commit change", "Preview change"])
+def test_expired_case_ignores_queued_actions_and_waits_to_allocate(tmp_path, monkeypatch, queued_click):
+    from ledgerlens.api import wiring
+
+    now = datetime.now(UTC)
+    monkeypatch.setattr(wiring, "_server_clock", lambda: now)
+    requests = []
+    with TestClient(build_wired_app(runtime_dir=tmp_path)) as client:
+        client.event_hooks["request"].append(requests.append)
+        page = _page("render_sandbox", client)
+        assert any(button.label == "Preview change" for button in page.button)
+        _button(page, "Preview change").click().run()
+        now += timedelta(hours=2)
+        _button(page, queued_click).click().run()
+        assert "Revision 0 · S01" in page.caption[0].value
+        assert not page.metric
+        assert not any(button.label == "Commit change" for button in page.button)
+        assert "expired" in page.warning[0].value.lower()
+        assert len([request for request in requests if request.url.path == "/v1/sandboxes"]) == 1
+        _button(page, "Preview change").click().run()
+        assert _button(page, "Commit change")
+    assert len([request for request in requests if request.url.path == "/v1/sandboxes"]) == 2
+    assert not any(request.url.path.endswith("/mutations") for request in requests)
 
 
 @pytest.mark.parametrize(

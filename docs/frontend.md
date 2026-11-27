@@ -14,7 +14,7 @@ Open http://localhost:8501. Start with **Use this question**, edit the suggested
 | Explore data | Browse all nine sample tables or switch to the current demo account. |
 | Project details | Read how the agent works and inspect published evaluation results, proofs and implementation. |
 | Recordings | Browse scripted and real-model recordings, then inspect an answer, its evidence and recorded events. Playback requires no credentials. |
-| Case simulator | Open `/?view=case-simulator` to fork a published case into a private branch and edit it through the demo API. |
+| Case simulator | Open `/?view=case-simulator` to load the first published case, or follow an investigation link to load that case. Choosing another case shows it immediately. Browsing uses no private branch slots. The first branch action opens a private copy, and revisiting the case restores its committed changes for the active session. The missing-transaction case has no ledger to edit. |
 | OpenAI mode in Investigations | Connect a key with consent and investigate the selected payment using the same question field. |
 | Evaluation | Inspect published evaluation results and download the underlying data. |
 | Proof artifacts | Inspect and download published evidence. |

@@ -13,7 +13,7 @@ import streamlit as st
 
 from ledgerlens.byok.errors import CredentialExpired, CredentialRevoked, CredentialUnknown
 from ledgerlens.config import offline
-from ledgerlens.demo import load_manifest
+from ledgerlens.demo import accounts_of, load_manifest
 from ledgerlens.sandbox.mutation import (
     KIND_DEADLINE,
     KIND_DUPLICATE,
@@ -28,9 +28,17 @@ RUNS = "/v1/live-runs"
 CREDENTIALS = "/v1/credentials"
 CASE_SIMULATOR = "case-simulator"
 CASE_SIMULATOR_TITLE = "Case simulator"
+CASE_QUERY = "case"
+SANDBOX_CASE_WIDGET = "sandbox_case"
+SANDBOX_BRANCHES = "sandbox_branches"
+SANDBOX_VIEW_SCOPE = "sandbox_view_scope"
+SANDBOX_WIDGET_SCOPES = "sandbox_widget_scopes"
+SANDBOX_SESSION_ENDED = "sandbox_session_ended"
 FX_EXAMPLE_SCENARIO = "S01"
 RUN_UNAVAILABLE = "unavailable"
-UNKNOWN_RUN_CODE = "NOT_FOUND"
+NOT_FOUND_CODE = "NOT_FOUND"
+MISSING_BRANCH = (404, NOT_FOUND_CODE)
+EXPIRED_BRANCH = (410, "BRANCH_EXPIRED")
 STALE_CREDENTIAL_REASONS = {CredentialExpired.reason, CredentialRevoked.reason, CredentialUnknown.reason}
 ACTIVE_RUN = {"running", "cancelling"}
 CHANGE_TYPES = {
@@ -48,7 +56,9 @@ LIMITS = {
 }
 VISITOR_KEYS = (
     "visitor",
-    "branch",
+    SANDBOX_BRANCHES,
+    SANDBOX_VIEW_SCOPE,
+    SANDBOX_WIDGET_SCOPES,
     "preview",
     "branch_read",
     "credential",
@@ -119,7 +129,7 @@ def _session():
         st.session_state.visitor = _request("POST", SESSION).json()
 
 
-def _end_session():
+def _end_session(*, pause_simulator=False):
     if "visitor" not in st.session_state:
         return
     with st.expander("Session settings", expanded=True):
@@ -133,56 +143,72 @@ def _end_session():
         if st.button("End session", disabled=active):
             _request("DELETE", f"{SESSION}/current")
             _clear_visitor()
+            if pause_simulator:
+                st.session_state[SANDBOX_SESSION_ENDED] = True
             st.rerun()
 
 
-def _command(case):
+def _command(case, scope):
     ids = case["ids"]
 
     def first(group):
         return next(iter(ids.get(group, [])), "")
 
-    kind = st.selectbox("Change", CHANGE_TYPES, format_func=CHANGE_TYPES.get)
+    kind = st.selectbox("Change", CHANGE_TYPES, format_func=CHANGE_TYPES.get, key=f"{scope}-change")
     if kind == KIND_FX_ADJUSTMENT:
         data = {
-            "refund_id": st.text_input("Refund", first("refund_ids")),
-            "applied_rate": st.text_input("Exchange rate", "5.41250000"),
+            "refund_id": st.text_input("Refund", first("refund_ids"), key=f"{scope}-refund"),
+            "applied_rate": st.text_input("Exchange rate", "5.41250000", key=f"{scope}-rate"),
             "effective_at": st.text_input(
                 "Effective time (ISO 8601)",
                 st.session_state.setdefault("effective_time", datetime.now(UTC).isoformat()),
+                key=f"{scope}-effective-time",
             ),
         }
     elif kind == KIND_DUPLICATE:
         data = {
-            "transaction_id": st.text_input("Transaction", first("transaction_ids")),
-            "elapsed_seconds": st.number_input("Seconds between charges", 1, 300, 30),
+            "transaction_id": st.text_input("Transaction", first("transaction_ids"), key=f"{scope}-transaction"),
+            "elapsed_seconds": st.number_input("Seconds between charges", 1, 300, 30, key=f"{scope}-seconds"),
         }
     elif kind == KIND_DEADLINE:
         data = {
-            "chargeback_id": st.text_input("Chargeback", first("chargeback_ids")),
-            "new_deadline": st.date_input("New deadline").isoformat(),
+            "chargeback_id": st.text_input("Chargeback", first("chargeback_ids"), key=f"{scope}-chargeback"),
+            "new_deadline": st.date_input("New deadline", key=f"{scope}-deadline").isoformat(),
         }
     elif kind == KIND_FX_OUTAGE:
-        data = {"enabled": st.checkbox("Enable outage", value=True), "error_code": "UPSTREAM_UNAVAILABLE"}
+        data = {
+            "enabled": st.checkbox("Enable outage", value=True, key=f"{scope}-outage"),
+            "error_code": "UPSTREAM_UNAVAILABLE",
+        }
     else:
-        data = {"record_id": st.text_input("Record", first("transaction_ids")), "text": st.text_area("Note")}
+        data = {
+            "record_id": st.text_input("Record", first("transaction_ids"), key=f"{scope}-record"),
+            "text": st.text_area("Note", key=f"{scope}-note"),
+        }
     if kind in (KIND_DEADLINE, KIND_DUPLICATE, KIND_FX_ADJUSTMENT):
-        currency = st.text_input("Expected currency (optional)")
+        currency = st.text_input("Expected currency (optional)", key=f"{scope}-currency")
         if currency:
             data["currency"] = currency
     command = {"kind": kind, "data": data}
-    if reason := st.text_input("Reason (optional)"):
+    if reason := st.text_input("Reason (optional)", key=f"{scope}-reason"):
         command["reason"] = reason
     return command
 
 
-def _cases():
-    return {case["id"]: case for case in load_manifest()["scenarios"]}
+def _clear_branch_views():
+    st.session_state.pop("branch_read", None)
+    st.session_state.pop("preview", None)
+
+
+def _switch_branch_view(scope):
+    if st.session_state.get(SANDBOX_VIEW_SCOPE) != scope:
+        _clear_branch_views()
+        st.session_state.pop("last_change", None)
+        st.session_state[SANDBOX_VIEW_SCOPE] = scope
 
 
 def _changed():
-    st.session_state.pop("branch_read", None)
-    st.session_state.pop("preview", None)
+    _clear_branch_views()
     st.rerun()
 
 
@@ -205,77 +231,127 @@ def render_sandbox():
     """Keep session controls below the case workflow, including when no branch is open."""
     try:
         _sandbox()
-        _end_session()
     except InvestigationAPIError as exc:
         st.error(str(exc))
+    try:
+        _end_session(pause_simulator=True)
+    except InvestigationAPIError as exc:
+        st.error(str(exc))
+
+
+def _read_case_branch(scenario, branches, widget_scopes):
+    branch_id = branches.get(scenario)
+    if branch_id is None:
+        return None
+    try:
+        return _request("GET", f"{SANDBOXES}/{branch_id}").json()
+    except InvestigationAPIError as exc:
+        unavailable = (exc.status, exc.code)
+        if unavailable not in (MISSING_BRANCH, EXPIRED_BRANCH):
+            raise
+        del branches[scenario]
+        # Keep queued clicks for the expired branch away from its replacement.
+        new_scope = uuid4().hex
+        widget_scopes[scenario] = new_scope
+        _switch_branch_view(new_scope)
+        if unavailable == EXPIRED_BRANCH:
+            st.warning("The previous branch expired. A new change will start from the published case.")
+        else:
+            st.warning("The previous branch is no longer available. A new change will start from the published case.")
+        return None
+
+
+def _save_case_selection():
+    st.query_params[CASE_QUERY] = st.session_state[SANDBOX_CASE_WIDGET]
 
 
 def _sandbox():
     """Open a branch and let its owner preview, apply, inspect and undo changes."""
     st.title(CASE_SIMULATOR_TITLE)
-    st.write("Open a private copy of a published case to see how a change affects its ledger.")
-    cases = _cases()
-    requested = st.query_params.get("case")
+    st.write("Select a published case to see how changes affect its private copy.")
+    manifest = load_manifest()
+    cases = {case["id"]: case for case in manifest["scenarios"]}
+    requested = st.query_params.get(CASE_QUERY)
+    selected = requested if requested in cases else next(iter(cases))
+    if st.session_state.get(SANDBOX_CASE_WIDGET) != selected:
+        st.session_state[SANDBOX_CASE_WIDGET] = selected
     selected = st.selectbox(
         "Published case",
         cases,
-        index=list(cases).index(requested) if requested in cases else 0,
         format_func=lambda key: f"{key} · {cases[key]['name'].replace('_', ' ').capitalize()}",
+        key=SANDBOX_CASE_WIDGET,
+        on_change=_save_case_selection,
     )
-    st.write(cases[selected]["questions"][0])
+    widget_scopes = st.session_state.setdefault(SANDBOX_WIDGET_SCOPES, {})
+    _switch_branch_view(widget_scopes.get(selected, selected))
+    case = cases[selected]
+    st.write(case["questions"][0])
+    accounts = accounts_of(manifest, selected)
+    if not accounts:
+        if case["truth"].get("exists") is False:
+            st.info("This case is read-only. The requested transaction is absent from the ledger.")
+        else:
+            st.info("This case is read-only because it has no ledger account.")
+        return
     if selected == FX_EXAMPLE_SCENARIO:
         st.write(
             "What would the customer receive at a different exchange rate? "
             "Preview the refund before applying a change to your private branch."
         )
-    if st.button("Open private branch"):
-        _session()
-        branch = _request("POST", SANDBOXES, json={"scenario_id": selected}).json()
-        st.session_state.branch = (selected, branch["id"])
-        st.session_state.pop("last_change", None)
-        _changed()
-    if "branch" not in st.session_state:
-        return
-    scenario, branch_id = st.session_state.branch
-    if scenario != selected:
-        st.info("Open a private branch for the selected case to preview changes.")
-        return
-    path = f"{SANDBOXES}/{branch_id}"
-    branch = _request("GET", path).json()
-    revision = branch["revision"]
-    case = cases[scenario]
-    st.caption(f"Revision {revision} · {scenario} · Expires {branch['expires_at']}")
+    if st.session_state.get(SANDBOX_SESSION_ENDED):
+        if "visitor" not in st.session_state and not st.button("Start a new session"):
+            return
+        del st.session_state[SANDBOX_SESSION_ENDED]
+
+    branches = st.session_state.setdefault(SANDBOX_BRANCHES, {})
+    branch = _read_case_branch(selected, branches, widget_scopes)
+    published = branch is None
+    scope = widget_scopes.get(selected, selected)
+
+    def branch_path():
+        nonlocal branch
+        if branch is None:
+            _session()
+            branch = _request("POST", SANDBOXES, json={"scenario_id": selected}).json()
+            branches[selected] = branch["id"]
+        return f"{SANDBOXES}/{branch['id']}"
+
+    revision = branch["revision"] if branch else 0
+    status = f"Expires {branch['expires_at']}" if branch else "Published case"
+    st.caption(f"Revision {revision} · {selected} · {status}")
     if applied := st.session_state.get("last_change"):
         st.subheader("Applied change")
         _comparison(*applied, committed=True)
-    if revision and st.button("Undo last change"):
-        _request("POST", f"{path}/undo", headers={"If-Match": str(revision), "Idempotency-Key": uuid4().hex})
+    if revision and st.button("Undo last change", key=f"{scope}-undo"):
+        _request("POST", f"{branch_path()}/undo", headers={"If-Match": str(revision), "Idempotency-Key": uuid4().hex})
         st.session_state.pop("last_change", None)
         _changed()
-    command = _command(case)
-    if st.button("Preview change"):
-        result = _request("POST", f"{path}/mutations/preview", json=command).json()
-        st.session_state.preview = (command, revision, uuid4().hex, result)
+    command = _command(case, scope)
+    if st.button("Preview change", key=f"{scope}-preview"):
+        result = _request("POST", f"{branch_path()}/mutations/preview", json=command).json()
+        st.session_state.preview = (command, branch["revision"], uuid4().hex, result)
     preview = st.session_state.get("preview")
     if preview and preview[:2] == (command, revision):
         st.subheader("Proposed change")
         _comparison(command, preview[3], committed=False)
-        if st.button("Commit change"):
+        if st.button("Commit change", key=f"{scope}-commit"):
             headers = {"If-Match": str(revision), "Idempotency-Key": preview[2]}
-            _request("POST", f"{path}/mutations", json=command, headers=headers)
+            _request("POST", f"{branch_path()}/mutations", json=command, headers=headers)
             st.session_state.last_change = (command, preview[3])
             _changed()
-    if st.button("Reset to published case", disabled=not revision):
-        _request("POST", f"{path}/reset")
+    if st.button("Reset to published case", disabled=not revision, key=f"{scope}-reset"):
+        _request("POST", f"{branch_path()}/reset")
         st.session_state.pop("last_change", None)
         _changed()
     st.subheader("Inspect this branch")
     for label, endpoint in (("Show changes", "diff"), ("Show history", "history")):
-        if st.button(label):
-            st.session_state.branch_read = _request("GET", f"{path}/{endpoint}").json()
-    account = st.text_input("Ledger account", next(iter(case["ids"].get("customer_ids", [])), ""))
-    if st.button("Show ledger", disabled=not account):
-        st.session_state.branch_read = _request("GET", f"{path}/ledger", params={"account_id": account}).json()
+        if st.button(label, key=f"{scope}-{endpoint}"):
+            st.session_state.branch_read = _request("GET", f"{branch_path()}/{endpoint}").json()
+    account = st.text_input("Ledger account", accounts[0], key=f"{scope}-account")
+    if st.button("Show ledger", disabled=not account, key=f"{scope}-ledger"):
+        st.session_state.branch_read = _request("GET", f"{branch_path()}/ledger", params={"account_id": account}).json()
+    if published and branch is not None:
+        st.rerun()
     if result := st.session_state.get("branch_read"):
         st.json(result)
 
@@ -284,7 +360,7 @@ def _read_run(run_id):
     try:
         return _request("GET", f"{RUNS}/{run_id}").json()
     except InvestigationAPIError as exc:
-        if exc.status != 404 or exc.code != UNKNOWN_RUN_CODE:
+        if exc.status != 404 or exc.code != NOT_FOUND_CODE:
             raise
         return {
             "run_id": run_id,
