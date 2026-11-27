@@ -88,3 +88,22 @@ if st.checkbox("Show replay", value=True):
     assert page.radio[0].value == "Real-model recording"
     assert page.selectbox[0].value == "S02"
     assert page.selectbox[1].value == 7
+
+
+def test_evaluation_identifies_each_verifier():
+    page = view("evaluation")
+    candidate = json.loads((SITE.parent / "data/eval/report_openai_verifier.json").read_text())
+    metric = next(item for item in page.metric if item.label == "OpenAI verifier accuracy · held-out set")
+    assert metric.value == f"{candidate['correct']} / {candidate['total']}"
+    assert "DeBERTa baseline confusion matrix" in [item.value for item in page.subheader]
+    labels = {
+        case["id"]: case["label"]
+        for case in map(json.loads, (SITE.parent / "data/eval/verification_heldout.jsonl").read_text().splitlines())
+    }
+    expected = {
+        row["id"]: (labels[row["id"]], row["prediction"])
+        for row in candidate["predictions"]
+        if labels[row["id"]] != row["prediction"]
+    }
+    actual = {row["Case"]: (row["Expected"], row["Predicted"]) for row in page.table[0].value.to_dict("records")}
+    assert actual == expected

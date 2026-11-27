@@ -1,5 +1,7 @@
 # The sets of the verifier and what each number means
 
+The tables below describe the DeBERTa baseline. On the same adjudicated held-out set, the OpenAI verifier scored 43/48 (89.6%) and DeBERTa scored 24/48 (50.0%). [OpenAI predictions](../data/eval/report_openai_verifier.json) · [Baseline report](../data/eval/report_heldout.json).
+
 The LedgerLens verifier works with four different sets, and the number 30 appears in two of them with different
 meanings. A wrong citation here becomes a wrong number in the README, in the report and in the post. This document is
 the canonical place: when a number appears anywhere else, its meaning comes from here.
@@ -145,14 +147,9 @@ labels a human would have given.
    three variants of the agent. Thirty cases show a tendency, not a significance.
 5. The NLI threshold does not fix the limitation of the model: of the supported live sentences, many stay without a
    verdict at any threshold, because the error is the model with a long premise, not the cut.
-6. Every accuracy named above, except the one over the held out set, is a number over a `tuning` dataset, so none of
-   them is a generalization to unseen data. The accuracy over the held out set, 24 of 48, is the only one that may be
-   presented as a measure over data nobody decided on, and it may be presented only with its denominator and with the
-   restriction of the role. The 25 of 48 the same verifier scores against the recipes of the generator is not the
-   accuracy of the set: the labels of the set are the adjudicated ones and the recipes are not published, so that
-   number may be cited only as the distance between reproducing the generator and generalising, and never as the
-   accuracy of the verifier over the held out set. A number that claims to generalize names the dataset it was
-   measured over and the restriction that applies to it, or it does not go out.
+6. Cite the adjudicated 48-case dataset and verifier together. DeBERTa matched 24 labels and the pinned
+   OpenAI verifier matched 43. DeBERTa also matched 25 generator recipes, a separate comparison with a
+   different reference. Once these cases inform a change, use fresh cases to estimate its accuracy.
 
 ## Where the truth lives now
 

@@ -105,8 +105,11 @@ count of them. The decisions are
 [ADR-059](decisions/ADR-059-the-held-out-set-is-read-by-two-blind-machines-and-adjudicated.md) and
 [ADR-062](decisions/ADR-062-the-role-held-out-exists-and-the-sentence-of-adr-052-is-superseded.md).
 
-**The role is declared and the number is published.** The manifest declares the file with the role `held_out`, and
-the accuracy over it is 24 of the 48 cases, 0.500, with 23 of the 47 cases that go through the NLI model and one case
+**Held-out verifier comparison.** The OpenAI verifier matched the adjudicated labels on 43/48 claims
+(89.6%). It classified two claims incorrectly as supported and one incorrectly as contradicted.
+The [OpenAI report](../data/eval/report_openai_verifier.json) records the model, prompt, input digest and individual predictions.
+
+The DeBERTa baseline matched 24/48 labels (50.0%), including 23 of the 47 model decisions and one case
 that the code decides because the claim cites no evidence at all. The false `supported` is 4 and the false
 `contradicted` is 0. The report is [`data/eval/report_heldout.md`](../data/eval/report_heldout.md) and the canonical
 reading of every number is in [the sets of the verifier](verification_sets.md).
@@ -114,7 +117,7 @@ reading of every number is in [the sets of the verifier](verification_sets.md).
 **The same verifier scores 25 of the 48 cases when it is scored against the recipes of the generator instead of the
 adjudicated labels.** The one case of the difference is `ho-002`: the verifier answers `not_enough_evidence` for it,
 the recipe expects `not_enough_evidence` and the adjudicated reading answers `supported`. That one case is the whole
-distance between reproducing the generator and generalising, so the number this repository publishes is 24 of the 48
+distance between reproducing the generator and generalising, so the adjudicated baseline score is 24 of the 48
 cases, 0.500, the one measured against the adjudicated labels. The recipes themselves are not published, and the
 number of 25 of 48 is published here because a reader who decides whether to trust 0.500 needs to see how close the
 two numbers are.

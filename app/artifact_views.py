@@ -11,6 +11,7 @@ import streamlit as st
 
 ROOT = Path(__file__).resolve().parents[1]
 SITE = ROOT / "site"
+OPENAI_REPORT = ROOT / "data/eval/report_openai_verifier.json"
 CATALOGS = {"Scripted recording": "replay", "Real-model recording": "replay-real"}
 MODULES = {
     "Query guard": "ledgerlens/tools/sql_guard.py",
@@ -161,13 +162,29 @@ def render_evaluation(*, embedded=False):
         left, right = st.columns(2)
         left.metric("Agent correctness · tuning set", tuning["correctness_mean"])
         left.caption(f"{tuning['denominator']} cases · {tuning['repeats']} repeats")
-        right.metric("Baseline verifier accuracy · held-out set", heldout["accuracy"])
-        right.caption(f"{heldout['correct']} correct out of {heldout['denominator']} cases")
+        candidate = _read(OPENAI_REPORT)
+        right.metric("OpenAI verifier accuracy · held-out set", f"{candidate['correct']} / {candidate['total']}")
+        right.caption(f"DeBERTa baseline: {heldout['correct']}/{heldout['denominator']} on the same cases.")
         with st.expander("How to interpret the scores", expanded=True):
             st.write(tuning["restriction"].capitalize() + ".")
             st.write(heldout["restriction"].capitalize() + ".")
+        corpus = ROOT / "data/eval/verification_heldout.jsonl"
+        cases = {case["id"]: case for case in map(json.loads, corpus.read_text().splitlines())}
+        mismatches = [
+            (cases[row["id"]], row["prediction"])
+            for row in candidate["predictions"]
+            if cases[row["id"]]["label"] != row["prediction"]
+        ]
+        st.subheader("OpenAI verifier errors")
+        st.table(
+            [
+                {"Case": case["id"], "Claim": case["claim"], "Expected": case["label"], "Predicted": prediction}
+                for case, prediction in mismatches
+            ]
+        )
         matrix = report["confusion_matrix"]
-        st.subheader("Confusion matrix")
+        _download(OPENAI_REPORT, "Download OpenAI verifier predictions")
+        st.subheader("DeBERTa baseline confusion matrix")
         st.caption("Each row groups the reader’s labels. The remaining columns count the verifier’s decisions.")
         # Compact headers keep every decision visible on narrow screens.
         short = {"supported": "Yes", "contradicted": "No", "not_enough_evidence": "Unsure"}
@@ -181,6 +198,8 @@ def render_evaluation(*, embedded=False):
         st.caption("Yes = supported · No = contradicted · Unsure = insufficient evidence")
         failures = {f"{row['set_name']} · {row['id']}": row for row in report["failed_cases"]}
         if failures:
+            st.subheader("Other evaluation failures")
+            st.caption("These examples come from the verification_live and eval_cases datasets.")
             chosen = st.selectbox("Inspect a failed case", failures.keys())
             case = failures[chosen]
             st.write(case["claim"])
