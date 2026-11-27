@@ -429,3 +429,24 @@ The first command reconstructs three archived dated answers and compares the def
 The second command runs [fixed controls](../data/eval/cutoff_receipt_controls.json) across four deadline families and two currencies. In the eight valid cases, the baseline requested review eight times and the candidate zero times. Both kept all 40 mandatory reviews. These include a changed date, a valid receipt for the wrong currency, an absent receipt, a false promise and an independent review flag.
 
 All eight additional paraphrases still required review. The candidate recognizes two question forms and three answer forms. These tests support reuse of a receipt in those forms; they provide no estimate of coverage for open-ended visitor questions. The live investigator continues to use the default verifier. Promotion requires an independently authored and adjudicated holdout with both supported and unsupported answers. Report coverage alongside unsafe releases and unnecessary reviews.
+
+## OpenAI verifier comparison
+
+The pinned GPT-4.1 mini classifier accepts a claim and its evidence. The three possible decisions are supported, contradicted and insufficient evidence. Run `uv run python -m scripts.measure_openai_verifier` with an OpenAI key to score the frozen set. The classifier and the historical verifier share the deterministic checks. One of the 48 claims was decided by code in both runs.
+
+| Frozen 48-case benchmark | Historical verifier | OpenAI classifier |
+|---|---:|---:|
+| Correct verdicts | 24 | 43 |
+| Incorrectly supported | 4 | 2 |
+| Incorrectly contradicted | 0 | 1 |
+| Precision among supported verdicts | 10/14 | 18/20 |
+
+The [per-case predictions](../data/eval/report_openai_verifier.json) include the prompt, model snapshot and dataset digest. The labels were adjudicated from two blind model readings. Further model selection needs fresh cases for an independent estimate.
+
+For end-to-end investigation, `uv run python -m scripts.report_policy_journeys --case unseen-usd --openai-verifier` sends the synthetic question to GPT-4.1 and each evidence pair to the pinned classifier. The public visitor demo uses deterministic verification. The optional `--use-cutoff-receipts` flag tests a separate calendar rule.
+
+A fresh investigation for each of the original 17 development questions resolved 10. The historical run resolved seven. The [recorded answers](../data/eval/reports/policy-openai-verifier-answers.json) and [independent assessment](../data/eval/reports/policy-openai-verifier-review.json) include the evidence and structured actions. One response recommended escalation in prose while recording no action. Another supplied a USD date without a settlement currency. The missing-ID clarification and the out-of-scope insurance answer also remain in the denominator. Each question ran once. Differences between investigator revisions and variation between runs prevent attributing the entire gain to the verifier.
+
+The evaluation combines exact calendar and action checks with judgment of open-ended answers. See chapters 3 and 4 of [AI Engineering by Chip Huyen](https://www.oreilly.com/library/view/ai-engineering/9781098166298/).
+
+For a standalone first-turn policy question about a dated evidence cutoff, the investigator can request the missing settlement currency before returning a date. The payment currency can differ from the settlement currency. The clarification still passes through the normal verifier and escalation checks. Account investigations and follow-up questions retain their existing context.

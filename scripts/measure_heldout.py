@@ -43,6 +43,7 @@ Exit code 0 when the measurement ran, 1 when the run refused, 2 when the model c
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from collections.abc import Mapping, Sequence
@@ -427,6 +428,45 @@ def measure_heldout(labelled_path: Path, recipes_path: Path, *, nli: Nli) -> Hel
     recipes = read_recipes(recipes_path)
     _require_complete(cases, recipes)
 
+    return _measure_cases(cases, labelled_path, recipes, recipes_path, nli)
+
+
+def score_fixed_classifier(nli: Nli) -> dict[str, Any]:
+    """Score a fixed classifier on the published adjudications and return the report fields."""
+    labelled = ROOT / LABELLED_SET_RELATIVE
+    declaration = next(
+        (entry for entry in load_manifests(ROOT / MANIFEST_RELATIVE) if entry.path == LABELLED_SET_RELATIVE.as_posix()),
+        None,
+    )
+    digest = hashlib.sha256(labelled.read_bytes()).hexdigest()
+    if declaration is None or declaration.split_role != "held_out" or digest != declaration.sha256:
+        raise MeasureRefusal("The public cases do not match the held-out dataset manifest.")
+    cases = _read_cases(labelled)
+    if len(cases) != declaration.records_count:
+        raise MeasureRefusal("The case count differs from the dataset manifest.")
+    measured = _measure_cases(cases, labelled, (), None, nli)
+    return {
+        "input_sha256": digest,
+        "total": measured.total,
+        "correct": measured.correct,
+        "model_cases": measured.model_total,
+        "model_correct": measured.model_correct,
+        "false_supported": measured.false_supported,
+        "false_contradicted": measured.false_contradicted,
+        "predicted_counts": measured.verifier_counts,
+        "predictions": [
+            {"id": case.case_id, "prediction": case.verdict_label, "method": case.method} for case in measured.cases
+        ],
+    }
+
+
+def _measure_cases(
+    cases: Sequence[HeldoutCase],
+    labelled_path: Path,
+    recipes: Sequence[RecipeFact],
+    recipes_path: Path | None,
+    nli: Nli,
+) -> HeldoutMeasurement:
     by_id = {recipe.case_id: recipe for recipe in recipes}
     outcomes: list[CaseOutcome] = []
     for case in cases:
@@ -496,7 +536,7 @@ def measure_heldout(labelled_path: Path, recipes_path: Path, *, nli: Nli) -> Hel
         disagreement_ids=disagreements,
         cases=tuple(outcomes),
         labelled_path=str(labelled_path),
-        recipes_path=str(recipes_path),
+        recipes_path=str(recipes_path) if recipes_path else "",
     )
 
 

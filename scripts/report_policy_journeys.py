@@ -32,6 +32,8 @@ from ledgerlens.verify import verify_result
 from ledgerlens.verify.claims import _citations
 from ledgerlens.verify.nli import StubNli
 from scripts.check_policy_index import check
+from scripts.measure_openai_verifier import MODEL as VERIFIER_MODEL
+from scripts.measure_openai_verifier import EvidenceClassifier
 
 CHARGEBACK = ("chargeback-cutoff", "When does Acme require merchant evidence for a chargeback?")
 REFUND = ("refund-versus-chargeback", "Do I need to submit a refund request before the chargeback response deadline?")
@@ -107,6 +109,9 @@ RATE_PER_MILLION = {
     "cached": Decimal("0.50"),
     "output": Decimal("8"),
     "embedding": Decimal("0.02"),
+    "verifier_input": Decimal("0.40"),
+    "verifier_cached": Decimal("0.10"),
+    "verifier_output": Decimal("1.60"),
 }
 
 
@@ -207,7 +212,14 @@ def report_journey(agent: Integrator, case: tuple[str, str]) -> dict:
     }
 
 
-def run_config():
+STUB_VERIFIER = "offline_stub"
+VERIFIER_FIELD = "verifier"
+VERIFIER_WIRE_MODEL = VERIFIER_MODEL.removeprefix("openai:")
+INVESTIGATOR_MODELS = {OPENAI_MODEL, "gpt-4.1-2025-04-14"}
+CUTOFF_RECEIPTS = "use_cutoff_receipts"
+
+
+def run_config(*, use_cutoff_receipts: bool = False, openai_verifier: bool = False):
     """Identify source and index inputs, including edits outside the current commit."""
     paths = (
         "ledgerlens/agents/integrator.py",
@@ -215,9 +227,11 @@ def run_config():
         "ledgerlens/chains/triage.py",
         "ledgerlens/tools/policies.py",
         "scripts/report_policy_journeys.py",
+        "scripts/measure_openai_verifier.py",
         "ledgerlens/tools/calculator.py",
         "ledgerlens/sim/calendars.py",
         "ledgerlens/verify/checks.py",
+        "ledgerlens/verify/cutoff_receipt.py",
         "ledgerlens/verify/escalation.py",
         "ledgerlens/verify/__init__.py",
     )
@@ -228,7 +242,8 @@ def run_config():
         "source_sha256": digests,
         "index": json.loads((INDEX_FOLDER / META_FILE).read_text()),
         "model": OPENAI_MODEL,
-        "verifier": "offline_stub",
+        VERIFIER_FIELD: VERIFIER_MODEL if openai_verifier else STUB_VERIFIER,
+        CUTOFF_RECEIPTS: use_cutoff_receipts,
         "standard_usd_per_million": {k: str(v) for k, v in RATE_PER_MILLION.items()},
     }
 
@@ -267,7 +282,8 @@ async def run_journeys(root: Path, case_ids: list[str], *, checkpoint=None, conf
                 tokens["unpriced_requests"] += 1
                 return
             try:
-                usage = response.json().get("usage") or {}
+                body = response.json()
+                usage = body.get("usage") or {}
             except (ValueError, AttributeError):
                 tokens["unpriced_requests"] += 1
                 return
@@ -279,10 +295,17 @@ async def run_journeys(root: Path, case_ids: list[str], *, checkpoint=None, conf
                 tokens["unpriced_requests"] += 1
                 return
             else:
+                response_model = body.get("model")
+                if response_model == VERIFIER_WIRE_MODEL:
+                    prefix = "verifier_"
+                elif response_model in INVESTIGATOR_MODELS:
+                    prefix = ""
+                else:
+                    return
                 cached = (usage.get("prompt_tokens_details") or {}).get("cached_tokens", 0)
-                tokens["cached"] += cached
-                tokens["input"] += usage["prompt_tokens"] - cached
-                tokens["output"] += usage["completion_tokens"]
+                tokens[prefix + "cached"] += cached
+                tokens[prefix + "input"] += usage["prompt_tokens"] - cached
+                tokens[prefix + "output"] += usage["completion_tokens"]
             if "prompt_tokens" in usage:
                 tokens["priced_requests"] += 1
 
@@ -321,6 +344,13 @@ async def run_journeys(root: Path, case_ids: list[str], *, checkpoint=None, conf
                 if issues:
                     raise ValueError("Invalid policy index: " + ", ".join(issues))
                 config = configuration if configuration is not None else run_config()
+                nli = (
+                    EvidenceClassifier(
+                        get_chat_model(provider_settings, model=VERIFIER_MODEL, base_url=OPENAI_URL, **options)
+                    )
+                    if config.get(VERIFIER_FIELD) == VERIFIER_MODEL
+                    else StubNli()
+                )
                 repetitions = Counter()
                 reports = []
                 for case_id in case_ids:
@@ -335,7 +365,13 @@ async def run_journeys(root: Path, case_ids: list[str], *, checkpoint=None, conf
                     agent = build_integrator(
                         model,
                         db_path=db_path,
-                        verifier=partial(verify_result, nli=StubNli(), ledger_db=db_path, review_conditions=conditions),
+                        verifier=partial(
+                            verify_result,
+                            nli=nli,
+                            ledger_db=db_path,
+                            review_conditions=conditions,
+                            use_cutoff_receipts=config.get(CUTOFF_RECEIPTS, False),
+                        ),
                         query_model=model,
                         policy_model=model,
                         triage_model=model,
@@ -368,6 +404,10 @@ def main() -> None:
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--case", choices=CASES)
     group.add_argument("--all", action="store_true", help="Run baseline and diagnostic cases.")
+    parser.add_argument(
+        "--openai-verifier", action="store_true", help="Verify claims with the frozen OpenAI classifier."
+    )
+    parser.add_argument("--use-cutoff-receipts", action="store_true", help="Evaluate receipt-backed cutoff claims.")
     parser.add_argument("--repeat", type=int, default=1)
     parser.add_argument("--checkpoint", type=Path, help="Write each completed case to a new JSONL file.")
     parser.add_argument("--strict", action="store_true", help="Exit nonzero on operational failures.")
@@ -375,7 +415,7 @@ def main() -> None:
     if args.repeat < 1:
         parser.error("--repeat must be positive")
     selected = [args.case] if args.case else list(CASES) if args.all else [case[0] for case in BASELINE_CASES]
-    configuration = run_config()
+    configuration = run_config(use_cutoff_receipts=args.use_cutoff_receipts, openai_verifier=args.openai_verifier)
     with TemporaryDirectory(prefix="ledgerlens_policy_journeys_") as folder:
         if args.checkpoint:
             with args.checkpoint.open("x", encoding="utf-8") as checkpoint:

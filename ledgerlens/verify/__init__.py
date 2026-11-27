@@ -23,6 +23,7 @@ def verify_result(
     nli: Nli | None = None,
     as_of: date | None = None,
     ledger_db: Path | str | None = None,
+    use_cutoff_receipts: bool = False,
     review_conditions: list[dict[str, Any]] | None = None,
 ) -> InvestigationResult:
     """Verifies the claims and applies the escalation and the recommended action, decided by code.
@@ -32,7 +33,9 @@ def verify_result(
     read-only (default: the configured one, the same the tools read).
     Pass an empty list as `review_conditions` to collect the criteria that fired in both stages.
     """
-    verified = verify_claims(result, nli=nli, review_conditions=review_conditions)
+    verified = verify_claims(
+        result, nli=nli, review_conditions=review_conditions, use_cutoff_receipts=use_cutoff_receipts
+    )
     return apply_escalation(verified, as_of=as_of, ledger_db=ledger_db, review_conditions=review_conditions)
 
 

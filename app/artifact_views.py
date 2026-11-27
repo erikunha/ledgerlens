@@ -160,7 +160,7 @@ def render_evaluation():
         left, right = st.columns(2)
         left.metric("Agent correctness · tuning set", tuning["correctness_mean"])
         left.caption(f"{tuning['denominator']} cases · {tuning['repeats']} repeats")
-        right.metric("Verifier accuracy · held-out set", heldout["accuracy"])
+        right.metric("Baseline verifier accuracy · held-out set", heldout["accuracy"])
         right.caption(f"{heldout['correct']} correct out of {heldout['denominator']} cases")
         with st.expander("How to interpret the scores"):
             st.write(tuning["restriction"].capitalize() + ".")

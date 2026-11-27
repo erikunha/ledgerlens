@@ -17,7 +17,7 @@ def _cli(monkeypatch, arguments, reports):
         return [dict(reports[i % len(reports)], case_id=case_id) for i, case_id in enumerate(case_ids)]
 
     monkeypatch.setattr(runner, "run_journeys", fake_run)
-    monkeypatch.setattr(runner, "run_config", lambda: {})
+    monkeypatch.setattr(runner, "run_config", lambda **kw: kw)
     monkeypatch.setattr(sys, "argv", ["report_policy_journeys", *arguments])
     runner.main()
 
@@ -83,7 +83,7 @@ def test_zero_repetitions_rejected_before_creating_checkpoint(tmp_path, monkeypa
     assert not checkpoint.exists()
 
 
-@pytest.mark.parametrize("fault", [None, "transport", "missing_usage", "missing_completion"])
+@pytest.mark.parametrize("fault", [None, "transport", "missing_usage", "missing_completion", "classifier"])
 def test_provider_usage_from_http_requests_and_checkpoints(tmp_path, monkeypatch, fault):
     def serve(request):
         if request.url.path.endswith("/embeddings"):
@@ -94,7 +94,15 @@ def test_provider_usage_from_http_requests_and_checkpoints(tmp_path, monkeypatch
             usage = {"prompt_tokens": 10} if fault == "missing_completion" else {}
         else:
             usage = {"prompt_tokens": 100, "prompt_tokens_details": {"cached_tokens": 30}, "completion_tokens": 5}
-        return httpx.Response(200, json={"usage": usage})
+        return httpx.Response(
+            200,
+            json={
+                "usage": usage,
+                "model": runner.VERIFIER_MODEL.removeprefix("openai:")
+                if request.url.path.endswith("/classifier")
+                else runner.OPENAI_MODEL,
+            },
+        )
 
     original_client = httpx.Client
     monkeypatch.setattr(
@@ -104,16 +112,22 @@ def test_provider_usage_from_http_requests_and_checkpoints(tmp_path, monkeypatch
     monkeypatch.setattr(runner, "OpenAIEmbeddings", lambda **kw: object())
     monkeypatch.setattr(runner, "index_dir_for", lambda root, embeddings: root)
     monkeypatch.setattr(runner, "check", lambda *args: [])
-    monkeypatch.setattr(runner, "run_config", lambda: {"model": "mock"})
+    monkeypatch.setattr(
+        runner, "run_config", lambda: {"verifier": runner.VERIFIER_MODEL if fault == "classifier" else "offline_stub"}
+    )
     monkeypatch.setattr(runner, "create_database", lambda path: Mock())
     monkeypatch.setattr(runner, "CaseMemory", lambda *a, **kw: None)
-    monkeypatch.setattr(runner, "build_integrator", lambda model, **kw: model)
+    monkeypatch.setattr(runner, "build_integrator", lambda model, **kw: (model, kw["verifier"].keywords["nli"]))
     monkeypatch.setenv("LEDGERLENS_ENV_FILE", str(tmp_path / "unused.env"))
 
-    def exercise(client, case):
+    def exercise(agent, case):
+        client, classifier = agent
+        if fault == "classifier":
+            assert isinstance(classifier, runner.EvidenceClassifier)
+            classifier.model.post("https://example.invalid/classifier")
         client.post("https://example.invalid/chat/completions")
         client.post("https://example.invalid/embeddings")
-        if fault:
+        if fault and fault != "classifier":
             try:
                 client.post("https://example.invalid/failed")
             except httpx.TransportError:
@@ -127,8 +141,50 @@ def test_provider_usage_from_http_requests_and_checkpoints(tmp_path, monkeypatch
     assert [json.loads(line)["case"] for line in checkpoint_path.read_text().splitlines()] == reports
     assert [r["repetition"] for r in reports] == [1, 2]
     for report in reports:
-        if fault:
+        if fault and fault != "classifier":
             assert report["estimated_online_usd"] is None
             assert report["provider_tokens"]["unpriced_requests"] >= 1
         else:
-            assert Decimal(report["estimated_online_usd"]) == Decimal("0.000196")
+            expected_cost = "0.000235" if fault == "classifier" else "0.000196"
+            assert Decimal(report["estimated_online_usd"]) == Decimal(expected_cost)
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+def test_cli_selects_and_records_receipt_verification(tmp_path, monkeypatch, capsys, enabled):
+    from scripts.report_cutoff_receipts import ARCHIVE, reconstruct_archived_case
+
+    archive = json.loads(ARCHIVE.read_text())
+    record = next(case for case in archive["cases"] if case["case_id"] == "july-cutoff-usd")
+    monkeypatch.setenv("LEDGERLENS_ENV_FILE", str(tmp_path / "unused.env"))
+    monkeypatch.setattr(runner, "get_chat_model", lambda *a, **kw: object())
+    monkeypatch.setattr(runner, "OpenAIEmbeddings", lambda **kw: object())
+    monkeypatch.setattr(runner, "index_dir_for", lambda root, embeddings: root)
+    monkeypatch.setattr(runner, "check", lambda *args: [])
+    monkeypatch.setattr(runner, "CaseMemory", lambda *a, **kw: None)
+    monkeypatch.setattr(runner, "build_integrator", lambda model, **kw: kw["verifier"])
+
+    def exercise(verifier, case):
+        result = verifier(reconstruct_archived_case(record))
+        return {**_answered(), "requires_human_review": result.requires_human_review}
+
+    monkeypatch.setattr(runner, "report_journey", exercise)
+    checkpoint = tmp_path / "results.jsonl"
+    arguments = ["runner", "--case", record["case_id"], "--checkpoint", str(checkpoint)]
+    if enabled:
+        arguments.append("--use-cutoff-receipts")
+    monkeypatch.setattr(sys, "argv", arguments)
+    runner.main()
+    report = json.loads(capsys.readouterr().out)
+    assert report["use_cutoff_receipts"] is enabled
+    assert report["cases"][0]["requires_human_review"] is (not enabled)
+    assert json.loads(checkpoint.read_text())["configuration"]["use_cutoff_receipts"] is enabled
+
+
+def test_cli_records_frozen_classifier_model(monkeypatch, capsys):
+    async def fake_run(root, case_ids, *, checkpoint=None, configuration=None):
+        return [_answered()]
+
+    monkeypatch.setattr(runner, "run_journeys", fake_run)
+    monkeypatch.setattr(sys, "argv", ["runner", "--openai-verifier", "--case", "fee-trigger"])
+    runner.main()
+    assert json.loads(capsys.readouterr().out)["verifier"] == runner.VERIFIER_MODEL

@@ -6,6 +6,8 @@ from app.artifact_views import ROOT, SITE, _artifact_errors, _read, render_engin
 
 REPOSITORY = "https://github.com/erikunha/ledgerlens/blob/main"
 EVALUATION_INDEX = SITE / "eval" / "index.json"
+CANDIDATE_REVIEW = "data/eval/reports/policy-openai-verifier-review.json"
+OPENAI_VERIFIER = "data/eval/report_openai_verifier.json"
 POLICY_REVIEW = "data/eval/policy_journey_review.json"
 
 
@@ -15,7 +17,8 @@ def _render_scores() -> None:
         report = _read(EVALUATION_INDEX)
         tuning = report["evaluation"]
         held_out = report["verification"]
-        policy = _read(ROOT / POLICY_REVIEW)["summary"]
+        policy = _read(ROOT / CANDIDATE_REVIEW)
+        candidate = _read(ROOT / OPENAI_VERIFIER)
 
         agent, verifier, policy_runs = st.columns(3)
         agent.metric("Agent correctness · tuning set", f"{float(tuning['correctness_mean']):.2%}")
@@ -23,17 +26,20 @@ def _render_scores() -> None:
             f"{tuning['denominator']} cases · {tuning['repeats']} repeats. Mean over the development set. "
             f"[Agent evaluation report]({REPOSITORY}/data/eval/report_online.json)"
         )
-        verifier.metric("Verifier accuracy · held-out set", f"{held_out['correct']} / {held_out['denominator']}")
+        verifier.metric("OpenAI verifier accuracy · held-out set", f"{candidate['correct']} / {candidate['total']}")
         verifier.caption(
-            "Claim verdicts scored against adjudicated labels from two blind model readers. "
+            f"Baseline: {held_out['correct']}/{held_out['denominator']}. Two blind model readers supplied the labels. "
+            f"[OpenAI verifier results]({REPOSITORY}/{OPENAI_VERIFIER}) · "
             f"[Held-out verifier report]({REPOSITORY}/data/eval/report_heldout.json)"
         )
         policy_runs.metric(
             "Policy questions resolved · development", f"{policy['resolved_cases']} / {policy['total_cases']}"
         )
         policy_runs.caption(
-            "One OpenAI run per synthetic case. A case counts as resolved when the answer is definitive, "
-            f"supported and gives an appropriate action. [Policy journey review]({REPOSITORY}/{POLICY_REVIEW})"
+            "OpenAI verifier experiment. Baseline: 7/17. One run per synthetic case. "
+            "A case counts as resolved when the answer is definitive, "
+            f"supported and gives an appropriate action. [Candidate results]({REPOSITORY}/{CANDIDATE_REVIEW}) · "
+            f"[Baseline review]({REPOSITORY}/{POLICY_REVIEW})"
         )
     st.caption("The two development scores describe their test sets. Production accuracy is unknown.")
 
