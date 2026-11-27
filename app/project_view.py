@@ -89,6 +89,49 @@ Use the [case simulator](?view=visitor-sandbox) to change a published case on a 
     )
 
 
+def _render_research() -> None:
+    """Connect each excerpt to the local evaluation method it informs."""
+    st.subheader("Research behind the evaluation")
+    st.markdown(
+        f"""
+**Claim-level precision** · Sewon Min et al. (2023), *FActScore*, abstract.
+[Read the paper](https://aclanthology.org/2023.emnlp-main.741/)
+
+> “the percentage of atomic facts supported by a reliable knowledge source”
+
+In the dispute evaluation, a reviewer checks each factual assertion against the cited policies.
+We also score whether the answer resolves the merchant's question.
+[See the scored cases]({REPOSITORY}/docs/cutoff-answer-precision.md)
+
+**Reliability across attempts** · Shunyu Yao et al. (2024), *τ-bench*, abstract.
+[Read the paper](https://arxiv.org/abs/2406.12045)
+
+> “the reliability of agent behavior over multiple trials”
+
+Our comparison report tracks both success per trial and which cases succeed on every repeat.
+[See how repeated trials are scored]({REPOSITORY}/docs/evaluation.md#blinded-comparisons-across-scenario-families)
+
+**Application-specific evaluation** · Chip Huyen (2024), *AI Engineering*, chapter 4, opening paragraph.
+[Read the chapter](https://www.oreilly.com/library/view/ai-engineering/9781098166298/ch04.html)
+
+> “You need to evaluate models in the context of your application.”
+
+For a dispute deadline, we check the calendar calculation, whether the policy supports the explanation,
+and whether the recorded action matches the advice. [Inspect the policy evaluation]({REPOSITORY}/{CANDIDATE_REVIEW})
+
+**Designing a visitor experiment** · Ron Kohavi, Diane Tang and Ya Xu (2020),
+*Trustworthy Online Controlled Experiments*, chapter 11, “Observational Causal Studies,” chapter summary.
+[Read the chapter](https://www.cambridge.org/core/books/abs/trustworthy-online-controlled-experiments/observational-causal-studies/020126527877A19CF7D9AF05CE23518E)
+
+> “Randomized controlled experiments are the gold standard for establishing causality”
+
+The visitor experiment rehearsal checks assignment counts, exposure and missing outcomes.
+The published policy scores come from synthetic questions.
+[Inspect the rehearsal]({REPOSITORY}/docs/evaluation.md#visitor-experiment-rehearsal)
+"""
+    )
+
+
 def render_project() -> None:
     """Present the architecture and scores alongside the existing evidence browsers."""
     st.title("Project details")
@@ -98,6 +141,7 @@ def render_project() -> None:
         _render_scores()
         _render_architecture()
     with evaluation:
+        _render_research()
         st.markdown(
             "**Receipt-backed cutoff verifier** · Offline experiment. The candidate cleared 8 valid dates "
             "and kept all 40 required reviews. All 8 paraphrases still went to review. "
