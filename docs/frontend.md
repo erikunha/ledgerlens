@@ -6,7 +6,7 @@ Install the application and API dependencies with `uv sync --extra app --extra a
 LEDGERLENS_OFFLINE=1 uv run uvicorn app.server:portal --host 127.0.0.1 --port 8501
 ```
 
-Open http://localhost:8501. Start with **Investigate this payment**, edit the suggested question, then press **Send**. The trace is optional. Follow **See the recorded calculation** to inspect the same case and open its published proof. The mode indicator above the case shows whether the next answer is scripted or uses your key. Choose **Use my OpenAI key** to configure OpenAI on the same page. Configure the key, model and limits in the side panel. It closes when the API accepts the key. The connected status appears in the investigation, and the current question stays editable. Press **Send to OpenAI** to submit it. **Switch to demo** returns to scripted answers. A paid run requires a published snapshot for the selected account and case. **Recordings** opens the published cases. **Project details** presents published scores, evidence and the technical implementation. The view parameter uses the lowercase page title with hyphens between words. The default is `/?view=investigations`. Earlier links open the matching page and update its URL. A link such as `/?view=recordings` opens that workspace.
+Open http://localhost:8501. Start with **Investigate this payment**, edit the suggested question, then press **Send**. The trace is optional. Follow **See the recorded calculation** to inspect the same case and open its published proof. The mode indicator above the case shows whether the next answer is scripted or uses your key. Choose **Use my OpenAI key** to configure OpenAI on the same page. Configure the key, model and limits in the side panel. It closes when the API accepts the key. The connected status appears in the investigation, and the current question stays editable. Press **Send to OpenAI** to submit it. **Switch to demo** returns to scripted answers. A paid run requires a published snapshot for the selected account and case. **Recordings** opens the published cases. **Project details** presents published scores, evidence and the technical implementation. The view parameter uses the lowercase page title with hyphens between words. The default is `/?view=investigations`. An unknown view opens Investigations. A link such as `/?view=recordings` opens that workspace.
 
 | Workspace | What you can do |
 | --- | --- |
@@ -15,7 +15,7 @@ Open http://localhost:8501. Start with **Investigate this payment**, edit the su
 | Project details | Read how the agent works and inspect published evaluation results, proofs and implementation. |
 | Recordings | Browse scripted and real-model recordings, then inspect an answer, its evidence and recorded events. Playback requires no credentials. |
 | Visitor sandbox | Fork a published case into a private branch and edit it through the demo API. |
-| OpenAI mode in Investigations | Connect a key with consent and investigate the selected payment using the same question field. The legacy `/?view=Live` link opens this mode. |
+| OpenAI mode in Investigations | Connect a key with consent and investigate the selected payment using the same question field. |
 | Evaluation | Inspect published evaluation results and download the underlying data. |
 | Proof artifacts | Inspect and download published evidence. |
 | Engineering | Inspect the implementation behind the payment investigation. |

@@ -80,7 +80,7 @@ def _formula(data):
 
 def _open_proof(catalog, scenario):
     st.session_state["proof_target"] = (catalog, scenario)
-    st.session_state["go_to"] = "Proof"
+    st.session_state["go_to"] = "proof-artifacts"
 
 
 def render_replay():

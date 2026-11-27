@@ -49,7 +49,7 @@ def test_the_demo_application_shows_the_sentence() -> None:
 def test_recorded_and_live_answers_display_the_disclosure(monkeypatch) -> None:
     monkeypatch.setenv("LEDGERLENS_API_BASE_URL", "http://127.0.0.1:1")
     app = AppTest.from_file(str(APP), default_timeout=60).run()
-    for workspace in ("Replay", "Payments"):
+    for workspace in ("recordings", "investigations"):
         app.button(key=f"nav-{workspace}").click().run()
         if workspace == "Payments":
             app.session_state["credential"] = {"handle": "test"}
