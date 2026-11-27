@@ -461,3 +461,5 @@ With the same models and original questions, the baseline resolved 9/17 on a fre
 The investigator can make one follow-up request within its turn budget if a policy answer omits the triggering event or submission interval, or cites only one side of a refund and dispute timing question. A user report of a missed internal evidence cutoff, together with a retrieved escalation rule, can trigger the structured human-review action. A hypothetical question alone does not trigger it.
 
 A reviewer scored shuffled answers against their citations, calendar receipts and structured actions without seeing which version produced them. Four additional phrasings yielded three complete answers. The remaining answer cited the responsibility for submitting evidence as support for the event that triggers submission. These are synthetic development measurements. [Answers, judgments, run costs and source digests](../data/eval/reports/policy-resolution-comparison.json)
+
+The [atomic verifier comparison](atomic-verifier-experiment.md) tests current state, historical events and compound claims with paired examples. Its answer review measures completeness alongside factual support.

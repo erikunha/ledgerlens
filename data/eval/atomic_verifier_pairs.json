@@ -1,0 +1,218 @@
+[
+  {
+    "id": "AV-01A",
+    "pair_id": "AV-01",
+    "slice": "event_vs_state",
+    "evidence": "Dispute D-701 event log: reopened at 09:12 UTC on 2026-07-06. Status snapshot at 18:00 UTC that day: closed in favor of the merchant.",
+    "claim": "D-701 was reopened on July 6.",
+    "expected": "entailment",
+    "required_facts": ["D-701 was reopened at 09:12 UTC on July 6."]
+  },
+  {
+    "id": "AV-01B",
+    "pair_id": "AV-01",
+    "slice": "event_vs_state",
+    "evidence": "Dispute D-701 event log: reopened at 09:12 UTC on 2026-07-06. Status snapshot at 18:00 UTC that day: closed in favor of the merchant.",
+    "claim": "D-701 was open at 18:00 UTC on July 6.",
+    "expected": "contradiction",
+    "required_facts": ["D-701 reopened at 09:12 UTC.", "The 18:00 UTC snapshot records D-701 as closed."]
+  },
+  {
+    "id": "AV-02A",
+    "pair_id": "AV-02",
+    "slice": "event_vs_state",
+    "evidence": "The complete event log for P-816 on 2026-07-07 shows a CAD 47 authorization at 09:10 UTC followed by a void at 09:20 UTC, with zero captures. The final ledger state is voided.",
+    "claim": "P-816 was captured before it was voided.",
+    "expected": "contradiction",
+    "required_facts": ["The authorization occurred before the void.", "The complete log records no captures."]
+  },
+  {
+    "id": "AV-02B",
+    "pair_id": "AV-02",
+    "slice": "event_vs_state",
+    "evidence": "The complete event log for P-816 on 2026-07-07 shows a CAD 47 authorization at 09:10 UTC followed by a void at 09:20 UTC, with zero captures. The final ledger state is voided.",
+    "claim": "P-816 had a CAD 47 authorization before it was voided.",
+    "expected": "entailment",
+    "required_facts": ["The authorization was for CAD 47.", "The complete log records the authorization followed by the void."]
+  },
+  {
+    "id": "AV-03A",
+    "pair_id": "AV-03",
+    "slice": "event_vs_state",
+    "evidence": "Payout U-429 was queued at 10:04 UTC on 2026-07-08. The only artifact provided is the enqueue receipt. It lists no later events or current status.",
+    "claim": "U-429 was still queued at 17:00 UTC on July 8.",
+    "expected": "neutral",
+    "required_facts": ["The receipt confirms queuing at 10:04 UTC.", "There is no status or event evidence for 17:00 UTC."]
+  },
+  {
+    "id": "AV-03B",
+    "pair_id": "AV-03",
+    "slice": "event_vs_state",
+    "evidence": "Payout U-429 was queued at 10:04 UTC on 2026-07-08. The only artifact provided is the enqueue receipt. It lists no later events or current status.",
+    "claim": "U-429 entered the payout queue at 10:04 UTC on July 8.",
+    "expected": "entailment",
+    "required_facts": ["The enqueue receipt records U-429 entering the queue at 10:04 UTC on July 8."]
+  },
+  {
+    "id": "AV-04A",
+    "pair_id": "AV-04",
+    "slice": "paraphrase",
+    "evidence": "The posted refund entries tied to purchase P-643 are CAD 18 and CAD 12. No other refunds are tied to that purchase.",
+    "claim": "The posted refunds for P-643 total CAD 30.",
+    "expected": "entailment",
+    "required_facts": ["The two posted refunds are CAD 18 and CAD 12.", "They sum to CAD 30."]
+  },
+  {
+    "id": "AV-04B",
+    "pair_id": "AV-04",
+    "slice": "paraphrase",
+    "evidence": "The posted refund entries tied to purchase P-643 are CAD 18 and CAD 12. No other refunds are tied to that purchase.",
+    "claim": "Thirty Canadian dollars in refunds were posted against P-643 altogether.",
+    "expected": "entailment",
+    "required_facts": ["The two posted refunds are CAD 18 and CAD 12.", "They sum to CAD 30."]
+  },
+  {
+    "id": "AV-05A",
+    "pair_id": "AV-05",
+    "slice": "paraphrase",
+    "evidence": "The only interchange fee on P-833 was JPY 120. The ledger records a separate JPY 210 currency conversion fee on the same payment.",
+    "claim": "The interchange fee on P-833 was JPY 210.",
+    "expected": "contradiction",
+    "required_facts": ["The interchange fee was JPY 120.", "JPY 210 was the currency conversion fee."]
+  },
+  {
+    "id": "AV-05B",
+    "pair_id": "AV-05",
+    "slice": "paraphrase",
+    "evidence": "The only interchange fee on P-833 was JPY 120. The ledger records a separate JPY 210 currency conversion fee on the same payment.",
+    "claim": "Two hundred and ten yen of interchange was charged on P-833.",
+    "expected": "contradiction",
+    "required_facts": ["The interchange fee was JPY 120.", "JPY 210 was the currency conversion fee."]
+  },
+  {
+    "id": "AV-06A",
+    "pair_id": "AV-06",
+    "slice": "paraphrase",
+    "evidence": "The batch receipt confirms delivery of the July 9 payout file to the acquiring bank at 13:00 UTC. The receipt contains no record of delivery to any merchant.",
+    "claim": "The merchant received the July 9 payout file at 13:00 UTC.",
+    "expected": "neutral",
+    "required_facts": ["The receipt confirms delivery to the acquiring bank at 13:00 UTC.", "It does not establish delivery to the merchant."]
+  },
+  {
+    "id": "AV-06B",
+    "pair_id": "AV-06",
+    "slice": "paraphrase",
+    "evidence": "The batch receipt confirms delivery of the July 9 payout file to the acquiring bank at 13:00 UTC. The receipt contains no record of delivery to any merchant.",
+    "claim": "At 13:00 UTC, the July 9 payout file reached the merchant.",
+    "expected": "neutral",
+    "required_facts": ["The receipt confirms delivery to the acquiring bank at 13:00 UTC.", "It does not establish delivery to the merchant."]
+  },
+  {
+    "id": "AV-07A",
+    "pair_id": "AV-07",
+    "slice": "ledger_policy_conflict",
+    "evidence": "For merchant shop-44, payout policy sets a minimum eligible balance of SEK 500. The ledger records a balance of SEK 480 and confirms that the merchant received a payout of SEK 480 from that balance.",
+    "claim": "Shop-44 received a SEK 480 payout and met the minimum balance requirement.",
+    "expected": "contradiction",
+    "required_facts": ["Shop-44 received a SEK 480 payout from a SEK 480 balance.", "The policy minimum was SEK 500.", "The recorded balance was below the minimum."]
+  },
+  {
+    "id": "AV-07B",
+    "pair_id": "AV-07",
+    "slice": "ledger_policy_conflict",
+    "evidence": "For merchant shop-44, payout policy sets a minimum eligible balance of SEK 500. The ledger records a balance of SEK 480 and confirms that the merchant received a payout of SEK 480 from that balance.",
+    "claim": "Shop-44 received a SEK 480 payout despite its balance falling below the policy minimum.",
+    "expected": "entailment",
+    "required_facts": ["Shop-44 received a SEK 480 payout from a SEK 480 balance.", "The policy minimum was SEK 500.", "The recorded balance was below the minimum."]
+  },
+  {
+    "id": "AV-08A",
+    "pair_id": "AV-08",
+    "slice": "ledger_policy_conflict",
+    "evidence": "The fee schedule for merchant shop-82 requires zero processing fees for duplicate-payment reversals. The ledger marks reversal V-808 as a duplicate-payment reversal and records its processing fee as NZD 3.",
+    "claim": "The ledger records a NZD 3 processing fee on V-808 even though its reversal type requires a zero fee.",
+    "expected": "entailment",
+    "required_facts": ["V-808 was a duplicate-payment reversal.", "Its recorded processing fee was NZD 3.", "The fee schedule requires a zero processing fee for that reversal type."]
+  },
+  {
+    "id": "AV-08B",
+    "pair_id": "AV-08",
+    "slice": "ledger_policy_conflict",
+    "evidence": "The fee schedule for merchant shop-82 requires zero processing fees for duplicate-payment reversals. The ledger marks reversal V-808 as a duplicate-payment reversal and records its processing fee as NZD 3.",
+    "claim": "The fee schedule requires a zero processing fee on V-808 and the ledger records zero.",
+    "expected": "contradiction",
+    "required_facts": ["V-808 was a duplicate-payment reversal.", "The fee schedule requires zero processing fees for that reversal type.", "The ledger records NZD 3."]
+  },
+  {
+    "id": "AV-09A",
+    "pair_id": "AV-09",
+    "slice": "ledger_policy_conflict",
+    "evidence": "Refund policy requires an approval entry before a manually paid refund. The ledger records refund F-392 manually paid at 11:20 UTC on July 10 and the only approval entry at 11:24 UTC. The records include no reason for the timing.",
+    "claim": "F-392 was manually paid before recorded approval because a system outage delayed approval.",
+    "expected": "neutral",
+    "required_facts": ["F-392 was manually paid at 11:20 UTC.", "The sole approval was entered at 11:24 UTC.", "The records do not establish the cause of the delay or whether an outage occurred."]
+  },
+  {
+    "id": "AV-09B",
+    "pair_id": "AV-09",
+    "slice": "ledger_policy_conflict",
+    "evidence": "Refund policy requires an approval entry before a manually paid refund. The ledger records refund F-392 manually paid at 11:20 UTC on July 10 and the only approval entry at 11:24 UTC. The records include no reason for the timing.",
+    "claim": "F-392 was manually paid before its only recorded approval, although policy requires an approval entry before payment.",
+    "expected": "entailment",
+    "required_facts": ["F-392 was manually paid at 11:20 UTC.", "The only approval was entered at 11:24 UTC.", "Policy requires an approval entry before manual payment."]
+  },
+  {
+    "id": "AV-10A",
+    "pair_id": "AV-10",
+    "slice": "ledger_policy_agreement",
+    "evidence": "The dispute routing rule assigns code A7 to the account security queue. Ledger entry D-550 shows reason code A7. The routing log for D-550 shows it entered the account security queue at 08:10 UTC.",
+    "claim": "D-550 was routed to the account security queue, as required for its reason code.",
+    "expected": "entailment",
+    "required_facts": ["D-550 has reason code A7.", "The routing rule assigns A7 to the account security queue.", "The routing log confirms entry to that queue."]
+  },
+  {
+    "id": "AV-10B",
+    "pair_id": "AV-10",
+    "slice": "ledger_policy_agreement",
+    "evidence": "The dispute routing rule assigns code A7 to the account security queue. Ledger entry D-550 shows reason code A7. The routing log for D-550 shows it entered the account security queue at 08:10 UTC.",
+    "claim": "D-550 was routed to the account security queue and a reviewer opened it at 08:10 UTC.",
+    "expected": "neutral",
+    "required_facts": ["The routing log shows entry to the account security queue at 08:10 UTC.", "No reviewer activity is recorded in the evidence."]
+  },
+  {
+    "id": "AV-11A",
+    "pair_id": "AV-11",
+    "slice": "ledger_policy_agreement",
+    "evidence": "Policy requires the full held amount to be returned when a hold expires. The ledger shows H-114 held CHF 62 and then expired. The release entry credits exactly CHF 62 back to the account.",
+    "claim": "H-114 expired and only part of the held balance was returned.",
+    "expected": "contradiction",
+    "required_facts": ["H-114 expired.", "The held amount and release credit were both CHF 62.", "The full held amount was returned."]
+  },
+  {
+    "id": "AV-11B",
+    "pair_id": "AV-11",
+    "slice": "ledger_policy_agreement",
+    "evidence": "Policy requires the full held amount to be returned when a hold expires. The ledger shows H-114 held CHF 62 and then expired. The release entry credits exactly CHF 62 back to the account.",
+    "claim": "The expired H-114 hold was returned in full, as policy requires.",
+    "expected": "entailment",
+    "required_facts": ["H-114 expired.", "The release credit of CHF 62 equals the held amount.", "Policy requires a full return when a hold expires."]
+  },
+  {
+    "id": "AV-12A",
+    "pair_id": "AV-12",
+    "slice": "ledger_policy_agreement",
+    "evidence": "Reserve policy requires a 10% reserve on new merchant deposits. The ledger shows a GBP 960 deposit from new merchant shop-19 and a GBP 96 reserve entry tied to it.",
+    "claim": "The GBP 96 reserve on shop-19's GBP 960 deposit matches the policy for new merchants.",
+    "expected": "entailment",
+    "required_facts": ["Shop-19 was a new merchant.", "Its deposit was GBP 960 and its reserve was GBP 96.", "GBP 96 is 10% of GBP 960, the policy rate."]
+  },
+  {
+    "id": "AV-12B",
+    "pair_id": "AV-12",
+    "slice": "ledger_policy_agreement",
+    "evidence": "Reserve policy requires a 10% reserve on new merchant deposits. The ledger shows a GBP 960 deposit from new merchant shop-19 and a GBP 96 reserve entry tied to it.",
+    "claim": "Shop-19's reserve followed the new merchant policy and was released the following week.",
+    "expected": "neutral",
+    "required_facts": ["The GBP 96 reserve on the GBP 960 deposit matches the policy's 10% rate.", "No release event or date is supplied."]
+  }
+]

@@ -47,6 +47,7 @@ import hashlib
 import json
 import sys
 from collections.abc import Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
@@ -457,6 +458,31 @@ def score_fixed_classifier(nli: Nli) -> dict[str, Any]:
         "predictions": [
             {"id": case.case_id, "prediction": case.verdict_label, "method": case.method} for case in measured.cases
         ],
+    }
+
+
+def score_regression_classifier(classifier: Nli, baseline: Mapping[str, Any]) -> dict[str, Any]:
+    """Score the frozen cases, retaining invalid outputs in the comparison denominator."""
+    labelled = ROOT / LABELLED_SET_RELATIVE
+    if baseline["input_sha256"] != hashlib.sha256(labelled.read_bytes()).hexdigest():
+        raise ValueError("Regression sets differ.")
+
+    def regression(case):
+        try:
+            verdict = verify_result(heldout_result(case), nli=classifier).verdicts[0]
+            return {"id": case.case_id, "prediction": verdict.label, "method": verdict.method}
+        except ValueError as exc:
+            return {"id": case.case_id, "prediction": "invalid", "error": str(exc)}
+
+    old_cases = read_heldout_cases(labelled)
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        predictions = list(pool.map(regression, old_cases))
+    return {
+        "published_baseline_correct": baseline["correct"],
+        "correct": sum(row["prediction"] == case.label for row, case in zip(predictions, old_cases, strict=True)),
+        "total": len(old_cases),
+        "input_sha256": baseline["input_sha256"],
+        "predictions": predictions,
     }
 
 
