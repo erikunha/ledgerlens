@@ -3,6 +3,7 @@
 import streamlit as st
 
 from app.artifact_views import ROOT, SITE, _artifact_errors, _read, render_engineering, render_evaluation, render_proof
+from app.interactive_views import CASE_SIMULATOR
 
 REPOSITORY = "https://github.com/erikunha/ledgerlens/blob/main"
 EVALUATION_INDEX = SITE / "eval" / "index.json"
@@ -75,7 +76,7 @@ These verification calls share the investigation budget. The scripted demo works
 
     st.header("Scripted, recorded and live")
     st.markdown(
-        """
+        f"""
 - **Scripted demo** runs supported questions against the bundled sample with scripted model responses and recorded
   rate data. You can browse all nine tables in the sample database without a key.
 - **Recordings** play back previously captured scripted and real-model runs. Proofs contain evidence IDs,
@@ -84,7 +85,7 @@ These verification calls share the investigation budget. The scripted demo works
   selected account and case. The key lives in a session-bound, in-memory vault. The run uses the configured limits,
   and OpenAI may charge for calls. The paid model still investigates demo data.
 
-Use the [case simulator](?view=visitor-sandbox) to change a published case on a private branch and preview the result.
+Use the [case simulator](?view={CASE_SIMULATOR}) to change a published case on a private branch and preview the result.
 """
     )
 
@@ -141,14 +142,14 @@ def render_project() -> None:
         _render_scores()
         _render_architecture()
     with evaluation:
-        _render_research()
         st.markdown(
             "**Receipt-backed cutoff verifier** · Offline experiment. The candidate cleared 8 valid dates "
             "and kept all 40 required reviews. All 8 paraphrases still went to review. "
             f"[Cases, comparison and limitations]({REPOSITORY}/docs/evaluation.md#receipt-backed-cutoff-verification)"
         )
-        render_evaluation()
+        render_evaluation(embedded=True)
+        _render_research()
     with proofs:
-        render_proof()
+        render_proof(embedded=True)
     with engineering:
-        render_engineering()
+        render_engineering(embedded=True)

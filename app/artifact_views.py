@@ -150,9 +150,10 @@ def render_replay():
             _download(bundle / "events.jsonl", "Download recorded events", "application/x-ndjson")
 
 
-def render_evaluation():
+def render_evaluation(*, embedded=False):
     """Compare published measurements while keeping their denominators and purposes visible."""
-    st.title("Evaluation")
+    if not embedded:
+        st.title("Evaluation")
     with _artifact_errors():
         path = SITE / "eval" / "index.json"
         report = _read(path)
@@ -189,9 +190,10 @@ def render_evaluation():
         _download(path, "Download evaluation report")
 
 
-def render_proof():
+def render_proof(*, embedded=False):
     """Show a selected recording's verdicts and evidence with its original receipt."""
-    st.title("Proof artifacts")
+    if not embedded:
+        st.title("Proof artifacts")
     with _artifact_errors():
         proofs = _read(SITE / "proof" / "index.json")["artifacts"]
         entries = {(row["catalog"], row["scenario_id"]): row for row in proofs}
@@ -244,9 +246,10 @@ def render_proof():
             st.json(artifact, expanded=True)
 
 
-def render_engineering():
+def render_engineering(*, embedded=False):
     """Show each subsystem's purpose before its full documentation and implementation."""
-    st.title("Engineering")
+    if not embedded:
+        st.title("Engineering")
     with _artifact_errors():
         name = st.selectbox("Subsystem", MODULES.keys())
         path = ROOT / MODULES[name]
@@ -256,9 +259,9 @@ def render_engineering():
         st.subheader(name)
         st.write(purpose)
         st.caption(MODULES[name])
+        _download(path, "Download module", "text/x-python")
         if details:
             with st.expander("Module documentation", expanded=True):
                 st.write(details)
         with st.expander("Inspect source", expanded=True):
             st.code(source, language="python")
-        _download(path, "Download module", "text/x-python")
